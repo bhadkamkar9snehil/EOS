@@ -10,6 +10,7 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
     public DbSet<ImportedSourceFile> ImportedSourceFiles => Set<ImportedSourceFile>();
     public DbSet<EmployeeMonthlyPerformance> EmployeeMonthlyPerformances => Set<EmployeeMonthlyPerformance>();
     public DbSet<PeerReview> PeerReviews => Set<PeerReview>();
+    public DbSet<Team> Teams => Set<Team>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +21,14 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
             entity.Property(x => x.EmployeeCode).HasMaxLength(50).IsRequired();
             entity.HasIndex(x => x.EmployeeCode).IsUnique();
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Email).HasMaxLength(320);
+        });
+        modelBuilder.Entity<Team>(entity =>
+        {
+            entity.ToTable("team");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.HasIndex(x => x.Name).IsUnique();
         });
         modelBuilder.Entity<ReportingMonth>(entity =>
         {

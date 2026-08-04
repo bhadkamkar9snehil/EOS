@@ -62,10 +62,40 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             CREATE UNIQUE INDEX IF NOT EXISTS IX_peer_review_Year_Month_Reviewer_Subject
             ON peer_review (Year, Month, ReviewerCode, SubjectCode);
             """, cancellationToken);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS team (
+                Id INTEGER NOT NULL CONSTRAINT PK_team PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_team_Name ON team (Name);
+            """, cancellationToken);
+
+        // The employee table predates these columns; EnsureCreatedAsync only creates a
+        // table that doesn't exist yet, so an existing database needs them added by hand.
+        await EnsureColumnAsync(context, "employee", "Email", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(context, "employee", "IsConsultant", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(context, "employee", "IsOnProbation", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(context, "employee", "IsNonBillable", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(context, "employee", "TeamId", "INTEGER NULL", cancellationToken);
+
         await SeedDefaultExclusionsAsync(context, cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;", cancellationToken);
     }
+
+    /// <summary>
+    /// Adds a column to an existing table if it is missing. SQLite cannot parameterize DDL
+    /// identifiers, so these are interpolated — safe because every caller passes a compile-time
+    /// literal, never user input.
+    /// </summary>
+#pragma warning disable EF1002 // Fixed internal literals; no user input reaches this SQL.
+    private static async Task EnsureColumnAsync(PerformanceDbContext context, string table, string column, string definition, CancellationToken cancellationToken)
+    {
+        var existing = await context.Database.SqlQueryRaw<string>($"SELECT name AS Value FROM pragma_table_info('{table}')").ToListAsync(cancellationToken);
+        if (existing.Contains(column, StringComparer.OrdinalIgnoreCase)) return;
+        await context.Database.ExecuteSqlRawAsync($"ALTER TABLE {table} ADD COLUMN {column} {definition};", cancellationToken);
+    }
+#pragma warning restore EF1002
 
     /// <summary>
     /// Names that are never part of the analysis. Seeded once, on a database that has
@@ -133,9 +163,69 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        var teams = await context.Teams.ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
         var employees = await context.Employees.OrderBy(x => x.Name)
-            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel }).ToListAsync(cancellationToken);
-        return employees.Select(x => new EmployeeListItem(x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, excluded.Contains(PersonName.Normalize(x.Name)))).ToArray();
+            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, x.Email, x.IsConsultant, x.IsOnProbation, x.IsNonBillable, x.TeamId })
+            .ToListAsync(cancellationToken);
+        return employees.Select(x => new EmployeeListItem(
+            x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, excluded.Contains(PersonName.Normalize(x.Name)),
+            x.Email, x.IsConsultant, x.IsOnProbation, x.IsNonBillable,
+            x.TeamId, x.TeamId.HasValue && teams.TryGetValue(x.TeamId.Value, out var teamName) ? teamName : null)).ToArray();
+    }
+
+    public async Task SetNonBillableAsync(int employeeId, bool value, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var employee = await context.Employees.FindAsync([employeeId], cancellationToken)
+            ?? throw new InvalidOperationException("The employee no longer exists.");
+        employee.SetNonBillable(value);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task AssignTeamAsync(int employeeId, int? teamId, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var employee = await context.Employees.FindAsync([employeeId], cancellationToken)
+            ?? throw new InvalidOperationException("The employee no longer exists.");
+        employee.AssignTeam(teamId);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TeamItem>> GetTeamsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var counts = await context.Employees.Where(x => x.TeamId != null)
+            .GroupBy(x => x.TeamId!.Value).Select(g => new { TeamId = g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.TeamId, x => x.Count, cancellationToken);
+        var teams = await context.Teams.OrderBy(x => x.Name).ToListAsync(cancellationToken);
+        return teams.Select(x => new TeamItem(x.Id, x.Name, counts.GetValueOrDefault(x.Id))).ToArray();
+    }
+
+    public async Task<int> AddTeamAsync(string name, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var team = new Team(name);
+        context.Teams.Add(team);
+        await context.SaveChangesAsync(cancellationToken);
+        return team.Id;
+    }
+
+    public async Task RenameTeamAsync(int teamId, string name, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var team = await context.Teams.FindAsync([teamId], cancellationToken) ?? throw new InvalidOperationException("The team no longer exists.");
+        team.Rename(name);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteTeamAsync(int teamId, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var team = await context.Teams.FindAsync([teamId], cancellationToken);
+        if (team is null) return;
+        var members = await context.Employees.Where(x => x.TeamId == teamId).ToListAsync(cancellationToken);
+        foreach (var member in members) member.AssignTeam(null);
+        context.Teams.Remove(team);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task AddEmployeeAsync(string employeeCode, string name, int seniorityLevel, CancellationToken cancellationToken = default)
@@ -164,6 +254,33 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<int> ImportEmployeeRosterAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        var roster = workbookService.ReadEmployeeRoster(filePath);
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var changed = 0;
+        foreach (var entry in roster)
+        {
+            var existing = await context.Employees.SingleOrDefaultAsync(x => x.EmployeeCode == entry.EmployeeCode, cancellationToken);
+            if (existing is null)
+            {
+                var created = new Employee(entry.EmployeeCode, entry.Name, entry.SeniorityLevel);
+                created.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation);
+                context.Employees.Add(created);
+                changed++;
+            }
+            else
+            {
+                var before = (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbation);
+                existing.SetSeniorityLevel(entry.SeniorityLevel);
+                existing.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation);
+                if (before != (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbation)) changed++;
+            }
+        }
+        await context.SaveChangesAsync(cancellationToken);
+        return changed;
+    }
+
     public async Task ImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default)
     {
         var inspection = workbookService.Inspect(sourcePath);
@@ -178,12 +295,21 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         var previous = await context.ImportedSourceFiles.SingleOrDefaultAsync(x => x.Year == year && x.Month == month && x.ReportType == reportType, cancellationToken);
         if (previous is not null) context.ImportedSourceFiles.Remove(previous);
         context.ImportedSourceFiles.Add(new ImportedSourceFile(reportType, year, month, inspection.FileName, storedPath, inspection.SheetNames.Count));
+        // A multi-month export yields one row per employee per month, so the same employee code
+        // recurs many times; codes queued earlier in this batch aren't visible to a database
+        // query yet, so they're tracked here to avoid inserting a duplicate employee.
+        var queuedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var incoming in performance)
         {
-            var current = await context.EmployeeMonthlyPerformances.SingleOrDefaultAsync(x => x.Year == year && x.Month == month && x.EmployeeName == incoming.EmployeeName, cancellationToken);
-            if (current is null) { current = new EmployeeMonthlyPerformance { Year = year, Month = month, EmployeeName = incoming.EmployeeName }; context.EmployeeMonthlyPerformances.Add(current); }
+            // Detailed timesheet and attendance rows carry their own real date, which can span many
+            // months in one export; each row lands in its own actual month, never the UI's selected one.
+            var rowYear = incoming.Year;
+            var rowMonth = incoming.Month;
+            var current = await context.EmployeeMonthlyPerformances.SingleOrDefaultAsync(x => x.Year == rowYear && x.Month == rowMonth && x.EmployeeName == incoming.EmployeeName, cancellationToken);
+            if (current is null) { current = new EmployeeMonthlyPerformance { Year = rowYear, Month = rowMonth, EmployeeName = incoming.EmployeeName }; context.EmployeeMonthlyPerformances.Add(current); }
             Merge(current, incoming, reportType);
-            if (reportType == ReportType.AttendanceLeaveUaaTimesheet && !string.IsNullOrWhiteSpace(incoming.EmployeeCode))
+            if (reportType == ReportType.AttendanceLeaveUaaTimesheet && !string.IsNullOrWhiteSpace(incoming.EmployeeCode)
+                && queuedCodes.Add(incoming.EmployeeCode))
             {
                 var exists = await context.Employees.AnyAsync(x => x.EmployeeCode == incoming.EmployeeCode, cancellationToken);
                 if (!exists) context.Employees.Add(new Employee(incoming.EmployeeCode, incoming.EmployeeName, 1));
@@ -316,7 +442,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         x.ApprovalScore, x.AttendanceDisciplineScore, x.EnteredHours, x.ComplianceHours, x.BillableHours, x.DetailedHours,
         x.DetailedEntries, x.UniqueProjects, x.AttendanceDays, x.LeaveDays, x.MissingPunchDays, x.LateDays, x.EarlyDays, x.LessDurationDays,
         x.Year, x.Month, x.PunchHours, x.AttendanceTimesheetHours, x.TimesheetFilledDays, x.ExpectedTimesheetDays,
-        x.NonBillableHours, x.TrainingHours);
+        x.NonBillableHours, x.TrainingHours, x.ApprovedHours);
 
     private static void Merge(EmployeeMonthlyPerformance current, EmployeeMonthlyPerformance incoming, ReportType type)
     {

@@ -138,13 +138,13 @@
                             @NetworkStat("◎", "Unique reviewers", Peers.UniqueReviewers.ToString(), null)
                             @NetworkStat("▤", "Avg feedback / person", Analytics.Format(Peers.FeedbackPerReviewer), null)
                             @NetworkStat("⚙", "Engagement", Analytics.Format(Peers.EngagementScore) + " / 10", "warn")
-                            @if (Peers.MostLiked is not null)
+                            @if (Peers.HighestRated is not null)
                             {
-                                <div class="network-highlight"><small>Most liked</small><strong>@Peers.MostLiked.Name — @Analytics.Format(Peers.MostLiked.Average, "0.00")</strong></div>
+                                <div class="network-highlight"><small>Highest rated</small><strong>@Peers.HighestRated.Name — @Analytics.Format(Peers.HighestRated.Average, "0.00")</strong></div>
                             }
-                            @if (Peers.MostCollaborative is not null)
+                            @if (Peers.MostActiveReviewer is not null)
                             {
-                                <div class="network-highlight"><small>Most collaborative</small><strong>@Peers.MostCollaborative.Name — @Peers.MostCollaborative.ReviewsGiven given</strong></div>
+                                <div class="network-highlight"><small>Most active reviewer</small><strong>@Peers.MostActiveReviewer.Name — @Peers.MostActiveReviewer.ReviewsGiven given</strong></div>
                             }
                         </div>
                     </div>
@@ -152,7 +152,7 @@
                 </section>
             }
 
-            <section class="card">
+            <section class="card wide">
                 <div class="card-head"><h2>Attendance vs timesheet</h2><small>Reconciliation</small></div>
                 <div class="mini-tiles">
                     <div><strong>@Analytics.Format(TimesheetFillRate)%</strong><span>Days with a timesheet</span></div>
@@ -256,7 +256,8 @@
                         TrendMonths="HeatmapMonths" TrendValues="SpotlightTrend"
                         Peer="Analytics.PeerBreakdownFor(PeerReviews, _spotlightName)"
                         Alerts="Alerts.Where(x => PersonName.Matches(x.EmployeeName, _spotlightName)).ToArray()"
-                        OnClose="() => _spotlightName = null" />
+                        OnClose="() => _spotlightName = null"
+                        OnOpenProfile='name => OnNavigate.InvokeAsync($"employee:{name}")' />
 }
 
 @code {

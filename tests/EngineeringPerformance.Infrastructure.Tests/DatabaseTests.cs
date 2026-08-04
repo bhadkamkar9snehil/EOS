@@ -171,5 +171,50 @@ public sealed class DatabaseTests
         var priyanka = summaryRows.Single(x => x.EmployeeName == "Priyanka Makwana");
         Assert.Equal(193.5m, priyanka.ComplianceHours);
         Assert.Equal(111.17m, priyanka.EnteredHours);
+
+        // The detailed timesheet export is a full historical dump (2019-2026 in the supplied
+        // reference file), not one reporting month — every row must land in its own real month,
+        // not be pooled onto whichever month the caller asked for.
+        var distinctMonths = detailRows.Select(x => (x.Year, x.Month)).Distinct().Count();
+        Assert.True(distinctMonths > 1, "Detailed timesheet rows should span more than one real month.");
+        Assert.True(detailRows.All(x => x.Year > 0 && x.Month is >= 1 and <= 12));
+        var julyOnly = detailRows.Where(x => x.Year == 2026 && x.Month == 7).ToArray();
+        Assert.True(julyOnly.Length < detailRows.Count, "July rows should be a subset, not the whole export.");
+    }
+
+    [Fact]
+    public void MultiMonthUtilizationSummaryIsRejectedRatherThanMisattributed()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-multimonth-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var path = Path.Combine(folder, "Utilization.xlsx");
+            using (var workbook = new ClosedXML.Excel.XLWorkbook())
+            {
+                var sheet = workbook.AddWorksheet("Sheet1");
+                sheet.Cell(1, 1).Value = "Month : ";
+                sheet.Cell(1, 2).Value = "01-Apr-2026 to 04-Aug-2026";
+                sheet.Cell(3, 1).Value = "Employee Name";
+                sheet.Cell(3, 2).Value = "Total Month Hours";
+                sheet.Cell(3, 4).Value = "Timsheet Compliance hours";
+                sheet.Cell(3, 5).Value = "Total\nEntered Timesheet Hours";
+                sheet.Cell(3, 6).Value = "Approved Timesheet Hours";
+                sheet.Cell(3, 9).Value = "Billable Hours";
+                sheet.Cell(3, 10).Value = "Non Billable Hours";
+                sheet.Cell(3, 11).Value = "Sum of Training";
+                sheet.Cell(3, 13).Value = "Sum of Office Working Hours";
+                sheet.Cell(4, 1).Value = "Someone";
+                workbook.SaveAs(path);
+            }
+
+            var service = new WorkbookService();
+            var ex = Assert.Throws<InvalidDataException>(() => service.ReadPerformance(path, ReportType.MonthlyTimesheetSummary, 2026, 7));
+            Assert.Contains("more than one month", ex.Message);
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
     }
 }

@@ -12,7 +12,9 @@
         <nav>
             @NavButton("overview", "Overview", "⌂")
             @NavButton("imports", "Data imports", "⇧")
+            @NavButton("timesheets", "Timesheets", "✓")
             @NavButton("employees", "Employees", "◎")
+            @NavButton("teams", "Teams", "⛃")
             @NavButton("peer-insights", "Peer Insights", "⇄")
             @NavButton("templates", "Templates", "□")
             @NavButton("reports", "Reports", "▤")
@@ -39,8 +41,11 @@
         <main class="content">
             @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" PeerReviews="_peerReviews" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
             else if (_page == "imports") { @ImportWorkspace() }
+            else if (_page == "timesheets") { <Timesheets Items="_performance" Employees="_employees" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "employees") { @EmployeeWorkspace() }
+            else if (_page == "teams") { <TeamsPage Employees="_employees" Teams="_teams" Database="Database" OnResult="HandleReportResult" OnChanged="RefreshAsync" /> }
             else if (_page == "peer-insights") { <PeerInsights Items="_performance" PeerReviews="_peerReviews" Month="_selectedMonth" OnNavigate="Navigate" /> }
+            else if (_page == "employee-detail" && _employeeDetailName is not null) { <EmployeeDetail Name="_employeeDetailName" Items="_performance" History="_history" PeerReviews="_peerReviews" Employees="_employees" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "templates") { @TemplateWorkspace() }
             else if (_page == "reports") { <Reports Items="_performance" History="_history" PeerReviews="_peerReviews" Employees="_employees" Month="_selectedMonth" ExcludedCount="_excluded.Count" OnResult="HandleReportResult" /> }
             else if (_page == "scoring") { @ScoringWorkspace() }
@@ -57,6 +62,7 @@
     private IReadOnlyList<MonthlyPerformanceItem> _history = [];
     private IReadOnlyList<string> _excluded = [];
     private IReadOnlyList<PeerReviewItem> _peerReviews = [];
+    private IReadOnlyList<TeamItem> _teams = [];
     private DateTime _selectedMonth = DefaultReportingMonth();
     private string _page = "overview";
     private string _message = string.Empty;
@@ -78,15 +84,20 @@
 
     private string PageTitleText => _page switch
     {
-        "imports" => "Data imports", "employees" => "Employees", "peer-insights" => "Peer Insights",
+        "imports" => "Data imports", "timesheets" => "Timesheets & approvals", "employees" => "Employees",
+        "teams" => "Teams", "peer-insights" => "Peer Insights",
         "templates" => "Review templates", "reports" => "Reports", "scoring" => "Scoring", "settings" => "Settings",
+        "employee-detail" => _employeeDetailName ?? "Employee",
         _ => "Overview"
     };
     private string PageSubtitleText => _page switch
     {
         "imports" => "Load the three ERP exports and the completed engineer reviews for this month.",
+        "timesheets" => "Who has not filled, what is awaiting approval, and mail drafts to chase both.",
         "employees" => "Employee master, identity codes and seniority levels.",
+        "teams" => "Group engineers into teams and classify billable, consultant and probation status.",
         "peer-insights" => "Every reviewer, every rating, the whole network — for this month.",
+        "employee-detail" => "Performance across every month currently loaded.",
         "templates" => "Create personalized review workbooks for one engineer or the whole team.",
         "reports" => "Export a formatted, printable performance report.",
         "scoring" => "Category weights used when review ratings are combined.",
@@ -101,7 +112,13 @@
     protected override Task OnAfterRenderAsync(bool firstRender) { if (firstRender) { var p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance"); Directory.CreateDirectory(p); File.WriteAllText(Path.Combine(p, "ui-ready.marker"), DateTime.UtcNow.ToString("O")); } return Task.CompletedTask; }
 
     private RenderFragment NavButton(string page, string label, string icon) => @<button class="@(_page == page ? "selected" : null)" @onclick="() => Navigate(page)"><b>@icon</b><span>@label</span></button>;
-    private void Navigate(string page) { _page = page; _message = string.Empty; }
+    private string? _employeeDetailName;
+    private void Navigate(string page)
+    {
+        if (page.StartsWith("employee:", StringComparison.Ordinal)) { _employeeDetailName = page["employee:".Length..]; _page = "employee-detail"; }
+        else { _page = page; }
+        _message = string.Empty;
+    }
     private async Task PreviousMonth() { _selectedMonth = _selectedMonth.AddMonths(-1); await RefreshAsync(); }
     private async Task NextMonth() { _selectedMonth = _selectedMonth.AddMonths(1); await RefreshAsync(); }
 
@@ -113,6 +130,7 @@
         _history = await Database.GetPerformanceHistoryAsync(_selectedMonth.Year, _selectedMonth.Month, 6);
         _excluded = await Database.GetExcludedNamesAsync();
         _peerReviews = await Database.GetPeerReviewsAsync(_selectedMonth.Year, _selectedMonth.Month);
+        _teams = await Database.GetTeamsAsync();
         _editName.Clear(); _editLevel.Clear();
         foreach (var employee in _employees) { _editName[employee.Id] = employee.Name; _editLevel[employee.Id] = employee.SeniorityLevel; }
         _lastRefresh = DateTime.Now;
@@ -184,6 +202,17 @@
         });
 
     private async Task RemoveEmployeeAsync(int id) => await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); await RefreshAsync(); _message = "Employee removed."; });
+
+    private async Task ImportRosterAsync()
+    {
+        var path = Dialogs.PickWorkbook(); if (path is null) return;
+        await RunAsync(async () =>
+        {
+            var changed = await Database.ImportEmployeeRosterAsync(path);
+            await RefreshAsync();
+            _message = changed == 0 ? "Roster imported — no new employees or seniority changes." : $"Roster imported: {changed} employee(s) created or updated.";
+        });
+    }
 
     private void GenerateTemplate()
     {
@@ -261,10 +290,13 @@
     private RenderFragment EmployeeWorkspace() => @<section class="single-pane">
         <div class="section-title">
             <div><h2>Employee master</h2><p>Employee code is the source identity and cannot change. Edit the name or seniority level and save the row. Excluded people are left out of every Overview figure.</p></div>
-            @if (_excluded.Count > 0)
-            {
-                <span class="excluded-pill">@_excluded.Count excluded from analysis</span>
-            }
+            <div class="section-actions">
+                @if (_excluded.Count > 0)
+                {
+                    <span class="excluded-pill">@_excluded.Count excluded from analysis</span>
+                }
+                <button class="action secondary small" @onclick="ImportRosterAsync" disabled="@_busy">Import from ERP roster</button>
+            </div>
         </div>
         <div class="form-row">
             <label>Employee code<input @bind="_newCode" placeholder="E1042" /></label>

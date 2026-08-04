@@ -43,8 +43,29 @@ public sealed partial class WorkbookService : IWorkbookService
         };
     }
 
+    /// <summary>
+    /// The summary export is a single aggregate for whatever period the ERP was asked for, stated in a
+    /// "Month : dd-MMM-yyyy to dd-MMM-yyyy" header cell. When that period spans more than one calendar
+    /// month the totals can't be safely attributed to any single month, so this refuses to guess.
+    /// </summary>
+    private static (int Year, int Month) ResolveSummaryPeriod(IXLWorksheet sheet, int year, int month)
+    {
+        var label = sheet.Cell(1, 1).GetString();
+        if (!label.Contains("Month", StringComparison.OrdinalIgnoreCase)) return (year, month);
+        var range = sheet.Cell(1, 2).GetString();
+        var parts = range.Split(" to ", StringSplitOptions.TrimEntries);
+        if (parts.Length != 2) return (year, month);
+        if (!DateTime.TryParse(parts[0], out var start) || !DateTime.TryParse(parts[1], out var end)) return (year, month);
+        if (start.Year != end.Year || start.Month != end.Month)
+            throw new InvalidDataException(
+                $"This utilization export covers {parts[0]} to {parts[1]}, more than one month. " +
+                "Re-export a single-month utilization report from the ERP — a multi-month summary can't be split into monthly figures.");
+        return (start.Year, start.Month);
+    }
+
     private static IReadOnlyList<EmployeeMonthlyPerformance> ReadSummary(IXLWorksheet sheet, int headerRow, Dictionary<string, int> columns, int year, int month)
     {
+        (year, month) = ResolveSummaryPeriod(sheet, year, month);
         var results = new List<EmployeeMonthlyPerformance>();
         for (var row = headerRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? headerRow); row++)
         {
@@ -64,32 +85,44 @@ public sealed partial class WorkbookService : IWorkbookService
         return results;
     }
 
+    /// <summary>
+    /// This export is a full historical dump, not one reporting month — the supplied reference file alone
+    /// spans 2019 to 2026. Every row carries its own real date, so each (employee, year, month) is its own
+    /// bucket; the caller's selected month is only a fallback for a row whose date cell is unreadable.
+    /// </summary>
     private static IReadOnlyList<EmployeeMonthlyPerformance> ReadDetails(IXLWorksheet sheet, int headerRow, Dictionary<string, int> columns, int year, int month)
     {
-        var groups = new Dictionary<string, (EmployeeMonthlyPerformance Item, HashSet<string> Projects)>(StringComparer.OrdinalIgnoreCase);
+        var groups = new Dictionary<(string Name, int Year, int Month), (EmployeeMonthlyPerformance Item, HashSet<string> Projects)>();
         for (var row = headerRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? headerRow); row++)
         {
             var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Employee"))));
             if (string.IsNullOrWhiteSpace(name)) continue;
-            if (!groups.TryGetValue(name, out var group)) group = (New(name, year, month), new(StringComparer.OrdinalIgnoreCase));
+            var dateCell = sheet.Cell(row, Col(columns, "Date"));
+            var (rowYear, rowMonth) = dateCell.TryGetValue<DateTime>(out var date) ? (date.Year, date.Month) : (year, month);
+            var key = (name, rowYear, rowMonth);
+            if (!groups.TryGetValue(key, out var group)) group = (New(name, rowYear, rowMonth), new(StringComparer.OrdinalIgnoreCase));
             group.Item.DetailedEntries++;
             group.Item.DetailedHours += Number(sheet.Cell(row, Col(columns, "Total work Hours")));
             var project = Text(sheet.Cell(row, Col(columns, "Project No")));
             if (!string.IsNullOrWhiteSpace(project)) group.Projects.Add(project);
-            groups[name] = group;
+            groups[key] = group;
         }
         foreach (var group in groups.Values) { group.Item.UniqueProjects = group.Projects.Count; Calculate(group.Item); }
         return groups.Values.Select(x => x.Item).ToArray();
     }
 
+    /// <summary>Same multi-month shape as the detailed timesheet export — bucket by each row's own date.</summary>
     private static IReadOnlyList<EmployeeMonthlyPerformance> ReadAttendance(IXLWorksheet sheet, int headerRow, Dictionary<string, int> columns, int year, int month)
     {
-        var groups = new Dictionary<string, EmployeeMonthlyPerformance>(StringComparer.OrdinalIgnoreCase);
+        var groups = new Dictionary<(string Name, int Year, int Month), EmployeeMonthlyPerformance>();
         for (var row = headerRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? headerRow); row++)
         {
             var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Employee"))));
             if (string.IsNullOrWhiteSpace(name)) continue;
-            if (!groups.TryGetValue(name, out var item)) groups[name] = item = New(name, year, month);
+            var dateCell = sheet.Cell(row, Col(columns, "Date"));
+            var (rowYear, rowMonth) = dateCell.TryGetValue<DateTime>(out var date) ? (date.Year, date.Month) : (year, month);
+            var key = (name, rowYear, rowMonth);
+            if (!groups.TryGetValue(key, out var item)) groups[key] = item = New(name, rowYear, rowMonth);
             item.EmployeeCode ??= Text(sheet.Cell(row, Col(columns, "Emp No")));
             var attendDay = Number(sheet.Cell(row, Col(columns, "Attend Day")));
             var position = Text(sheet.Cell(row, Col(columns, "Position")));
@@ -183,6 +216,35 @@ public sealed partial class WorkbookService : IWorkbookService
     {
         var value = Number(cell);
         return value is >= 1 and <= 5 ? value : 0;
+    }
+
+    /// <summary>
+    /// This is a live roster snapshot (grouped by "Admin Reporting: X" header rows, like the
+    /// attendance export), not a monthly figure — no year/month involved.
+    /// </summary>
+    public IReadOnlyList<RosterEntry> ReadEmployeeRoster(string filePath)
+    {
+        using var workbook = new XLWorkbook(filePath);
+        var sheet = workbook.Worksheet(1);
+        var columns = sheet.Row(1).CellsUsed().ToDictionary(x => Text(x), x => x.Address.ColumnNumber, StringComparer.OrdinalIgnoreCase);
+        if (!columns.ContainsKey("Employee No") || !columns.ContainsKey("Band Level") || !columns.ContainsKey("Full Name"))
+            throw new InvalidDataException("This workbook does not look like an employee roster export (expected 'Employee No', 'Full Name' and 'Band Level' columns).");
+
+        var results = new List<RosterEntry>();
+        for (var row = 2; row <= (sheet.LastRowUsed()?.RowNumber() ?? 1); row++)
+        {
+            var code = Text(sheet.Cell(row, Col(columns, "Employee No")));
+            var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Full Name"))));
+            if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) continue; // "Admin Reporting: X" group header row
+            var band = Text(sheet.Cell(row, Col(columns, "Band Level")));
+            var digits = new string(band.Where(char.IsDigit).ToArray());
+            var level = int.TryParse(digits, out var parsed) && parsed is >= 1 and <= 99 ? parsed : 1;
+            var email = columns.TryGetValue("Official Email", out var emailCol) ? Text(sheet.Cell(row, emailCol)) : null;
+            var isConsultant = columns.TryGetValue("IsConsultant", out var consultantCol) && Flag(sheet.Cell(row, consultantCol));
+            var isOnProbation = columns.TryGetValue("Flg Probation", out var probationCol) && Flag(sheet.Cell(row, probationCol));
+            results.Add(new RosterEntry(code, name, level, string.IsNullOrWhiteSpace(email) ? null : email, isConsultant, isOnProbation));
+        }
+        return results;
     }
 
     public void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null)

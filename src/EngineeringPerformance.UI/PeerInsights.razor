@@ -31,13 +31,13 @@
             <div class="network-layout">
                 <div id="pi-network" class="echart network-large"></div>
                 <div class="network-stats">
-                    @if (Summary.MostLiked is not null)
+                    @if (Summary.HighestRated is not null)
                     {
-                        <div class="network-highlight"><small>Most liked</small><strong>@Summary.MostLiked.Name</strong><span>@Analytics.Format(Summary.MostLiked.Average, "0.00") avg · @Summary.MostLiked.ReviewsReceived reviews</span></div>
+                        <div class="network-highlight"><small>Highest rated</small><strong>@Summary.HighestRated.Name</strong><span>@Analytics.Format(Summary.HighestRated.Average, "0.00") avg · @Summary.HighestRated.ReviewsReceived reviews</span></div>
                     }
-                    @if (Summary.MostCollaborative is not null)
+                    @if (Summary.MostActiveReviewer is not null)
                     {
-                        <div class="network-highlight"><small>Most collaborative</small><strong>@Summary.MostCollaborative.Name</strong><span>@Summary.MostCollaborative.ReviewsGiven reviews given</span></div>
+                        <div class="network-highlight"><small>Most active reviewer</small><strong>@Summary.MostActiveReviewer.Name</strong><span>@Summary.MostActiveReviewer.ReviewsGiven reviews given</span></div>
                     }
                     @if (LeastReviewed is not null)
                     {
@@ -98,7 +98,8 @@
                         TeamRadar="Analytics.Radar(Items)" TrendMonths="[]" TrendValues="[]"
                         Peer="Analytics.PeerBreakdownFor(PeerReviews, _spotlightName)"
                         Alerts="[]"
-                        OnClose="() => _spotlightName = null" />
+                        OnClose="() => _spotlightName = null"
+                        OnOpenProfile='name => OnNavigate.InvokeAsync($"employee:{name}")' />
 }
 
 @code {

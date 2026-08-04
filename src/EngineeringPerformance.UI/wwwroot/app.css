@@ -307,6 +307,49 @@ b.critical { color: #d03b3b; }
 .report-picker { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
 .report-picker select { flex: 1; height: 38px; border: 1px solid var(--line); background: #fff; padding: 0 10px; }
 
+/* ---------- Teams ---------- */
+
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.team-card { border: 1px solid var(--line); border-radius: var(--radius); background: #fff; padding: 13px 14px; box-shadow: var(--shadow-resting); }
+.team-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.team-name { font-weight: 650; font-size: 13.5px; flex: 1; }
+.team-count { background: #eaf1fb; color: #175ab8; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; flex: none; }
+.team-card-actions { display: flex; gap: 8px; }
+.team-select { height: 32px; border: 1px solid #cbd4df; background: #fff; padding: 0 8px; font-size: 12px; border-radius: var(--radius-sm); max-width: 100%; }
+
+.data-table .table-head.roster, .data-row.roster { grid-template-columns: 100px minmax(180px, 1fr) 180px 140px 170px; }
+.roster-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 13px; }
+.roster-name small { font-size: 10.5px; color: var(--muted); display: flex; gap: 5px; flex-wrap: wrap; }
+.tag-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.tag.consultant { background: #ede9fb; color: #3b2c8f; }
+.tag.probation { background: #fdf1de; color: #8a5c00; }
+.tag.muted { background: #f0f2f6; color: #5c6675; }
+
+/* ---------- Timesheets ---------- */
+
+.performance-table.compliance .performance-head, .performance-table.compliance .performance-row {
+    grid-template-columns: minmax(160px, 1.5fr) 130px 88px 74px 82px 88px 130px 88px 84px;
+}
+.performance-row.row-flag { background: #fffaf7; }
+.flag-critical { color: #c0392b; font-weight: 700; }
+.flag-warning { color: #a06f00; font-weight: 700; }
+
+.mail-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.mail-preview { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: #fbfcfe; }
+.mail-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
+.mail-field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+.mail-field input, .mail-field textarea {
+    border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px; background: #fff;
+    font-size: 12px; color: #2b3648; width: 100%;
+}
+.mail-field textarea { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; line-height: 1.55; resize: vertical; }
+
+.back-link { border: 0; padding: 0; margin-bottom: 14px; font-size: 12.5px; }
+.profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.profile-header h2 { margin: 0; font-size: 20px; }
+.profile-header small { color: var(--muted); font-size: 12px; }
+
 /* ---------- Data imports ---------- */
 
 .page-grid { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
@@ -358,6 +401,7 @@ b.critical { color: #d03b3b; }
 .data-row { min-height: 58px; font-size: 13px; }
 .data-row.excluded { background: #fbfbfa; }
 .data-row.excluded .cell-input, .data-row.excluded code { color: #8d97a6; }
+.section-actions { display: flex; align-items: center; gap: 12px; flex: none; }
 .excluded-pill { background: #f2f5fa; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 11.5px; color: #52514e; white-space: nowrap; }
 .switch { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #52514e; cursor: pointer; }
 .switch input { width: 16px; height: 16px; accent-color: #1765d8; cursor: pointer; margin: 0; }

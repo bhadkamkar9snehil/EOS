@@ -27,6 +27,22 @@ public interface IApplicationDatabase
 
     Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default);
     Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Imports the ERP's employee roster export: creates any employee not yet in the master and
+    /// syncs seniority, email, consultant and probation status from the roster. Not month-scoped —
+    /// this is a live snapshot. Returns the number of employees created or updated.
+    /// </summary>
+    Task<int> ImportEmployeeRosterAsync(string filePath, CancellationToken cancellationToken = default);
+
+    Task SetNonBillableAsync(int employeeId, bool value, CancellationToken cancellationToken = default);
+    Task AssignTeamAsync(int employeeId, int? teamId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TeamItem>> GetTeamsAsync(CancellationToken cancellationToken = default);
+    Task<int> AddTeamAsync(string name, CancellationToken cancellationToken = default);
+    Task RenameTeamAsync(int teamId, string name, CancellationToken cancellationToken = default);
+    /// <summary>Deletes the team; members are unassigned, not removed.</summary>
+    Task DeleteTeamAsync(int teamId, CancellationToken cancellationToken = default);
 }
 
 public interface IFileDialogService
@@ -37,14 +53,20 @@ public interface IFileDialogService
     string? PickFolder(string title);
 }
 
-public sealed record EmployeeListItem(int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded);
+public sealed record EmployeeListItem(
+    int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,
+    string? Email, bool IsConsultant, bool IsOnProbation, bool IsNonBillable,
+    int? TeamId, string? TeamName);
+
+public sealed record TeamItem(int Id, string Name, int MemberCount);
 public sealed record MonthlyPerformanceItem(string EmployeeName, string? EmployeeCode, decimal OperationalScore,
     decimal TimesheetCompletionScore, decimal ApprovalScore, decimal AttendanceDisciplineScore,
     decimal EnteredHours, decimal ComplianceHours, decimal BillableHours, decimal DetailedHours,
     int DetailedEntries, int UniqueProjects, decimal AttendanceDays, decimal LeaveDays,
     int MissingPunchDays, int LateDays, int EarlyDays, int LessDurationDays,
     int Year, int Month, decimal PunchHours, decimal AttendanceTimesheetHours,
-    int TimesheetFilledDays, int ExpectedTimesheetDays, decimal NonBillableHours, decimal TrainingHours)
+    int TimesheetFilledDays, int ExpectedTimesheetDays, decimal NonBillableHours, decimal TrainingHours,
+    decimal ApprovedHours = 0)
 {
     /// <summary>The monthly utilization export is the only source of compliance hours.</summary>
     public bool HasSummaryData => ComplianceHours > 0;
@@ -70,6 +92,9 @@ public interface IWorkbookService
     /// <summary>Reads the completed peer review sheet out of a generated review workbook.</summary>
     IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month);
 
+    /// <summary>Reads the ERP's employee roster export (code, name, seniority derived from Band Level).</summary>
+    IReadOnlyList<RosterEntry> ReadEmployeeRoster(string filePath);
+
     void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null);
     IReadOnlyList<string> GenerateEngineerTemplates(string destinationFolder, IReadOnlyList<Employee> employees, int year, int month);
 
@@ -81,6 +106,7 @@ public interface IWorkbookService
 }
 
 public sealed record WorkbookInspection(string FileName, IReadOnlyList<string> SheetNames, long Length);
+public sealed record RosterEntry(string EmployeeCode, string Name, int SeniorityLevel, string? Email, bool IsConsultant, bool IsOnProbation);
 
 /// <summary>
 /// Everything <see cref="IWorkbookService.GenerateEmployeeReport"/> needs, gathered by the

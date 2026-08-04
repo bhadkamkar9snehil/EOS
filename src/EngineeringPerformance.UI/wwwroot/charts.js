@@ -9,11 +9,19 @@
     };
     const BAND_COLOR = { good: PALETTE.good, warning: PALETTE.warning, serious: PALETTE.serious, critical: PALETTE.critical };
 
+    // One consistent tooltip skin for every chart — a plain dark card, no series-colored
+    // borders. Mismatched colored tooltip "speech bubbles" per chart read as unfinished.
+    const TOOLTIP_BASE = {
+        backgroundColor: '#1c2430', borderWidth: 0, padding: [9, 12],
+        textStyle: { color: '#f3f5f8', fontSize: 12, lineHeight: 18 },
+        extraCssText: 'box-shadow:0 8px 20px rgba(10,16,28,.28); border-radius:6px;'
+    };
+
     const instances = new Map();
     const observers = new Map();
 
-    // Bridge back into Blazor: Overview registers itself once via registerDrilldown,
-    // and any chart click that names an employee routes through here.
+    // Bridge back into Blazor: whichever page is active registers itself via
+    // registerDrilldown, and any chart click that names an employee routes through here.
     let drilldownRef = null;
     function registerDrilldown(ref) { drilldownRef = ref; }
     function drill(name) {
@@ -75,6 +83,7 @@
         chart.setOption({
             ...baseAnimation,
             tooltip: {
+                ...TOOLTIP_BASE,
                 trigger: 'item',
                 formatter: (p) => {
                     const rows = indicatorNames.map((n, i) => `${n}: <b>${p.value[i].toFixed(0)}</b>`).join('<br/>');
@@ -111,7 +120,7 @@
         chart.setOption({
             ...baseAnimation,
             grid: { left: 42, right: 16, top: 20, bottom: 66 },
-            tooltip: { trigger: 'item', formatter: (p) => `${p.data[3]}<br/><em>Click to open profile</em>` },
+            tooltip: { ...TOOLTIP_BASE, trigger: 'item', formatter: (p) => `<strong>${p.data[3]}</strong><br/><span style="opacity:.7">Click the point to open the profile</span>` },
             legend: {
                 bottom: 4, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4d5a6c' },
                 data: Object.keys(nameOf).map(k => nameOf[k])
@@ -128,9 +137,9 @@
             },
             series: [
                 ...Object.keys(byBand).map(band => ({
-                    name: nameOf[band], type: 'scatter', symbolSize: 12, cursor: 'pointer',
+                    name: nameOf[band], type: 'scatter', symbolSize: 18, cursor: 'pointer',
                     itemStyle: { color: colorOf[band], borderColor: '#fff', borderWidth: 2 },
-                    emphasis: { itemStyle: { borderWidth: 3, shadowBlur: 6, shadowColor: 'rgba(0,0,0,.25)' } },
+                    emphasis: { scale: 1.25, itemStyle: { borderWidth: 3, shadowBlur: 8, shadowColor: 'rgba(0,0,0,.3)' } },
                     data: byBand[band]
                 })),
                 {
@@ -160,11 +169,12 @@
             ...baseAnimation,
             grid: { left: 40, right: 20, top: 24, bottom: 30 },
             tooltip: {
+                ...TOOLTIP_BASE,
                 trigger: 'axis',
                 formatter: (params) => {
                     const label = params[0].axisValueLabel;
                     const rows = params.filter(p => p.value != null)
-                        .map(p => `${p.seriesName}: <b>${(+p.value).toFixed(1)}</b>${label === 'Forecast' ? ' <em>(projected)</em>' : ''}`);
+                        .map(p => `${p.seriesName}: <b>${(+p.value).toFixed(1)}</b>${label === 'Forecast' ? ' <span style="opacity:.7">(projected)</span>' : ''}`);
                     return `<strong>${label}</strong><br/>${rows.join('<br/>')}`;
                 }
             },
@@ -187,11 +197,35 @@
         });
     }
 
+    // Several named percentage series over the same month axis, for one engineer's history.
+    function multiline(id, categories, series) {
+        const chart = ensure(id); if (!chart) return;
+        chart.setOption({
+            ...baseAnimation,
+            grid: { left: 40, right: 20, top: 34, bottom: 30 },
+            legend: { top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4d5a6c' } },
+            tooltip: {
+                ...TOOLTIP_BASE, trigger: 'axis',
+                formatter: (params) => {
+                    const rows = params.filter(p => p.value != null).map(p => `${p.marker}${p.seriesName}: <b>${(+p.value).toFixed(1)}</b>`);
+                    return `<strong>${params[0].axisValueLabel}</strong><br/>${rows.join('<br/>')}`;
+                }
+            },
+            xAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: PALETTE.axis } }, axisLabel: { fontSize: 10, color: PALETTE.muted } },
+            yAxis: { min: 0, max: 100, splitLine: { lineStyle: { color: PALETTE.grid } }, axisLine: { show: false }, axisLabel: { fontSize: 10, color: PALETTE.muted } },
+            series: series.map(s => ({
+                name: s.name, type: 'line', symbol: 'circle', symbolSize: 7, connectNulls: true,
+                lineStyle: { color: s.color, width: 2 }, itemStyle: { color: s.color },
+                data: s.values
+            }))
+        });
+    }
+
     function heatmap(id, xCategories, yCategories, cells, drillable) {
         const chart = ensure(id); if (!chart) return;
         chart.setOption({
             ...baseAnimation,
-            tooltip: { position: 'top', formatter: (p) => `${p.data[3]}${drillable ? '<br/><em>Click to open profile</em>' : ''}` },
+            tooltip: { ...TOOLTIP_BASE, position: 'top', formatter: (p) => `<strong>${p.data[3]}</strong>${drillable ? '<br/><span style="opacity:.7">Click to open profile</span>' : ''}` },
             grid: { left: 140, right: 12, top: 10, bottom: 30 },
             xAxis: { type: 'category', data: xCategories, splitArea: { show: false }, axisLabel: { fontSize: 10, color: PALETTE.muted }, axisLine: { lineStyle: { color: PALETTE.axis } } },
             yAxis: { type: 'category', data: yCategories, axisLabel: { fontSize: 11, color: '#2b3648' }, axisLine: { show: false }, splitArea: { show: false } },
@@ -210,31 +244,34 @@
         if (drillable) chart.on('click', (p) => { if (p.componentType === 'series') drill(yCategories[p.data[1]]); });
     }
 
+    // Fixed ring layout: every node gets an equal slot around the circle, so the chart
+    // always fills its container regardless of node count — no empty voids, no force
+    // simulation settling into a small clump on one side.
     function network(id, nodes, links, hubName) {
         const chart = ensure(id); if (!chart) return;
         const maxDegree = Math.max(1, ...nodes.map(n => n.received + n.given));
         const data = nodes.map(n => {
             const isHub = n.name === hubName;
             const degree = n.received + n.given;
-            const size = isHub ? 54 : 26 + Math.round((degree / maxDegree) * 16);
+            const size = isHub ? 46 : 22 + Math.round((degree / maxDegree) * 14);
             return {
                 name: n.name, value: degree, tooltip: n.tooltip, symbolSize: size,
                 itemStyle: isHub
-                    ? { color: PALETTE.blue, borderColor: '#a9c9f2', borderWidth: 4 }
+                    ? { color: PALETTE.blue, borderColor: '#a9c9f2', borderWidth: 3 }
                     : { color: '#dbe7fb', borderColor: '#b9d1f4', borderWidth: 1.5 },
                 label: {
                     show: true, formatter: n.initials, position: 'inside',
-                    color: isHub ? '#ffffff' : '#0f4d99', fontSize: isHub ? 14 : 11, fontWeight: 700
+                    color: isHub ? '#ffffff' : '#0f4d99', fontSize: isHub ? 13 : 10.5, fontWeight: 700
                 }
             };
         });
         chart.setOption({
             ...baseAnimation,
-            tooltip: { formatter: (p) => p.dataType === 'node' || p.dataType === 'edge' ? `${p.data.tooltip}${p.dataType === 'node' ? '<br/><em>Click to open profile</em>' : ''}` : '' },
+            tooltip: { ...TOOLTIP_BASE, formatter: (p) => p.dataType === 'node' || p.dataType === 'edge' ? `<strong>${p.data.tooltip}</strong>${p.dataType === 'node' ? '<br/><span style="opacity:.7">Click to open profile</span>' : ''}` : '' },
             series: [{
-                type: 'graph', layout: 'force', roam: true, draggable: true, cursor: 'pointer',
-                force: { repulsion: 220, edgeLength: [50, 110], gravity: 0.28, friction: 0.5 },
-                lineStyle: { color: '#c7d2e2', curveness: 0.18, width: 1.3, opacity: 0.85 },
+                type: 'graph', layout: 'circular', roam: true, draggable: true, cursor: 'pointer',
+                circular: { rotateLabel: false },
+                lineStyle: { color: '#c7d2e2', curveness: 0.22, width: 1.2, opacity: 0.8 },
                 emphasis: { focus: 'adjacency', lineStyle: { width: 2.4, color: PALETTE.blue }, label: { fontSize: 12 } },
                 data, links,
                 edgeSymbol: ['none', 'arrow'], edgeSymbolSize: 6
@@ -251,10 +288,11 @@
             ...baseAnimation,
             grid: { left: 130, right: 46, top: 10, bottom: 10 },
             tooltip: {
+                ...TOOLTIP_BASE,
                 trigger: 'axis', axisPointer: { type: 'shadow' },
                 formatter: (params) => {
                     const p = params[0];
-                    const hint = drillable ? '<br/><em>Click to open profile</em>' : '';
+                    const hint = drillable ? '<br/><span style="opacity:.7">Click to open profile</span>' : '';
                     return `<strong>${p.name}</strong><br/>${p.value.toFixed(decimals)}${suffix || ''}${hint}`;
                 }
             },
@@ -271,5 +309,5 @@
         if (drillable) chart.on('click', (p) => { if (p.componentType === 'series') drill(categories[p.dataIndex]); });
     }
 
-    window.epaCharts = { ensure, dispose, gauge, radar, scatter, trend, heatmap, network, bars, registerDrilldown };
+    window.epaCharts = { ensure, dispose, gauge, radar, scatter, trend, multiline, heatmap, network, bars, registerDrilldown };
 })();

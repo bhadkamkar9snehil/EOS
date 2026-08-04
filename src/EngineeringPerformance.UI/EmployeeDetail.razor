@@ -1,0 +1,213 @@
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Comprehensive per-employee history: every available month, not a single-month snapshot.
+   Reached from the spotlight drawer's "Full history" link, or the Overview search box. *@
+
+<div class="overview">
+    @if (Months.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>No history for @Name</h2>
+            <p>No imported rows were found for this person across the months currently loaded.</p>
+            <button class="action" @onclick='() => OnNavigate.InvokeAsync("overview")'>Back to Overview</button>
+        </div>
+    }
+    else
+    {
+        <button class="link back-link" @onclick='() => OnNavigate.InvokeAsync("overview")'>← Back to Overview</button>
+
+        <header class="profile-header">
+            <span class="avatar big">@Analytics.Initials(Name)</span>
+            <div>
+                <h2>@Name</h2>
+                <small>@(Employee?.EmployeeCode ?? "No code on file")@(Employee is null ? "" : $" — Level {Employee.SeniorityLevel}")</small>
+            </div>
+        </header>
+
+        <div class="kpi-row">
+            @Kpi("Latest score", Analytics.Format(Latest.OperationalScore), Latest.Month is var lm and > 0 ? $"{new DateTime(Latest.Year, lm, 1):MMMM yyyy}" : "")
+            @Kpi("Average score", Analytics.Format(Months.Average(x => x.OperationalScore)), $"across {Months.Count} month(s)")
+            @Kpi("Best month", Analytics.Format(Months.Max(x => x.OperationalScore)), BestMonthLabel)
+            @Kpi("Worst month", Analytics.Format(Months.Min(x => x.OperationalScore)), WorstMonthLabel)
+            @Kpi("Total billable", Analytics.Format(Months.Sum(x => x.BillableHours), "0"), "hours across loaded months")
+            @Kpi("Total entries", Months.Sum(x => x.DetailedEntries).ToString(), "detailed timesheet rows")
+        </div>
+
+        <div class="overview-grid">
+            <section class="card wide">
+                <div class="card-head"><h2>Score history</h2><small>@Months.Count month(s) loaded</small></div>
+                <div id="detail-trend" class="echart tall"></div>
+                <ul class="chart-legend">
+                    <li><i style="background:#2a78d6"></i>Operational score</li>
+                    <li><i style="background:#eb6834"></i>Timesheet completion</li>
+                    <li><i style="background:#1baf7a"></i>Attendance discipline</li>
+                    <li><i style="background:#4a3aa7"></i>Approval</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Category performance</h2><small>@LatestLabel vs team average</small></div>
+                <div id="detail-radar" class="echart"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Peer feedback</h2><small>@LatestLabel</small></div>
+                @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
+                {
+                    <p class="chart-note">No peer feedback involving @Name this month.</p>
+                }
+                else
+                {
+                    <div class="mini-tiles">
+                        <div><strong>@Peer.ReceivedCount</strong><span>Received</span></div>
+                        <div><strong>@Peer.GivenCount</strong><span>Given</span></div>
+                        <div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received</span></div>
+                    </div>
+                    @if (Peer.Received.Any(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                    {
+                        <ul class="comment-list">
+                            @foreach (var review in Peer.Received.Where(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                            {
+                                <li><strong>@review.ReviewerName</strong><p>@review.Comment</p></li>
+                            }
+                        </ul>
+                    }
+                }
+            </section>
+
+            <section class="card wide">
+                <div class="card-head"><h2>Monthly detail</h2><small>Every loaded month, most recent first</small></div>
+                <div class="performance-table peer">
+                    <div class="performance-head">
+                        <span>Month</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span>
+                    </div>
+                    @foreach (var m in Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month))
+                    {
+                        <div class="performance-row">
+                            <strong>@(new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"))</strong>
+                            <span class="score-cell"><b class="@Analytics.ScoreBand(m.OperationalScore)">@Analytics.Format(m.OperationalScore)</b></span>
+                            <span>@(m.HasSummaryData ? Analytics.Format(m.TimesheetCompletionScore, "0") + "%" : "—")</span>
+                            <span>@(m.HasSummaryData ? Analytics.Format(m.ApprovalScore, "0") + "%" : "—")</span>
+                            <span>@Analytics.Format(m.AttendanceDisciplineScore, "0")%</span>
+                            <span>@Analytics.Format(m.Workload(), "0.0") h/d</span>
+                            <span>@Analytics.Format(m.BillableHours, "0.0") h</span>
+                            <span>@m.DetailedEntries</span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="card wide">
+                <div class="card-head"><h2>Alerts</h2><small>@LatestLabel</small></div>
+                @if (Alerts.Count == 0)
+                {
+                    <p class="chart-note">No rule fired against @Name's latest month.</p>
+                }
+                else
+                {
+                    <div class="alert-list">
+                        @foreach (var alert in Alerts)
+                        {
+                            <div class="alert @Level(alert.Level)">
+                                <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
+                                <span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> History { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
+    [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+
+    private bool _rendered;
+
+    private IReadOnlyList<MonthlyPerformanceItem> Months => History
+        .Where(x => PersonName.Matches(x.EmployeeName, Name))
+        .GroupBy(x => (x.Year, x.Month)).Select(g => g.First())
+        .OrderBy(x => x.Year).ThenBy(x => x.Month).ToArray();
+
+    private MonthlyPerformanceItem Latest => Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).First();
+    private string LatestLabel => new DateTime(Latest.Year, Latest.Month, 1).ToString("MMMM yyyy");
+
+    private string BestMonthLabel
+    {
+        get { var m = Months.OrderByDescending(x => x.OperationalScore).First(); return new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"); }
+    }
+    private string WorstMonthLabel
+    {
+        get { var m = Months.OrderBy(x => x.OperationalScore).First(); return new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"); }
+    }
+
+    private EmployeeListItem? Employee => Employees.FirstOrDefault(x => PersonName.Matches(x.Name, Name));
+
+    private Analytics.PeerBreakdown Peer => Analytics.PeerBreakdownFor(PeerReviews, Name);
+
+    private IReadOnlyList<Anomaly> Alerts
+    {
+        get
+        {
+            var previous = History
+                .Where(x => x.Year == Month.AddMonths(-1).Year && x.Month == Month.AddMonths(-1).Month)
+                .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
+            return Analytics.Anomalies(Items, previous).Where(x => PersonName.Matches(x.EmployeeName, Name)).ToArray();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_rendered || Months.Count == 0) return;
+        _rendered = true;
+
+        var labels = Months.Select(m => new DateTime(m.Year, m.Month, 1).ToString("MMM yy")).ToArray();
+        await JS.InvokeVoidAsync("epaCharts.multiline", "detail-trend", labels, new object[]
+        {
+            new { name = "Operational score", color = "#2a78d6", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet completion", color = "#eb6834", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Attendance discipline", color = "#1baf7a", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
+            new { name = "Approval", color = "#4a3aa7", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
+        });
+
+        var axes = Analytics.Radar(Items);
+        if (axes.Count > 0)
+        {
+            var mine = Analytics.RadarValues(Latest);
+            await JS.InvokeVoidAsync("epaCharts.radar", "detail-radar", axes.Select(a => a.Label).ToArray(), 100,
+                new object[]
+                {
+                    new { name = Name, color = "#eb6834", values = mine },
+                    new { name = "Team average", color = "#2a78d6", values = axes.Select(a => a.TeamAverage).ToArray() }
+                });
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var id in new[] { "detail-trend", "detail-radar" })
+        {
+            try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
+        }
+    }
+
+    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi">
+        <span class="kpi-label">@label</span>
+        <strong>@value</strong>
+        <small>@hint</small>
+    </div>;
+
+    private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
+    private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
+}

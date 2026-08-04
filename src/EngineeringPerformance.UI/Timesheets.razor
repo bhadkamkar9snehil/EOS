@@ -1,0 +1,154 @@
+@using EngineeringPerformance.Application
+@inject IJSRuntime JS
+
+@* Timesheet compliance: who has not filled, and what is filled but still awaiting approval.
+   Both mail drafts are generated from the same rows shown in the table below. *@
+
+<div class="overview">
+    @if (Rows.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>No timesheet data for @Month.ToString("MMMM yyyy")</h2>
+            <p>Import this month's attendance and utilization exports on the Data imports screen.</p>
+            <button class="action" @onclick='() => OnNavigate.InvokeAsync("imports")'>Go to data imports</button>
+        </div>
+    }
+    else
+    {
+        <div class="kpi-row">
+            @Kpi("Fill rate", Analytics.Format(FillRate) + "%", $"{TotalFilled} of {TotalExpected} accountable days")
+            @Kpi("Engineers with gaps", WithGaps.Count.ToString(), WithGaps.Count == 0 ? "Everyone up to date" : "Unfilled timesheet days")
+            @Kpi("Missing days", Rows.Sum(x => x.MissingDays).ToString(), "Total across the team")
+            @Kpi("Awaiting approval", Analytics.Format(Rows.Sum(x => x.PendingApprovalHours), "0") + " h", $"{AwaitingApproval.Count} engineer(s)")
+            @Kpi("Billable capacity used", Analytics.Format(CapacityUsed) + "%", $"vs {Analytics.Format(Analytics.MonthlyBillableCapacityHours, "0")} h per billable engineer")
+            @Kpi("Freshers on probation", Probationers.ToString(), "From the ERP roster")
+        </div>
+
+        <div class="overview-grid">
+            <section class="card wide">
+                <div class="card-head">
+                    <h2>Mail drafts</h2>
+                    <small>Generated from the rows below — review before sending</small>
+                </div>
+                <p class="chart-note">These are drafts to copy into your mail client. Nothing is sent from this application.</p>
+                <div class="mail-actions">
+                    <button class="action" @onclick="() => ShowMail(ManagerDraft)" disabled="@(Rows.Count == 0)">Project manager summary</button>
+                    <button class="action secondary" @onclick="() => ShowMail(EngineerDraft)" disabled="@(WithGaps.Count == 0)">
+                        Chase engineers (@WithGaps.Count)
+                    </button>
+                </div>
+
+                @if (_draft is not null)
+                {
+                    <div class="mail-preview">
+                        <div class="mail-field"><label>Subject</label><input readonly value="@_draft.Subject" /></div>
+                        @if (!string.IsNullOrWhiteSpace(_draft.Recipients))
+                        {
+                            <div class="mail-field"><label>To</label><input readonly value="@_draft.Recipients" /></div>
+                        }
+                        <div class="mail-field"><label>Body</label><textarea readonly rows="16">@_draft.Body</textarea></div>
+                        <div class="mail-actions">
+                            <button class="action small" @onclick="CopyDraftAsync">@(_copied ? "Copied" : "Copy to clipboard")</button>
+                            <button class="link" @onclick="() => _draft = null">Close</button>
+                        </div>
+                    </div>
+                }
+            </section>
+
+            <section class="card wide">
+                <div class="card-head"><h2>Timesheet compliance</h2><small>@Rows.Count engineer(s), highest gap first</small></div>
+                <div class="performance-table compliance">
+                    <div class="performance-head">
+                        <span>Engineer</span><span>Team</span><span>Filled</span><span>Missing</span><span>Fill rate</span>
+                        <span>Entered h</span><span>Awaiting approval</span><span>Billable h</span><span>Capacity</span>
+                    </div>
+                    @foreach (var row in Rows)
+                    {
+                        <div class="performance-row @(row.HasGap ? "row-flag" : null)">
+                            <span class="roster-name">
+                                @row.Name
+                                <small>
+                                    @if (row.IsConsultant)
+                                    {
+                                        <span class="tag consultant">Consultant</span>
+                                    }
+                                    @if (row.IsOnProbation)
+                                    {
+                                        <span class="tag probation">Probation</span>
+                                    }
+                                    @if (row.IsNonBillable)
+                                    {
+                                        <span class="tag muted">Non-billable</span>
+                                    }
+                                </small>
+                            </span>
+                            <span>@(row.TeamName ?? "—")</span>
+                            <span>@row.FilledDays / @row.ExpectedDays</span>
+                            <span class="@(row.MissingDays > 0 ? "flag-critical" : null)">@row.MissingDays</span>
+                            <span>@Analytics.Format(row.FillRate)%</span>
+                            <span>@Analytics.Format(row.EnteredHours)</span>
+                            <span class="@(row.HasPendingApproval ? "flag-warning" : null)">@Analytics.Format(row.PendingApprovalHours)</span>
+                            <span>@Analytics.Format(row.BillableHours)</span>
+                            <span>@(row.IsNonBillable ? "n/a" : Analytics.Format(row.CapacityUtilization) + "%")</span>
+                        </div>
+                    }
+                </div>
+                <p class="chart-note">
+                    Capacity is billable hours against the @Analytics.Format(Analytics.MonthlyBillableCapacityHours, "0") h monthly baseline, and is not applied to non-billable engineers.
+                    Missing days are accountable days (excluding week-offs and approved leave) with no timesheet entry.
+                </p>
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
+    [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+
+    private Analytics.MailDraft? _draft;
+    private bool _copied;
+
+    private IReadOnlyList<Analytics.ComplianceRow> Rows => Analytics.Compliance(Items, Employees);
+    private IReadOnlyList<Analytics.ComplianceRow> WithGaps => Rows.Where(x => x.HasGap).ToArray();
+    private IReadOnlyList<Analytics.ComplianceRow> AwaitingApproval => Rows.Where(x => x.HasPendingApproval).ToArray();
+
+    private int TotalExpected => Rows.Sum(x => x.ExpectedDays);
+    private int TotalFilled => Rows.Sum(x => x.FilledDays);
+    private decimal FillRate => TotalExpected == 0 ? 0 : decimal.Round(TotalFilled * 100m / TotalExpected, 1);
+
+    private decimal CapacityUsed
+    {
+        get
+        {
+            var billable = Rows.Where(x => !x.IsNonBillable).ToArray();
+            if (billable.Length == 0) return 0;
+            return decimal.Round(billable.Sum(x => x.BillableHours) / (billable.Length * Analytics.MonthlyBillableCapacityHours) * 100m, 1);
+        }
+    }
+
+    private int Probationers => Employees.Count(x => x.IsOnProbation);
+
+    private Analytics.MailDraft ManagerDraft => Analytics.ManagerSummaryMail(Rows, Month);
+    private Analytics.MailDraft EngineerDraft => Analytics.EngineerChaseMail(Rows, Month);
+
+    private void ShowMail(Analytics.MailDraft draft) { _draft = draft; _copied = false; }
+
+    private async Task CopyDraftAsync()
+    {
+        if (_draft is null) return;
+        var text = string.IsNullOrWhiteSpace(_draft.Recipients)
+            ? $"Subject: {_draft.Subject}\n\n{_draft.Body}"
+            : $"To: {_draft.Recipients}\nSubject: {_draft.Subject}\n\n{_draft.Body}";
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); _copied = true; }
+        catch (JSException) { _copied = false; }
+    }
+
+    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi">
+        <span class="kpi-label">@label</span>
+        <strong>@value</strong>
+        <small>@hint</small>
+    </div>;
+}

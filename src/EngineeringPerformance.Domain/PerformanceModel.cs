@@ -16,6 +16,14 @@ public sealed class Employee
     public string Name { get; private set; } = string.Empty;
     public int SeniorityLevel { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public string? Email { get; private set; }
+    /// <summary>True for an externally contracted consultant rather than a direct employee. From the ERP roster.</summary>
+    public bool IsConsultant { get; private set; }
+    /// <summary>True while still on probation — the app's definition of "fresher". From the ERP roster.</summary>
+    public bool IsOnProbation { get; private set; }
+    /// <summary>Manually classified: excluded from billable-capacity tracking (200 h/month baseline).</summary>
+    public bool IsNonBillable { get; private set; }
+    public int? TeamId { get; private set; }
 
     public void Rename(string name) => Name = RequireText(name, nameof(name));
 
@@ -26,8 +34,31 @@ public sealed class Employee
         SeniorityLevel = level;
     }
 
+    /// <summary>Applies facts the ERP roster is authoritative for — synced on every roster import, not user-editable.</summary>
+    public void SyncRosterFacts(string? email, bool isConsultant, bool isOnProbation)
+    {
+        Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        IsConsultant = isConsultant;
+        IsOnProbation = isOnProbation;
+    }
+
+    public void SetNonBillable(bool value) => IsNonBillable = value;
+    public void AssignTeam(int? teamId) => TeamId = teamId;
+
     private static string RequireText(string value, string parameterName) =>
         string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("A value is required.", parameterName) : value.Trim();
+}
+
+/// <summary>A group of engineers, e.g. by project or reporting line. Purely organizational — scoring is unaffected.</summary>
+public sealed class Team
+{
+    private Team() { }
+    public Team(string name) => Name = RequireText(name);
+    public int Id { get; private set; }
+    public string Name { get; private set; } = string.Empty;
+    public void Rename(string name) => Name = RequireText(name);
+    private static string RequireText(string value) =>
+        string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("A team name is required.", nameof(value)) : value.Trim();
 }
 
 /// <summary>
