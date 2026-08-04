@@ -20,6 +20,11 @@ public interface IApplicationDatabase
     /// <summary>Performance rows for the given month and the months preceding it, oldest first.</summary>
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default);
 
+    /// <summary>Imports one review workbook, or a ZIP of them, replacing the month's peer feedback.</summary>
+    Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default);
     Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default);
 }
@@ -51,12 +56,21 @@ public sealed record MonthlyPerformanceItem(string EmployeeName, string? Employe
     public decimal Utilization => ComplianceHours <= 0 ? 0 : decimal.Round(EnteredHours / ComplianceHours * 100m, 1);
 }
 
+public sealed record PeerReviewItem(
+    string ReviewerName, string ReviewerCode, string SubjectName, string SubjectCode,
+    decimal Collaboration, decimal Communication, decimal Reliability, decimal TechnicalHelp,
+    decimal Average, string? Comment);
+
 public interface IWorkbookService
 {
     WorkbookInspection Inspect(string filePath);
     ReportType DetectReportType(string filePath);
     IReadOnlyList<EmployeeMonthlyPerformance> ReadPerformance(string filePath, ReportType reportType, int year, int month);
-    void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month);
+
+    /// <summary>Reads the completed peer review sheet out of a generated review workbook.</summary>
+    IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month);
+
+    void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null);
     IReadOnlyList<string> GenerateEngineerTemplates(string destinationFolder, IReadOnlyList<Employee> employees, int year, int month);
 }
 

@@ -49,6 +49,19 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
                 CreatedUtc TEXT NOT NULL
             );
             """, cancellationToken);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS peer_review (
+                Id INTEGER NOT NULL CONSTRAINT PK_peer_review PRIMARY KEY AUTOINCREMENT,
+                Year INTEGER NOT NULL, Month INTEGER NOT NULL,
+                ReviewerCode TEXT NOT NULL, ReviewerName TEXT NOT NULL,
+                SubjectCode TEXT NOT NULL, SubjectName TEXT NOT NULL,
+                Collaboration TEXT NOT NULL DEFAULT '0', Communication TEXT NOT NULL DEFAULT '0',
+                Reliability TEXT NOT NULL DEFAULT '0', TechnicalHelp TEXT NOT NULL DEFAULT '0',
+                Comment TEXT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_peer_review_Year_Month_Reviewer_Subject
+            ON peer_review (Year, Month, ReviewerCode, SubjectCode);
+            """, cancellationToken);
         await SeedDefaultExclusionsAsync(context, cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;", cancellationToken);
@@ -177,6 +190,80 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             }
         }
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default)
+    {
+        var isZip = path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+        var temporaryDirectory = isZip ? Path.Combine(Path.GetTempPath(), $"epa-reviews-{Guid.NewGuid():N}") : null;
+        try
+        {
+            string[] workbooks;
+            if (temporaryDirectory is not null)
+            {
+                Directory.CreateDirectory(temporaryDirectory);
+                ZipFile.ExtractToDirectory(path, temporaryDirectory);
+                workbooks = [.. Directory.EnumerateFiles(temporaryDirectory, "*.xls*", SearchOption.AllDirectories)
+                    .Where(x => !Path.GetFileName(x).StartsWith("~$", StringComparison.Ordinal))];
+            }
+            else
+            {
+                workbooks = [path];
+            }
+
+            var reviews = new List<PeerReview>();
+            var accepted = 0;
+            foreach (var workbook in workbooks)
+            {
+                IReadOnlyList<PeerReview> fromFile;
+                try { fromFile = workbookService.ReadPeerReviews(workbook, year, month); }
+                catch (Exception) { continue; }   // not a review workbook, or unreadable
+                if (fromFile.Count == 0) continue;
+                reviews.AddRange(fromFile);
+                accepted++;
+            }
+
+            if (accepted == 0)
+                throw new InvalidDataException("No completed peer review sheets were found. Generate templates on the Templates screen, have engineers fill the Peer Review sheet, then upload the workbooks or a ZIP of them.");
+
+            await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+            var previousRows = await context.PeerReviews.Where(x => x.Year == year && x.Month == month).ToListAsync(cancellationToken);
+            context.PeerReviews.RemoveRange(previousRows);
+            // Last row wins if the same pair appears twice across workbooks.
+            foreach (var review in reviews
+                .GroupBy(x => (x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant()))
+                .Select(x => x.Last()))
+                context.PeerReviews.Add(review);
+
+            var inspection = workbookService.Inspect(path);
+            var previousFile = await context.ImportedSourceFiles.SingleOrDefaultAsync(
+                x => x.Year == year && x.Month == month && x.ReportType == ReportType.EngineerReviewWorkbook, cancellationToken);
+            if (previousFile is not null) context.ImportedSourceFiles.Remove(previousFile);
+            var storedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance", "Imports", $"{year:D4}-{month:D2}");
+            Directory.CreateDirectory(storedDirectory);
+            var storedPath = Path.Combine(storedDirectory, $"{(int)ReportType.EngineerReviewWorkbook}-{Path.GetFileName(path)}");
+            File.Copy(path, storedPath, true);
+            context.ImportedSourceFiles.Add(new ImportedSourceFile(ReportType.EngineerReviewWorkbook, year, month, inspection.FileName, storedPath, accepted));
+
+            await context.SaveChangesAsync(cancellationToken);
+            return accepted;
+        }
+        finally
+        {
+            if (temporaryDirectory is not null && Directory.Exists(temporaryDirectory)) Directory.Delete(temporaryDirectory, true);
+        }
+    }
+
+    public async Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        var rows = await context.PeerReviews.Where(x => x.Year == year && x.Month == month).ToListAsync(cancellationToken);
+        return rows
+            .Where(x => !excluded.Contains(PersonName.Normalize(x.ReviewerName)) && !excluded.Contains(PersonName.Normalize(x.SubjectName)))
+            .Select(x => new PeerReviewItem(x.ReviewerName, x.ReviewerCode, x.SubjectName, x.SubjectCode,
+                x.Collaboration, x.Communication, x.Reliability, x.TechnicalHelp, x.Average, x.Comment))
+            .ToArray();
     }
 
     public async Task<int> ImportPackageAsync(int year, int month, string zipPath, CancellationToken cancellationToken = default)

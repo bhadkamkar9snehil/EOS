@@ -17,7 +17,8 @@
 - Individual upload for all three system workbooks and the engineer review workbook.
 - Combined ZIP upload with workbook classification and durable monthly source-file records.
 - Native Windows open/save dialogs.
-- Personalized numeric review workbook generation for a single engineer or for every employee in one action.
+- Personalized numeric review workbook generation for a single engineer or for every employee in one action, each carrying a roster-filled Peer Review sheet with 1-5 validated ratings.
+- Peer feedback import from a single review workbook or a ZIP of them, stored per month and surfaced as feedback volume, reviewer count, average rating and peer standings on Overview.
 - Configurable category-weight controls with live 100% validation.
 - Dashboard readiness and validation messages derived from SQLite state.
 - Clean Release build and three passing automated tests.
@@ -29,5 +30,5 @@ The three supplied reference workbooks are now the executable import contracts. 
 ## Verification
 
 - Release build: zero errors, zero warnings.
-- Automated tests: 12 passed, including detection and KPI parsing against all three supplied workbooks, bulk template generation, seniority editing, name normalization, and the applicable-component weighting.
+- Automated tests: 13 passed, including a full peer-review round trip that generates a workbook, fills ratings into the Peer Review sheet and reads them back, including detection and KPI parsing against all three supplied workbooks, bulk template generation, seniority editing, name normalization, and the applicable-component weighting.
 - The three July 2026 reference exports were imported into a real database and every screen was captured from the running desktop window: 19 engineers in analysis after the two default exclusions, 22 alerts derived, team score 59.4.

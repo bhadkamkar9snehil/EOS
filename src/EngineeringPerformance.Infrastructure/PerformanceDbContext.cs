@@ -9,6 +9,7 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
     public DbSet<ReportingMonth> ReportingMonths => Set<ReportingMonth>();
     public DbSet<ImportedSourceFile> ImportedSourceFiles => Set<ImportedSourceFile>();
     public DbSet<EmployeeMonthlyPerformance> EmployeeMonthlyPerformances => Set<EmployeeMonthlyPerformance>();
+    public DbSet<PeerReview> PeerReviews => Set<PeerReview>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +34,19 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
             entity.Property(x => x.OriginalFileName).HasMaxLength(260).IsRequired();
             entity.Property(x => x.StoredPath).HasMaxLength(1000).IsRequired();
             entity.HasIndex(x => new { x.Year, x.Month, x.ReportType }).IsUnique();
+        });
+        modelBuilder.Entity<PeerReview>(entity =>
+        {
+            entity.ToTable("peer_review");
+            entity.HasKey(x => x.Id);
+            entity.Ignore(x => x.Average);
+            entity.Ignore(x => x.HasAnyRating);
+            entity.Property(x => x.ReviewerCode).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.ReviewerName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.SubjectCode).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.SubjectName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Comment).HasMaxLength(2000);
+            entity.HasIndex(x => new { x.Year, x.Month, x.ReviewerCode, x.SubjectCode }).IsUnique();
         });
         modelBuilder.Entity<EmployeeMonthlyPerformance>(entity =>
         {

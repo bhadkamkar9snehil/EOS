@@ -35,7 +35,7 @@
         </div>
 
         <main class="content">
-            @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
+            @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" PeerReviews="_peerReviews" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
             else if (_page == "imports") { @ImportWorkspace() }
             else if (_page == "employees") { @EmployeeWorkspace() }
             else if (_page == "templates") { @TemplateWorkspace() }
@@ -52,6 +52,7 @@
     private IReadOnlyList<MonthlyPerformanceItem> _performance = [];
     private IReadOnlyList<MonthlyPerformanceItem> _history = [];
     private IReadOnlyList<string> _excluded = [];
+    private IReadOnlyList<PeerReviewItem> _peerReviews = [];
     private DateTime _selectedMonth = DefaultReportingMonth();
     private string _page = "overview";
     private string _message = string.Empty;
@@ -100,6 +101,7 @@
         _performance = await Database.GetMonthlyPerformanceAsync(_selectedMonth.Year, _selectedMonth.Month);
         _history = await Database.GetPerformanceHistoryAsync(_selectedMonth.Year, _selectedMonth.Month, 6);
         _excluded = await Database.GetExcludedNamesAsync();
+        _peerReviews = await Database.GetPeerReviewsAsync(_selectedMonth.Year, _selectedMonth.Month);
         _editName.Clear(); _editLevel.Clear();
         foreach (var employee in _employees) { _editName[employee.Id] = employee.Name; _editLevel[employee.Id] = employee.SeniorityLevel; }
         _lastRefresh = DateTime.Now;
@@ -109,8 +111,24 @@
 
     private async Task UploadAsync(ReportType type)
     {
-        var path = Dialogs.PickWorkbook(); if (path is null) return;
-        await RunAsync(async () => { await Database.ImportSourceAsync(type, _selectedMonth.Year, _selectedMonth.Month, path); await RefreshAsync(); _message = $"{Path.GetFileName(path)} imported into “{Label(type)}”."; });
+        // Engineer reviews arrive as one workbook per engineer, so that slot also takes a ZIP.
+        var path = type == ReportType.EngineerReviewWorkbook ? Dialogs.PickWorkbookOrZip() : Dialogs.PickWorkbook();
+        if (path is null) return;
+        await RunAsync(async () =>
+        {
+            if (type == ReportType.EngineerReviewWorkbook)
+            {
+                var count = await Database.ImportEngineerReviewsAsync(_selectedMonth.Year, _selectedMonth.Month, path);
+                await RefreshAsync();
+                _message = $"Peer feedback read from {count} review workbook(s).";
+            }
+            else
+            {
+                await Database.ImportSourceAsync(type, _selectedMonth.Year, _selectedMonth.Month, path);
+                await RefreshAsync();
+                _message = $"{Path.GetFileName(path)} imported into “{Label(type)}”.";
+            }
+        });
     }
 
     private async Task UploadZipAsync()

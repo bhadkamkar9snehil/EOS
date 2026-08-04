@@ -83,6 +83,38 @@
             </section>
 
             <section class="card">
+                <div class="card-head"><h2>Peer review</h2><small>@(Peers.TotalFeedback > 0 ? $"{Month:MMMM yyyy}" : "Not yet collected")</small></div>
+                @if (Peers.TotalFeedback == 0)
+                {
+                    <div class="locked">
+                        <strong>No peer feedback for this month</strong>
+                        <p>Generate review workbooks on the Templates screen. Each one carries a <em>Peer Review</em> sheet listing the whole team, where the engineer rates the colleagues they worked with on collaboration, communication, reliability and technical help.</p>
+                        <p>Upload the completed workbooks — or a ZIP of them — into the <em>Engineer reviews</em> input on Data imports, and this card fills in.</p>
+                        <button class="action secondary" @onclick='() => OnNavigate.InvokeAsync("templates")'>Generate templates</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="mini-tiles">
+                        <div><strong>@Peers.TotalFeedback</strong><span>Feedback entries</span></div>
+                        <div><strong>@Peers.UniqueReviewers</strong><span>Reviewers</span></div>
+                        <div><strong>@Analytics.Format(Peers.AverageRating, "0.00")</strong><span>Average rating</span></div>
+                    </div>
+                    <p class="chart-note">@Analytics.Format(Peers.FeedbackPerReviewer) entries per reviewer across @Peers.PeopleReviewed people.</p>
+                    <ol class="rank-list">
+                        @foreach (var standing in Peers.Standings.Take(5))
+                        {
+                            <li>
+                                <span class="avatar">@Initials(standing.Name)</span>
+                                <span class="rank-name">@standing.Name<small>@standing.ReviewsReceived received · @standing.ReviewsGiven given</small></span>
+                                <b class="@(standing.Average >= 4 ? "good" : standing.Average >= 3 ? "warning" : "serious")">@Analytics.Format(standing.Average, "0.00")</b>
+                            </li>
+                        }
+                    </ol>
+                }
+            </section>
+
+            <section class="card">
                 <div class="card-head"><h2>Attendance vs timesheet</h2><small>Reconciliation</small></div>
                 <div class="mini-tiles">
                     <div><strong>@Analytics.Format(TimesheetFillRate)%</strong><span>Days with a timesheet</span></div>
@@ -175,6 +207,7 @@
     [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> History { get; set; } = [];
     [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
     [Parameter] public int ExcludedCount { get; set; }
     [Parameter] public EventCallback<string> OnNavigate { get; set; }
 
@@ -183,6 +216,7 @@
 
     private DateTime Previous => Month.AddMonths(-1);
     private IReadOnlyList<Anomaly> Alerts => Analytics.Anomalies(Items, PreviousScores);
+    private Analytics.PeerSummary Peers => Analytics.Peers(PeerReviews);
 
     private Dictionary<string, decimal> PreviousScores => History
         .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)

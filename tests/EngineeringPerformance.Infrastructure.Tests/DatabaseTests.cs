@@ -42,6 +42,56 @@ public sealed class DatabaseTests
     }
 
     [Fact]
+    public void PeerReviewSurvivesTheTemplateRoundTrip()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-peer-{Guid.NewGuid():N}");
+        try
+        {
+            var service = new WorkbookService();
+            var employees = new[]
+            {
+                new Employee("E1001", "Priyanka Makwana", 3),
+                new Employee("E1002", "Rohit Sharma", 5),
+                new Employee("E1003", "Ananya Iyer", 2)
+            };
+
+            var generated = service.GenerateEngineerTemplates(folder, employees, 2026, 7);
+            var rohitWorkbook = generated.Single(x => Path.GetFileName(x).StartsWith("E1002", StringComparison.Ordinal));
+
+            // The roster is pre-filled with everyone but the reviewer.
+            using (var workbook = new ClosedXML.Excel.XLWorkbook(rohitWorkbook))
+            {
+                var sheet = workbook.Worksheet("Peer Review");
+                // Roster is alphabetical by name: Ananya Iyer, then Priyanka Makwana.
+                Assert.Equal("E1003", sheet.Cell(7, 1).GetString());
+                Assert.Equal("E1001", sheet.Cell(8, 1).GetString());
+
+                // Rohit rates Priyanka but leaves Ananya blank.
+                sheet.Cell(8, 3).Value = 5;
+                sheet.Cell(8, 4).Value = 4;
+                sheet.Cell(8, 5).Value = 5;
+                sheet.Cell(8, 6).Value = 3;
+                sheet.Cell(8, 7).Value = "Unblocked the pipeline migration.";
+                workbook.Save();
+            }
+
+            var reviews = service.ReadPeerReviews(rohitWorkbook, 2026, 7);
+
+            var review = Assert.Single(reviews);
+            Assert.Equal("E1002", review.ReviewerCode);
+            Assert.Equal("Rohit Sharma", review.ReviewerName);
+            Assert.Equal("E1001", review.SubjectCode);
+            Assert.Equal("Priyanka Makwana", review.SubjectName);
+            Assert.Equal(4.25m, review.Average);
+            Assert.Equal("Unblocked the pipeline migration.", review.Comment);
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void SeniorityLevelAndNameCanBeEdited()
     {
         var employee = new Employee("E1001", "Priyanka Makwana", 3);

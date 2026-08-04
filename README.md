@@ -50,6 +50,14 @@ Names are normalized before matching, because the exports spell the same person 
 
 `Dhruv Varachhiya` and `Snehil Bhadkamkar` are excluded from the analysis by default. Exclusions are stored in the database and editable on the Employees screen; they are seeded only on a database that has no exclusion table yet, so re-including someone sticks.
 - **Templates** — one workbook per engineer for the whole team in a single action, or a single personalized workbook.
+
+### Peer review
+
+Each generated workbook has three sheets: **Self Review**, **Peer Review**, and hidden metadata.
+
+The Peer Review sheet is pre-filled with the rest of the team, one row per colleague, so a reviewer only enters ratings and the codes coming back match the employee master exactly. Four dimensions are rated 1–5 — collaboration, communication, reliability, technical help — with a free-text comment. Cells are validated to 1–5; a row left blank is not counted as feedback.
+
+Collect the completed workbooks and upload them into the **Engineer reviews** input on Data imports. That slot accepts a single workbook or a ZIP of them, and re-importing replaces the month's peer feedback rather than duplicating it. The Peer review card on Overview then shows feedback volume, reviewer count, average rating and the peer standings.
 - **Scoring** — category weights.
 
 ## Developer run

@@ -106,14 +106,19 @@ code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; }
 b.up, .kpi small b.up { color: #006300; }
 b.down, .kpi small b.down { color: #c0392b; }
 
-.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 17px 19px 19px; min-width: 0; box-shadow: 0 1px 2px rgba(16, 32, 56, .05); }
+/* Cards stretch to the row height so a tall chart never leaves a neighbour
+   floating above dead space; content inside sits at the top. */
+.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 17px 19px 19px; min-width: 0; box-shadow: 0 1px 2px rgba(16, 32, 56, .05); display: flex; flex-direction: column; }
+.card > .legend, .card > .rank-list { margin-top: auto; }
 .card.wide { grid-column: 1 / -1; }
 .card.subtle { background: #f2f5fa; box-shadow: none; }
 .card-head { align-items: center; margin-bottom: 14px; }
 .card-head h2 { font-size: 14.5px; margin: 0; }
 .card-head small { font-size: 11px; color: var(--muted); }
-.chart { width: 100%; height: auto; display: block; }
+/* Capped so a square-ish chart cannot stretch its card far past its neighbours. */
+.chart { width: 100%; height: auto; max-height: 230px; display: block; margin: 0 auto; }
+.chart.trend { max-height: 210px; }
 .chart .tick { font-size: 9.5px; fill: #898781; }
 .chart .axis-title { font-size: 10px; fill: #52514e; }
 .chart .point-label { font-size: 11px; font-weight: 700; fill: #0b0b0b; }
@@ -144,6 +149,12 @@ b.good { color: #0a8a0a; }
 b.warning { color: #a06f00; }
 b.serious { color: #c05f30; }
 b.critical { color: #d03b3b; }
+
+.locked { display: flex; flex-direction: column; gap: 10px; background: #f7f9fc; border: 1px dashed #c9d5e5; border-radius: 8px; padding: 16px; }
+.locked strong { font-size: 12.5px; }
+.locked p { margin: 0; font-size: 11.5px; line-height: 1.6; color: #5c6675; }
+.locked em { font-style: normal; font-weight: 650; color: #2c4363; }
+.locked .action { align-self: flex-start; margin-top: 2px; }
 
 .sub-head { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #657184; font-weight: 700; margin: 18px 0 10px; }
 .exception-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

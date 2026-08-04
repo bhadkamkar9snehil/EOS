@@ -1,5 +1,6 @@
 using System.Globalization;
 using EngineeringPerformance.Application;
+using EngineeringPerformance.Domain;
 
 namespace EngineeringPerformance.UI;
 
@@ -158,6 +159,40 @@ public static class Analytics
                     $"Down {Format(was - item.OperationalScore)} points from {Format(was)} last month."));
         }
         return found.OrderBy(x => x.Level).ThenBy(x => x.EmployeeName).ToArray();
+    }
+
+    /// <summary>Aggregate view of who reviewed whom, and how they were rated.</summary>
+    public sealed record PeerSummary(
+        int TotalFeedback, int UniqueReviewers, int PeopleReviewed, decimal AverageRating,
+        decimal FeedbackPerReviewer, IReadOnlyList<PeerStanding> Standings);
+
+    public sealed record PeerStanding(string Name, decimal Average, int ReviewsReceived, int ReviewsGiven);
+
+    public static PeerSummary Peers(IReadOnlyList<PeerReviewItem> reviews)
+    {
+        if (reviews.Count == 0) return new PeerSummary(0, 0, 0, 0, 0, []);
+
+        var reviewers = reviews.Select(x => PersonName.Normalize(x.ReviewerName)).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        var given = reviews.GroupBy(x => PersonName.Normalize(x.ReviewerName), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Count(), StringComparer.OrdinalIgnoreCase);
+
+        var standings = reviews
+            .GroupBy(x => PersonName.Normalize(x.SubjectName), StringComparer.OrdinalIgnoreCase)
+            .Select(group => new PeerStanding(
+                group.Key,
+                decimal.Round(group.Average(x => x.Average), 2),
+                group.Count(),
+                given.TryGetValue(group.Key, out var count) ? count : 0))
+            .OrderByDescending(x => x.Average).ThenBy(x => x.Name)
+            .ToArray();
+
+        return new PeerSummary(
+            reviews.Count,
+            reviewers,
+            standings.Length,
+            decimal.Round(reviews.Average(x => x.Average), 2),
+            reviewers == 0 ? 0 : decimal.Round((decimal)reviews.Count / reviewers, 1),
+            standings);
     }
 
     /// <summary>Least-squares projection of the next point, clamped to the score range.</summary>

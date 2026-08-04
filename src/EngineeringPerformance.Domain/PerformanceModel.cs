@@ -151,6 +151,39 @@ public sealed class EmployeeMonthlyPerformance
         denominator <= 0 ? 0 : Math.Clamp(decimal.Round(value / denominator * 100m, 2), 0, 100);
 }
 
+/// <summary>
+/// One engineer's rating of a colleague for a month, read back from the peer
+/// review sheet of a generated review workbook.
+/// </summary>
+public sealed class PeerReview
+{
+    public int Id { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string ReviewerCode { get; set; } = string.Empty;
+    public string ReviewerName { get; set; } = string.Empty;
+    public string SubjectCode { get; set; } = string.Empty;
+    public string SubjectName { get; set; } = string.Empty;
+    public decimal Collaboration { get; set; }
+    public decimal Communication { get; set; }
+    public decimal Reliability { get; set; }
+    public decimal TechnicalHelp { get; set; }
+    public string? Comment { get; set; }
+
+    /// <summary>Mean of the rated dimensions; dimensions left blank do not count.</summary>
+    public decimal Average
+    {
+        get
+        {
+            decimal[] rated = [Collaboration, Communication, Reliability, TechnicalHelp];
+            var given = rated.Where(x => x > 0).ToArray();
+            return given.Length == 0 ? 0 : decimal.Round(given.Average(), 2);
+        }
+    }
+
+    public bool HasAnyRating => Collaboration > 0 || Communication > 0 || Reliability > 0 || TechnicalHelp > 0;
+}
+
 public sealed record MetricInput(string Code, decimal Score, decimal Weight, bool IsApplicable = true);
 
 public static class WeightedScoreCalculator

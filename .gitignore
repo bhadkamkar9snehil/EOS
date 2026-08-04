@@ -1,5 +1,8 @@
-# Real ERP exports contain employee records and stay out of source control.
+# Real ERP exports and generated review workbooks contain employee records
+# and stay out of source control.
 Reference Excel Files/
+templates_generated/
+Reviews_*/
 
 bin/
 obj/

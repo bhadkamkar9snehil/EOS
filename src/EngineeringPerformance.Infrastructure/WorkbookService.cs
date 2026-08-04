@@ -127,7 +127,65 @@ public sealed class WorkbookService : IWorkbookService
     private static decimal Number(IXLCell cell) => cell.TryGetValue<decimal>(out var value) ? value : decimal.TryParse(Text(cell), out value) ? value : 0;
     private static bool Flag(IXLCell cell) => cell.TryGetValue<bool>(out var value) ? value : Text(cell).Equals("true", StringComparison.OrdinalIgnoreCase) || Text(cell) == "1";
 
-    public void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month)
+    /// <summary>Column layout of the peer review sheet, shared by the writer and the reader.</summary>
+    private const string PeerSheetName = "Peer Review";
+    private const int PeerHeaderRow = 6;
+    private static readonly string[] PeerHeaders =
+        ["Peer Code", "Peer Name", "Collaboration (1-5)", "Communication (1-5)", "Reliability (1-5)", "Technical Help (1-5)", "Comment"];
+
+    public IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month)
+    {
+        using var workbook = new XLWorkbook(filePath);
+        if (!workbook.Worksheets.TryGetWorksheet("Template Metadata", out var metadata)) return [];
+        if (!workbook.Worksheets.TryGetWorksheet(PeerSheetName, out var sheet)) return [];
+
+        var reviewerCode = MetadataValue(metadata, "EmployeeCode");
+        var reviewerName = MetadataValue(metadata, "EmployeeName");
+        if (string.IsNullOrWhiteSpace(reviewerCode)) return [];
+
+        var results = new List<PeerReview>();
+        for (var row = PeerHeaderRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? PeerHeaderRow); row++)
+        {
+            var subjectCode = Text(sheet.Cell(row, 1));
+            var subjectName = PersonName.Normalize(Text(sheet.Cell(row, 2)));
+            if (string.IsNullOrWhiteSpace(subjectCode) && string.IsNullOrWhiteSpace(subjectName)) continue;
+
+            var review = new PeerReview
+            {
+                Year = year,
+                Month = month,
+                ReviewerCode = reviewerCode,
+                ReviewerName = PersonName.Normalize(reviewerName),
+                SubjectCode = subjectCode,
+                SubjectName = subjectName,
+                Collaboration = Rating(sheet.Cell(row, 3)),
+                Communication = Rating(sheet.Cell(row, 4)),
+                Reliability = Rating(sheet.Cell(row, 5)),
+                TechnicalHelp = Rating(sheet.Cell(row, 6)),
+                Comment = Text(sheet.Cell(row, 7)) is { Length: > 0 } comment ? comment : null
+            };
+            // A row the reviewer left blank is not feedback.
+            if (review.HasAnyRating) results.Add(review);
+        }
+        return results;
+    }
+
+    private static string MetadataValue(IXLWorksheet metadata, string key)
+    {
+        for (var row = 1; row <= (metadata.LastRowUsed()?.RowNumber() ?? 0); row++)
+            if (Text(metadata.Cell(row, 1)).Equals(key, StringComparison.OrdinalIgnoreCase))
+                return Text(metadata.Cell(row, 2));
+        return string.Empty;
+    }
+
+    /// <summary>Ratings outside 1-5 are treated as not given rather than clamped.</summary>
+    private static decimal Rating(IXLCell cell)
+    {
+        var value = Number(cell);
+        return value is >= 1 and <= 5 ? value : 0;
+    }
+
+    public void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null)
     {
         using var workbook = new XLWorkbook();
         var review = workbook.AddWorksheet("Self Review");
@@ -146,15 +204,65 @@ public sealed class WorkbookService : IWorkbookService
         review.Range("A8:E8").Style.Font.SetFontColor(XLColor.White);
         review.Columns().AdjustToContents();
 
+        WritePeerSheet(workbook, employee, year, month, peers);
+
         var metadata = workbook.AddWorksheet("Template Metadata");
-        metadata.Cell("A1").Value = "SchemaVersion"; metadata.Cell("B1").Value = 1;
+        metadata.Cell("A1").Value = "SchemaVersion"; metadata.Cell("B1").Value = 2;
         metadata.Cell("A2").Value = "WorkbookId"; metadata.Cell("B2").Value = Guid.NewGuid().ToString("N");
         metadata.Cell("A3").Value = "EmployeeCode"; metadata.Cell("B3").Value = employee.EmployeeCode;
         metadata.Cell("A4").Value = "Year"; metadata.Cell("B4").Value = year;
         metadata.Cell("A5").Value = "Month"; metadata.Cell("B5").Value = month;
+        metadata.Cell("A6").Value = "EmployeeName"; metadata.Cell("B6").Value = employee.Name;
         metadata.Visibility = XLWorksheetVisibility.VeryHidden;
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
         workbook.SaveAs(destinationPath);
+    }
+
+    /// <summary>
+    /// Writes the sheet on which this engineer rates colleagues. The roster is
+    /// pre-filled so a reviewer only enters ratings, and so the codes coming back
+    /// match the employee master exactly.
+    /// </summary>
+    private static void WritePeerSheet(XLWorkbook workbook, Employee employee, int year, int month, IReadOnlyList<Employee>? peers)
+    {
+        var sheet = workbook.AddWorksheet(PeerSheetName);
+        sheet.Cell("A1").Value = "Peer Review";
+        sheet.Range("A1:G1").Merge().Style.Font.SetBold().Font.SetFontSize(16);
+        sheet.Cell("A2").Value = $"Rate the colleagues you worked with during {new DateTime(year, month, 1):MMMM yyyy}.";
+        sheet.Cell("A3").Value = "Use 1 (lowest) to 5 (highest). Leave a row blank if you did not work with that person.";
+        sheet.Cell("A4").Value = "Reviewer"; sheet.Cell("B4").Value = $"{employee.Name} ({employee.EmployeeCode})";
+        sheet.Cell("A4").Style.Font.SetBold();
+
+        for (var i = 0; i < PeerHeaders.Length; i++) sheet.Cell(PeerHeaderRow, i + 1).Value = PeerHeaders[i];
+        var header = sheet.Range(PeerHeaderRow, 1, PeerHeaderRow, PeerHeaders.Length);
+        header.Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromHtml("#1F4E78"));
+        header.Style.Font.SetFontColor(XLColor.White);
+
+        var roster = (peers ?? [])
+            .Where(x => !string.Equals(x.EmployeeCode, employee.EmployeeCode, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var row = PeerHeaderRow + 1;
+        foreach (var peer in roster)
+        {
+            sheet.Cell(row, 1).Value = peer.EmployeeCode;
+            sheet.Cell(row, 2).Value = peer.Name;
+            row++;
+        }
+
+        // Keep usable rows even when no roster was supplied.
+        var lastRow = Math.Max(row - 1, PeerHeaderRow + 10);
+        var ratings = sheet.Range(PeerHeaderRow + 1, 3, lastRow, 6);
+        var validation = ratings.CreateDataValidation();
+        validation.WholeNumber.Between(1, 5);
+        validation.ErrorTitle = "Rating out of range";
+        validation.ErrorMessage = "Enter a whole number from 1 to 5, or leave the cell empty.";
+        ratings.Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+
+        sheet.Column(7).Width = 46;
+        sheet.Columns(1, 6).AdjustToContents();
+        sheet.SheetView.FreezeRows(PeerHeaderRow);
     }
 
     public IReadOnlyList<string> GenerateEngineerTemplates(string destinationFolder, IReadOnlyList<Employee> employees, int year, int month)
@@ -165,7 +273,8 @@ public sealed class WorkbookService : IWorkbookService
         foreach (var employee in employees)
         {
             var path = Path.Combine(destinationFolder, $"{Sanitize(employee.EmployeeCode)}_{Sanitize(employee.Name)}_{year:D4}_{month:D2}_Review.xlsx");
-            GenerateEngineerTemplate(path, employee, year, month);
+            // Every workbook carries the full roster so peer feedback maps back by code.
+            GenerateEngineerTemplate(path, employee, year, month, employees);
             generated.Add(path);
         }
         return generated;
