@@ -48,7 +48,7 @@ public sealed class WorkbookService : IWorkbookService
         var results = new List<EmployeeMonthlyPerformance>();
         for (var row = headerRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? headerRow); row++)
         {
-            var name = Text(sheet.Cell(row, Col(columns, "Employee Name")));
+            var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Employee Name"))));
             if (string.IsNullOrWhiteSpace(name) || name.Equals("No data available", StringComparison.OrdinalIgnoreCase)) continue;
             var item = New(name, year, month);
             item.ComplianceHours = Number(sheet.Cell(row, Col(columns, "Timsheet Compliance hours")));
@@ -69,7 +69,7 @@ public sealed class WorkbookService : IWorkbookService
         var groups = new Dictionary<string, (EmployeeMonthlyPerformance Item, HashSet<string> Projects)>(StringComparer.OrdinalIgnoreCase);
         for (var row = headerRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? headerRow); row++)
         {
-            var name = Text(sheet.Cell(row, Col(columns, "Employee")));
+            var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Employee"))));
             if (string.IsNullOrWhiteSpace(name)) continue;
             if (!groups.TryGetValue(name, out var group)) group = (New(name, year, month), new(StringComparer.OrdinalIgnoreCase));
             group.Item.DetailedEntries++;
@@ -87,7 +87,7 @@ public sealed class WorkbookService : IWorkbookService
         var groups = new Dictionary<string, EmployeeMonthlyPerformance>(StringComparer.OrdinalIgnoreCase);
         for (var row = headerRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? headerRow); row++)
         {
-            var name = Text(sheet.Cell(row, Col(columns, "Employee")));
+            var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Employee"))));
             if (string.IsNullOrWhiteSpace(name)) continue;
             if (!groups.TryGetValue(name, out var item)) groups[name] = item = New(name, year, month);
             item.EmployeeCode ??= Text(sheet.Cell(row, Col(columns, "Emp No")));
@@ -112,22 +112,9 @@ public sealed class WorkbookService : IWorkbookService
         return groups.Values.ToArray();
     }
 
-    private static EmployeeMonthlyPerformance New(string name, int year, int month) => new() { EmployeeName = name.Trim(), Year = year, Month = month };
-    private static void Calculate(EmployeeMonthlyPerformance item)
-    {
-        item.TimesheetCompletionScore = Percentage(item.EnteredHours, item.ComplianceHours);
-        item.ApprovalScore = Percentage(item.ApprovedHours, item.EnteredHours);
-        if (item.ExpectedTimesheetDays > 0)
-        {
-            var fill = Percentage(item.TimesheetFilledDays, item.ExpectedTimesheetDays);
-            var punch = 100m - Percentage(item.MissingPunchDays, item.ExpectedTimesheetDays);
-            var duration = 100m - Percentage(item.LessDurationDays, item.ExpectedTimesheetDays);
-            var punctuality = 100m - Percentage(item.LateDays + item.EarlyDays, item.ExpectedTimesheetDays * 2m);
-            item.AttendanceDisciplineScore = decimal.Round(fill * .40m + punch * .25m + duration * .20m + punctuality * .15m, 2);
-        }
-        item.OperationalScore = decimal.Round(item.TimesheetCompletionScore * .55m + item.ApprovalScore * .15m + item.AttendanceDisciplineScore * .30m, 2);
-    }
-    private static decimal Percentage(decimal value, decimal denominator) => denominator <= 0 ? 0 : Math.Clamp(decimal.Round(value / denominator * 100m, 2), 0, 100);
+    private static EmployeeMonthlyPerformance New(string name, int year, int month) =>
+        new() { EmployeeName = PersonName.Normalize(name), Year = year, Month = month };
+    private static void Calculate(EmployeeMonthlyPerformance item) => item.Recalculate();
     private static int FindHeaderRow(IXLWorksheet sheet, ReportType type)
     {
         var marker = type switch { ReportType.MonthlyTimesheetSummary => "Employee Name", ReportType.DetailedTimesheetTransactions => "Employee", _ => "Date" };

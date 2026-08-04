@@ -43,8 +43,57 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             CREATE UNIQUE INDEX IF NOT EXISTS IX_employee_monthly_performance_Year_Month_EmployeeName
             ON employee_monthly_performance (Year, Month, EmployeeName);
             """, cancellationToken);
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS analysis_exclusion (
+                EmployeeName TEXT NOT NULL CONSTRAINT PK_analysis_exclusion PRIMARY KEY,
+                CreatedUtc TEXT NOT NULL
+            );
+            """, cancellationToken);
+        await SeedDefaultExclusionsAsync(context, cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;", cancellationToken);
+    }
+
+    /// <summary>
+    /// Names that are never part of the analysis. Seeded once, on a database that has
+    /// no exclusion table yet, so a name the user later re-includes stays re-included.
+    /// </summary>
+    private static readonly string[] DefaultExclusions = ["Dhruv Varachhiya", "Snehil Bhadkamkar"];
+
+    private static async Task SeedDefaultExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
+    {
+        var seeded = await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM analysis_exclusion").SingleAsync(cancellationToken);
+        if (seeded > 0) return;
+        foreach (var name in DefaultExclusions)
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT OR IGNORE INTO analysis_exclusion (EmployeeName, CreatedUtc) VALUES ({0}, {1})",
+                [name, DateTime.UtcNow.ToString("O")], cancellationToken);
+    }
+
+    private static async Task<HashSet<string>> ReadExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
+    {
+        var names = await context.Database.SqlQueryRaw<string>("SELECT EmployeeName AS Value FROM analysis_exclusion").ToListAsync(cancellationToken);
+        // Compared on normalized names: the exports spell the same person with varying spacing.
+        return new HashSet<string>(names.Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        return (await ReadExclusionsAsync(context, cancellationToken)).OrderBy(x => x).ToArray();
+    }
+
+    public async Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(employeeName)) return;
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        if (excluded)
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT OR IGNORE INTO analysis_exclusion (EmployeeName, CreatedUtc) VALUES ({0}, {1})",
+                [employeeName.Trim(), DateTime.UtcNow.ToString("O")], cancellationToken);
+        else
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM analysis_exclusion WHERE EmployeeName = {0} COLLATE NOCASE", [employeeName.Trim()], cancellationToken);
     }
 
     public async Task<DashboardSnapshot> GetDashboardAsync(int? year = null, int? month = null, CancellationToken cancellationToken = default)
@@ -58,7 +107,11 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             var file = files.SingleOrDefault(x => x.ReportType == type);
             return new SourceSlot(type, file is null ? SourceStatus.NotUploaded : SourceStatus.Uploaded, file?.OriginalFileName);
         }).ToArray();
-        var scores = await context.EmployeeMonthlyPerformances.Where(x => x.Year == selected.Year && x.Month == selected.Month && x.OperationalScore > 0).Select(x => x.OperationalScore).ToListAsync(cancellationToken);
+        var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        var scored = await context.EmployeeMonthlyPerformances
+            .Where(x => x.Year == selected.Year && x.Month == selected.Month && x.OperationalScore > 0)
+            .Select(x => new { x.EmployeeName, x.OperationalScore }).ToListAsync(cancellationToken);
+        var scores = scored.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(x => x.OperationalScore).ToList();
         decimal? overall = scores.Count == 0 ? null : decimal.Round(scores.Average(), 2);
         return new DashboardSnapshot($"{selected:MMMM yyyy}", activeEmployees, slots, slots.Count(x => x.Status == SourceStatus.NotUploaded), overall);
     }
@@ -66,7 +119,10 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
     public async Task<IReadOnlyList<EmployeeListItem>> GetEmployeesAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.Employees.OrderBy(x => x.Name).Select(x => new EmployeeListItem(x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel)).ToListAsync(cancellationToken);
+        var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        var employees = await context.Employees.OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel }).ToListAsync(cancellationToken);
+        return employees.Select(x => new EmployeeListItem(x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, excluded.Contains(PersonName.Normalize(x.Name)))).ToArray();
     }
 
     public async Task AddEmployeeAsync(string employeeCode, string name, int seniorityLevel, CancellationToken cancellationToken = default)
@@ -149,13 +205,31 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
     public async Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.EmployeeMonthlyPerformances.Where(x => x.Year == year && x.Month == month)
-            .OrderByDescending(x => x.OperationalScore).ThenBy(x => x.EmployeeName)
-            .Select(x => new MonthlyPerformanceItem(x.EmployeeName, x.EmployeeCode, x.OperationalScore, x.TimesheetCompletionScore,
-                x.ApprovalScore, x.AttendanceDisciplineScore, x.EnteredHours, x.ComplianceHours, x.BillableHours, x.DetailedHours,
-                x.DetailedEntries, x.UniqueProjects, x.AttendanceDays, x.LeaveDays, x.MissingPunchDays, x.LateDays, x.EarlyDays, x.LessDurationDays))
-            .ToListAsync(cancellationToken);
+        var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        var rows = await context.EmployeeMonthlyPerformances.Where(x => x.Year == year && x.Month == month)
+            .OrderByDescending(x => x.OperationalScore).ThenBy(x => x.EmployeeName).ToListAsync(cancellationToken);
+        return rows.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(Project).ToArray();
     }
+
+    public async Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default)
+    {
+        var newest = new DateTime(year, month, 1);
+        var oldest = newest.AddMonths(-Math.Max(0, monthsBack - 1));
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        var rows = await context.EmployeeMonthlyPerformances
+            .Where(x => x.Year * 100 + x.Month >= oldest.Year * 100 + oldest.Month
+                     && x.Year * 100 + x.Month <= newest.Year * 100 + newest.Month)
+            .OrderBy(x => x.Year).ThenBy(x => x.Month).ThenBy(x => x.EmployeeName).ToListAsync(cancellationToken);
+        return rows.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(Project).ToArray();
+    }
+
+    private static MonthlyPerformanceItem Project(EmployeeMonthlyPerformance x) => new(
+        x.EmployeeName, x.EmployeeCode, x.OperationalScore, x.TimesheetCompletionScore,
+        x.ApprovalScore, x.AttendanceDisciplineScore, x.EnteredHours, x.ComplianceHours, x.BillableHours, x.DetailedHours,
+        x.DetailedEntries, x.UniqueProjects, x.AttendanceDays, x.LeaveDays, x.MissingPunchDays, x.LateDays, x.EarlyDays, x.LessDurationDays,
+        x.Year, x.Month, x.PunchHours, x.AttendanceTimesheetHours, x.TimesheetFilledDays, x.ExpectedTimesheetDays,
+        x.NonBillableHours, x.TrainingHours);
 
     private static void Merge(EmployeeMonthlyPerformance current, EmployeeMonthlyPerformance incoming, ReportType type)
     {
@@ -174,13 +248,6 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             current.ExpectedTimesheetDays = incoming.ExpectedTimesheetDays; current.MissingPunchDays = incoming.MissingPunchDays;
             current.LateDays = incoming.LateDays; current.EarlyDays = incoming.EarlyDays; current.LessDurationDays = incoming.LessDurationDays;
         }
-        current.TimesheetCompletionScore = current.ComplianceHours <= 0 ? 0 : Math.Clamp(decimal.Round(current.EnteredHours / current.ComplianceHours * 100, 2), 0, 100);
-        current.ApprovalScore = current.EnteredHours <= 0 ? 0 : Math.Clamp(decimal.Round(current.ApprovedHours / current.EnteredHours * 100, 2), 0, 100);
-        if (current.ExpectedTimesheetDays > 0)
-        {
-            decimal P(decimal value) => Math.Clamp(decimal.Round(value / current.ExpectedTimesheetDays * 100, 2), 0, 100);
-            current.AttendanceDisciplineScore = decimal.Round(P(current.TimesheetFilledDays) * .40m + (100 - P(current.MissingPunchDays)) * .25m + (100 - P(current.LessDurationDays)) * .20m + (100 - P((current.LateDays + current.EarlyDays) / 2m)) * .15m, 2);
-        }
-        current.OperationalScore = decimal.Round(current.TimesheetCompletionScore * .55m + current.ApprovalScore * .15m + current.AttendanceDisciplineScore * .30m, 2);
+        current.Recalculate();
     }
 }

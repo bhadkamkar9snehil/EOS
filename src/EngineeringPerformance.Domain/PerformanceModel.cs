@@ -30,6 +30,22 @@ public sealed class Employee
         string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("A value is required.", parameterName) : value.Trim();
 }
 
+/// <summary>
+/// Person names arrive from the ERP exports with inconsistent spacing — the same
+/// engineer appears as "Dhruv Varachhiya" and "Dhruv  Varachhiya". Every name is
+/// collapsed through here so identity, joins and exclusions match.
+/// </summary>
+public static class PersonName
+{
+    public static string Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    public static bool Matches(string? left, string? right) =>
+        string.Equals(Normalize(left), Normalize(right), StringComparison.OrdinalIgnoreCase);
+}
+
 public sealed class ReportingMonth
 {
     private ReportingMonth() { }
@@ -98,6 +114,41 @@ public sealed class EmployeeMonthlyPerformance
     public decimal ApprovalScore { get; set; }
     public decimal AttendanceDisciplineScore { get; set; }
     public decimal OperationalScore { get; set; }
+
+    /// <summary>
+    /// Recomputes every derived score from the raw hours and day counts.
+    /// Components without a source are left out of the weighting rather than
+    /// scored zero, so an engineer missing from the utilization export is not
+    /// penalised for data the import never supplied.
+    /// </summary>
+    public void Recalculate()
+    {
+        TimesheetCompletionScore = Percentage(EnteredHours, ComplianceHours);
+        ApprovalScore = Percentage(ApprovedHours, EnteredHours);
+        AttendanceDisciplineScore = 0;
+        if (ExpectedTimesheetDays > 0)
+        {
+            var fill = Percentage(TimesheetFilledDays, ExpectedTimesheetDays);
+            var punch = 100m - Percentage(MissingPunchDays, ExpectedTimesheetDays);
+            var duration = 100m - Percentage(LessDurationDays, ExpectedTimesheetDays);
+            var punctuality = 100m - Percentage(LateDays + EarlyDays, ExpectedTimesheetDays * 2m);
+            AttendanceDisciplineScore = decimal.Round(fill * .40m + punch * .25m + duration * .20m + punctuality * .15m, 2);
+        }
+
+        MetricInput[] metrics =
+        [
+            new("timesheet", TimesheetCompletionScore, .55m, ComplianceHours > 0),
+            new("approval", ApprovalScore, .15m, EnteredHours > 0),
+            new("attendance", AttendanceDisciplineScore, .30m, ExpectedTimesheetDays > 0)
+        ];
+        OperationalScore = metrics.Any(x => x.IsApplicable) ? WeightedScoreCalculator.Calculate(metrics) : 0;
+    }
+
+    /// <summary>True when the monthly utilization export supplied this engineer's capacity.</summary>
+    public bool HasSummaryData => ComplianceHours > 0;
+
+    private static decimal Percentage(decimal value, decimal denominator) =>
+        denominator <= 0 ? 0 : Math.Clamp(decimal.Round(value / denominator * 100m, 2), 0, 100);
 }
 
 public sealed record MetricInput(string Code, decimal Score, decimal Weight, bool IsApplicable = true);

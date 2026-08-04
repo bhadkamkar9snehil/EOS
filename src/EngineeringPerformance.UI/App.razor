@@ -35,7 +35,7 @@
         </div>
 
         <main class="content">
-            @if (_page == "overview") { @OverviewWorkspace() }
+            @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
             else if (_page == "imports") { @ImportWorkspace() }
             else if (_page == "employees") { @EmployeeWorkspace() }
             else if (_page == "templates") { @TemplateWorkspace() }
@@ -50,6 +50,8 @@
     private DashboardSnapshot? _snapshot;
     private IReadOnlyList<EmployeeListItem> _employees = [];
     private IReadOnlyList<MonthlyPerformanceItem> _performance = [];
+    private IReadOnlyList<MonthlyPerformanceItem> _history = [];
+    private IReadOnlyList<string> _excluded = [];
     private DateTime _selectedMonth = DefaultReportingMonth();
     private string _page = "overview";
     private string _message = string.Empty;
@@ -96,6 +98,8 @@
         _snapshot = await Database.GetDashboardAsync(_selectedMonth.Year, _selectedMonth.Month);
         _employees = await Database.GetEmployeesAsync();
         _performance = await Database.GetMonthlyPerformanceAsync(_selectedMonth.Year, _selectedMonth.Month);
+        _history = await Database.GetPerformanceHistoryAsync(_selectedMonth.Year, _selectedMonth.Month, 6);
+        _excluded = await Database.GetExcludedNamesAsync();
         _editName.Clear(); _editLevel.Clear();
         foreach (var employee in _employees) { _editName[employee.Id] = employee.Name; _editLevel[employee.Id] = employee.SeniorityLevel; }
         _lastRefresh = DateTime.Now;
@@ -141,6 +145,14 @@
         _editLevel[employee.Id] = Math.Clamp(current + delta, 1, 99);
     }
 
+    private async Task ToggleExclusionAsync(EmployeeListItem employee, bool excluded) =>
+        await RunAsync(async () =>
+        {
+            await Database.SetExclusionAsync(employee.Name, excluded);
+            await RefreshAsync();
+            _message = excluded ? $"{employee.Name} is excluded from the analysis." : $"{employee.Name} is included in the analysis.";
+        });
+
     private async Task RemoveEmployeeAsync(int id) => await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); await RefreshAsync(); _message = "Employee removed."; });
 
     private void GenerateTemplate()
@@ -173,125 +185,6 @@
     }
 
     private async Task RunAsync(Func<Task> action) { if (_busy) return; _busy = true; _isError = false; try { await action(); } catch (Exception ex) { _message = ex.Message; _isError = true; } finally { _busy = false; StateHasChanged(); } }
-
-    // ---------- Overview ----------
-
-    private decimal? Average(Func<MonthlyPerformanceItem, decimal> selector) =>
-        _performance.Count == 0 ? null : decimal.Round(_performance.Average(selector), 1);
-
-    private static string Band(decimal score) => score >= 85 ? "strong" : score >= 70 ? "ontrack" : score >= 55 ? "risk" : "critical";
-    private static string BandLabel(string band) => band switch { "strong" => "Strong (85+)", "ontrack" => "On track (70–84)", "risk" => "At risk (55–69)", _ => "Critical (<55)" };
-    private int BandCount(string band) => _performance.Count(x => Band(x.OperationalScore) == band);
-    private int TotalFlags => _performance.Sum(x => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays);
-
-    private RenderFragment OverviewWorkspace() => @<div class="overview">
-        @if (_performance.Count == 0)
-        {
-            <div class="empty-state">
-                <h2>No performance data for @_selectedMonth.ToString("MMMM yyyy")</h2>
-                <p>Import the three ERP exports for this month and scores are calculated immediately. The reference exports supplied by the ERP cover the previous month, so check the reporting month at the top before importing.</p>
-                <button class="action" @onclick='() => Navigate("imports")'>Go to data imports</button>
-            </div>
-        }
-        else
-        {
-            <div class="kpi-row">
-                @Kpi("Team operational score", _snapshot?.OperationalDisciplineScore?.ToString("0.0") ?? "—", "Weighted timesheet, approval and attendance", true)
-                @Kpi("Timesheet completion", Average(x => x.TimesheetCompletionScore)?.ToString("0.0") + "%", "Entered vs compliance hours", false)
-                @Kpi("Attendance discipline", Average(x => x.AttendanceDisciplineScore)?.ToString("0.0") + "%", "Fill rate, punches, duration, punctuality", false)
-                @Kpi("Approval rate", Average(x => x.ApprovalScore)?.ToString("0.0") + "%", "Approved vs entered hours", false)
-                @Kpi("Engineers measured", _performance.Count.ToString(), $"{_employees.Count} in the employee master", false)
-                @Kpi("Discipline flags", TotalFlags.ToString(), "Missing punch, late, early, short days", false)
-            </div>
-
-            <div class="overview-grid">
-                <section class="card">
-                    <div class="card-head"><h2>Score distribution</h2><small>@_performance.Count engineers</small></div>
-                    <div class="distribution">
-                        @foreach (var band in new[] { "strong", "ontrack", "risk", "critical" })
-                        {
-                            var count = BandCount(band);
-                            @if (count > 0)
-                            {
-                                <div class="band @band" style="flex:@count"><span>@count</span></div>
-                            }
-                        }
-                    </div>
-                    <ul class="legend">
-                        @foreach (var band in new[] { "strong", "ontrack", "risk", "critical" })
-                        {
-                            <li><i class="@band"></i>@BandLabel(band)<b>@BandCount(band)</b></li>
-                        }
-                    </ul>
-                </section>
-
-                <section class="card">
-                    <div class="card-head"><h2>Top performers</h2><small>Operational score</small></div>
-                    <ol class="rank-list">
-                        @foreach (var item in _performance.OrderByDescending(x => x.OperationalScore).Take(5))
-                        {
-                            <li><span class="avatar">@Initials(item.EmployeeName)</span><span class="rank-name">@item.EmployeeName<small>@item.TimesheetCompletionScore.ToString("0")% timesheet · @item.DetailedEntries entries</small></span><b class="@Band(item.OperationalScore)">@item.OperationalScore.ToString("0.0")</b></li>
-                        }
-                    </ol>
-                </section>
-
-                <section class="card">
-                    <div class="card-head"><h2>Needs attention</h2><small>Lowest operational score</small></div>
-                    <ol class="rank-list">
-                        @foreach (var item in _performance.OrderBy(x => x.OperationalScore).Take(5))
-                        {
-                            <li><span class="avatar">@Initials(item.EmployeeName)</span><span class="rank-name">@item.EmployeeName<small>@item.TimesheetCompletionScore.ToString("0")% timesheet · @item.AttendanceDisciplineScore.ToString("0")% attendance</small></span><b class="@Band(item.OperationalScore)">@item.OperationalScore.ToString("0.0")</b></li>
-                        }
-                    </ol>
-                </section>
-
-                <section class="card wide">
-                    <div class="card-head"><h2>Attendance exceptions</h2><small>Days flagged by the ERP attendance export</small></div>
-                    <div class="exception-row">
-                        @Exception("Missing punch", _performance.Sum(x => x.MissingPunchDays))
-                        @Exception("Late arrival", _performance.Sum(x => x.LateDays))
-                        @Exception("Early going", _performance.Sum(x => x.EarlyDays))
-                        @Exception("Short duration", _performance.Sum(x => x.LessDurationDays))
-                        @Exception("Leave days", (int)Math.Round(_performance.Sum(x => x.LeaveDays)))
-                    </div>
-                    @{ var offenders = _performance.Where(x => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays > 0)
-                        .OrderByDescending(x => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays).Take(6).ToArray(); }
-                    @if (offenders.Length > 0)
-                    {
-                        <div class="offenders">
-                            @foreach (var item in offenders)
-                            {
-                                <div><span>@item.EmployeeName</span><b>@(item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays) flagged days</b></div>
-                            }
-                        </div>
-                    }
-                </section>
-
-                <section class="card wide">
-                    <div class="card-head"><h2>Engineer performance</h2><button class="link" @onclick='() => Navigate("employees")'>Manage employees</button></div>
-                    <div class="performance-table">
-                        <div class="performance-head"><span>Engineer</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Billable</span><span>Entries</span><span>Projects</span></div>
-                        @foreach (var item in _performance)
-                        {
-                            <div class="performance-row">
-                                <strong>@item.EmployeeName</strong>
-                                <b class="score @Band(item.OperationalScore)">@item.OperationalScore.ToString("0.0")</b>
-                                <span>@item.TimesheetCompletionScore.ToString("0")%</span>
-                                <span>@item.ApprovalScore.ToString("0")%</span>
-                                <span>@item.AttendanceDisciplineScore.ToString("0")%</span>
-                                <span>@item.BillableHours.ToString("0.0") h</span>
-                                <span>@item.DetailedEntries</span>
-                                <span>@item.UniqueProjects</span>
-                            </div>
-                        }
-                    </div>
-                </section>
-            </div>
-        }
-    </div>;
-
-    private RenderFragment Kpi(string label, string value, string hint, bool primary) => @<div class="kpi @(primary ? "primary" : null)"><span>@label</span><strong>@value</strong><small>@hint</small></div>;
-    private RenderFragment Exception(string label, int count) => @<div class="exception @(count > 0 ? "hot" : null)"><strong>@count</strong><span>@label</span></div>;
 
     // ---------- Data imports ----------
 
@@ -336,7 +229,13 @@
     // ---------- Employees ----------
 
     private RenderFragment EmployeeWorkspace() => @<section class="single-pane">
-        <div class="section-title"><div><h2>Employee master</h2><p>Employee code is the source identity and cannot change. Edit the name or seniority level and save the row.</p></div></div>
+        <div class="section-title">
+            <div><h2>Employee master</h2><p>Employee code is the source identity and cannot change. Edit the name or seniority level and save the row. Excluded people are left out of every Overview figure.</p></div>
+            @if (_excluded.Count > 0)
+            {
+                <span class="excluded-pill">@_excluded.Count excluded from analysis</span>
+            }
+        </div>
         <div class="form-row">
             <label>Employee code<input @bind="_newCode" placeholder="E1042" /></label>
             <label class="grow">Employee name<input @bind="_newName" placeholder="Full name" /></label>
@@ -344,10 +243,10 @@
             <button class="action" @onclick="AddEmployeeAsync" disabled="@_busy">Add employee</button>
         </div>
         <div class="data-table">
-            <div class="table-head"><span>Code</span><span>Employee name</span><span>Seniority level</span><span></span></div>
+            <div class="table-head"><span>Code</span><span>Employee name</span><span>Seniority level</span><span>In analysis</span><span></span></div>
             @foreach (var employee in _employees)
             {
-                <div class="data-row">
+                <div class="data-row @(employee.IsExcluded ? "excluded" : null)">
                     <code>@employee.EmployeeCode</code>
                     <input class="cell-input" value="@(_editName.TryGetValue(employee.Id, out var n) ? n : employee.Name)" @onchange="e => _editName[employee.Id] = e.Value?.ToString() ?? string.Empty" />
                     <div class="level-editor">
@@ -355,6 +254,10 @@
                         <input type="number" min="1" max="99" value="@(_editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel)" @onchange="e => _editLevel[employee.Id] = int.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 1, 99) : employee.SeniorityLevel" />
                         <button title="Increase level" @onclick="() => AdjustLevel(employee, 1)">+</button>
                     </div>
+                    <label class="switch" title="@(employee.IsExcluded ? "Excluded from every Overview figure" : "Counted in the analysis")">
+                        <input type="checkbox" checked="@(!employee.IsExcluded)" @onchange="e => ToggleExclusionAsync(employee, !(bool)(e.Value ?? false))" />
+                        <span>@(employee.IsExcluded ? "Excluded" : "Included")</span>
+                    </label>
                     <div class="row-actions">
                         <button class="action small" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(_busy || !IsDirty(employee))">Save</button>
                         <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@_busy">Remove</button>

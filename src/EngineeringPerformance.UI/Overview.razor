@@ -1,0 +1,328 @@
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+
+@* Analytics dashboard. Every figure is derived from imported ERP rows; nothing is illustrative. *@
+
+<div class="overview">
+    @if (Items.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>No performance data for @Month.ToString("MMMM yyyy")</h2>
+            <p>Import the three ERP exports for this month and every panel below is calculated immediately. Exports are generated after month end, so check the reporting month above before importing.</p>
+            <button class="action" @onclick='() => OnNavigate.InvokeAsync("imports")'>Go to data imports</button>
+        </div>
+    }
+    else
+    {
+        <div class="kpi-row">
+            @Kpi("Team operational score", Analytics.Format(TeamScore), "accent", TeamScoreDelta, "vs " + Previous.ToString("MMM"))
+            @Kpi("Timesheet completion", Analytics.Format(Average(x => x.TimesheetCompletionScore, true)) + "%", "blue", null, MeasuredLabel)
+            @Kpi("Attendance discipline", Analytics.Format(Average(x => x.AttendanceDisciplineScore)) + "%", "aqua", null, "Fill, punches, duration, punctuality")
+            @Kpi("Average utilization", Analytics.Format(Average(x => x.Utilization, true)) + "%", "violet", null, "Entered vs compliance hours")
+            @Kpi("Engineers in analysis", Items.Count.ToString(), "slate", null, ExcludedLabel)
+            @Kpi("Open alerts", Alerts.Count.ToString(), Alerts.Any(x => x.Level == AlertLevel.Critical) ? "critical" : "warning", null, CriticalLabel)
+        </div>
+
+        <div class="overview-grid">
+
+            <section class="card">
+                <div class="card-head"><h2>Score distribution</h2><small>@Items.Count engineers</small></div>
+                <div class="distribution">
+                    @foreach (var band in Bands)
+                    {
+                        var count = BandCount(band);
+                        @if (count > 0)
+                        {
+                            <div class="band @band" style="flex:@count" title="@Analytics.ScoreBandLabel(band): @count"><span>@count</span></div>
+                        }
+                    }
+                </div>
+                <ul class="legend">
+                    @foreach (var band in Bands)
+                    {
+                        <li><i class="@band"></i>@Analytics.ScoreBandLabel(band)<b>@BandCount(band)</b></li>
+                    }
+                </ul>
+                <h3 class="sub-head">Attendance exceptions</h3>
+                <div class="exception-row">
+                    @Exception("Missing punch", Items.Sum(x => x.MissingPunchDays))
+                    @Exception("Late arrival", Items.Sum(x => x.LateDays))
+                    @Exception("Early going", Items.Sum(x => x.EarlyDays))
+                    @Exception("Short duration", Items.Sum(x => x.LessDurationDays))
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Workload &amp; utilization</h2><small>Daily punch hours vs capacity used</small></div>
+                @Charts.Scatter(Items)
+                <ul class="chart-legend">
+                    <li><i style="background:#1baf7a"></i>Optimal<b>@Items.Count(x => x.WorkloadBand() == "optimal")</b></li>
+                    <li><i style="background:#eb6834"></i>High workload<b>@Items.Count(x => x.WorkloadBand() == "high")</b></li>
+                    <li><i style="background:#2a78d6"></i>Underutilized<b>@Items.Count(x => x.WorkloadBand() == "under")</b></li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Category performance</h2><small>Operational dimensions</small></div>
+                @Charts.Radar(Items)
+                <ul class="chart-legend">
+                    <li><i style="background:#2a78d6"></i>Team average</li>
+                    <li><i style="background:#eb6834"></i>Top quartile</li>
+                    <li><i style="background:#1baf7a"></i>Bottom quartile</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Top quartile</h2><small>Operational score</small></div>
+                @QuartileList(Analytics.Quartile(Items, PreviousScores, true))
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Needs attention</h2><small>Lowest operational score</small></div>
+                @QuartileList(Analytics.Quartile(Items, PreviousScores, false))
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Attendance vs timesheet</h2><small>Reconciliation</small></div>
+                <div class="mini-tiles">
+                    <div><strong>@Analytics.Format(TimesheetFillRate)%</strong><span>Days with a timesheet</span></div>
+                    <div><strong>@Analytics.Format(TotalPunchHours, "0")</strong><span>Punch hours</span></div>
+                    <div><strong>@Analytics.Format(TotalBookedHours, "0")</strong><span>Booked hours</span></div>
+                </div>
+                <p class="chart-note">Largest gaps between hours at the gate and hours on the timesheet.</p>
+                @VarianceBars()
+            </section>
+
+            @if (HeatmapMonths.Count >= 2)
+            {
+                <section class="card wide">
+                    <div class="card-head"><h2>Performance score heatmap</h2><small>@HeatmapMonths.Count months</small></div>
+                    @Heatmap()
+                </section>
+
+                <section class="card wide">
+                    <div class="card-head"><h2>Team score trend &amp; forecast</h2><small>Monthly average with next-month projection</small></div>
+                    @Charts.Trend(HeatmapMonths, TrendSeries)
+                </section>
+            }
+            else
+            {
+                <section class="card wide subtle">
+                    <div class="card-head"><h2>Heatmap, trend &amp; forecast</h2><small>Needs two months</small></div>
+                    <p class="chart-note">Only @Month.ToString("MMMM yyyy") has been imported. Import another month's exports and the month-over-month heatmap, trend line and forecast appear here automatically.</p>
+                </section>
+            }
+
+            <section class="card wide">
+                <div class="card-head"><h2>Alerts</h2><small>@Alerts.Count derived from this month's exports</small></div>
+                @if (Alerts.Count == 0)
+                {
+                    <p class="chart-note">No rule fired against this month's figures.</p>
+                }
+                else
+                {
+                    <div class="alert-list">
+                        @foreach (var alert in Alerts.Take(12))
+                        {
+                            <div class="alert @Level(alert.Level)">
+                                <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
+                                <span class="alert-body"><strong>@alert.EmployeeName — @alert.Headline</strong><small>@alert.Detail</small></span>
+                            </div>
+                        }
+                    </div>
+                    @if (Alerts.Count > 12)
+                    {
+                        <p class="chart-note">@(Alerts.Count - 12) more not shown.</p>
+                    }
+                }
+            </section>
+
+            <section class="card wide">
+                <div class="card-head"><h2>Engineer performance</h2><button class="link" @onclick='() => OnNavigate.InvokeAsync("employees")'>Manage employees</button></div>
+                <div class="performance-table">
+                    <div class="performance-head">
+                        <span>Engineer</span><span>Score</span><span>Timesheet</span><span>Approval</span>
+                        <span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span><span>Projects</span>
+                    </div>
+                    @foreach (var item in Items.OrderByDescending(x => x.OperationalScore))
+                    {
+                        <div class="performance-row">
+                            <strong>@item.EmployeeName</strong>
+                            <span class="score-cell">
+                                <b class="@Analytics.ScoreBand(item.OperationalScore)">@Analytics.Format(item.OperationalScore)</b>
+                                <i class="score-bar @Analytics.ScoreBand(item.OperationalScore)" style="width:@Analytics.Svg((double)item.OperationalScore * 0.42)px"></i>
+                            </span>
+                            <span>@(item.HasSummaryData ? Analytics.Format(item.TimesheetCompletionScore, "0") + "%" : NoData)</span>
+                            <span>@(item.HasSummaryData ? Analytics.Format(item.ApprovalScore, "0") + "%" : NoData)</span>
+                            <span>@Analytics.Format(item.AttendanceDisciplineScore, "0")%</span>
+                            <span>@Analytics.Format(item.Workload(), "0.0") h/d</span>
+                            <span>@Analytics.Format(item.BillableHours, "0.0") h</span>
+                            <span>@item.DetailedEntries</span>
+                            <span>@item.UniqueProjects</span>
+                        </div>
+                    }
+                </div>
+                @if (Items.Any(x => !x.HasSummaryData))
+                {
+                    <p class="chart-note">@NoData means the engineer is not in the monthly utilization export, so timesheet and approval have no source. Their score is weighted on attendance alone rather than counted as zero.</p>
+                }
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> History { get; set; } = [];
+    [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public int ExcludedCount { get; set; }
+    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+
+    private const string NoData = "—";
+    private static readonly string[] Bands = ["good", "warning", "serious", "critical"];
+
+    private DateTime Previous => Month.AddMonths(-1);
+    private IReadOnlyList<Anomaly> Alerts => Analytics.Anomalies(Items, PreviousScores);
+
+    private Dictionary<string, decimal> PreviousScores => History
+        .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
+        .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
+
+    private List<DateTime> HeatmapMonths => History
+        .Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).TakeLast(6).ToList();
+
+    private decimal TeamScore => Items.Count == 0 ? 0 : decimal.Round(Items.Average(x => x.OperationalScore), 1);
+
+    private IReadOnlyList<decimal> TrendSeries => HeatmapMonths
+        .Select(m => History.Where(x => x.Year == m.Year && x.Month == m.Month)
+            .Select(x => x.OperationalScore).DefaultIfEmpty(0).Average())
+        .ToArray();
+
+    private decimal? TeamScoreDelta
+    {
+        get
+        {
+            var previous = PreviousScores.Values;
+            if (previous.Count == 0) return null;
+            return decimal.Round(TeamScore - previous.Average(), 1);
+        }
+    }
+
+    private decimal Average(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly = false)
+    {
+        var scope = summaryOnly ? Items.Where(x => x.HasSummaryData).ToArray() : Items.ToArray();
+        return scope.Length == 0 ? 0 : decimal.Round(scope.Average(selector), 1);
+    }
+
+    private string MeasuredLabel => Items.Count(x => x.HasSummaryData) == Items.Count
+        ? "Entered vs compliance hours"
+        : $"{Items.Count(x => x.HasSummaryData)} of {Items.Count} in the utilization export";
+    private string ExcludedLabel => ExcludedCount == 0 ? "All imported engineers" : $"{ExcludedCount} excluded by configuration";
+    private string CriticalLabel => Alerts.Count(x => x.Level == AlertLevel.Critical) is var c && c > 0 ? $"{c} critical" : "None critical";
+
+    private decimal TimesheetFillRate => Items.Sum(x => x.ExpectedTimesheetDays) == 0
+        ? 0 : decimal.Round(Items.Sum(x => x.TimesheetFilledDays) * 100m / Items.Sum(x => x.ExpectedTimesheetDays), 1);
+    private decimal TotalPunchHours => Items.Sum(x => x.PunchHours);
+    private decimal TotalBookedHours => Items.Sum(x => x.AttendanceTimesheetHours);
+
+    private int BandCount(string band) => Items.Count(x => Analytics.ScoreBand(x.OperationalScore) == band);
+    private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
+    private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
+
+    private RenderFragment Kpi(string label, string value, string tone, decimal? delta, string hint) => @<div class="kpi @tone">
+        <span class="kpi-label">@label</span>
+        <strong>@value</strong>
+        <small>
+            @if (delta is not null && delta != 0)
+            {
+                <b class="@(delta > 0 ? "up" : "down")">@(delta > 0 ? "▲" : "▼") @Analytics.Format(Math.Abs(delta.Value))</b>
+            }
+            @hint
+        </small>
+    </div>;
+
+    private RenderFragment Exception(string label, int count) => @<div class="exception @(count > 0 ? "hot" : null)"><strong>@count</strong><span>@label</span></div>;
+
+    private RenderFragment QuartileList(IReadOnlyList<QuartileRow> rows) => @<ol class="rank-list">
+        @foreach (var row in rows)
+        {
+            <li>
+                <span class="avatar">@Initials(row.EmployeeName)</span>
+                <span class="rank-name">@row.EmployeeName
+                    @if (row.Delta is not null)
+                    {
+                        <small><b class="@(row.Delta > 0 ? "up" : row.Delta < 0 ? "down" : null)">@(row.Delta > 0 ? "▲" : row.Delta < 0 ? "▼" : "•") @Analytics.Format(Math.Abs(row.Delta.Value)) vs @Previous.ToString("MMM")</b></small>
+                    }
+                </span>
+                <b class="@Analytics.ScoreBand(row.Score)">@Analytics.Format(row.Score)</b>
+            </li>
+        }
+    </ol>;
+
+    // ---------- Charts ----------
+
+    private RenderFragment VarianceBars() => @<div class="variance">
+        @{
+            var worst = Items.Where(x => Math.Abs(x.ReconciliationVariance) >= 1)
+                .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(5).ToArray();
+            var scale = worst.Length == 0 ? 1m : worst.Max(x => Math.Abs(x.ReconciliationVariance));
+        }
+        @if (worst.Length == 0)
+        {
+            <p class="chart-note">Punch and timesheet hours agree within an hour for everyone.</p>
+        }
+        else
+        {
+            @foreach (var item in worst)
+            {
+                var width = (double)(Math.Abs(item.ReconciliationVariance) / scale) * 100d;
+                <div class="variance-row">
+                    <span>@item.EmployeeName</span>
+                    <span class="variance-track">
+                        <i class="@(item.ReconciliationVariance > 0 ? "over" : "under")" style="width:@Analytics.Svg(width)%"></i>
+                    </span>
+                    <b class="@(item.ReconciliationVariance > 0 ? "over" : "under")">@(item.ReconciliationVariance > 0 ? "+" : "−")@Analytics.Format(Math.Abs(item.ReconciliationVariance)) h</b>
+                </div>
+            }
+        }
+    </div>;
+
+    private RenderFragment Heatmap() => @<div class="heatmap">
+        @{
+            var months = HeatmapMonths;
+            var names = History.Select(x => x.EmployeeName).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+            var lookup = History.ToLookup(x => (x.EmployeeName.ToLowerInvariant(), x.Year, x.Month));
+        }
+        <div class="heat-row heat-head" style="grid-template-columns:200px repeat(@months.Count, minmax(0,1fr))">
+            <span>Engineer</span>
+            @foreach (var m in months)
+            {
+                <span>@m.ToString("MMM yy")</span>
+            }
+        </div>
+        @foreach (var name in names)
+        {
+            <div class="heat-row" style="grid-template-columns:200px repeat(@months.Count, minmax(0,1fr))">
+                <span class="heat-name">@name</span>
+                @foreach (var m in months)
+                {
+                    var cell = lookup[(name.ToLowerInvariant(), m.Year, m.Month)].FirstOrDefault();
+                    @if (cell is null)
+                    {
+                        <span class="heat-cell empty" title="@name — no data for @m.ToString("MMMM yyyy")">·</span>
+                    }
+                    else
+                    {
+                        <span class="heat-cell" style="background:@Analytics.HeatColor(cell.OperationalScore);color:@(Analytics.HeatTextIsLight(cell.OperationalScore) ? "#ffffff" : "#0b0b0b")"
+                              title="@name — @m.ToString("MMMM yyyy"): @Analytics.Format(cell.OperationalScore)">@Analytics.Format(cell.OperationalScore, "0.0")</span>
+                    }
+                }
+            </div>
+        }
+    </div>;
+
+    private static string Initials(string name) =>
+        string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+}

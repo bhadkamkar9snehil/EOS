@@ -38,9 +38,17 @@ The file name carries the **export date**, not the reporting month: the sample `
 
 ### Screens
 
-- **Overview** — team KPIs, score distribution, top performers, engineers needing attention, attendance exceptions and the full engineer table.
+- **Overview** — six KPI tiles, score distribution and attendance exceptions, a workload-vs-utilization scatter with quadrants, a category-performance radar comparing team average against top and bottom quartile, top quartile and needs-attention lists, attendance-vs-timesheet reconciliation with variance bars, derived alerts by severity, and the full engineer table. A month-over-month score heatmap, trend line and next-month forecast appear once a second month is imported.
 - **Data imports** — the four inputs, their expected ERP exports, upload/replace actions and validation.
-- **Employees** — employee master; names and seniority levels are editable per row.
+- **Employees** — employee master; names and seniority levels are editable per row, and each person can be included in or excluded from the analysis.
+
+### Analysis rules
+
+Scores combine timesheet completion (55), approval (15) and attendance discipline (30). A component with no source is **left out of the weighting rather than scored zero** — an engineer absent from the monthly utilization export is ranked on attendance alone and shows `—` for timesheet and approval, instead of being pushed to the bottom by missing data.
+
+Names are normalized before matching, because the exports spell the same person both `Dhruv Varachhiya` and `Dhruv  Varachhiya`.
+
+`Dhruv Varachhiya` and `Snehil Bhadkamkar` are excluded from the analysis by default. Exclusions are stored in the database and editable on the Employees screen; they are seeded only on a database that has no exclusion table yet, so re-including someone sticks.
 - **Templates** — one workbook per engineer for the whole team in a single action, or a single personalized workbook.
 - **Scoring** — category weights.
 
