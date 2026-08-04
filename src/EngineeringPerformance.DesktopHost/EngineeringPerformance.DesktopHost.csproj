@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <ItemGroup>
+    <ProjectReference Include="..\EngineeringPerformance.Application\EngineeringPerformance.Application.csproj" />
+    <ProjectReference Include="..\EngineeringPerformance.Infrastructure\EngineeringPerformance.Infrastructure.csproj" />
+    <ProjectReference Include="..\EngineeringPerformance.UI\EngineeringPerformance.UI.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app-icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="wwwroot\index.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+  <Target Name="CopyCompatibleWindowsSdkFacadeForBuild" AfterTargets="Build">
+    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.windows.sdk.net.ref\10.0.17763.10\lib\Microsoft.Windows.SDK.NET.dll" DestinationFolder="$(OutDir)" />
+  </Target>
+  <Target Name="CopyCompatibleWindowsSdkFacadeForPublish" AfterTargets="Publish">
+    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.windows.sdk.net.ref\10.0.17763.10\lib\Microsoft.Windows.SDK.NET.dll" DestinationFolder="$(PublishDir)" />
+  </Target>
+</Project>

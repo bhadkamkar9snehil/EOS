@@ -1,0 +1,417 @@
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IApplicationDatabase Database
+@inject IFileDialogService Dialogs
+@inject IWorkbookService Workbooks
+
+<PageTitle>Engineering Performance Analyzer</PageTitle>
+
+<div class="app-shell">
+    <aside class="nav-rail">
+        <div class="brand"><img src="_content/EngineeringPerformance.UI/app-icon.png" alt="" /><span>Engineering<br />Performance</span></div>
+        <nav>
+            @NavButton("overview", "Overview", "⌂")
+            @NavButton("imports", "Data imports", "⇧")
+            @NavButton("employees", "Employees", "◎")
+            @NavButton("templates", "Templates", "□")
+            @NavButton("scoring", "Scoring", "↗")
+        </nav>
+        <div class="nav-footer"><button class="@(_page == "settings" ? "selected" : null)" @onclick='() => Navigate("settings")'>⚙ <span>Settings</span></button><small>Local database</small></div>
+    </aside>
+
+    <section class="workspace">
+        <header class="topbar">
+            <div class="page-heading"><h1>@PageTitleText</h1><p>@PageSubtitleText</p></div>
+            <div class="month-control">
+                <span>Reporting month</span><button title="Previous month" @onclick="PreviousMonth">‹</button><strong>@_selectedMonth.ToString("MMMM yyyy")</strong><button title="Next month" @onclick="NextMonth">›</button>
+            </div>
+            <div class="readiness"><span>Readiness</span><strong>@ReadyCount / 4 inputs</strong></div>
+        </header>
+
+        @* This slot always renders so the workspace grid rows stay aligned. *@
+        <div class="toast-slot">
+            @if (!string.IsNullOrEmpty(_message))
+            { <div class="toast @(_isError ? "error" : "success")">@_message<button @onclick="ClearMessage">×</button></div> }
+        </div>
+
+        <main class="content">
+            @if (_page == "overview") { @OverviewWorkspace() }
+            else if (_page == "imports") { @ImportWorkspace() }
+            else if (_page == "employees") { @EmployeeWorkspace() }
+            else if (_page == "templates") { @TemplateWorkspace() }
+            else if (_page == "scoring") { @ScoringWorkspace() }
+            else { @SettingsWorkspace() }
+        </main>
+        <footer><span>Data stored locally in SQLite</span><span>Last refreshed @_lastRefresh.ToString("h:mm tt")</span></footer>
+    </section>
+</div>
+
+@code {
+    private DashboardSnapshot? _snapshot;
+    private IReadOnlyList<EmployeeListItem> _employees = [];
+    private IReadOnlyList<MonthlyPerformanceItem> _performance = [];
+    private DateTime _selectedMonth = DefaultReportingMonth();
+    private string _page = "overview";
+    private string _message = string.Empty;
+    private bool _isError;
+    private bool _busy;
+    private DateTime _lastRefresh = DateTime.Now;
+    private string _newCode = string.Empty, _newName = string.Empty;
+    private int _newLevel = 1;
+    private int? _templateEmployeeId;
+    private readonly Dictionary<int, string> _editName = [];
+    private readonly Dictionary<int, int> _editLevel = [];
+    private decimal _execution = 25, _ownership = 15, _collaboration = 15, _discipline = 15, _excellence = 10, _improvement = 10, _growth = 10;
+
+    private static DateTime DefaultReportingMonth()
+    {
+        var lastCompleted = DateTime.Today.AddMonths(-1);
+        return new DateTime(lastCompleted.Year, lastCompleted.Month, 1);
+    }
+
+    private string PageTitleText => _page switch { "imports" => "Data imports", "employees" => "Employees", "templates" => "Review templates", "scoring" => "Scoring", "settings" => "Settings", _ => "Overview" };
+    private string PageSubtitleText => _page switch
+    {
+        "imports" => "Load the three ERP exports and the completed engineer reviews for this month.",
+        "employees" => "Employee master, identity codes and seniority levels.",
+        "templates" => "Create personalized review workbooks for one engineer or the whole team.",
+        "scoring" => "Category weights used when review ratings are combined.",
+        "settings" => "Where this application stores its data.",
+        _ => $"Team performance for {_selectedMonth:MMMM yyyy}."
+    };
+    private int ReadyCount => _snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded) ?? 0;
+    private int SystemReadyCount => _snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded && x.ReportType != ReportType.EngineerReviewWorkbook) ?? 0;
+    private bool ReviewsUploaded => _snapshot?.SourceSlots.Any(x => x.ReportType == ReportType.EngineerReviewWorkbook && x.Status == SourceStatus.Uploaded) ?? false;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    protected override Task OnAfterRenderAsync(bool firstRender) { if (firstRender) { var p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance"); Directory.CreateDirectory(p); File.WriteAllText(Path.Combine(p, "ui-ready.marker"), DateTime.UtcNow.ToString("O")); } return Task.CompletedTask; }
+
+    private RenderFragment NavButton(string page, string label, string icon) => @<button class="@(_page == page ? "selected" : null)" @onclick="() => Navigate(page)"><b>@icon</b><span>@label</span></button>;
+    private void Navigate(string page) { _page = page; _message = string.Empty; }
+    private async Task PreviousMonth() { _selectedMonth = _selectedMonth.AddMonths(-1); await RefreshAsync(); }
+    private async Task NextMonth() { _selectedMonth = _selectedMonth.AddMonths(1); await RefreshAsync(); }
+
+    private async Task RefreshAsync()
+    {
+        _snapshot = await Database.GetDashboardAsync(_selectedMonth.Year, _selectedMonth.Month);
+        _employees = await Database.GetEmployeesAsync();
+        _performance = await Database.GetMonthlyPerformanceAsync(_selectedMonth.Year, _selectedMonth.Month);
+        _editName.Clear(); _editLevel.Clear();
+        foreach (var employee in _employees) { _editName[employee.Id] = employee.Name; _editLevel[employee.Id] = employee.SeniorityLevel; }
+        _lastRefresh = DateTime.Now;
+    }
+
+    private void ClearMessage() => _message = string.Empty;
+
+    private async Task UploadAsync(ReportType type)
+    {
+        var path = Dialogs.PickWorkbook(); if (path is null) return;
+        await RunAsync(async () => { await Database.ImportSourceAsync(type, _selectedMonth.Year, _selectedMonth.Month, path); await RefreshAsync(); _message = $"{Path.GetFileName(path)} imported into “{Label(type)}”."; });
+    }
+
+    private async Task UploadZipAsync()
+    {
+        var path = Dialogs.PickWorkbookOrZip(); if (path is null) return;
+        if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { _message = "Select a ZIP package for combined import."; _isError = true; return; }
+        await RunAsync(async () => { var count = await Database.ImportPackageAsync(_selectedMonth.Year, _selectedMonth.Month, path); await RefreshAsync(); _message = count == 0 ? "No recognizable workbooks were found in the ZIP." : $"{count} workbook(s) imported from the package."; _isError = count == 0; });
+    }
+
+    private async Task AddEmployeeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newName)) { _message = "Employee code and name are required."; _isError = true; return; }
+        await RunAsync(async () => { await Database.AddEmployeeAsync(_newCode, _newName, _newLevel); _newCode = _newName = string.Empty; _newLevel = 1; await RefreshAsync(); _message = "Employee added."; });
+    }
+
+    private async Task SaveEmployeeAsync(EmployeeListItem employee)
+    {
+        var name = _editName.TryGetValue(employee.Id, out var n) ? n : employee.Name;
+        var level = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
+        if (string.IsNullOrWhiteSpace(name)) { _message = "Employee name is required."; _isError = true; return; }
+        if (level is < 1 or > 99) { _message = "Seniority level must be between 1 and 99."; _isError = true; return; }
+        await RunAsync(async () => { await Database.UpdateEmployeeAsync(employee.Id, name, level); await RefreshAsync(); _message = $"{name.Trim()} updated to level {level}."; });
+    }
+
+    private bool IsDirty(EmployeeListItem employee) =>
+        (_editName.TryGetValue(employee.Id, out var n) && n.Trim() != employee.Name) ||
+        (_editLevel.TryGetValue(employee.Id, out var l) && l != employee.SeniorityLevel);
+
+    private void AdjustLevel(EmployeeListItem employee, int delta)
+    {
+        var current = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
+        _editLevel[employee.Id] = Math.Clamp(current + delta, 1, 99);
+    }
+
+    private async Task RemoveEmployeeAsync(int id) => await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); await RefreshAsync(); _message = "Employee removed."; });
+
+    private void GenerateTemplate()
+    {
+        var employee = _employees.SingleOrDefault(x => x.Id == _templateEmployeeId);
+        if (employee is null) { _message = "Select an employee first."; _isError = true; return; }
+        var destination = Dialogs.PickSaveWorkbook($"{employee.EmployeeCode}_{_selectedMonth:yyyy_MM}_Review.xlsx");
+        if (destination is null) return;
+        try
+        {
+            Workbooks.GenerateEngineerTemplate(destination, new Employee(employee.EmployeeCode, employee.Name, employee.SeniorityLevel), _selectedMonth.Year, _selectedMonth.Month);
+            _message = $"Template generated for {employee.Name}."; _isError = false;
+        }
+        catch (Exception ex) { _message = ex.Message; _isError = true; }
+    }
+
+    private void GenerateAllTemplates()
+    {
+        if (_employees.Count == 0) { _message = "Add employees before generating templates."; _isError = true; return; }
+        var folder = Dialogs.PickFolder($"Choose a folder for the {_selectedMonth:MMMM yyyy} review templates");
+        if (folder is null) return;
+        try
+        {
+            var target = Path.Combine(folder, $"Reviews_{_selectedMonth:yyyy_MM}");
+            var employees = _employees.Select(x => new Employee(x.EmployeeCode, x.Name, x.SeniorityLevel)).ToArray();
+            var generated = Workbooks.GenerateEngineerTemplates(target, employees, _selectedMonth.Year, _selectedMonth.Month);
+            _message = $"{generated.Count} review workbook(s) written to {target}."; _isError = false;
+        }
+        catch (Exception ex) { _message = ex.Message; _isError = true; }
+    }
+
+    private async Task RunAsync(Func<Task> action) { if (_busy) return; _busy = true; _isError = false; try { await action(); } catch (Exception ex) { _message = ex.Message; _isError = true; } finally { _busy = false; StateHasChanged(); } }
+
+    // ---------- Overview ----------
+
+    private decimal? Average(Func<MonthlyPerformanceItem, decimal> selector) =>
+        _performance.Count == 0 ? null : decimal.Round(_performance.Average(selector), 1);
+
+    private static string Band(decimal score) => score >= 85 ? "strong" : score >= 70 ? "ontrack" : score >= 55 ? "risk" : "critical";
+    private static string BandLabel(string band) => band switch { "strong" => "Strong (85+)", "ontrack" => "On track (70–84)", "risk" => "At risk (55–69)", _ => "Critical (<55)" };
+    private int BandCount(string band) => _performance.Count(x => Band(x.OperationalScore) == band);
+    private int TotalFlags => _performance.Sum(x => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays);
+
+    private RenderFragment OverviewWorkspace() => @<div class="overview">
+        @if (_performance.Count == 0)
+        {
+            <div class="empty-state">
+                <h2>No performance data for @_selectedMonth.ToString("MMMM yyyy")</h2>
+                <p>Import the three ERP exports for this month and scores are calculated immediately. The reference exports supplied by the ERP cover the previous month, so check the reporting month at the top before importing.</p>
+                <button class="action" @onclick='() => Navigate("imports")'>Go to data imports</button>
+            </div>
+        }
+        else
+        {
+            <div class="kpi-row">
+                @Kpi("Team operational score", _snapshot?.OperationalDisciplineScore?.ToString("0.0") ?? "—", "Weighted timesheet, approval and attendance", true)
+                @Kpi("Timesheet completion", Average(x => x.TimesheetCompletionScore)?.ToString("0.0") + "%", "Entered vs compliance hours", false)
+                @Kpi("Attendance discipline", Average(x => x.AttendanceDisciplineScore)?.ToString("0.0") + "%", "Fill rate, punches, duration, punctuality", false)
+                @Kpi("Approval rate", Average(x => x.ApprovalScore)?.ToString("0.0") + "%", "Approved vs entered hours", false)
+                @Kpi("Engineers measured", _performance.Count.ToString(), $"{_employees.Count} in the employee master", false)
+                @Kpi("Discipline flags", TotalFlags.ToString(), "Missing punch, late, early, short days", false)
+            </div>
+
+            <div class="overview-grid">
+                <section class="card">
+                    <div class="card-head"><h2>Score distribution</h2><small>@_performance.Count engineers</small></div>
+                    <div class="distribution">
+                        @foreach (var band in new[] { "strong", "ontrack", "risk", "critical" })
+                        {
+                            var count = BandCount(band);
+                            @if (count > 0)
+                            {
+                                <div class="band @band" style="flex:@count"><span>@count</span></div>
+                            }
+                        }
+                    </div>
+                    <ul class="legend">
+                        @foreach (var band in new[] { "strong", "ontrack", "risk", "critical" })
+                        {
+                            <li><i class="@band"></i>@BandLabel(band)<b>@BandCount(band)</b></li>
+                        }
+                    </ul>
+                </section>
+
+                <section class="card">
+                    <div class="card-head"><h2>Top performers</h2><small>Operational score</small></div>
+                    <ol class="rank-list">
+                        @foreach (var item in _performance.OrderByDescending(x => x.OperationalScore).Take(5))
+                        {
+                            <li><span class="avatar">@Initials(item.EmployeeName)</span><span class="rank-name">@item.EmployeeName<small>@item.TimesheetCompletionScore.ToString("0")% timesheet · @item.DetailedEntries entries</small></span><b class="@Band(item.OperationalScore)">@item.OperationalScore.ToString("0.0")</b></li>
+                        }
+                    </ol>
+                </section>
+
+                <section class="card">
+                    <div class="card-head"><h2>Needs attention</h2><small>Lowest operational score</small></div>
+                    <ol class="rank-list">
+                        @foreach (var item in _performance.OrderBy(x => x.OperationalScore).Take(5))
+                        {
+                            <li><span class="avatar">@Initials(item.EmployeeName)</span><span class="rank-name">@item.EmployeeName<small>@item.TimesheetCompletionScore.ToString("0")% timesheet · @item.AttendanceDisciplineScore.ToString("0")% attendance</small></span><b class="@Band(item.OperationalScore)">@item.OperationalScore.ToString("0.0")</b></li>
+                        }
+                    </ol>
+                </section>
+
+                <section class="card wide">
+                    <div class="card-head"><h2>Attendance exceptions</h2><small>Days flagged by the ERP attendance export</small></div>
+                    <div class="exception-row">
+                        @Exception("Missing punch", _performance.Sum(x => x.MissingPunchDays))
+                        @Exception("Late arrival", _performance.Sum(x => x.LateDays))
+                        @Exception("Early going", _performance.Sum(x => x.EarlyDays))
+                        @Exception("Short duration", _performance.Sum(x => x.LessDurationDays))
+                        @Exception("Leave days", (int)Math.Round(_performance.Sum(x => x.LeaveDays)))
+                    </div>
+                    @{ var offenders = _performance.Where(x => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays > 0)
+                        .OrderByDescending(x => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays).Take(6).ToArray(); }
+                    @if (offenders.Length > 0)
+                    {
+                        <div class="offenders">
+                            @foreach (var item in offenders)
+                            {
+                                <div><span>@item.EmployeeName</span><b>@(item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays) flagged days</b></div>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <section class="card wide">
+                    <div class="card-head"><h2>Engineer performance</h2><button class="link" @onclick='() => Navigate("employees")'>Manage employees</button></div>
+                    <div class="performance-table">
+                        <div class="performance-head"><span>Engineer</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Billable</span><span>Entries</span><span>Projects</span></div>
+                        @foreach (var item in _performance)
+                        {
+                            <div class="performance-row">
+                                <strong>@item.EmployeeName</strong>
+                                <b class="score @Band(item.OperationalScore)">@item.OperationalScore.ToString("0.0")</b>
+                                <span>@item.TimesheetCompletionScore.ToString("0")%</span>
+                                <span>@item.ApprovalScore.ToString("0")%</span>
+                                <span>@item.AttendanceDisciplineScore.ToString("0")%</span>
+                                <span>@item.BillableHours.ToString("0.0") h</span>
+                                <span>@item.DetailedEntries</span>
+                                <span>@item.UniqueProjects</span>
+                            </div>
+                        }
+                    </div>
+                </section>
+            </div>
+        }
+    </div>;
+
+    private RenderFragment Kpi(string label, string value, string hint, bool primary) => @<div class="kpi @(primary ? "primary" : null)"><span>@label</span><strong>@value</strong><small>@hint</small></div>;
+    private RenderFragment Exception(string label, int count) => @<div class="exception @(count > 0 ? "hot" : null)"><strong>@count</strong><span>@label</span></div>;
+
+    // ---------- Data imports ----------
+
+    private RenderFragment ImportWorkspace() => @<div class="page-grid">
+        <section class="primary-pane">
+            <div class="section-title">
+                <div><h2>Data inputs</h2><p>The ERP exports keep their system-generated names. Match each row using the expected export below — detection uses workbook columns, so a renamed file still lands in the right slot.</p></div>
+                <button class="action" @onclick="UploadZipAsync" disabled="@_busy">Upload ZIP</button>
+            </div>
+            <div class="import-table">
+                <div class="table-head"><span>Input</span><span>Expected ERP export</span><span>Loaded file</span><span>Status</span><span></span></div>
+                @foreach (var slot in _snapshot?.SourceSlots ?? [])
+                {
+                    <div class="import-row">
+                        <div class="input-name"><i>@Initial(slot.ReportType)</i><span><strong>@Label(slot.ReportType)</strong><small>@Description(slot.ReportType)</small></span></div>
+                        <span class="expected"><code title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span>
+                        <span class="filename" title="@slot.FileName">@(slot.FileName ?? "—")</span>
+                        <span class="status @(slot.Status == SourceStatus.Uploaded ? "ok" : null)">@(slot.Status == SourceStatus.Uploaded ? "Ready" : "Not uploaded")</span>
+                        <button @onclick="() => UploadAsync(slot.ReportType)" disabled="@_busy">@(slot.Status == SourceStatus.Uploaded ? "Replace" : "Upload")</button>
+                    </div>
+                }
+            </div>
+            <div class="callout">
+                <strong>Which month does an export belong to?</strong>
+                <p>ERP exports are generated after month end, so the file name carries the export date, not the reporting month. The utilization export named <code>…04-Aug-2026…</code> contains July 2026 data. Select the reporting month at the top of the window before uploading — this application opens on the last completed month by default.</p>
+            </div>
+        </section>
+        <aside class="activity-pane">
+            <h2>Validation</h2>
+            @Activity("Database", "SQLite is available and writable.", true)
+            @Activity("Employees", _employees.Count == 0 ? "No employees configured." : $"{_employees.Count} employees in scope.", _employees.Count > 0)
+            @Activity("System inputs", $"{SystemReadyCount} of 3 ERP exports uploaded.", SystemReadyCount >= 3)
+            @Activity("Engineer reviews", ReviewsUploaded ? "Review workbook loaded." : "Review workbook not uploaded.", ReviewsUploaded)
+            @Activity("Calculated scores", _performance.Count == 0 ? "No scores for this month yet." : $"{_performance.Count} engineers scored.", _performance.Count > 0)
+            @if (_performance.Count > 0)
+            {
+                <button class="link wide-link" @onclick='() => Navigate("overview")'>View overview →</button>
+            }
+        </aside>
+    </div>;
+
+    // ---------- Employees ----------
+
+    private RenderFragment EmployeeWorkspace() => @<section class="single-pane">
+        <div class="section-title"><div><h2>Employee master</h2><p>Employee code is the source identity and cannot change. Edit the name or seniority level and save the row.</p></div></div>
+        <div class="form-row">
+            <label>Employee code<input @bind="_newCode" placeholder="E1042" /></label>
+            <label class="grow">Employee name<input @bind="_newName" placeholder="Full name" /></label>
+            <label>Level<input type="number" min="1" max="99" @bind="_newLevel" /></label>
+            <button class="action" @onclick="AddEmployeeAsync" disabled="@_busy">Add employee</button>
+        </div>
+        <div class="data-table">
+            <div class="table-head"><span>Code</span><span>Employee name</span><span>Seniority level</span><span></span></div>
+            @foreach (var employee in _employees)
+            {
+                <div class="data-row">
+                    <code>@employee.EmployeeCode</code>
+                    <input class="cell-input" value="@(_editName.TryGetValue(employee.Id, out var n) ? n : employee.Name)" @onchange="e => _editName[employee.Id] = e.Value?.ToString() ?? string.Empty" />
+                    <div class="level-editor">
+                        <button title="Decrease level" @onclick="() => AdjustLevel(employee, -1)">−</button>
+                        <input type="number" min="1" max="99" value="@(_editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel)" @onchange="e => _editLevel[employee.Id] = int.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 1, 99) : employee.SeniorityLevel" />
+                        <button title="Increase level" @onclick="() => AdjustLevel(employee, 1)">+</button>
+                    </div>
+                    <div class="row-actions">
+                        <button class="action small" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(_busy || !IsDirty(employee))">Save</button>
+                        <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@_busy">Remove</button>
+                    </div>
+                </div>
+            }
+            @if (_employees.Count == 0)
+            {
+                <div class="table-empty">No employees yet. Add one above, or import the attendance export — it registers every engineer it finds.</div>
+            }
+        </div>
+    </section>;
+
+    // ---------- Templates ----------
+
+    private RenderFragment TemplateWorkspace() => @<section class="single-pane">
+        <div class="section-title"><div><h2>Generate review templates</h2><p>Personalized numeric review workbooks for @_selectedMonth.ToString("MMMM yyyy").</p></div></div>
+        <div class="template-cards">
+            <div class="template-card featured">
+                <h3>All employees</h3>
+                <p>Writes one workbook per employee into a <code>Reviews_@_selectedMonth.ToString("yyyy_MM")</code> folder at the location you pick. Each workbook is pre-filled with the employee code, name and seniority level.</p>
+                <div class="template-meta"><strong>@_employees.Count</strong><span>workbooks will be generated</span></div>
+                <button class="action" @onclick="GenerateAllTemplates" disabled="@(_busy || _employees.Count == 0)">Generate for all employees</button>
+            </div>
+            <div class="template-card">
+                <h3>Single employee</h3>
+                <p>Generate one workbook and choose exactly where it is saved.</p>
+                <label>Employee<select @bind="_templateEmployeeId"><option value="">Select employee</option>@foreach (var e in _employees) { <option value="@e.Id">@e.Name — Level @e.SeniorityLevel</option> }</select></label>
+                <button class="action secondary" @onclick="GenerateTemplate" disabled="@_busy">Generate workbook</button>
+            </div>
+        </div>
+    </section>;
+
+    // ---------- Scoring & settings ----------
+
+    private RenderFragment ScoringWorkspace() => @<section class="single-pane"><div class="section-title"><div><h2>Category weights</h2><p>Configure the contribution of each category. The total must equal 100.</p></div><strong class="weight-total @(WeightTotal == 100 ? "valid" : "invalid")">@WeightTotal%</strong></div><div class="weight-list">@Weight("Assignment execution", () => _execution, v => _execution = v)@Weight("Ownership & accountability", () => _ownership, v => _ownership = v)@Weight("Collaboration", () => _collaboration, v => _collaboration = v)@Weight("Operational discipline", () => _discipline, v => _discipline = v)@Weight("Professional excellence", () => _excellence, v => _excellence = v)@Weight("Continuous improvement", () => _improvement, v => _improvement = v)@Weight("Growth & learning", () => _growth, v => _growth = v)</div></section>;
+    private decimal WeightTotal => _execution + _ownership + _collaboration + _discipline + _excellence + _improvement + _growth;
+    private RenderFragment Weight(string label, Func<decimal> get, Action<decimal> set) => @<label class="weight-row"><span>@label</span><input type="number" min="0" max="100" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? v : 0)" /><b>%</b></label>;
+    private RenderFragment SettingsWorkspace() => @<section class="single-pane narrow"><div class="section-title"><div><h2>Local application</h2><p>All performance data and imported files remain on this computer.</p></div></div><dl class="settings-list"><div><dt>Database</dt><dd>%LOCALAPPDATA%\EngineeringPerformance</dd></div><div><dt>Imported files</dt><dd>%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div><div><dt>Storage mode</dt><dd>SQLite with WAL</dd></div><div><dt>Calculation</dt><dd>Immediate, in process</dd></div></dl></section>;
+    private RenderFragment Activity(string title, string detail, bool good) => @<div class="activity"><i class="@(good ? "good" : "warn")">@(good ? "✓" : "!")</i><span><strong>@title</strong><small>@detail</small></span></div>;
+
+    private static string Initial(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "MS", ReportType.DetailedTimesheetTransactions => "DT", ReportType.AttendanceLeaveUaaTimesheet => "AT", _ => "ER" };
+    private static string Label(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "Monthly utilization summary", ReportType.DetailedTimesheetTransactions => "Detailed timesheet", ReportType.AttendanceLeaveUaaTimesheet => "Attendance and leave", _ => "Engineer reviews" };
+    private static string Description(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "Monthly capacity and utilization", ReportType.DetailedTimesheetTransactions => "Daily project and effort entries", ReportType.AttendanceLeaveUaaTimesheet => "Punch, leave, UAA and compliance", _ => "Self and peer ratings" };
+    private static string ExpectedFileName(ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary => "RPwiseTimesheetUtilazationReport<dd-MMM-yyyy>_<hh_mm_ss>.xlsx",
+        ReportType.DetailedTimesheetTransactions => "LV_Timesheet_ManagerHead_Rpt.xlsx",
+        ReportType.AttendanceLeaveUaaTimesheet => "LV_LeaveSummaryforRP.xlsx",
+        _ => "<Code>_<Name>_<yyyy_MM>_Review.xlsx"
+    };
+    private static string ErpSource(ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary => "ERP → RP-wise Timesheet Utilization Report",
+        ReportType.DetailedTimesheetTransactions => "ERP → Timesheet Manager/Head Report",
+        ReportType.AttendanceLeaveUaaTimesheet => "ERP → Leave Summary for RP",
+        _ => "Produced on the Templates screen, returned by engineers"
+    };
+    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+}

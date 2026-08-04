@@ -1,0 +1,17 @@
+# Real ERP exports contain employee records and stay out of source control.
+Reference Excel Files/
+
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+artifacts/
+dist/
+work/
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.msix
+*.pfx
