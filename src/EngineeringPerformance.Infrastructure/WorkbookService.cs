@@ -4,7 +4,7 @@ using EngineeringPerformance.Domain;
 
 namespace EngineeringPerformance.Infrastructure;
 
-public sealed class WorkbookService : IWorkbookService
+public sealed partial class WorkbookService : IWorkbookService
 {
     public WorkbookInspection Inspect(string filePath)
     {

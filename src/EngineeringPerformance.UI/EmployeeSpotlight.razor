@@ -1,0 +1,165 @@
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Slide-over profile for one engineer. Opened by clicking their name anywhere
+   on Overview, or via the spotlight search box. Self-contained: owns its own
+   ECharts instances and disposes them on close. *@
+
+<div class="spotlight-backdrop" @onclick="Close">
+    <aside class="spotlight-drawer" @onclick:stopPropagation="true">
+        <header class="spotlight-head">
+            <span class="avatar big">@Initials(Name)</span>
+            <div class="spotlight-title">
+                <h2>@Name</h2>
+                <small>@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small>
+            </div>
+            <button class="spotlight-close" @onclick="Close" title="Close">×</button>
+        </header>
+
+        <div class="spotlight-body">
+            @if (Item is null)
+            {
+                <div class="locked">
+                    <strong>No @Month.ToString("MMMM yyyy") data for @Name</strong>
+                    <p>This person has no imported rows for the selected month, so there is nothing to score.</p>
+                </div>
+            }
+            else
+            {
+                <div class="spotlight-gauge-row">
+                    <div id="spotlight-gauge" class="spotlight-gauge"></div>
+                    <ul class="spotlight-stats">
+                        <li><span>Timesheet</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.TimesheetCompletionScore, "0") + "%" : "—")</b></li>
+                        <li><span>Approval</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.ApprovalScore, "0") + "%" : "—")</b></li>
+                        <li><span>Attendance</span><b>@Analytics.Format(Item.AttendanceDisciplineScore, "0")%</b></li>
+                        <li><span>Workload</span><b>@Analytics.Format(Item.Workload(), "0.0") h/d</b></li>
+                        <li><span>Billable</span><b>@Analytics.Format(Item.BillableHours, "0") h</b></li>
+                        <li><span>Projects</span><b>@Item.UniqueProjects</b></li>
+                    </ul>
+                </div>
+
+                @if (TrendValues.Count >= 2)
+                {
+                    <h3 class="sub-head">Score trend</h3>
+                    <div id="spotlight-trend" class="spotlight-chart short"></div>
+                }
+
+                <h3 class="sub-head">Category performance vs team average</h3>
+                <div id="spotlight-radar" class="spotlight-chart"></div>
+            }
+
+            <h3 class="sub-head">Peer feedback</h3>
+            @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
+            {
+                <p class="chart-note">No peer feedback involving @Name this month.</p>
+            }
+            else
+            {
+                <div class="mini-tiles">
+                    <div><strong>@Peer.ReceivedCount</strong><span>Received</span></div>
+                    <div><strong>@Peer.GivenCount</strong><span>Given</span></div>
+                    <div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received</span></div>
+                </div>
+                @if (Peer.ReceivedCount > 0)
+                {
+                    <div id="spotlight-peerbars" class="spotlight-chart short"></div>
+                    @if (Peer.Received.Any(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                    {
+                        <ul class="comment-list">
+                            @foreach (var review in Peer.Received.Where(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                            {
+                                <li><strong>@review.ReviewerName</strong><p>@review.Comment</p></li>
+                            }
+                        </ul>
+                    }
+                }
+            }
+
+            <h3 class="sub-head">Alerts for @Name</h3>
+            @if (Alerts.Count == 0)
+            {
+                <p class="chart-note">No rule fired against @Name this month.</p>
+            }
+            else
+            {
+                <div class="alert-list single">
+                    @foreach (var alert in Alerts)
+                    {
+                        <div class="alert @Level(alert.Level)">
+                            <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
+                            <span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </aside>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public MonthlyPerformanceItem? Item { get; set; }
+    [Parameter] public IReadOnlyList<RadarAxis> TeamRadar { get; set; } = [];
+    [Parameter] public IReadOnlyList<DateTime> TrendMonths { get; set; } = [];
+    [Parameter] public IReadOnlyList<decimal> TrendValues { get; set; } = [];
+    [Parameter] public Analytics.PeerBreakdown Peer { get; set; } = new(0, 0, 0, 0, 0, 0, 0, []);
+    [Parameter] public IReadOnlyList<Anomaly> Alerts { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool _rendered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_rendered) return;
+        _rendered = true;
+
+        if (Item is not null)
+        {
+            await JS.InvokeVoidAsync("epaCharts.gauge", "spotlight-gauge", Item.OperationalScore, Analytics.ScoreBand(Item.OperationalScore));
+
+            if (TrendValues.Count >= 2)
+                await JS.InvokeVoidAsync("epaCharts.trend", "spotlight-trend",
+                    TrendMonths.Select(m => m.ToString("MMM yy")).ToArray(), TrendValues, null);
+
+            var mine = Analytics.RadarValues(Item);
+            var axisNames = TeamRadar.Select(a => a.Label).ToArray();
+            var teamValues = TeamRadar.Select(a => a.TeamAverage).ToArray();
+            await JS.InvokeVoidAsync("epaCharts.radar", "spotlight-radar", axisNames, 100,
+                new object[]
+                {
+                    new { name = Name, color = "#eb6834", values = mine },
+                    new { name = "Team average", color = "#2a78d6", values = teamValues }
+                });
+        }
+
+        if (Peer.ReceivedCount > 0)
+        {
+            string[] dims = ["Collaboration", "Communication", "Reliability", "Technical help"];
+            decimal[] values = [Peer.Collaboration, Peer.Communication, Peer.Reliability, Peer.TechnicalHelp];
+            await JS.InvokeVoidAsync("epaCharts.bars", "spotlight-peerbars", dims, values, (string[]?)null, 5, string.Empty);
+        }
+    }
+
+    private async Task Close()
+    {
+        foreach (var id in new[] { "spotlight-gauge", "spotlight-trend", "spotlight-radar", "spotlight-peerbars" })
+            await JS.InvokeVoidAsync("epaCharts.dispose", id);
+        await OnClose.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var id in new[] { "spotlight-gauge", "spotlight-trend", "spotlight-radar", "spotlight-peerbars" })
+        {
+            try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
+        }
+    }
+
+    private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
+    private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
+    private static string Initials(string name) =>
+        string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+}

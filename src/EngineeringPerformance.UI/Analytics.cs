@@ -31,6 +31,9 @@ public static class Analytics
     public static string Format(decimal value, string format = "0.0") =>
         value.ToString(format, CultureInfo.InvariantCulture);
 
+    public static string Initials(string name) =>
+        string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+
     public static string Svg(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>Average punch hours per accountable day.</summary>
@@ -164,13 +167,15 @@ public static class Analytics
     /// <summary>Aggregate view of who reviewed whom, and how they were rated.</summary>
     public sealed record PeerSummary(
         int TotalFeedback, int UniqueReviewers, int PeopleReviewed, decimal AverageRating,
-        decimal FeedbackPerReviewer, IReadOnlyList<PeerStanding> Standings);
+        decimal FeedbackPerReviewer, decimal EngagementScore,
+        PeerStanding? MostLiked, PeerStanding? MostCollaborative,
+        IReadOnlyList<PeerStanding> Standings);
 
     public sealed record PeerStanding(string Name, decimal Average, int ReviewsReceived, int ReviewsGiven);
 
     public static PeerSummary Peers(IReadOnlyList<PeerReviewItem> reviews)
     {
-        if (reviews.Count == 0) return new PeerSummary(0, 0, 0, 0, 0, []);
+        if (reviews.Count == 0) return new PeerSummary(0, 0, 0, 0, 0, 0, null, null, []);
 
         var reviewers = reviews.Select(x => PersonName.Normalize(x.ReviewerName)).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var given = reviews.GroupBy(x => PersonName.Normalize(x.ReviewerName), StringComparer.OrdinalIgnoreCase)
@@ -186,13 +191,96 @@ public static class Analytics
             .OrderByDescending(x => x.Average).ThenBy(x => x.Name)
             .ToArray();
 
+        // Everyone who appears at all — as reviewer, subject, or both — so a person who
+        // only gave feedback (never rated) still counts toward the network's population.
+        var people = standings.Select(x => x.Name)
+            .Union(given.Keys, StringComparer.OrdinalIgnoreCase)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        // Engagement: actual give+receive links against a full round-robin ceiling
+        // (everybody rates everybody else once), averaged across the population and
+        // scaled to 0-10. Transparent by construction — not a fitted or fuzzy score.
+        var ceiling = Math.Max(1, people.Length - 1) * 2;
+        var engagement = people.Length == 0 ? 0 : people.Average(name =>
+        {
+            var received = standings.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))?.ReviewsReceived ?? 0;
+            var giv = given.GetValueOrDefault(name);
+            return Math.Clamp((double)(received + giv) / ceiling, 0, 1);
+        }) * 10;
+
+        var mostLiked = standings.Where(x => x.ReviewsReceived >= 2).OrderByDescending(x => x.Average).ThenBy(x => x.Name).FirstOrDefault()
+            ?? standings.OrderByDescending(x => x.Average).ThenBy(x => x.Name).FirstOrDefault();
+        var mostCollaborative = standings.Where(x => x.ReviewsGiven > 0).OrderByDescending(x => x.ReviewsGiven).ThenBy(x => x.Name).FirstOrDefault();
+
         return new PeerSummary(
             reviews.Count,
             reviewers,
             standings.Length,
             decimal.Round(reviews.Average(x => x.Average), 2),
             reviewers == 0 ? 0 : decimal.Round((decimal)reviews.Count / reviewers, 1),
+            decimal.Round((decimal)engagement, 1),
+            mostLiked, mostCollaborative,
             standings);
+    }
+
+    public sealed record NetworkNode(string Name, int Received, int Given, string Tooltip);
+    public sealed record NetworkLink(string Source, string Target, int Value, string Tooltip);
+    public sealed record NetworkGraph(IReadOnlyList<NetworkNode> Nodes, IReadOnlyList<NetworkLink> Links, string? HubName);
+
+    /// <summary>Reviewer-to-subject graph, with the busiest person (most given plus received) named as the hub.</summary>
+    public static NetworkGraph Network(IReadOnlyList<PeerReviewItem> reviews)
+    {
+        if (reviews.Count == 0) return new NetworkGraph([], [], null);
+
+        var received = reviews.GroupBy(x => PersonName.Normalize(x.SubjectName), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Count(), StringComparer.OrdinalIgnoreCase);
+        var given = reviews.GroupBy(x => PersonName.Normalize(x.ReviewerName), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Count(), StringComparer.OrdinalIgnoreCase);
+        var people = received.Keys.Union(given.Keys, StringComparer.OrdinalIgnoreCase).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        var nodes = people.Select(name =>
+        {
+            var r = received.GetValueOrDefault(name);
+            var g = given.GetValueOrDefault(name);
+            return new NetworkNode(name, r, g, $"{name} — {r} received, {g} given");
+        }).ToArray();
+
+        var links = reviews
+            .GroupBy(x => (PersonName.Normalize(x.ReviewerName), PersonName.Normalize(x.SubjectName)))
+            .Select(g => new NetworkLink(g.Key.Item1, g.Key.Item2, g.Count(),
+                $"{g.Key.Item1} → {g.Key.Item2}: {Format(g.Average(x => x.Average), "0.00")} avg"))
+            .ToArray();
+
+        var hub = nodes.OrderByDescending(x => x.Received + x.Given).ThenBy(x => x.Name).FirstOrDefault();
+        return new NetworkGraph(nodes, links, hub?.Name);
+    }
+
+    /// <summary>This engineer's value on each radar axis, in the same order as <see cref="Radar"/>.</summary>
+    public static decimal[] RadarValues(MonthlyPerformanceItem item) =>
+        [item.FillRate(), item.ApprovalScore, item.Punctuality(), item.PunchCompliance(), item.DurationCompliance()];
+
+    public sealed record PeerBreakdown(
+        int ReceivedCount, int GivenCount, decimal AverageReceived,
+        decimal Collaboration, decimal Communication, decimal Reliability, decimal TechnicalHelp,
+        IReadOnlyList<PeerReviewItem> Received);
+
+    /// <summary>Feedback received and given by one person, with per-dimension averages of what they received.</summary>
+    public static PeerBreakdown PeerBreakdownFor(IReadOnlyList<PeerReviewItem> reviews, string name)
+    {
+        var received = reviews.Where(x => PersonName.Matches(x.SubjectName, name)).ToArray();
+        var given = reviews.Count(x => PersonName.Matches(x.ReviewerName, name));
+
+        decimal Dim(Func<PeerReviewItem, decimal> selector)
+        {
+            var rated = received.Select(selector).Where(x => x > 0).ToArray();
+            return rated.Length == 0 ? 0 : decimal.Round(rated.Average(), 2);
+        }
+
+        return new PeerBreakdown(
+            received.Length, given,
+            received.Length == 0 ? 0 : decimal.Round(received.Average(x => x.Average), 2),
+            Dim(x => x.Collaboration), Dim(x => x.Communication), Dim(x => x.Reliability), Dim(x => x.TechnicalHelp),
+            received);
     }
 
     /// <summary>Least-squares projection of the next point, clamped to the score range.</summary>

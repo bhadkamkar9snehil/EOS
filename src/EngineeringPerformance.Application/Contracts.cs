@@ -72,6 +72,25 @@ public interface IWorkbookService
 
     void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null);
     IReadOnlyList<string> GenerateEngineerTemplates(string destinationFolder, IReadOnlyList<Employee> employees, int year, int month);
+
+    /// <summary>Formatted single-employee performance report, covering the score, category breakdown, peer feedback and alerts for that month.</summary>
+    void GenerateEmployeeReport(string destinationPath, EmployeeReportData data);
+
+    /// <summary>Formatted whole-team performance report for the month.</summary>
+    void GenerateTeamReport(string destinationPath, TeamReportData data);
 }
 
 public sealed record WorkbookInspection(string FileName, IReadOnlyList<string> SheetNames, long Length);
+
+/// <summary>
+/// Everything <see cref="IWorkbookService.GenerateEmployeeReport"/> needs, gathered by the
+/// caller from plain Application/Domain types so report layout stays out of the UI project.
+/// </summary>
+public sealed record EmployeeReportData(
+    string EmployeeName, string EmployeeCode, int SeniorityLevel, int Year, int Month,
+    MonthlyPerformanceItem? Current, IReadOnlyList<MonthlyPerformanceItem> History,
+    IReadOnlyList<PeerReviewItem> PeerReviews, IReadOnlyList<string> AlertLines);
+
+public sealed record TeamReportData(
+    int Year, int Month, IReadOnlyList<MonthlyPerformanceItem> Items,
+    IReadOnlyList<PeerReviewItem> PeerReviews, IReadOnlyList<string> AlertLines, int ExcludedCount);

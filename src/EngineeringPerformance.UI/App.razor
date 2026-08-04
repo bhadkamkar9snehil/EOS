@@ -13,7 +13,9 @@
             @NavButton("overview", "Overview", "⌂")
             @NavButton("imports", "Data imports", "⇧")
             @NavButton("employees", "Employees", "◎")
+            @NavButton("peer-insights", "Peer Insights", "⇄")
             @NavButton("templates", "Templates", "□")
+            @NavButton("reports", "Reports", "▤")
             @NavButton("scoring", "Scoring", "↗")
         </nav>
         <div class="nav-footer"><button class="@(_page == "settings" ? "selected" : null)" @onclick='() => Navigate("settings")'>⚙ <span>Settings</span></button><small>Local database</small></div>
@@ -38,7 +40,9 @@
             @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" PeerReviews="_peerReviews" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
             else if (_page == "imports") { @ImportWorkspace() }
             else if (_page == "employees") { @EmployeeWorkspace() }
+            else if (_page == "peer-insights") { <PeerInsights Items="_performance" PeerReviews="_peerReviews" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "templates") { @TemplateWorkspace() }
+            else if (_page == "reports") { <Reports Items="_performance" History="_history" PeerReviews="_peerReviews" Employees="_employees" Month="_selectedMonth" ExcludedCount="_excluded.Count" OnResult="HandleReportResult" /> }
             else if (_page == "scoring") { @ScoringWorkspace() }
             else { @SettingsWorkspace() }
         </main>
@@ -72,12 +76,19 @@
         return new DateTime(lastCompleted.Year, lastCompleted.Month, 1);
     }
 
-    private string PageTitleText => _page switch { "imports" => "Data imports", "employees" => "Employees", "templates" => "Review templates", "scoring" => "Scoring", "settings" => "Settings", _ => "Overview" };
+    private string PageTitleText => _page switch
+    {
+        "imports" => "Data imports", "employees" => "Employees", "peer-insights" => "Peer Insights",
+        "templates" => "Review templates", "reports" => "Reports", "scoring" => "Scoring", "settings" => "Settings",
+        _ => "Overview"
+    };
     private string PageSubtitleText => _page switch
     {
         "imports" => "Load the three ERP exports and the completed engineer reviews for this month.",
         "employees" => "Employee master, identity codes and seniority levels.",
+        "peer-insights" => "Every reviewer, every rating, the whole network — for this month.",
         "templates" => "Create personalized review workbooks for one engineer or the whole team.",
+        "reports" => "Export a formatted, printable performance report.",
         "scoring" => "Category weights used when review ratings are combined.",
         "settings" => "Where this application stores its data.",
         _ => $"Team performance for {_selectedMonth:MMMM yyyy}."
@@ -108,6 +119,7 @@
     }
 
     private void ClearMessage() => _message = string.Empty;
+    private void HandleReportResult((string Message, bool IsError) result) { _message = result.Message; _isError = result.IsError; }
 
     private async Task UploadAsync(ReportType type)
     {

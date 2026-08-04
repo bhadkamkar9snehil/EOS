@@ -1,0 +1,114 @@
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IFileDialogService Dialogs
+@inject IWorkbookService Workbooks
+
+@* Exportable, print-ready performance reports — one engineer or the whole team.
+   Pure export surface: reads the same month's data as Overview and writes a
+   formatted workbook, no state of its own beyond the employee picker. *@
+
+<div class="overview">
+    <div class="report-cards">
+        <section class="card wide">
+            <div class="card-head"><h2>Team report</h2><small>@Month.ToString("MMMM yyyy")</small></div>
+            <p class="chart-note">One workbook: team KPIs, score distribution, every engineer ranked, peer review standings and this month's alerts.</p>
+            <div class="report-meta">
+                <div><strong>@Items.Count</strong><span>Engineers</span></div>
+                <div><strong>@PeerReviews.Count</strong><span>Peer feedback entries</span></div>
+                <div><strong>@AlertLines.Count</strong><span>Alerts</span></div>
+            </div>
+            <button class="action" @onclick="GenerateTeamAsync" disabled="@(_busy || Items.Count == 0)">Generate team report</button>
+            @if (Items.Count == 0)
+            {
+                <p class="chart-note">Import this month's ERP exports first — there is nothing to report yet.</p>
+            }
+        </section>
+
+        <section class="card wide">
+            <div class="card-head"><h2>Employee report</h2><small>Pick one engineer</small></div>
+            <p class="chart-note">Score, category breakdown, score history, peer feedback received and given, and their alerts for the month.</p>
+            <div class="report-picker">
+                <select @bind="_selectedEmployeeId">
+                    <option value="">Select employee</option>
+                    @foreach (var e in Employees.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+                    {
+                        <option value="@e.Id">@e.Name (@e.EmployeeCode)</option>
+                    }
+                </select>
+                <button class="action secondary" @onclick="GenerateEmployeeAsync" disabled="@_busy">Generate employee report</button>
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> History { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
+    [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public int ExcludedCount { get; set; }
+    [Parameter] public EventCallback<(string Message, bool IsError)> OnResult { get; set; }
+
+    private string _selectedEmployeeId = string.Empty;
+    private bool _busy;
+
+    private IReadOnlyList<string> AlertLines
+    {
+        get
+        {
+            var previous = History
+                .Where(x => x.Year == Month.AddMonths(-1).Year && x.Month == Month.AddMonths(-1).Month)
+                .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
+            return Analytics.Anomalies(Items, previous)
+                .Select(a => $"[{a.Level}] {a.EmployeeName} — {a.Headline}: {a.Detail}")
+                .ToArray();
+        }
+    }
+
+    private async Task GenerateTeamAsync()
+    {
+        var destination = Dialogs.PickSaveWorkbook($"TeamReport_{Month:yyyy_MM}.xlsx");
+        if (destination is null) return;
+        _busy = true;
+        try
+        {
+            var data = new TeamReportData(Month.Year, Month.Month, Items, PeerReviews, AlertLines, ExcludedCount);
+            Workbooks.GenerateTeamReport(destination, data);
+            await OnResult.InvokeAsync(($"Team report saved to {destination}.", false));
+        }
+        catch (Exception ex) { await OnResult.InvokeAsync((ex.Message, true)); }
+        finally { _busy = false; }
+    }
+
+    private async Task GenerateEmployeeAsync()
+    {
+        if (!int.TryParse(_selectedEmployeeId, out var id))
+        {
+            await OnResult.InvokeAsync(("Select an employee first.", true));
+            return;
+        }
+        var employee = Employees.SingleOrDefault(x => x.Id == id);
+        if (employee is null) return;
+
+        var destination = Dialogs.PickSaveWorkbook($"{employee.EmployeeCode}_{Sanitize(employee.Name)}_{Month:yyyy_MM}_Report.xlsx");
+        if (destination is null) return;
+        _busy = true;
+        try
+        {
+            var current = Items.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, employee.Name));
+            var history = History.Where(x => PersonName.Matches(x.EmployeeName, employee.Name)).ToArray();
+            var employeeAlerts = AlertLines.Where(x => x.Contains(employee.Name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            var data = new EmployeeReportData(employee.Name, employee.EmployeeCode, employee.SeniorityLevel, Month.Year, Month.Month,
+                current, history, PeerReviews, employeeAlerts);
+            Workbooks.GenerateEmployeeReport(destination, data);
+            await OnResult.InvokeAsync(($"Report for {employee.Name} saved to {destination}.", false));
+        }
+        catch (Exception ex) { await OnResult.InvokeAsync((ex.Message, true)); }
+        finally { _busy = false; }
+    }
+
+    private static string Sanitize(string value) =>
+        string.Concat(value.Trim().Select(c => Path.GetInvalidFileNameChars().Contains(c) || c == ' ' ? '_' : c));
+}

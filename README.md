@@ -38,9 +38,13 @@ The file name carries the **export date**, not the reporting month: the sample `
 
 ### Screens
 
-- **Overview** — six KPI tiles, score distribution and attendance exceptions, a workload-vs-utilization scatter with quadrants, a category-performance radar comparing team average against top and bottom quartile, top quartile and needs-attention lists, attendance-vs-timesheet reconciliation with variance bars, derived alerts by severity, and the full engineer table. A month-over-month score heatmap, trend line and next-month forecast appear once a second month is imported.
+- **Overview** — KPI tiles, score distribution and attendance exceptions, a workload-vs-utilization scatter, a category-performance radar (team average vs top/bottom quartile), top quartile and needs-attention lists, a peer review network with live stats, attendance-vs-timesheet reconciliation, derived alerts by severity, and the full engineer table. A month-over-month score heatmap, trend line and next-month forecast appear once a second month is imported. Every chart is interactive: hover for detail, click a point, bar, or heatmap cell to open that engineer's profile. A search box ("Spotlight an engineer") and every name across the page opens the same profile drawer.
 - **Data imports** — the four inputs, their expected ERP exports, upload/replace actions and validation.
 - **Employees** — employee master; names and seniority levels are editable per row, and each person can be included in or excluded from the analysis.
+- **Peer Insights** — the full-depth peer review view: a larger network chart, every engineer's standing (average received, all four dimensions, received/given counts), and every written comment.
+- **Templates** — one workbook per engineer for the whole team in a single action, or a single personalized workbook.
+- **Reports** — exports a formatted, print-ready Excel workbook: one for the whole team, or one for a single engineer, both pulling the same figures as Overview.
+- **Scoring** — category weights.
 
 ### Analysis rules
 
@@ -49,7 +53,6 @@ Scores combine timesheet completion (55), approval (15) and attendance disciplin
 Names are normalized before matching, because the exports spell the same person both `Dhruv Varachhiya` and `Dhruv  Varachhiya`.
 
 `Dhruv Varachhiya` and `Snehil Bhadkamkar` are excluded from the analysis by default. Exclusions are stored in the database and editable on the Employees screen; they are seeded only on a database that has no exclusion table yet, so re-including someone sticks.
-- **Templates** — one workbook per engineer for the whole team in a single action, or a single personalized workbook.
 
 ### Peer review
 
@@ -57,8 +60,17 @@ Each generated workbook has three sheets: **Self Review**, **Peer Review**, and 
 
 The Peer Review sheet is pre-filled with the rest of the team, one row per colleague, so a reviewer only enters ratings and the codes coming back match the employee master exactly. Four dimensions are rated 1–5 — collaboration, communication, reliability, technical help — with a free-text comment. Cells are validated to 1–5; a row left blank is not counted as feedback.
 
-Collect the completed workbooks and upload them into the **Engineer reviews** input on Data imports. That slot accepts a single workbook or a ZIP of them, and re-importing replaces the month's peer feedback rather than duplicating it. The Peer review card on Overview then shows feedback volume, reviewer count, average rating and the peer standings.
-- **Scoring** — category weights.
+Collect the completed workbooks and upload them into the **Engineer reviews** input on Data imports. That slot accepts a single workbook or a ZIP of them, and re-importing replaces the month's peer feedback rather than duplicating it.
+
+The **peer review network** (Overview and Peer Insights) renders every reviewer→subject pair as a graph — node size is total feedback given plus received, the busiest person is the highlighted hub, drag to untangle, click a node to open that person's profile. Alongside it: total feedback, unique reviewers, feedback per person, an **engagement score** (0–10 — actual feedback links against a full round-robin ceiling where everyone rates everyone, so the formula is stated, not a fitted or vague score), plus the month's most-liked and most-collaborative engineers.
+
+### Reports
+
+The Reports screen exports either report as a polished, multi-sheet `.xlsx` — section headers, zebra-striped tables, score-banded coloring, frozen header rows, landscape print setup fit to one page wide. The **team report** covers KPIs, score distribution, every engineer ranked, peer standings and alerts. The **employee report** covers their score, category breakdown, score history, peer feedback received and given (with comments), and their alerts. Both draw from the same month's data as Overview, so the numbers always match.
+
+### Charts
+
+Overview, Peer Insights and the profile drawer render through [Apache ECharts](https://echarts.apache.org/) (vendored locally in `wwwroot/echarts.min.js` — the app is offline at runtime, so nothing is fetched from a CDN), invoked from Blazor via `wwwroot/charts.js`. Every chart animates on change, has a real tooltip, and — where the data point names an engineer — is clickable through to their profile.
 
 ## Developer run
 

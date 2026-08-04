@@ -1,0 +1,169 @@
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Full-depth peer review view: the whole team, every dimension, every comment.
+   Overview's Peer Review Network card is the summary; this is the drill-down. *@
+
+<div class="overview">
+    @if (Summary.TotalFeedback == 0)
+    {
+        <div class="empty-state">
+            <h2>No peer feedback for @Month.ToString("MMMM yyyy")</h2>
+            <p>Generate review workbooks on the Templates screen — each carries a Peer Review sheet listing the whole team — then upload the completed workbooks (or a ZIP of them) into the Engineer reviews input on Data imports.</p>
+            <button class="action" @onclick='() => OnNavigate.InvokeAsync("templates")'>Go to templates</button>
+        </div>
+    }
+    else
+    {
+        <div class="kpi-row">
+            @Kpi("Total feedback", Summary.TotalFeedback.ToString(), "Entries recorded this month")
+            @Kpi("Unique reviewers", Summary.UniqueReviewers.ToString(), "Engineers who submitted at least one rating")
+            @Kpi("People reviewed", Summary.PeopleReviewed.ToString(), "Engineers who received at least one rating")
+            @Kpi("Average rating", Analytics.Format(Summary.AverageRating, "0.00"), "Across all dimensions and reviews")
+            @Kpi("Feedback / person", Analytics.Format(Summary.FeedbackPerReviewer), "Entries per active reviewer")
+            @Kpi("Engagement", Analytics.Format(Summary.EngagementScore) + " / 10", "vs a full round-robin ceiling")
+        </div>
+
+        <section class="card wide">
+            <div class="card-head"><h2>Peer review network</h2><small>@Month.ToString("MMMM yyyy") — every reviewer/subject pair</small></div>
+            <div class="network-layout">
+                <div id="pi-network" class="echart network-large"></div>
+                <div class="network-stats">
+                    @if (Summary.MostLiked is not null)
+                    {
+                        <div class="network-highlight"><small>Most liked</small><strong>@Summary.MostLiked.Name</strong><span>@Analytics.Format(Summary.MostLiked.Average, "0.00") avg · @Summary.MostLiked.ReviewsReceived reviews</span></div>
+                    }
+                    @if (Summary.MostCollaborative is not null)
+                    {
+                        <div class="network-highlight"><small>Most collaborative</small><strong>@Summary.MostCollaborative.Name</strong><span>@Summary.MostCollaborative.ReviewsGiven reviews given</span></div>
+                    }
+                    @if (LeastReviewed is not null)
+                    {
+                        <div class="network-highlight"><small>Least visible</small><strong>@LeastReviewed.Name</strong><span>@LeastReviewed.ReviewsReceived received</span></div>
+                    }
+                </div>
+            </div>
+            <p class="chart-note">Drag nodes to untangle. Node size is total feedback given plus received. Click a node to open that engineer's profile.</p>
+        </section>
+
+        <div class="overview-grid">
+            <section class="card wide">
+                <div class="card-head"><h2>Standings</h2><small>Sorted by average rating received</small></div>
+                <div class="performance-table peer">
+                    <div class="performance-head">
+                        <span>Engineer</span><span>Avg received</span><span>Collaboration</span><span>Communication</span><span>Reliability</span><span>Technical help</span><span>Received</span><span>Given</span>
+                    </div>
+                    @foreach (var row in Breakdown)
+                    {
+                        <div class="performance-row clickable" @onclick="() => Spotlight(row.Name)" title="View profile">
+                            <strong>@row.Name</strong>
+                            <span class="score-cell"><b class="@(row.Peer.AverageReceived >= 4 ? "good" : row.Peer.AverageReceived >= 3 ? "warning" : row.Peer.ReceivedCount == 0 ? "" : "serious")">@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.AverageReceived, "0.00"))</b></span>
+                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.Collaboration, "0.00"))</span>
+                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.Communication, "0.00"))</span>
+                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.Reliability, "0.00"))</span>
+                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.TechnicalHelp, "0.00"))</span>
+                            <span>@row.Peer.ReceivedCount</span>
+                            <span>@row.Peer.GivenCount</span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="card wide">
+                <div class="card-head"><h2>Comments</h2><small>@AllComments.Count with written feedback</small></div>
+                @if (AllComments.Count == 0)
+                {
+                    <p class="chart-note">No reviewer left a comment this month.</p>
+                }
+                else
+                {
+                    <ul class="comment-list grid">
+                        @foreach (var c in AllComments)
+                        {
+                            <li><strong>@c.ReviewerName → @c.SubjectName</strong><p>@c.Comment</p></li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+    }
+</div>
+
+@if (_spotlightName is not null)
+{
+    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="Month"
+                        Item="Items.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
+                        TeamRadar="Analytics.Radar(Items)" TrendMonths="[]" TrendValues="[]"
+                        Peer="Analytics.PeerBreakdownFor(PeerReviews, _spotlightName)"
+                        Alerts="[]"
+                        OnClose="() => _spotlightName = null" />
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
+    [Parameter, EditorRequired] public DateTime Month { get; set; }
+    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+
+    private string? _spotlightName;
+    private string? _renderedSignature;
+    private bool _chartsPending;
+    private DotNetObjectReference<PeerInsights>? _selfRef;
+
+    /// <summary>Called from charts.js when the network chart's node is clicked.</summary>
+    [JSInvokable]
+    public void DrilldownTo(string name) => Spotlight(name);
+
+    private Analytics.PeerSummary Summary => Analytics.Peers(PeerReviews);
+    private Analytics.PeerStanding? LeastReviewed => Summary.Standings.Count == 0 ? null : Summary.Standings.OrderBy(x => x.ReviewsReceived).ThenBy(x => x.Name).First();
+
+    private IReadOnlyList<(string Name, Analytics.PeerBreakdown Peer)> Breakdown => Items
+        .Select(x => x.EmployeeName)
+        .Union(Summary.Standings.Select(x => x.Name), StringComparer.OrdinalIgnoreCase)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Select(name => (name, Analytics.PeerBreakdownFor(PeerReviews, name)))
+        .OrderByDescending(x => x.Item2.AverageReceived)
+        .ToArray();
+
+    private IReadOnlyList<PeerReviewItem> AllComments => PeerReviews
+        .Where(x => !string.IsNullOrWhiteSpace(x.Comment))
+        .OrderBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    private void Spotlight(string name) => _spotlightName = PersonName.Normalize(name);
+
+    protected override void OnParametersSet()
+    {
+        var signature = $"{PeerReviews.Count}|{Month:yyyyMM}";
+        if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_chartsPending || Summary.TotalFeedback == 0) return;
+        _chartsPending = false;
+
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("epaCharts.registerDrilldown", _selfRef);
+
+        var graph = Analytics.Network(PeerReviews);
+        await JS.InvokeVoidAsync("epaCharts.network", "pi-network",
+            graph.Nodes.Select(n => new { name = n.Name, received = n.Received, given = n.Given, tooltip = n.Tooltip, initials = Analytics.Initials(n.Name) }).ToArray(),
+            graph.Links.Select(l => new { source = l.Source, target = l.Target, value = l.Value, tooltip = l.Tooltip }).ToArray(),
+            graph.HubName);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("epaCharts.dispose", "pi-network"); } catch (JSDisconnectedException) { }
+        _selfRef?.Dispose();
+    }
+
+    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi">
+        <span class="kpi-label">@label</span>
+        <strong>@value</strong>
+        <small>@hint</small>
+    </div>;
+}

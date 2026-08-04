@@ -1,3 +1,4 @@
+using EngineeringPerformance.Application;
 using EngineeringPerformance.Infrastructure;
 using EngineeringPerformance.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,42 @@ namespace EngineeringPerformance.Infrastructure.Tests;
 
 public sealed class DatabaseTests
 {
+    [Fact]
+    public void TeamAndEmployeeReportsAreValidWorkbooks()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-reports-{Guid.NewGuid():N}");
+        try
+        {
+            var items = new[]
+            {
+                new MonthlyPerformanceItem("Priyanka Makwana", "E1001", 92m, 90m, 95m, 88m, 180m, 200m, 120m, 60m, 40, 3, 20, 1, 0, 1, 0, 0, 2026, 7, 150m, 148m, 20, 20, 10m, 5m),
+                new MonthlyPerformanceItem("Rohit Sharma", "E1002", 61m, 55m, 70m, 65m, 100m, 200m, 80m, 30m, 20, 2, 18, 2, 3, 2, 1, 1, 2026, 7, 140m, 120m, 15, 20, 5m, 2m)
+            };
+            var reviews = new[]
+            {
+                new PeerReviewItem("Rohit Sharma", "E1002", "Priyanka Makwana", "E1001", 5, 4, 5, 4, 4.5m, "Great to work with.")
+            };
+            var service = new WorkbookService();
+
+            var teamPath = Path.Combine(folder, "TeamReport.xlsx");
+            service.GenerateTeamReport(teamPath, new TeamReportData(2026, 7, items, reviews, ["[Warning] Rohit Sharma — Sample alert."], 1));
+            Assert.True(File.Exists(teamPath));
+            using (var wb = new ClosedXML.Excel.XLWorkbook(teamPath))
+                Assert.Contains("Team summary", wb.Worksheets.Select(x => x.Name));
+
+            var employeePath = Path.Combine(folder, "EmployeeReport.xlsx");
+            service.GenerateEmployeeReport(employeePath, new EmployeeReportData(
+                "Priyanka Makwana", "E1001", 3, 2026, 7, items[0], items, reviews, []));
+            Assert.True(File.Exists(employeePath));
+            using (var wb = new ClosedXML.Excel.XLWorkbook(employeePath))
+                Assert.Contains("Summary", wb.Worksheets.Select(x => x.Name));
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
     [Fact]
     public async Task DatabaseCanInitialize()
     {
