@@ -69,12 +69,11 @@
         <div class="table-head roster full">
             <span>Code</span><span>Engineer</span><span>Level</span><span>Team</span><span>Billable</span><span>Employment</span><span>In analysis</span><span></span>
         </div>
-        @foreach (var employee in State.Employees)
-        {
+        <Virtualize TItem="EmployeeListItem" Items="State.Employees.ToList()" Context="employee" ItemSize="58">
             <div class="data-row roster full @(employee.IsExcluded ? "excluded" : null)">
                 <code>@employee.EmployeeCode</code>
                 <span class="roster-name">
-                    <input class="cell-input" value="@(_editName.TryGetValue(employee.Id, out var n) ? n : employee.Name)" @onchange="e => _editName[employee.Id] = e.Value?.ToString() ?? string.Empty" />
+                    <input class="cell-input" value="@(_editName.TryGetValue(employee.Id, out var editedName) ? editedName : employee.Name)" @onchange="e => _editName[employee.Id] = e.Value?.ToString() ?? string.Empty" />
                     @if (!string.IsNullOrWhiteSpace(employee.Email))
                     {
                         <small>@employee.Email</small>
@@ -125,7 +124,7 @@
                     <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@State.Busy">Remove</button>
                 </div>
             </div>
-        }
+        </Virtualize>
         @if (State.Employees.Count == 0)
         {
             <div class="table-empty">No employees yet. Add one above, or import the ERP roster — it registers every engineer it finds.</div>
