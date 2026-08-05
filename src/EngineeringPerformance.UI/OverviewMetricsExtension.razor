@@ -28,12 +28,11 @@
                 <div id="overview-score-components"
                      class="echart"
                      style="height:@ScoreChartHeightPx}px"></div>
-                <p class="chart-explanation">Each stacked bar totals the engineer's operational score. Missing utilization data automatically removes the unavailable timesheet and approval weights rather than treating them as zero.</p>
             </section>
 
             <section class="card span-4 review-priorities-card">
                 <div class="card-head">
-                    <div><h2>Review priorities</h2><small>One consolidated people-review panel</small></div>
+                    <div><h2>Review priorities</h2><small>Consolidated people-review signals</small></div>
                     <button class="link" @onclick='() => Navigation.NavigateTo("/data")'>Numerical audit →</button>
                 </div>
 
@@ -43,38 +42,60 @@
                     <div><span>Variance ≥ 40 h</span><strong>@HighVarianceCount</strong></div>
                 </div>
 
-                <section class="review-section">
-                    <h3>Top performers</h3>
-                    <ol class="review-list">
-                        @foreach (var item in TopPerformers)
-                        {
-                            <li><span>@item.EmployeeName</span><b class="good">@Analytics.Format(item.OperationalScore)</b></li>
-                        }
-                    </ol>
-                </section>
+                <div class="review-dual-grid">
+                    <section class="review-section">
+                        <h3>Top performers</h3>
+                        <ol class="review-list">
+                            @foreach (var item in TopPerformers)
+                            {
+                                <li><span>@item.EmployeeName</span><b class="good">@Analytics.Format(item.OperationalScore)</b></li>
+                            }
+                        </ol>
+                    </section>
 
-                <section class="review-section">
-                    <h3>Needs attention</h3>
-                    <ol class="review-list">
-                        @foreach (var item in NeedsAttention)
-                        {
-                            <li><span>@item.EmployeeName</span><b class="@(item.OperationalScore < 55 ? "critical" : "warning")">@Analytics.Format(item.OperationalScore)</b></li>
-                        }
-                    </ol>
-                </section>
+                    <section class="review-section">
+                        <h3>Needs attention</h3>
+                        <ol class="review-list">
+                            @foreach (var item in NeedsAttention)
+                            {
+                                <li><span>@item.EmployeeName</span><b class="@(item.OperationalScore < 55 ? "critical" : "warning")">@Analytics.Format(item.OperationalScore)</b></li>
+                            }
+                        </ol>
+                    </section>
+                </div>
 
-                <section class="review-section">
-                    <h3>Attendance & reconciliation</h3>
-                    <ol class="review-list">
+                <section class="review-section attendance-review-section">
+                    <div class="review-section-title">
+                        <h3>Attendance &amp; reconciliation</h3>
+                        <small>Largest absolute hour gaps</small>
+                    </div>
+                    <div class="attendance-signal-grid">
                         @foreach (var item in AttendanceReview)
                         {
-                            <li>
-                                <span>@item.EmployeeName</span>
-                                <b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b>
-                                <small>@ExceptionCount(item) exception day(s): @item.MissingPunchDays punch · @item.LateDays late · @item.EarlyDays early · @item.LessDurationDays short</small>
-                            </li>
+                            <button type="button"
+                                    class="attendance-signal"
+                                    title="Open @item.EmployeeName analysis"
+                                    @onclick="() => OpenEmployee(item)">
+                                <span class="attendance-signal-head">
+                                    <i class="signal-avatar">@Initials(item.EmployeeName)</i>
+                                    <span class="signal-person">
+                                        <strong>@item.EmployeeName</strong>
+                                        <small>@ExceptionCount(item) exception day(s)</small>
+                                    </span>
+                                    <b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b>
+                                </span>
+                                <span class="variance-meter" aria-hidden="true">
+                                    <i style="@($"width:{VarianceWidth(item)}%")"></i>
+                                </span>
+                                <span class="signal-chips">
+                                    <i class="@(item.MissingPunchDays > 0 ? "active" : null)">Punch @item.MissingPunchDays</i>
+                                    <i class="@(item.LateDays > 0 ? "active" : null)">Late @item.LateDays</i>
+                                    <i class="@(item.EarlyDays > 0 ? "active" : null)">Early @item.EarlyDays</i>
+                                    <i class="@(item.LessDurationDays > 0 ? "active" : null)">Short @item.LessDurationDays</i>
+                                </span>
+                            </button>
                         }
-                    </ol>
+                    </div>
                 </section>
             </section>
 
@@ -197,8 +218,21 @@
         .Take(4)
         .ToArray();
 
+    private decimal MaxAttendanceVariance => Math.Max(1m, AttendanceReview.Select(x => Math.Abs(x.ReconciliationVariance)).DefaultIfEmpty(1m).Max());
+
+    private decimal VarianceWidth(MonthlyPerformanceItem item) =>
+        decimal.Round(Math.Min(100m, Math.Abs(item.ReconciliationVariance) / MaxAttendanceVariance * 100m), 1);
+
     private static int ExceptionCount(MonthlyPerformanceItem x) => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays;
     private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
+
+    private static string Initials(string name) => string.Concat(name
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Take(2)
+        .Select(x => char.ToUpperInvariant(x[0])));
+
+    private void OpenEmployee(MonthlyPerformanceItem item) =>
+        Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(item.EmployeeName)}");
 
     private RenderFragment Kpi(string label, decimal value, string unit, string? tone = null) => @<div class="kpi @tone">
         <span class="kpi-label">@label</span>
