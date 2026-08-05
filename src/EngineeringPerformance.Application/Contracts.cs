@@ -5,6 +5,18 @@ namespace EngineeringPerformance.Application;
 public sealed record SourceSlot(ReportType ReportType, SourceStatus Status, string? FileName = null);
 public sealed record DashboardSnapshot(string ReportingMonth, int ActiveEmployees, IReadOnlyList<SourceSlot> SourceSlots, int OpenIssues, decimal? OperationalDisciplineScore);
 
+public sealed record OperationalScoringSettings(
+    decimal TimesheetCompletionWeight = 55m,
+    decimal ApprovalCompletionWeight = 15m,
+    decimal AttendanceDisciplineWeight = 30m)
+{
+    public decimal Total => TimesheetCompletionWeight + ApprovalCompletionWeight + AttendanceDisciplineWeight;
+    public bool IsValid => TimesheetCompletionWeight >= 0m && ApprovalCompletionWeight >= 0m &&
+                           AttendanceDisciplineWeight >= 0m && Total == 100m;
+
+    public static OperationalScoringSettings Default { get; } = new();
+}
+
 public interface IApplicationDatabase
 {
     Task InitializeAsync(CancellationToken cancellationToken = default);
@@ -19,6 +31,12 @@ public interface IApplicationDatabase
 
     /// <summary>Performance rows for the given month and the months preceding it, oldest first.</summary>
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default);
+
+    /// <summary>Current operational-score weights. Stored locally and applied to every imported month.</summary>
+    Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Saves operational-score weights and recalculates every existing monthly performance row. Returns rows recalculated.</summary>
+    Task<int> SaveOperationalScoringSettingsAsync(OperationalScoringSettings settings, CancellationToken cancellationToken = default);
 
     /// <summary>Imports one review workbook, or a ZIP of them, replacing the month's peer feedback.</summary>
     Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default);
