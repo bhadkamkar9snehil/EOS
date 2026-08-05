@@ -41,6 +41,9 @@ public interface IApplicationDatabase
     /// <summary>Manually sets probation status, overriding the ERP roster's value. Pass null to clear the override and revert to the roster.</summary>
     Task SetProbationAsync(int employeeId, bool? value, CancellationToken cancellationToken = default);
 
+    /// <summary>Append-only import log, newest first. Pass null for year/month to see every month.</summary>
+    Task<IReadOnlyList<ImportHistoryItem>> GetImportHistoryAsync(int? year = null, int? month = null, int take = 200, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TeamItem>> GetTeamsAsync(CancellationToken cancellationToken = default);
     Task<int> AddTeamAsync(string name, CancellationToken cancellationToken = default);
     Task RenameTeamAsync(int teamId, string name, CancellationToken cancellationToken = default);
@@ -62,6 +65,15 @@ public sealed record EmployeeListItem(
     int? TeamId, string? TeamName);
 
 public sealed record TeamItem(int Id, string Name, int MemberCount);
+
+/// <summary>One row of the append-only import log, for the upload-history view.</summary>
+public sealed record ImportHistoryItem(
+    int Id, ReportType ReportType, int Year, int Month,
+    string OriginalFileName, int RowCount, bool ReplacedExisting, DateTime ImportedUtc)
+{
+    /// <summary>Stored in UTC; every display of it is local, since imports are a local-desk activity.</summary>
+    public DateTime ImportedLocal => DateTime.SpecifyKind(ImportedUtc, DateTimeKind.Utc).ToLocalTime();
+}
 public sealed record MonthlyPerformanceItem(string EmployeeName, string? EmployeeCode, decimal OperationalScore,
     decimal TimesheetCompletionScore, decimal ApprovalScore, decimal AttendanceDisciplineScore,
     decimal EnteredHours, decimal ComplianceHours, decimal BillableHours, decimal DetailedHours,

@@ -217,4 +217,82 @@ public sealed class DatabaseTests
             if (Directory.Exists(folder)) Directory.Delete(folder, true);
         }
     }
+
+    /// <summary>
+    /// The import log must be append-only: re-uploading the same slot replaces the
+    /// <see cref="ImportedSourceFile"/> row but has to leave a second audit line behind,
+    /// otherwise a daily upload routine has no reviewable trail.
+    /// </summary>
+    [Fact]
+    public async Task ReimportingASlotAppendsToTheAuditLogRatherThanReplacingIt()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-audit-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        var databasePath = Path.Combine(folder, "audit-test.db");
+        try
+        {
+            var workbookPath = Path.Combine(folder, "RPwiseTimesheetUtilazationReport01-Aug-2026_00_00_00.xlsx");
+            using (var workbook = new ClosedXML.Excel.XLWorkbook())
+            {
+                var sheet = workbook.AddWorksheet("Sheet1");
+                // "Total Month Hours" + "Utilization" is what DetectReportType keys on for this
+                // report, and the reader looks the rest up by exact header text.
+                sheet.Cell(3, 1).Value = "Employee Name";
+                sheet.Cell(3, 2).Value = "Total Month Hours";
+                sheet.Cell(3, 3).Value = "Utilization";
+                sheet.Cell(3, 4).Value = "Timsheet Compliance hours";
+                sheet.Cell(3, 5).Value = "Total\nEntered Timesheet Hours";
+                sheet.Cell(3, 6).Value = "Approved Timesheet Hours";
+                sheet.Cell(3, 9).Value = "Billable Hours";
+                sheet.Cell(3, 10).Value = "Non Billable Hours";
+                sheet.Cell(3, 11).Value = "Sum of Training";
+                sheet.Cell(3, 13).Value = "Sum of Office Working Hours";
+                sheet.Cell(4, 1).Value = "Priyanka Makwana";
+                sheet.Cell(4, 2).Value = 200;
+                sheet.Cell(4, 3).Value = 95;
+                sheet.Cell(4, 4).Value = 200;
+                sheet.Cell(4, 5).Value = 190;
+                sheet.Cell(4, 6).Value = 185;
+                sheet.Cell(4, 9).Value = 150;
+                sheet.Cell(4, 10).Value = 40;
+                sheet.Cell(4, 11).Value = 0;
+                sheet.Cell(4, 13).Value = 180;
+                workbook.SaveAs(workbookPath);
+            }
+
+            var options = new DbContextOptionsBuilder<PerformanceDbContext>().UseSqlite($"Data Source={databasePath}").Options;
+            var factory = new TestContextFactory(options);
+            var database = new LocalApplicationDatabase(factory, new WorkbookService());
+            await database.InitializeAsync();
+
+            await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, workbookPath);
+            var afterFirst = await database.GetImportHistoryAsync(2026, 7);
+            Assert.Single(afterFirst);
+            Assert.False(afterFirst[0].ReplacedExisting);
+            Assert.Equal(1, afterFirst[0].RowCount);
+
+            await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, workbookPath);
+            var afterSecond = await database.GetImportHistoryAsync(2026, 7);
+            Assert.Equal(2, afterSecond.Count);
+            // Newest first, and the newer line records that it overwrote the earlier file.
+            Assert.True(afterSecond[0].ReplacedExisting);
+            Assert.False(afterSecond[1].ReplacedExisting);
+
+            // The slot itself is still single-valued — only the log grew.
+            await using var context = factory.CreateDbContext();
+            Assert.Single(await context.ImportedSourceFiles
+                .Where(x => x.Year == 2026 && x.Month == 7 && x.ReportType == ReportType.MonthlyTimesheetSummary)
+                .ToListAsync());
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
+    private sealed class TestContextFactory(DbContextOptions<PerformanceDbContext> options) : IDbContextFactory<PerformanceDbContext>
+    {
+        public PerformanceDbContext CreateDbContext() => new(options);
+    }
 }

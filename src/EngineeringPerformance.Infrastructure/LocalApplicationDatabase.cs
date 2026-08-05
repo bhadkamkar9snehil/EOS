@@ -156,6 +156,16 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ImportHistoryItem>> GetImportHistoryAsync(int? year = null, int? month = null, int take = 200, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.ImportAuditEntries.AsQueryable();
+        if (year is not null && month is not null) query = query.Where(x => x.Year == year && x.Month == month);
+        var rows = await query.OrderByDescending(x => x.ImportedUtc).ThenByDescending(x => x.Id).Take(take).ToListAsync(cancellationToken);
+        return rows.Select(x => new ImportHistoryItem(
+            x.Id, x.ReportType, x.Year, x.Month, x.OriginalFileName, x.RowCount, x.ReplacedExisting, x.ImportedUtc)).ToArray();
+    }
+
     public async Task<IReadOnlyList<TeamItem>> GetTeamsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -267,6 +277,11 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
                 x => x.Year == coveredYear && x.Month == coveredMonth && x.ReportType == reportType, cancellationToken);
             if (previous is not null) context.ImportedSourceFiles.Remove(previous);
             context.ImportedSourceFiles.Add(new ImportedSourceFile(reportType, coveredYear, coveredMonth, inspection.FileName, storedPath, inspection.SheetNames.Count));
+            // The slot row above is replaced on every re-upload; this log line is not, so a daily
+            // upload routine leaves a reviewable trail of what landed when.
+            var rowsForMonth = performance.Count(x => x.Year == coveredYear && x.Month == coveredMonth);
+            context.ImportAuditEntries.Add(new ImportAuditEntry(
+                reportType, coveredYear, coveredMonth, inspection.FileName, rowsForMonth, previous is not null));
         }
         // A multi-month export yields one row per employee per month, so the same employee code
         // recurs many times; codes queued earlier in this batch aren't visible to a database
@@ -343,6 +358,8 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             var storedPath = Path.Combine(storedDirectory, $"{(int)ReportType.EngineerReviewWorkbook}-{Path.GetFileName(path)}");
             File.Copy(path, storedPath, true);
             context.ImportedSourceFiles.Add(new ImportedSourceFile(ReportType.EngineerReviewWorkbook, year, month, inspection.FileName, storedPath, accepted));
+            context.ImportAuditEntries.Add(new ImportAuditEntry(
+                ReportType.EngineerReviewWorkbook, year, month, inspection.FileName, accepted, previousFile is not null));
 
             await context.SaveChangesAsync(cancellationToken);
             return accepted;

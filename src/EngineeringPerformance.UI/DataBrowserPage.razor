@@ -1,0 +1,186 @@
+@page "/data"
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IApplicationDatabase Database
+@inject AppState State
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@* Everything the imports actually put in the database, in two views: the per-employee rows
+   for the selected month, and the append-only log of every file upload. This is the screen
+   to open when a number elsewhere looks wrong and you need to see the underlying data. *@
+
+<section class="single-pane wide">
+    <div class="tab-bar">
+        <button class="tab @(_tab == Tab.Rows ? "selected" : null)" @onclick="() => _tab = Tab.Rows">
+            Imported rows <span class="tab-count">@FilteredRows.Count</span>
+        </button>
+        <button class="tab @(_tab == Tab.History ? "selected" : null)" @onclick="() => _tab = Tab.History">
+            Upload history <span class="tab-count">@_history.Count</span>
+        </button>
+        <label class="tab-scope">
+            <input type="checkbox" @bind="_allMonths" @bind:after="ReloadHistoryAsync" />
+            All months
+        </label>
+    </div>
+
+    @if (_tab == Tab.Rows)
+    {
+        <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter by engineer or code…" />
+        @if (FilteredRows.Count == 0)
+        {
+            <div class="table-empty">
+                @(State.Performance.Count == 0
+                    ? $"Nothing imported for {State.SelectedMonth:MMMM yyyy} yet."
+                    : $"No engineer matches “{_filter}”.")
+            </div>
+        }
+        else
+        {
+            <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid">
+                <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_byName">
+                    <span class="roster-name"><strong>@context.EmployeeName</strong></span>
+                </TemplateColumn>
+                <PropertyColumn Title="Code" Property="@(x => x.EmployeeCode)" Sortable="true" />
+                <TemplateColumn Title="Score" Align="Align.Right" Sortable="true" SortBy="@_byScore">
+                    <span class="score-cell"><b class="@Analytics.ScoreBand(context.OperationalScore)">@Analytics.Format(context.OperationalScore)</b></span>
+                </TemplateColumn>
+                <TemplateColumn Title="Filled (d)" Align="Align.Right" Sortable="true" SortBy="@_byFilled">
+                    <span class="num">@context.TimesheetFilledDays / @context.ExpectedTimesheetDays</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Entered (h)" Align="Align.Right" Sortable="true" SortBy="@_byEntered">
+                    <span class="num">@Num(context.EnteredHours)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Approved (h)" Align="Align.Right" Sortable="true" SortBy="@_byApproved">
+                    <span class="num">@Num(context.ApprovedHours)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Billable (h)" Align="Align.Right" Sortable="true" SortBy="@_byBillable">
+                    <span class="num">@Num(context.BillableHours)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Non-bill (h)" Align="Align.Right">
+                    <span class="num">@Num(context.NonBillableHours)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Punch (h)" Align="Align.Right" Sortable="true" SortBy="@_byPunch">
+                    <span class="num">@Num(context.PunchHours)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Attend (d)" Align="Align.Right">
+                    <span class="num">@Num(context.AttendanceDays)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Leave (d)" Align="Align.Right">
+                    <span class="num">@Num(context.LeaveDays)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Entries" Align="Align.Right" Sortable="true" SortBy="@_byEntries">
+                    <span class="num">@(context.DetailedEntries == 0 ? "—" : context.DetailedEntries.ToString())</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Sources">
+                    <span class="tag-row">
+                        @if (context.ComplianceHours > 0)
+                        {
+                            <span class="tag muted" title="Monthly utilization summary">MS</span>
+                        }
+                        @if (context.DetailedEntries > 0)
+                        {
+                            <span class="tag muted" title="Detailed timesheet">DT</span>
+                        }
+                        @if (context.AttendanceDays > 0 || context.PunchHours > 0)
+                        {
+                            <span class="tag muted" title="Attendance and leave">AT</span>
+                        }
+                    </span>
+                </TemplateColumn>
+            </QuickGrid>
+        }
+    }
+    else
+    {
+        @if (_history.Count == 0)
+        {
+            <div class="table-empty">
+                No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.
+                The log starts from the first upload after this feature was added — earlier imports predate it.
+            </div>
+        }
+        else
+        {
+            <QuickGrid Items="@_history.AsQueryable()" Class="epa-grid">
+                <TemplateColumn Title="Uploaded">
+                    <span class="num-left">@context.ImportedLocal.ToString("dd MMM yyyy, HH:mm")</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Input">
+                    <span class="tag-row"><span class="tag muted">@Initial(context.ReportType)</span> @Label(context.ReportType)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Reporting month">
+                    @(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))
+                </TemplateColumn>
+                <TemplateColumn Title="File">
+                    <span class="filename" title="@context.OriginalFileName">@context.OriginalFileName</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Rows" Align="Align.Right">
+                    <span class="num">@(context.RowCount == 0 ? "—" : context.RowCount.ToString())</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Effect">
+                    <span class="@(context.ReplacedExisting ? "flag-warning" : null)">@(context.ReplacedExisting ? "Replaced earlier file" : "First upload")</span>
+                </TemplateColumn>
+            </QuickGrid>
+        }
+    }
+</section>
+
+@code {
+    private enum Tab { Rows, History }
+
+    private Tab _tab = Tab.Rows;
+    private string _filter = string.Empty;
+    private bool _allMonths;
+    private IReadOnlyList<ImportHistoryItem> _history = [];
+
+    private static readonly GridSort<MonthlyPerformanceItem> _byName = GridSort<MonthlyPerformanceItem>.ByAscending(x => x.EmployeeName);
+    private static readonly GridSort<MonthlyPerformanceItem> _byScore = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.OperationalScore);
+    private static readonly GridSort<MonthlyPerformanceItem> _byFilled = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.TimesheetFilledDays);
+    private static readonly GridSort<MonthlyPerformanceItem> _byEntered = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.EnteredHours);
+    private static readonly GridSort<MonthlyPerformanceItem> _byApproved = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.ApprovedHours);
+    private static readonly GridSort<MonthlyPerformanceItem> _byBillable = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.BillableHours);
+    private static readonly GridSort<MonthlyPerformanceItem> _byPunch = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.PunchHours);
+    private static readonly GridSort<MonthlyPerformanceItem> _byEntries = GridSort<MonthlyPerformanceItem>.ByDescending(x => x.DetailedEntries);
+
+    private IReadOnlyList<MonthlyPerformanceItem> FilteredRows => string.IsNullOrWhiteSpace(_filter)
+        ? State.Performance
+        : State.Performance.Where(x =>
+            x.EmployeeName.Contains(_filter, StringComparison.OrdinalIgnoreCase) ||
+            (x.EmployeeCode?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnStateChanged;
+        await ReloadHistoryAsync();
+    }
+
+    // The history query is month-scoped by default, so it has to be re-run whenever the
+    // topbar's reporting month changes, not just on first render.
+    private void OnStateChanged() => InvokeAsync(async () => { await ReloadHistoryAsync(); StateHasChanged(); });
+
+    private async Task ReloadHistoryAsync() =>
+        _history = _allMonths
+            ? await Database.GetImportHistoryAsync()
+            : await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private static string Num(decimal value) => value <= 0 ? "—" : Analytics.Format(value);
+
+    private static string Initial(ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary => "MS",
+        ReportType.DetailedTimesheetTransactions => "DT",
+        ReportType.AttendanceLeaveUaaTimesheet => "AT",
+        _ => "ER"
+    };
+
+    private static string Label(ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary => "Monthly utilization summary",
+        ReportType.DetailedTimesheetTransactions => "Detailed timesheet",
+        ReportType.AttendanceLeaveUaaTimesheet => "Attendance and leave",
+        _ => "Engineer reviews"
+    };
+}

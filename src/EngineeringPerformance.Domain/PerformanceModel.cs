@@ -134,6 +134,33 @@ public sealed class ImportedSourceFile
     public DateTime ImportedUtc { get; private set; }
 }
 
+/// <summary>
+/// Append-only log of every file import. <see cref="ImportedSourceFile"/> answers "what is
+/// currently loaded in this slot" and is replaced on re-upload; this answers "what happened,
+/// and when", which a daily upload routine needs in order to be auditable.
+/// </summary>
+public sealed class ImportAuditEntry
+{
+    private ImportAuditEntry() { }
+    public ImportAuditEntry(ReportType reportType, int year, int month, string originalFileName, int rowCount, bool replacedExisting)
+    {
+        ReportType = reportType; Year = year; Month = month; OriginalFileName = originalFileName;
+        RowCount = rowCount; ReplacedExisting = replacedExisting; ImportedUtc = DateTime.UtcNow;
+    }
+    public int Id { get; private set; }
+    public ReportType ReportType { get; private set; }
+    public int Year { get; private set; }
+    public int Month { get; private set; }
+    public string OriginalFileName { get; private set; } = string.Empty;
+
+    /// <summary>Rows the workbook yielded for this month — 0 means the file parsed but held nothing.</summary>
+    public int RowCount { get; private set; }
+
+    /// <summary>True when this upload overwrote an earlier file in the same slot and month.</summary>
+    public bool ReplacedExisting { get; private set; }
+    public DateTime ImportedUtc { get; private set; }
+}
+
 public sealed class EmployeeMonthlyPerformance
 {
     public int Id { get; set; }

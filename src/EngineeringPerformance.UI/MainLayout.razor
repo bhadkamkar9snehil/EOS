@@ -18,6 +18,7 @@
 
             <span class="nav-group-label">Manage</span>
             @NavButton("imports", "Data imports", Icon.Imports)
+            @NavButton("data", "Imported data", Icon.DataBrowser)
             @NavButton("employees", "Employees", Icon.Employees)
             @NavButton("templates", "Templates", Icon.Templates)
 
@@ -95,7 +96,7 @@
 
     private string PageTitleText => CurrentRoute switch
     {
-        "imports" => "Data imports", "timesheets" => "Timesheets & approvals", "employees" => "Employees & teams",
+        "imports" => "Data imports", "data" => "Imported data", "timesheets" => "Timesheets & approvals", "employees" => "Employees & teams",
         "peer-insights" => "Peer Insights",
         "templates" => "Review templates", "reports" => "Reports", "scoring" => "Scoring", "settings" => "Settings",
         "employee" => State.SpotlightName ?? "Employee",
@@ -104,6 +105,7 @@
     private string PageSubtitleText => CurrentRoute switch
     {
         "imports" => "Load the three ERP exports and the completed engineer reviews for this month.",
+        "data" => "Every row the imports produced, and the log of what was uploaded when.",
         "timesheets" => "Who has not filled and what is still awaiting approval.",
         "employees" => "Identity, seniority, team assignment, and billable/consultant/probation status.",
         "peer-insights" => "Every reviewer, every rating, the whole network — for this month.",
@@ -128,6 +130,7 @@
 
         public static readonly string Overview = Svg($"<path d=\"M3 10.5 10 4l7 6.5\" {Stroke}/><path d=\"M5 9v7h10V9\" {Stroke}/><path d=\"M8 16v-4h4v4\" {Stroke}/>");
         public static readonly string Imports = Svg($"<path d=\"M10 13V4\" {Stroke}/><path d=\"M6.5 7.5 10 4l3.5 3.5\" {Stroke}/><path d=\"M4 13v3h12v-3\" {Stroke}/>");
+        public static readonly string DataBrowser = Svg($"<rect x=\"3.5\" y=\"4.5\" width=\"13\" height=\"11\" rx=\"1.6\" {Stroke}/><path d=\"M3.5 8.2h13M8.2 8.2V15.5M12.6 8.2V15.5\" {Stroke}/>");
         public static readonly string Timesheets = Svg($"<rect x=\"4\" y=\"4\" width=\"12\" height=\"12\" rx=\"2.5\" {Stroke}/><path d=\"M7 10.2 9 12l4-4.2\" {Stroke}/>");
         public static readonly string Employees = Svg($"<circle cx=\"7.5\" cy=\"7\" r=\"2.4\" {Stroke}/><path d=\"M3.2 16c.5-2.7 2.2-4.2 4.3-4.2s3.8 1.5 4.3 4.2\" {Stroke}/><circle cx=\"14.2\" cy=\"7.6\" r=\"1.9\" {Stroke}/><path d=\"M13 11.9c1.9.2 3.1 1.5 3.6 3.9\" {Stroke}/>");
         public static readonly string PeerInsights = Svg($"<path d=\"M4 6h9l-2.2-2.2\" {Stroke}/><path d=\"M16 14H7l2.2 2.2\" {Stroke}/>");

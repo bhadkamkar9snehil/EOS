@@ -8,6 +8,7 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<ReportingMonth> ReportingMonths => Set<ReportingMonth>();
     public DbSet<ImportedSourceFile> ImportedSourceFiles => Set<ImportedSourceFile>();
+    public DbSet<ImportAuditEntry> ImportAuditEntries => Set<ImportAuditEntry>();
     public DbSet<EmployeeMonthlyPerformance> EmployeeMonthlyPerformances => Set<EmployeeMonthlyPerformance>();
     public DbSet<PeerReview> PeerReviews => Set<PeerReview>();
     public DbSet<Team> Teams => Set<Team>();
@@ -47,6 +48,15 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
             entity.Property(x => x.OriginalFileName).HasMaxLength(260).IsRequired();
             entity.Property(x => x.StoredPath).HasMaxLength(1000).IsRequired();
             entity.HasIndex(x => new { x.Year, x.Month, x.ReportType }).IsUnique();
+        });
+        modelBuilder.Entity<ImportAuditEntry>(entity =>
+        {
+            entity.ToTable("import_audit_entry");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.OriginalFileName).HasMaxLength(260).IsRequired();
+            // Deliberately not unique: this table is an append-only log, so the same slot and
+            // month legitimately recurs once per upload.
+            entity.HasIndex(x => x.ImportedUtc);
         });
         modelBuilder.Entity<PeerReview>(entity =>
         {

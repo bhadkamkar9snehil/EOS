@@ -1294,3 +1294,97 @@ footer {
     }
 }
 
+
+/* ==========================================================================
+   PAGE GUTTERS, READ-ONLY ROSTER NAME, AND THE DATA-IMPORTS GRID
+   Appended last so these win over the earlier per-page padding rules.
+   ========================================================================== */
+
+/* One gutter for every page surface. The topbar, the scrolling page body and the
+   footer previously each carried their own padding (28 / 24 / 26 / 22px), so a
+   page heading never lined up with the content beneath it. */
+:root { --gutter: 24px; }
+
+.topbar,
+footer { padding-left: var(--gutter); padding-right: var(--gutter); }
+.toast { margin-left: var(--gutter); margin-right: var(--gutter); }
+.overview { padding: 20px var(--gutter) 32px; }
+.single-pane,
+.single-pane.wide { padding: 20px var(--gutter) 32px; }
+.primary-pane { padding: 20px var(--gutter) 32px; }
+.activity-pane { padding: 20px var(--gutter); }
+
+/* The roster header row holds only its action buttons now that the standing
+   "consultants are always non-billable" note is gone. */
+.section-title.actions-only { justify-content: flex-end; margin-bottom: 14px; }
+
+/* Employee names are read-only (they are the join key every import matches on),
+   so the cell is plain text rather than an input that only looks editable. */
+.roster-name strong { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.25; }
+.data-row.roster.full .cell .roster-name { gap: 1px; }
+
+/* Data imports: the same bordered grid the roster and QuickGrid tables use,
+   instead of columns separated only by a gap. */
+.import-table { border: 1px solid var(--line-strong); border-radius: var(--radius-sm); overflow: hidden; }
+.import-table .table-head.import-grid,
+.import-row.import-grid {
+    display: grid;
+    gap: 0;
+    align-items: stretch;
+    grid-template-columns: minmax(210px, 1.25fr) minmax(240px, 1.5fr) minmax(150px, 1fr) 120px 104px;
+}
+.import-table .table-head.import-grid { background: var(--table-header); color: var(--table-header-text); min-height: 36px; }
+.import-row.import-grid { min-height: 68px; background: var(--table-row); border-bottom: 1px solid var(--line); }
+.import-row.import-grid:nth-child(odd) { background: var(--table-row-alt); }
+.import-row.import-grid:last-child { border-bottom: 0; }
+.import-row.import-grid:hover { background: #EDE7DC; }
+.import-table .import-grid .cell {
+    display: flex; align-items: center; min-width: 0; height: 100%;
+    padding: 0 12px; border-right: 1px solid var(--line); overflow: hidden;
+}
+.import-table .table-head.import-grid .cell {
+    border-right-color: #4A5551; font-size: 9px; font-weight: 750;
+    letter-spacing: .055em; text-transform: uppercase;
+}
+.import-table .import-grid .cell:last-child { border-right: 0; justify-content: stretch; }
+.import-table .import-grid .cell:last-child button { width: 100%; }
+.import-table .import-grid .cell .input-name,
+.import-table .import-grid .cell .expected { width: 100%; min-width: 0; }
+
+/* ---------- Imported-data browser: tab bar ---------- */
+
+.tab-bar { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.tab {
+    border: 0; border-bottom: 2px solid transparent; background: transparent; cursor: pointer;
+    padding: 9px 14px; font-size: 13px; font-weight: 600; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab.selected { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-count {
+    background: var(--surface-muted); color: var(--ink-soft); border-radius: 999px;
+    padding: 1px 8px; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.tab.selected .tab-count { background: var(--primary-soft); color: var(--primary); }
+.tab-scope { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.tab-scope input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; margin: 0; }
+
+/* Left-aligned cell in a grid whose numeric columns are right-aligned. */
+.epa-grid .num-left { display: block; text-align: left; font-variant-numeric: tabular-nums; }
+.epa-grid .filename { display: block; min-width: 0; }
+
+/* Action buttons sit at their natural width against the right edge. A 1fr first
+   track stretched "Analysis →" across the whole column while Save/Remove stayed
+   small, which read as a mistake rather than a hierarchy. */
+.row-actions,
+.data-row.roster.full .cell .row-actions {
+    display: flex;
+    width: auto;
+    min-width: 0;
+    gap: 7px;
+    justify-content: flex-end;
+}
+.row-actions .link,
+.row-actions .action,
+.row-actions .danger,
+.row-actions button { width: auto; flex: none; padding: 0 12px; }

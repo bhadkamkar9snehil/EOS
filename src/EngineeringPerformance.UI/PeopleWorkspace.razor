@@ -13,8 +13,7 @@
    status all live on the same row instead of being split across two screens. *@
 
 <section class="single-pane wide">
-    <div class="section-title compact">
-        <p>Consultants are always non-billable; probation can be corrected per person.</p>
+    <div class="section-title compact actions-only">
         <div class="section-actions">
             @if (ExcludedCount > 0)
             {
@@ -86,14 +85,14 @@
 
     <div class="data-table">
         <div class="table-head roster full">
-            <span class="cell">Code</span><span class="cell">Engineer</span><span class="cell">Level</span><span class="cell">Team</span><span class="cell">Billable</span><span class="cell">Employment</span><span class="cell">In analysis</span><span class="cell"></span>
+            <span class="cell">Code</span><span class="cell">Engineer</span><span class="cell">Level</span><span class="cell">Team</span><span class="cell">Billable</span><span class="cell">Employment</span><span class="cell">In analysis</span><span class="cell">Actions</span>
         </div>
         <Virtualize TItem="EmployeeListItem" Items="State.Employees.ToList()" Context="employee" ItemSize="58">
             <div class="data-row roster full @(employee.IsExcluded ? "excluded" : null)">
                 <div class="cell"><code>@employee.EmployeeCode</code></div>
                 <div class="cell">
                     <span class="roster-name">
-                        <input class="cell-input" value="@(_editName.TryGetValue(employee.Id, out var editedName) ? editedName : employee.Name)" @onchange="e => _editName[employee.Id] = e.Value?.ToString() ?? string.Empty" />
+                        <strong>@employee.Name</strong>
                         @if (!string.IsNullOrWhiteSpace(employee.Email))
                         {
                             <small>@employee.Email</small>
@@ -177,7 +176,6 @@
     }
 
     private NewEmployeeModel _newEmployee = new();
-    private readonly Dictionary<int, string> _editName = [];
     private readonly Dictionary<int, int> _editLevel = [];
 
     private NewTeamModel _newTeam = new();
@@ -211,22 +209,21 @@
             State.ShowMessage("Employee added.");
         });
 
+    // Names come from the ERP roster and are the key every import matches on, so they are shown
+    // read-only here — editing one locally would silently orphan that person's imported rows.
     private async Task SaveEmployeeAsync(EmployeeListItem employee)
     {
-        var name = _editName.TryGetValue(employee.Id, out var n) ? n : employee.Name;
         var level = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
-        if (string.IsNullOrWhiteSpace(name)) { State.ShowMessage("Employee name is required.", true); return; }
         if (level is < 1 or > 99) { State.ShowMessage("Seniority level must be between 1 and 99.", true); return; }
         await RunAsync(async () =>
         {
-            await Database.UpdateEmployeeAsync(employee.Id, name, level);
-            State.ShowMessage($"{name.Trim()} updated to level {level}.");
+            await Database.UpdateEmployeeAsync(employee.Id, employee.Name, level);
+            State.ShowMessage($"{employee.Name} updated to level {level}.");
         });
     }
 
     private bool IsDirty(EmployeeListItem employee) =>
-        (_editName.TryGetValue(employee.Id, out var n) && n.Trim() != employee.Name) ||
-        (_editLevel.TryGetValue(employee.Id, out var l) && l != employee.SeniorityLevel);
+        _editLevel.TryGetValue(employee.Id, out var l) && l != employee.SeniorityLevel;
 
     private void AdjustLevel(EmployeeListItem employee, int delta)
     {
