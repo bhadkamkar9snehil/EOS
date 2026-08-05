@@ -1,0 +1,212 @@
+/* ==========================================================================
+   Overview refinement
+   Keeps imported analytics in the established EOS visual language: standard
+   KPI cards, one neutral card surface, one consolidated people-review panel,
+   and no decorative section banners or accent rails.
+   ========================================================================== */
+
+:root,
+:root[data-theme="clay-sage"] { --card-surface: #F5F5F1; }
+:root[data-theme="harbor-blue"] { --card-surface: #F4F7F9; }
+:root[data-theme="forest-ledger"] { --card-surface: #F8F6EE; }
+:root[data-theme="graphite-copper"] { --card-surface: #F6F3F0; }
+:root[data-theme="alpine-ink"] { --card-surface: #F5F7FA; }
+
+/* Cards are deliberately neutral and consistent. White remains reserved for
+   controls and the top bar, so analytical cards sit naturally on the canvas. */
+.card,
+.kpi,
+.settings-card,
+.theme-option,
+.metric-matrix section,
+.spotlight-panel,
+.history-expansion,
+.analytics-section-head {
+    background: var(--card-surface);
+}
+
+/* Remove the duplicate attendance exception block from Score distribution.
+   Its information is consolidated into Review priorities below. */
+.content.route-overview .overview > .overview-grid > .card:first-child > .sub-head,
+.content.route-overview .overview > .overview-grid > .card:first-child > .exception-row {
+    display: none;
+}
+
+/* Existing Top quartile and Needs attention cards are superseded by the one
+   consolidated Review priorities card. Element order is stable in Overview. */
+.content.route-overview .overview > .overview-grid > .card:nth-child(4),
+.content.route-overview .overview > .overview-grid > .card:nth-child(5) {
+    display: none;
+}
+
+.overview-extension {
+    padding-top: 0;
+    padding-bottom: 12px;
+}
+
+/* Reuse the exact existing KPI component instead of inventing another tile. */
+.analytics-kpi-row {
+    margin-bottom: 12px;
+}
+.analytics-kpi-row .kpi {
+    min-height: 58px;
+}
+.analytics-kpi-row .kpi.critical {
+    background: var(--card-surface);
+}
+.analytics-kpi-row .kpi.critical strong {
+    color: var(--critical);
+}
+.analytics-kpi-row .kpi.warning strong {
+    color: var(--warn);
+}
+.analytics-kpi-row .kpi.good strong {
+    color: var(--good);
+}
+
+.refined-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+}
+.refined-overview-grid > .span-8 { grid-column: span 8; }
+.refined-overview-grid > .span-4 { grid-column: span 4; }
+.refined-overview-grid > .wide { grid-column: 1 / -1; }
+
+.score-stack-card,
+.review-priorities-card,
+.hours-allocation-card {
+    min-width: 0;
+}
+
+.score-stack-card .card-head,
+.hours-allocation-card .card-head {
+    align-items: flex-start;
+}
+.score-stack-card .card-head > div,
+.hours-allocation-card .card-head > div {
+    min-width: 0;
+}
+.score-stack-card .card-head small,
+.hours-allocation-card .card-head small {
+    display: block;
+    margin-top: 3px;
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.chart-explanation {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.review-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin-bottom: 11px;
+}
+.review-summary > div {
+    min-width: 0;
+    min-height: 54px;
+    padding: 8px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+.review-summary span {
+    display: block;
+    color: var(--muted);
+    font-size: 8.8px;
+    line-height: 1.25;
+}
+.review-summary strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink);
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+}
+
+.review-section {
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+.review-section + .review-section {
+    margin-top: 10px;
+}
+.review-section h3 {
+    margin: 0 0 5px;
+    color: var(--ink-soft);
+    font-size: 9.5px;
+    font-weight: 750;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.review-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.review-list li {
+    min-height: 31px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line-soft);
+}
+.review-list li:first-child { border-top: 0; }
+.review-list span {
+    overflow: hidden;
+    color: var(--ink-soft);
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.review-list b {
+    color: var(--ink);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+.review-list b.good { color: var(--good); }
+.review-list b.warning { color: var(--warn); }
+.review-list b.critical { color: var(--critical); }
+.review-list small {
+    grid-column: 1 / -1;
+    margin-top: -5px;
+    color: var(--muted);
+    font-size: 8.8px;
+    line-height: 1.3;
+}
+
+.hours-allocation-card {
+    margin-top: 0;
+}
+
+@media (max-width: 1250px) {
+    .refined-overview-grid > .span-8,
+    .refined-overview-grid > .span-4 {
+        grid-column: 1 / -1;
+    }
+    .review-priorities-card {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .review-priorities-card > .card-head,
+    .review-priorities-card > .review-summary {
+        grid-column: 1 / -1;
+    }
+    .review-section {
+        margin-top: 0 !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .review-priorities-card { display: flex; }
+    .review-summary { grid-template-columns: 1fr; }
+}
