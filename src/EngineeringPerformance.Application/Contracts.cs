@@ -80,7 +80,7 @@ public sealed record MonthlyPerformanceItem(string EmployeeName, string? Employe
     int MissingPunchDays, int LateDays, int EarlyDays, int LessDurationDays,
     int Year, int Month, decimal PunchHours, decimal AttendanceTimesheetHours,
     int TimesheetFilledDays, int ExpectedTimesheetDays, decimal NonBillableHours, decimal TrainingHours,
-    decimal ApprovedHours = 0)
+    decimal ApprovedHours = 0, decimal OfficeHours = 0)
 {
     public bool HasSummaryData => ComplianceHours > 0;
     public decimal ReconciliationVariance => PunchHours - AttendanceTimesheetHours;
