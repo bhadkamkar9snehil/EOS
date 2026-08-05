@@ -37,7 +37,6 @@
             <div class="readiness"><span>Readiness</span><strong>@State.ReadyCount / 4 inputs</strong></div>
         </header>
 
-        @* This slot always renders so the workspace grid rows stay aligned. *@
         <div class="toast-slot">
             @if (!string.IsNullOrEmpty(State.Message))
             { <div class="toast @(State.IsError ? "error" : "success")">@State.Message<button @onclick="State.ClearMessage">×</button></div> }
@@ -45,6 +44,14 @@
 
         <main class="content">
             @Body
+            @if (CurrentRoute == "overview")
+            {
+                <OverviewMetricsExtension />
+            }
+            else if (CurrentRoute == "employee" && !string.IsNullOrWhiteSpace(CurrentEmployeeName))
+            {
+                <EmployeeMetricsExtension Name="@CurrentEmployeeName" />
+            }
         </main>
         <footer><span>Data stored locally in SQLite</span><span>Last refreshed @State.LastRefresh.ToString("h:mm tt")</span></footer>
     </section>
@@ -82,7 +89,6 @@
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
-    /// <summary>The first path segment, e.g. "employee/2431" -> "employee". Empty path is "overview", the default page.</summary>
     private string CurrentRoute
     {
         get
@@ -94,12 +100,22 @@
         }
     }
 
+    private string? CurrentEmployeeName
+    {
+        get
+        {
+            var relative = Navigation.ToBaseRelativePath(Navigation.Uri).TrimStart('/');
+            if (!relative.StartsWith("employee/", StringComparison.OrdinalIgnoreCase)) return null;
+            return Uri.UnescapeDataString(relative["employee/".Length..]);
+        }
+    }
+
     private string PageTitleText => CurrentRoute switch
     {
         "imports" => "Data imports", "data" => "Imported data", "timesheets" => "Timesheets & approvals", "employees" => "Employees & teams",
         "peer-insights" => "Peer Insights",
         "templates" => "Review templates", "reports" => "Reports", "scoring" => "Scoring", "settings" => "Settings",
-        "employee" => State.SpotlightName ?? "Employee",
+        "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee",
         _ => "Overview"
     };
     private string PageSubtitleText => CurrentRoute switch
@@ -112,7 +128,7 @@
         "employee" => "Performance across every month currently loaded.",
         "templates" => "Create personalized review workbooks for one engineer or the whole team.",
         "reports" => "Export a formatted, printable performance report.",
-        "scoring" => "Category weights used when review ratings are combined.",
+        "scoring" => "Configure operational score weights and recalculate all stored months.",
         "settings" => "Where this application stores its data.",
         _ => $"Team performance for {State.SelectedMonth:MMMM yyyy}."
     };
@@ -121,7 +137,6 @@
 
     private void GoTo(string route) => Navigation.NavigateTo($"/{route}");
 
-    /// <summary>Stroke-only 20x20 glyphs (currentColor) so hover/selected states recolor via CSS alone, no per-icon overrides.</summary>
     private static class Icon
     {
         private const string Wrap = "<svg viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">{0}</svg>";
