@@ -312,5 +312,33 @@
         if (drillable) chart.on('click', (p) => { if (p.componentType === 'series') drill(categories[p.dataIndex]); });
     }
 
-    window.epaCharts = { ensure, dispose, gauge, radar, scatter, trend, multiline, heatmap, network, bars, registerDrilldown };
+    // Vertical grouped/single-series bars over a category axis (e.g. months), as opposed
+    // to bars() which lays out one series horizontally against a name axis.
+    function verticalBars(id, categories, series, max, suffix) {
+        const chart = ensure(id); if (!chart) return;
+        chart.setOption({
+            ...baseAnimation,
+            grid: { left: 40, right: 20, top: 34, bottom: 30 },
+            legend: { show: series.length > 1, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4d5a6c' } },
+            tooltip: {
+                ...TOOLTIP_BASE, trigger: 'axis', axisPointer: { type: 'shadow' },
+                formatter: (params) => {
+                    const rows = params.filter(p => p.value != null).map(p => `${p.marker}${p.seriesName}: <b>${(+p.value).toFixed(1)}${suffix || ''}</b>`);
+                    return `<strong>${params[0].axisValueLabel}</strong><br/>${rows.join('<br/>')}`;
+                }
+            },
+            xAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: PALETTE.axis } }, axisLabel: { fontSize: 10, color: PALETTE.muted } },
+            yAxis: {
+                min: 0, max: max || null, splitLine: { lineStyle: { color: PALETTE.grid } }, axisLine: { show: false },
+                axisLabel: { fontSize: 10, color: PALETTE.muted, formatter: suffix ? '{value}' + suffix : '{value}' }
+            },
+            series: series.map(s => ({
+                name: s.name, type: 'bar', barGap: '20%',
+                itemStyle: { color: s.color, borderRadius: [3, 3, 0, 0] },
+                data: s.values
+            }))
+        });
+    }
+
+    window.epaCharts = { ensure, dispose, gauge, radar, scatter, trend, multiline, heatmap, network, bars, verticalBars, registerDrilldown };
 })();

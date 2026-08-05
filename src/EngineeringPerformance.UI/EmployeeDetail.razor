@@ -82,10 +82,31 @@
             </section>
 
             <section class="card wide">
+                <div class="card-head"><h2>Monthly compliance</h2><small>Score, timesheet fill, approval and attendance — @Months.Count month(s)</small></div>
+                <div id="detail-compliance-bars" class="echart tall"></div>
+                <ul class="chart-legend">
+                    <li><i style="background:#2a78d6"></i>Score</li>
+                    <li><i style="background:#eb6834"></i>Timesheet fill</li>
+                    <li><i style="background:#4a3aa7"></i>Approval</li>
+                    <li><i style="background:#1baf7a"></i>Attendance</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Billable hours</h2><small>Per month</small></div>
+                <div id="detail-billable-bars" class="echart"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Workload</h2><small>Average hours per accountable day</small></div>
+                <div id="detail-workload-bars" class="echart"></div>
+            </section>
+
+            <section class="card wide">
                 <div class="card-head"><h2>Monthly detail</h2><small>Every loaded month, most recent first</small></div>
                 <div class="performance-table peer">
                     <div class="performance-head">
-                        <span>State.SelectedMonth</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span>
+                        <span>Month</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span>
                     </div>
                     @foreach (var m in Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month))
                     {
@@ -202,13 +223,31 @@
                     new { name = "Team average", color = "#2a78d6", values = axes.Select(a => a.TeamAverage).ToArray() }
                 });
         }
+
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-compliance-bars", labels, new object[]
+        {
+            new { name = "Score", color = "#2a78d6", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet fill", color = "#eb6834", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Approval", color = "#4a3aa7", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() },
+            new { name = "Attendance", color = "#1baf7a", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() }
+        }, 100, "%");
+
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-billable-bars", labels, new object[]
+        {
+            new { name = "Billable hours", color = "#2a78d6", values = Months.Select(m => (object)m.BillableHours).ToArray() }
+        }, null, " h");
+
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-workload-bars", labels, new object[]
+        {
+            new { name = "Workload", color = "#1baf7a", values = Months.Select(m => (object)m.Workload()).ToArray() }
+        }, null, " h/d");
     }
 
     public async ValueTask DisposeAsync()
     {
         State.Changed -= OnStateChanged;
         if (State.SpotlightName == Name) State.SpotlightName = null;
-        foreach (var id in new[] { "detail-trend", "detail-radar" })
+        foreach (var id in new[] { "detail-trend", "detail-radar", "detail-compliance-bars", "detail-billable-bars", "detail-workload-bars" })
         {
             try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
         }
