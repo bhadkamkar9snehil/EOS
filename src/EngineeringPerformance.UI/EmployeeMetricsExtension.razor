@@ -2,16 +2,42 @@
 @using EngineeringPerformance.Domain
 @inject AppState State
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 @if (Months.Count > 0)
 {
     <section class="analytics-extension employee-extension">
-        <div class="extension-heading">
-            <div><h2>Imported metric detail</h2><p>Current values and history for the complete numerical dataset.</p></div>
+        <header class="analytics-section-head">
+            <div>
+                <span class="analytics-eyebrow">Current operating profile</span>
+                <h2>@LatestLabel in one decision view</h2>
+                <p>Current-month capacity, attendance and delivery metrics first; longitudinal diagnostics follow below.</p>
+            </div>
+            <button class="action secondary small" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
+        </header>
+
+        <div class="metric-ribbon employee-ribbon">
+            @Metric("Operational score", Latest.OperationalScore, "", Analytics.ScoreBand(Latest.OperationalScore))
+            @Metric("Utilization", Latest.Utilization, "%", Latest.Utilization >= 75 ? "good" : "warning")
+            @Metric("Timesheet days", Latest.TimesheetFilledDays, $"/ {Latest.ExpectedTimesheetDays}", Latest.TimesheetFilledDays >= Latest.ExpectedTimesheetDays ? "good" : "warning")
+            @Metric("Reconciliation", Latest.ReconciliationVariance, "h", Math.Abs(Latest.ReconciliationVariance) >= 40 ? "risk" : "neutral", true)
+            @Metric("Detailed entries", Latest.DetailedEntries, "", "primary")
+            @Metric("Projects", Latest.UniqueProjects, "", "accent")
         </div>
 
-        <div class="metric-matrix">
+        <div class="employee-current-grid">
+            <section class="card span-7 command-chart">
+                <div class="card-head"><div><h2>Current-month hours profile</h2><small>Imported totals across capacity, timesheet and attendance</small></div></div>
+                <div id="employee-current-hours" class="echart"></div>
+            </section>
+            <section class="card span-5 command-chart">
+                <div class="card-head"><div><h2>Attendance exception profile</h2><small>Counts are days, not severity scores</small></div></div>
+                <div id="employee-current-exceptions" class="echart"></div>
+            </section>
+        </div>
+
+        <div class="metric-matrix employee-matrix">
             <section><h3>Scores</h3>@Value("Operational", Latest.OperationalScore)@Value("Timesheet", Latest.TimesheetCompletionScore, Latest.HasSummaryData)@Value("Approval", Latest.ApprovalScore, Latest.HasSummaryData)@Value("Attendance", Latest.AttendanceDisciplineScore)</section>
             <section><h3>Capacity & timesheets</h3>@Value("Compliance hours", Latest.ComplianceHours, Latest.HasSummaryData)@Value("Entered hours", Latest.EnteredHours)@Value("Approved hours", Latest.ApprovedHours)@Value("Utilization", Latest.Utilization, Latest.HasSummaryData, "%")</section>
             <section><h3>Work allocation</h3>@Value("Billable hours", Latest.BillableHours)@Value("Non-billable hours", Latest.NonBillableHours)@Value("Training hours", Latest.TrainingHours)@Value("Office hours", Latest.OfficeHours)</section>
@@ -20,12 +46,18 @@
             <section><h3>Delivery activity</h3>@Value("Detailed hours", Latest.DetailedHours)@Count("Detailed entries", Latest.DetailedEntries)@Count("Unique projects", Latest.UniqueProjects)@Value("Leave days", Latest.LeaveDays)</section>
         </div>
 
-        <div class="extension-grid">
-            <section class="card span-6"><div class="card-head"><h2>Hours history</h2><small>Allocation and capacity</small></div><div id="employee-hours-history" class="echart tall"></div></section>
-            <section class="card span-6"><div class="card-head"><h2>Attendance reconciliation</h2><small>Punch, timesheet and variance</small></div><div id="employee-attendance-history" class="echart tall"></div></section>
-            <section class="card span-6"><div class="card-head"><h2>Exception history</h2><small>Monthly exception days</small></div><div id="employee-exception-history" class="echart"></div></section>
-            <section class="card span-6"><div class="card-head"><h2>Delivery activity history</h2><small>Detailed hours, entries and projects</small></div><div id="employee-delivery-history" class="echart"></div></section>
-        </div>
+        <details class="history-expansion" open>
+            <summary>
+                <span><strong>Expanded operational history</strong><small>Allocation, reconciliation, exceptions and delivery over @Months.Count loaded month(s)</small></span>
+                <span class="history-toggle">Show / hide</span>
+            </summary>
+            <div class="extension-grid employee-history-grid">
+                <section class="card span-6"><div class="card-head"><h2>Hours history</h2><small>Allocation and capacity</small></div><div id="employee-hours-history" class="echart tall"></div></section>
+                <section class="card span-6"><div class="card-head"><h2>Attendance reconciliation</h2><small>Punch, timesheet and variance</small></div><div id="employee-attendance-history" class="echart tall"></div></section>
+                <section class="card span-6"><div class="card-head"><h2>Exception history</h2><small>Monthly exception days</small></div><div id="employee-exception-history" class="echart"></div></section>
+                <section class="card span-6"><div class="card-head"><h2>Delivery activity history</h2><small>Detailed hours, entries and projects</small></div><div id="employee-delivery-history" class="echart"></div></section>
+            </div>
+        </details>
     </section>
 }
 
@@ -39,6 +71,7 @@
         .GroupBy(x => (x.Year, x.Month)).Select(g => g.First())
         .OrderBy(x => x.Year).ThenBy(x => x.Month).ToArray();
     private MonthlyPerformanceItem Latest => Months[^1];
+    private string LatestLabel => new DateTime(Latest.Year, Latest.Month, 1).ToString("MMMM yyyy");
 
     protected override void OnInitialized() => State.Changed += OnChanged;
     protected override void OnParametersSet() => _pending = true;
@@ -51,6 +84,47 @@
         _pending = false;
         _signature = signature;
         if (Months.Count == 0) return;
+
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "employee-current-hours",
+            new[] { "Compliance", "Entered", "Approved", "Billable", "Non-billable", "Training", "Office", "Punch" },
+            new object[]
+            {
+                new
+                {
+                    name = "Hours",
+                    color = "#0F6E9E",
+                    values = new object?[]
+                    {
+                        Latest.HasSummaryData ? Latest.ComplianceHours : null,
+                        Latest.EnteredHours,
+                        Latest.ApprovedHours,
+                        Latest.BillableHours,
+                        Latest.NonBillableHours,
+                        Latest.TrainingHours,
+                        Latest.OfficeHours,
+                        Latest.PunchHours
+                    }
+                }
+            }, null, " h");
+
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "employee-current-exceptions",
+            new[] { "Missing punch", "Late", "Early", "Less duration", "Missing TS" },
+            new object[]
+            {
+                new
+                {
+                    name = "Days",
+                    color = "#C85A22",
+                    values = new object[]
+                    {
+                        Latest.MissingPunchDays,
+                        Latest.LateDays,
+                        Latest.EarlyDays,
+                        Latest.LessDurationDays,
+                        Math.Max(0, Latest.ExpectedTimesheetDays - Latest.TimesheetFilledDays)
+                    }
+                }
+            }, null, " d");
 
         var labels = Months.Select(x => new DateTime(x.Year, x.Month, 1).ToString("MMM yy")).ToArray();
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "employee-hours-history", labels, new object[]
@@ -86,11 +160,12 @@
 
     private RenderFragment Value(string label, decimal value, bool available = true, string suffix = "", bool signed = false) => @<div><span>@label</span><b>@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></div>;
     private RenderFragment Count(string label, int value) => @<div><span>@label</span><b>@value</b></div>;
+    private RenderFragment Metric(string label, decimal value, string suffix, string tone, bool signed = false) => @<div class="metric-tile @tone"><span>@label</span><strong>@(signed && value > 0 ? "+" : "")@Analytics.Format(value)</strong><small>@suffix</small></div>;
 
     public async ValueTask DisposeAsync()
     {
         State.Changed -= OnChanged;
-        foreach (var id in new[] { "employee-hours-history", "employee-attendance-history", "employee-exception-history", "employee-delivery-history" })
+        foreach (var id in new[] { "employee-current-hours", "employee-current-exceptions", "employee-hours-history", "employee-attendance-history", "employee-exception-history", "employee-delivery-history" })
         {
             try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
         }
