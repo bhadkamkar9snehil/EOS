@@ -10,7 +10,7 @@
     <Grid>
         <blazor:BlazorWebView HostPage="wwwroot\index.html" Services="{Binding Services}">
             <blazor:BlazorWebView.RootComponents>
-                <blazor:RootComponent Selector="#app" ComponentType="{x:Type ui:App}" />
+                <blazor:RootComponent Selector="#app" ComponentType="{x:Type ui:Routes}" />
             </blazor:BlazorWebView.RootComponents>
         </blazor:BlazorWebView>
     </Grid>

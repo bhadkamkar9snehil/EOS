@@ -1,8 +1,10 @@
+@page "/reports"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IFileDialogService Dialogs
 @inject IWorkbookService Workbooks
 @inject AppState State
+@implements IDisposable
 
 @* Exportable, print-ready performance reports — one engineer or the whole team.
    Pure export surface: reads the same month's data as Overview and writes a
@@ -42,6 +44,10 @@
 </div>
 
 @code {
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
+
     private string _selectedEmployeeId = string.Empty;
 
     private IReadOnlyList<string> AlertLines

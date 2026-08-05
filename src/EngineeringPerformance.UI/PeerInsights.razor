@@ -1,6 +1,9 @@
+@page "/peer-insights"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IJSRuntime JS
+@inject AppState State
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 @* Full-depth peer review view: the whole team, every dimension, every comment.
@@ -10,9 +13,9 @@
     @if (Summary.TotalFeedback == 0)
     {
         <div class="empty-state">
-            <h2>No peer feedback for @Month.ToString("MMMM yyyy")</h2>
+            <h2>No peer feedback for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
             <p>Generate review workbooks on the Templates screen — each carries a Peer Review sheet listing the whole team — then upload the completed workbooks (or a ZIP of them) into the Engineer reviews input on Data imports.</p>
-            <button class="action" @onclick='() => OnNavigate.InvokeAsync("templates")'>Go to templates</button>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/templates")'>Go to templates</button>
         </div>
     }
     else
@@ -27,7 +30,7 @@
         </div>
 
         <section class="card wide">
-            <div class="card-head"><h2>Peer review network</h2><small>@Month.ToString("MMMM yyyy") — every reviewer/subject pair</small></div>
+            <div class="card-head"><h2>Peer review network</h2><small>@State.SelectedMonth.ToString("MMMM yyyy") — every reviewer/subject pair</small></div>
             <div class="network-layout">
                 <div id="pi-network" class="echart network-large"></div>
                 <div class="network-stats">
@@ -93,21 +96,16 @@
 
 @if (_spotlightName is not null)
 {
-    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="Month"
-                        Item="Items.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
-                        TeamRadar="Analytics.Radar(Items)" TrendMonths="[]" TrendValues="[]"
-                        Peer="Analytics.PeerBreakdownFor(PeerReviews, _spotlightName)"
+    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="State.SelectedMonth"
+                        Item="State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
+                        TeamRadar="Analytics.Radar(State.Performance)" TrendMonths="[]" TrendValues="[]"
+                        Peer="Analytics.PeerBreakdownFor(State.PeerReviews, _spotlightName)"
                         Alerts="[]"
                         OnClose="() => _spotlightName = null"
-                        OnOpenProfile='name => OnNavigate.InvokeAsync($"employee:{name}")' />
+                        OnOpenProfile='name => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}")' />
 }
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
-    [Parameter, EditorRequired] public DateTime Month { get; set; }
-    [Parameter] public EventCallback<string> OnNavigate { get; set; }
-
     private string? _spotlightName;
     private string? _renderedSignature;
     private bool _chartsPending;
@@ -120,29 +118,42 @@
     [JSInvokable]
     public void DrilldownTo(string name) { Spotlight(name); StateHasChanged(); }
 
-    private Analytics.PeerSummary Summary => Analytics.Peers(PeerReviews);
+    private Analytics.PeerSummary Summary => Analytics.Peers(State.PeerReviews);
     private Analytics.PeerStanding? LeastReviewed => Summary.Standings.Count == 0 ? null : Summary.Standings.OrderBy(x => x.ReviewsReceived).ThenBy(x => x.Name).First();
 
-    private IReadOnlyList<(string Name, Analytics.PeerBreakdown Peer)> Breakdown => Items
+    private IReadOnlyList<(string Name, Analytics.PeerBreakdown Peer)> Breakdown => State.Performance
         .Select(x => x.EmployeeName)
         .Union(Summary.Standings.Select(x => x.Name), StringComparer.OrdinalIgnoreCase)
         .Distinct(StringComparer.OrdinalIgnoreCase)
-        .Select(name => (name, Analytics.PeerBreakdownFor(PeerReviews, name)))
+        .Select(name => (name, Analytics.PeerBreakdownFor(State.PeerReviews, name)))
         .OrderByDescending(x => x.Item2.AverageReceived)
         .ToArray();
 
-    private IReadOnlyList<PeerReviewItem> AllComments => PeerReviews
+    private IReadOnlyList<PeerReviewItem> AllComments => State.PeerReviews
         .Where(x => !string.IsNullOrWhiteSpace(x.Comment))
         .OrderBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase)
         .ToArray();
 
     private void Spotlight(string name) => _spotlightName = PersonName.Normalize(name);
 
-    protected override void OnParametersSet()
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    // Routed pages aren't re-rendered just because MainLayout (which owns the month picker) is —
+    // @Body doesn't cascade parameters the way an explicitly-declared child component would, so
+    // each page that reads AppState reactively has to ask for its own re-render on Changed.
+    private void OnStateChanged()
     {
-        var signature = $"{PeerReviews.Count}|{Month:yyyyMM}";
+        CheckChartsPending();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void CheckChartsPending()
+    {
+        var signature = $"{State.PeerReviews.Count}|{State.SelectedMonth:yyyyMM}";
         if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
     }
+
+    protected override void OnParametersSet() => CheckChartsPending();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -152,7 +163,7 @@
         _selfRef ??= DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("epaCharts.registerDrilldown", _selfRef);
 
-        var graph = Analytics.Network(PeerReviews);
+        var graph = Analytics.Network(State.PeerReviews);
         await JS.InvokeVoidAsync("epaCharts.network", "pi-network",
             graph.Nodes.Select(n => new { name = n.Name, received = n.Received, given = n.Given, tooltip = n.Tooltip, initials = Analytics.Initials(n.Name) }).ToArray(),
             graph.Links.Select(l => new { source = l.Source, target = l.Target, value = l.Value, tooltip = l.Tooltip }).ToArray(),
@@ -161,6 +172,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        State.Changed -= OnStateChanged;
         try { await JS.InvokeVoidAsync("epaCharts.dispose", "pi-network"); } catch (JSDisconnectedException) { }
         _selfRef?.Dispose();
     }

@@ -1,6 +1,9 @@
+@page "/employee/{Name}"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IJSRuntime JS
+@inject AppState State
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 @* Comprehensive per-employee history: every available month, not a single-month snapshot.
@@ -12,12 +15,12 @@
         <div class="empty-state">
             <h2>No history for @Name</h2>
             <p>No imported rows were found for this person across the months currently loaded.</p>
-            <button class="action" @onclick='() => OnNavigate.InvokeAsync("overview")'>Back to Overview</button>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/overview")'>Back to Overview</button>
         </div>
     }
     else
     {
-        <button class="link back-link" @onclick='() => OnNavigate.InvokeAsync("overview")'>← Back to Overview</button>
+        <button class="link back-link" @onclick='() => Navigation.NavigateTo("/overview")'>← Back to Overview</button>
 
         <header class="profile-header">
             <span class="avatar big">@Analytics.Initials(Name)</span>
@@ -82,7 +85,7 @@
                 <div class="card-head"><h2>Monthly detail</h2><small>Every loaded month, most recent first</small></div>
                 <div class="performance-table peer">
                     <div class="performance-head">
-                        <span>Month</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span>
+                        <span>State.SelectedMonth</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span>
                     </div>
                     @foreach (var m in Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month))
                     {
@@ -124,17 +127,24 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
-    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> History { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
-    [Parameter, EditorRequired] public DateTime Month { get; set; }
-    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+    [Parameter] public string Name { get; set; } = string.Empty;
 
     private bool _rendered;
 
-    private IReadOnlyList<MonthlyPerformanceItem> Months => History
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    protected override void OnParametersSet()
+    {
+        // The route parameter can change without the component being torn down (navigating
+        // straight from one engineer's page to another), so the topbar heading is set here,
+        // not just once in OnInitialized.
+        State.SpotlightName = Name;
+        _rendered = false;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private IReadOnlyList<MonthlyPerformanceItem> Months => State.History
         .Where(x => PersonName.Matches(x.EmployeeName, Name))
         .GroupBy(x => (x.Year, x.Month)).Select(g => g.First())
         .OrderBy(x => x.Year).ThenBy(x => x.Month).ToArray();
@@ -151,19 +161,19 @@
         get { var m = Months.OrderBy(x => x.OperationalScore).First(); return new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"); }
     }
 
-    private EmployeeListItem? Employee => Employees.FirstOrDefault(x => PersonName.Matches(x.Name, Name));
+    private EmployeeListItem? Employee => State.Employees.FirstOrDefault(x => PersonName.Matches(x.Name, Name));
 
-    private Analytics.PeerBreakdown Peer => Analytics.PeerBreakdownFor(PeerReviews, Name);
+    private Analytics.PeerBreakdown Peer => Analytics.PeerBreakdownFor(State.PeerReviews, Name);
 
     private IReadOnlyList<Anomaly> Alerts
     {
         get
         {
-            var previous = History
-                .Where(x => x.Year == Month.AddMonths(-1).Year && x.Month == Month.AddMonths(-1).Month)
+            var previous = State.History
+                .Where(x => x.Year == State.SelectedMonth.AddMonths(-1).Year && x.Month == State.SelectedMonth.AddMonths(-1).Month)
                 .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
-            return Analytics.Anomalies(Items, previous).Where(x => PersonName.Matches(x.EmployeeName, Name)).ToArray();
+            return Analytics.Anomalies(State.Performance, previous).Where(x => PersonName.Matches(x.EmployeeName, Name)).ToArray();
         }
     }
 
@@ -181,7 +191,7 @@
             new { name = "Approval", color = "#4a3aa7", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
         });
 
-        var axes = Analytics.Radar(Items);
+        var axes = Analytics.Radar(State.Performance);
         if (axes.Count > 0)
         {
             var mine = Analytics.RadarValues(Latest);
@@ -196,6 +206,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        State.Changed -= OnStateChanged;
+        if (State.SpotlightName == Name) State.SpotlightName = null;
         foreach (var id in new[] { "detail-trend", "detail-radar" })
         {
             try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }

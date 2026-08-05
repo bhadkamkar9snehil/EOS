@@ -1,0 +1,62 @@
+@page "/templates"
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IFileDialogService Dialogs
+@inject IWorkbookService Workbooks
+@inject AppState State
+@implements IDisposable
+
+<section class="single-pane">
+    <div class="section-title"><div><h2>Generate review templates</h2><p>Personalized numeric review workbooks for @State.SelectedMonth.ToString("MMMM yyyy").</p></div></div>
+    <div class="template-cards">
+        <div class="template-card featured">
+            <h3>All employees</h3>
+            <p>Writes one workbook per employee into a <code>Reviews_@State.SelectedMonth.ToString("yyyy_MM")</code> folder at the location you pick. Each workbook is pre-filled with the employee code, name and seniority level.</p>
+            <div class="template-meta"><strong>@State.Employees.Count</strong><span>workbooks will be generated</span></div>
+            <button class="action" @onclick="GenerateAllTemplates" disabled="@(State.Busy || State.Employees.Count == 0)">Generate for all employees</button>
+        </div>
+        <div class="template-card">
+            <h3>Single employee</h3>
+            <p>Generate one workbook and choose exactly where it is saved.</p>
+            <label>Employee<select @bind="_templateEmployeeId"><option value="">Select employee</option>@foreach (var e in State.Employees) { <option value="@e.Id">@e.Name — Level @e.SeniorityLevel</option> }</select></label>
+            <button class="action secondary" @onclick="GenerateTemplate" disabled="@State.Busy">Generate workbook</button>
+        </div>
+    </div>
+</section>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private int? _templateEmployeeId;
+
+    private void GenerateTemplate()
+    {
+        var employee = State.Employees.SingleOrDefault(x => x.Id == _templateEmployeeId);
+        if (employee is null) { State.ShowMessage("Select an employee first.", true); return; }
+        var destination = Dialogs.PickSaveWorkbook($"{employee.EmployeeCode}_{State.SelectedMonth:yyyy_MM}_Review.xlsx");
+        if (destination is null) return;
+        try
+        {
+            Workbooks.GenerateEngineerTemplate(destination, new Employee(employee.EmployeeCode, employee.Name, employee.SeniorityLevel), State.SelectedMonth.Year, State.SelectedMonth.Month);
+            State.ShowMessage($"Template generated for {employee.Name}.");
+        }
+        catch (Exception ex) { State.ShowMessage(ex.Message, true); }
+    }
+
+    private void GenerateAllTemplates()
+    {
+        if (State.Employees.Count == 0) { State.ShowMessage("Add employees before generating templates.", true); return; }
+        var folder = Dialogs.PickFolder($"Choose a folder for the {State.SelectedMonth:MMMM yyyy} review templates");
+        if (folder is null) return;
+        try
+        {
+            var target = Path.Combine(folder, $"Reviews_{State.SelectedMonth:yyyy_MM}");
+            var employees = State.Employees.Select(x => new Employee(x.EmployeeCode, x.Name, x.SeniorityLevel)).ToArray();
+            var generated = Workbooks.GenerateEngineerTemplates(target, employees, State.SelectedMonth.Year, State.SelectedMonth.Month);
+            State.ShowMessage($"{generated.Count} review workbook(s) written to {target}.");
+        }
+        catch (Exception ex) { State.ShowMessage(ex.Message, true); }
+    }
+}

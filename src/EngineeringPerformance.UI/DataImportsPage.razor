@@ -1,0 +1,106 @@
+@page "/imports"
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IApplicationDatabase Database
+@inject IFileDialogService Dialogs
+@inject AppState State
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="page-grid">
+    <section class="primary-pane">
+        <div class="section-title">
+            <div><h2>Data inputs</h2><p>The ERP exports keep their system-generated names. Match each row using the expected export below — detection uses workbook columns, so a renamed file still lands in the right slot.</p></div>
+            <button class="action" @onclick="UploadZipAsync" disabled="@State.Busy">Upload ZIP</button>
+        </div>
+        <div class="import-table">
+            <div class="table-head"><span>Input</span><span>Expected ERP export</span><span>Loaded file</span><span>Status</span><span></span></div>
+            @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
+            {
+                <div class="import-row">
+                    <div class="input-name"><i>@Initial(slot.ReportType)</i><span><strong>@Label(slot.ReportType)</strong><small>@Description(slot.ReportType)</small></span></div>
+                    <span class="expected"><code title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span>
+                    <span class="filename" title="@slot.FileName">@(slot.FileName ?? "—")</span>
+                    <span class="status @(slot.Status == SourceStatus.Uploaded ? "ok" : null)">@(slot.Status == SourceStatus.Uploaded ? "Ready" : "Not uploaded")</span>
+                    <button @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(slot.Status == SourceStatus.Uploaded ? "Replace" : "Upload")</button>
+                </div>
+            }
+        </div>
+        <div class="callout">
+            <strong>Which month does an export belong to?</strong>
+            <p>ERP exports are generated after month end, so the file name carries the export date, not the reporting month. The utilization export named <code>…04-Aug-2026…</code> contains July 2026 data. Select the reporting month at the top of the window before uploading — this application opens on the last completed month by default.</p>
+        </div>
+    </section>
+    <aside class="activity-pane">
+        <h2>Validation</h2>
+        @Activity("Database", "SQLite is available and writable.", true)
+        @Activity("Employees", State.Employees.Count == 0 ? "No employees configured." : $"{State.Employees.Count} employees in scope.", State.Employees.Count > 0)
+        @Activity("System inputs", $"{State.SystemReadyCount} of 3 ERP exports uploaded.", State.SystemReadyCount >= 3)
+        @Activity("Engineer reviews", State.ReviewsUploaded ? "Review workbook loaded." : "Review workbook not uploaded.", State.ReviewsUploaded)
+        @Activity("Calculated scores", State.Performance.Count == 0 ? "No scores for this month yet." : $"{State.Performance.Count} engineers scored.", State.Performance.Count > 0)
+        @if (State.Performance.Count > 0)
+        {
+            <button class="link wide-link" @onclick='() => Navigation.NavigateTo("/overview")'>View overview →</button>
+        }
+    </aside>
+</div>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private async Task UploadAsync(ReportType type)
+    {
+        // Engineer reviews arrive as one workbook per engineer, so that slot also takes a ZIP.
+        var path = type == ReportType.EngineerReviewWorkbook ? Dialogs.PickWorkbookOrZip() : Dialogs.PickWorkbook();
+        if (path is null) return;
+        await State.RunAsync(async () =>
+        {
+            if (type == ReportType.EngineerReviewWorkbook)
+            {
+                var count = await Database.ImportEngineerReviewsAsync(State.SelectedMonth.Year, State.SelectedMonth.Month, path);
+                await State.RefreshAsync();
+                State.ShowMessage($"Peer feedback read from {count} review workbook(s).");
+            }
+            else
+            {
+                await Database.ImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path);
+                await State.RefreshAsync();
+                State.ShowMessage($"{Path.GetFileName(path)} imported into “{Label(type)}”.");
+            }
+        });
+    }
+
+    private async Task UploadZipAsync()
+    {
+        var path = Dialogs.PickWorkbookOrZip(); if (path is null) return;
+        if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { State.ShowMessage("Select a ZIP package for combined import.", true); return; }
+        await State.RunAsync(async () =>
+        {
+            var count = await Database.ImportPackageAsync(State.SelectedMonth.Year, State.SelectedMonth.Month, path);
+            await State.RefreshAsync();
+            State.ShowMessage(count == 0 ? "No recognizable workbooks were found in the ZIP." : $"{count} workbook(s) imported from the package.", count == 0);
+        });
+    }
+
+    private RenderFragment Activity(string title, string detail, bool good) => @<div class="activity"><i class="@(good ? "good" : "warn")">@(good ? "✓" : "!")</i><span><strong>@title</strong><small>@detail</small></span></div>;
+
+    private static string Initial(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "MS", ReportType.DetailedTimesheetTransactions => "DT", ReportType.AttendanceLeaveUaaTimesheet => "AT", _ => "ER" };
+    private static string Label(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "Monthly utilization summary", ReportType.DetailedTimesheetTransactions => "Detailed timesheet", ReportType.AttendanceLeaveUaaTimesheet => "Attendance and leave", _ => "Engineer reviews" };
+    private static string Description(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "Monthly capacity and utilization", ReportType.DetailedTimesheetTransactions => "Daily project and effort entries", ReportType.AttendanceLeaveUaaTimesheet => "Punch, leave, UAA and compliance", _ => "Self and peer ratings" };
+    private static string ExpectedFileName(ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary => "RPwiseTimesheetUtilazationReport<dd-MMM-yyyy>_<hh_mm_ss>.xlsx",
+        ReportType.DetailedTimesheetTransactions => "LV_Timesheet_ManagerHead_Rpt.xlsx",
+        ReportType.AttendanceLeaveUaaTimesheet => "LV_LeaveSummaryforRP.xlsx",
+        _ => "<Code>_<Name>_<yyyy_MM>_Review.xlsx"
+    };
+    private static string ErpSource(ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary => "ERP → RP-wise Timesheet Utilization Report",
+        ReportType.DetailedTimesheetTransactions => "ERP → Timesheet Manager/Head Report",
+        ReportType.AttendanceLeaveUaaTimesheet => "ERP → Leave Summary for RP",
+        _ => "Produced on the Templates screen, returned by engineers"
+    };
+}

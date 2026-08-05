@@ -26,6 +26,9 @@ public sealed class AppState(IApplicationDatabase database)
     public bool IsError { get; private set; }
     public bool Busy { get; private set; }
 
+    /// <summary>The employee name shown in the topbar heading while on the /employee/{Name} route. Set by that page.</summary>
+    public string? SpotlightName { get; set; }
+
     public int ReadyCount => Snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded) ?? 0;
     public int SystemReadyCount => Snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded && x.ReportType != ReportType.EngineerReviewWorkbook) ?? 0;
     public bool ReviewsUploaded => Snapshot?.SourceSlots.Any(x => x.ReportType == ReportType.EngineerReviewWorkbook && x.Status == SourceStatus.Uploaded) ?? false;

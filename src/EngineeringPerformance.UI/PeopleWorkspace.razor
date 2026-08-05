@@ -1,8 +1,11 @@
+@page "/employees"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IFileDialogService Dialogs
 @inject IApplicationDatabase Database
 @inject AppState State
+@inject NavigationManager Navigation
+@implements IDisposable
 
 @* Employee master, teams and classification in one place: identity (code, name,
    seniority, analysis inclusion), team assignment, and billable/consultant/probation
@@ -131,7 +134,9 @@
 </section>
 
 @code {
-    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
 
     private int ExcludedCount => State.Employees.Count(x => x.IsExcluded);
 
@@ -199,7 +204,7 @@
             State.ShowMessage(excluded ? $"{employee.Name} is excluded from the analysis." : $"{employee.Name} is included in the analysis.");
         });
 
-    private async Task OpenAnalysis(EmployeeListItem employee) => await OnNavigate.InvokeAsync($"employee:{employee.Name}");
+    private void OpenAnalysis(EmployeeListItem employee) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(employee.Name)}");
 
     private async Task RemoveEmployeeAsync(int id) =>
         await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); State.ShowMessage("Employee removed."); });

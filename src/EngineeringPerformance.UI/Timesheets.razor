@@ -1,4 +1,8 @@
+@page "/timesheets"
 @using EngineeringPerformance.Application
+@inject AppState State
+@inject NavigationManager Navigation
+@implements IDisposable
 
 @* Timesheet compliance: who has not filled, and what is filled but still awaiting approval. *@
 
@@ -6,9 +10,9 @@
     @if (Rows.Count == 0)
     {
         <div class="empty-state">
-            <h2>No timesheet data for @Month.ToString("MMMM yyyy")</h2>
+            <h2>No timesheet data for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
             <p>Import this month's attendance and utilization exports on the Data imports screen.</p>
-            <button class="action" @onclick='() => OnNavigate.InvokeAsync("imports")'>Go to data imports</button>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>
         </div>
     }
     else
@@ -67,12 +71,11 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
-    [Parameter, EditorRequired] public DateTime Month { get; set; }
-    [Parameter] public EventCallback<string> OnNavigate { get; set; }
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
 
-    private IReadOnlyList<Analytics.ComplianceRow> Rows => Analytics.Compliance(Items, Employees);
+    private IReadOnlyList<Analytics.ComplianceRow> Rows => Analytics.Compliance(State.Performance, State.Employees);
     private IReadOnlyList<Analytics.ComplianceRow> WithGaps => Rows.Where(x => x.HasGap).ToArray();
     private IReadOnlyList<Analytics.ComplianceRow> AwaitingApproval => Rows.Where(x => x.HasPendingApproval).ToArray();
 
@@ -90,7 +93,7 @@
         }
     }
 
-    private int Probationers => Employees.Count(x => x.IsOnProbation);
+    private int Probationers => State.Employees.Count(x => x.IsOnProbation);
 
     private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi" title="@hint">
         <span class="kpi-label">@label</span>

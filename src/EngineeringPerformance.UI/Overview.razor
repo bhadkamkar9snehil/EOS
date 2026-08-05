@@ -1,6 +1,10 @@
+@page "/"
+@page "/overview"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IJSRuntime JS
+@inject AppState State
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 @* Analytics dashboard. Every figure is derived from imported ERP rows; nothing is illustrative.
@@ -8,12 +12,12 @@
    container ids and re-invokes JS whenever the underlying data changes. *@
 
 <div class="overview">
-    @if (Items.Count == 0)
+    @if (State.Performance.Count == 0)
     {
         <div class="empty-state">
-            <h2>No performance data for @Month.ToString("MMMM yyyy")</h2>
+            <h2>No performance data for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
             <p>Import the three ERP exports for this month and every panel below is calculated immediately. Exports are generated after month end, so check the reporting month above before importing.</p>
-            <button class="action" @onclick='() => OnNavigate.InvokeAsync("imports")'>Go to data imports</button>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>
         </div>
     }
     else
@@ -37,14 +41,14 @@
             @Kpi("Timesheet completion", Analytics.Format(Average(x => x.TimesheetCompletionScore, true)) + "%", "blue", null, MeasuredLabel)
             @Kpi("Attendance discipline", Analytics.Format(Average(x => x.AttendanceDisciplineScore)) + "%", "aqua", null, "Fill, punches, duration, punctuality")
             @Kpi("Average utilization", Analytics.Format(Average(x => x.Utilization, true)) + "%", "violet", null, "Entered vs compliance hours")
-            @Kpi("Engineers in analysis", Items.Count.ToString(), "slate", null, ExcludedLabel)
+            @Kpi("Engineers in analysis", State.Performance.Count.ToString(), "slate", null, ExcludedLabel)
             @Kpi("Open alerts", Alerts.Count.ToString(), Alerts.Any(x => x.Level == AlertLevel.Critical) ? "critical" : "warning", null, CriticalLabel)
         </div>
 
         <div class="overview-grid">
 
             <section class="card">
-                <div class="card-head"><h2>Score distribution</h2><small>@Items.Count engineers</small></div>
+                <div class="card-head"><h2>Score distribution</h2><small>@State.Performance.Count engineers</small></div>
                 <div class="distribution">
                     @foreach (var band in Bands)
                     {
@@ -63,10 +67,10 @@
                 </ul>
                 <h3 class="sub-head">Attendance exceptions</h3>
                 <div class="exception-row">
-                    @Exception("Missing punch", Items.Sum(x => x.MissingPunchDays))
-                    @Exception("Late arrival", Items.Sum(x => x.LateDays))
-                    @Exception("Early going", Items.Sum(x => x.EarlyDays))
-                    @Exception("Short duration", Items.Sum(x => x.LessDurationDays))
+                    @Exception("Missing punch", State.Performance.Sum(x => x.MissingPunchDays))
+                    @Exception("Late arrival", State.Performance.Sum(x => x.LateDays))
+                    @Exception("Early going", State.Performance.Sum(x => x.EarlyDays))
+                    @Exception("Short duration", State.Performance.Sum(x => x.LessDurationDays))
                 </div>
             </section>
 
@@ -87,23 +91,23 @@
 
             <section class="card">
                 <div class="card-head"><h2>Top quartile</h2><small>Operational score</small></div>
-                @QuartileList(Analytics.Quartile(Items, PreviousScores, true))
+                @QuartileList(Analytics.Quartile(State.Performance, PreviousScores, true))
             </section>
 
             <section class="card">
                 <div class="card-head"><h2>Needs attention</h2><small>Lowest operational score</small></div>
-                @QuartileList(Analytics.Quartile(Items, PreviousScores, false))
+                @QuartileList(Analytics.Quartile(State.Performance, PreviousScores, false))
             </section>
 
             <section class="card">
-                <div class="card-head"><h2>Peer review</h2><small>@(Peers.TotalFeedback > 0 ? $"{Month:MMMM yyyy}" : "Not yet collected")</small></div>
+                <div class="card-head"><h2>Peer review</h2><small>@(Peers.TotalFeedback > 0 ? $"{State.SelectedMonth:MMMM yyyy}" : "Not yet collected")</small></div>
                 @if (Peers.TotalFeedback == 0)
                 {
                     <div class="locked">
                         <strong>No peer feedback for this month</strong>
                         <p>Generate review workbooks on the Templates screen. Each one carries a <em>Peer Review</em> sheet listing the whole team, where the engineer rates the colleagues they worked with on collaboration, communication, reliability and technical help.</p>
                         <p>Upload the completed workbooks — or a ZIP of them — into the <em>Engineer reviews</em> input on Data imports, and this card fills in.</p>
-                        <button class="action secondary" @onclick='() => OnNavigate.InvokeAsync("templates")'>Generate templates</button>
+                        <button class="action secondary" @onclick='() => Navigation.NavigateTo("/templates")'>Generate templates</button>
                     </div>
                 }
                 else
@@ -130,7 +134,7 @@
             @if (Peers.TotalFeedback > 0)
             {
                 <section class="card wide">
-                    <div class="card-head"><h2>Peer review network</h2><button class="link" @onclick='() => OnNavigate.InvokeAsync("peer-insights")'>Open Peer Insights →</button></div>
+                    <div class="card-head"><h2>Peer review network</h2><button class="link" @onclick='() => Navigation.NavigateTo("/peer-insights")'>Open Peer Insights →</button></div>
                     <div class="network-layout">
                         <div id="chart-network" class="echart network-small"></div>
                         <div class="network-stats">
@@ -187,7 +191,7 @@
             {
                 <section class="card wide subtle">
                     <div class="card-head"><h2>Heatmap, trend &amp; forecast</h2><small>Needs two months</small></div>
-                    <p class="chart-note">Only @Month.ToString("MMMM yyyy") has been imported. Import another month's exports and the month-over-month heatmap, trend line and forecast appear here automatically.</p>
+                    <p class="chart-note">Only @State.SelectedMonth.ToString("MMMM yyyy") has been imported. Import another month's exports and the month-over-month heatmap, trend line and forecast appear here automatically.</p>
                 </section>
             }
 
@@ -222,7 +226,7 @@
                     {
                         <small>Filtered to @Analytics.ScoreBandLabel(_bandFilter) (@FilteredPerformanceItems.Count) · <button class="link" @onclick="() => _bandFilter = null">Clear filter</button></small>
                     }
-                    <button class="link" @onclick='() => OnNavigate.InvokeAsync("employees")'>Manage employees</button>
+                    <button class="link" @onclick='() => Navigation.NavigateTo("/employees")'>Manage employees</button>
                 </div>
                 <div class="performance-table">
                     <div class="performance-head">
@@ -247,7 +251,7 @@
                         </div>
                     }
                 </div>
-                @if (Items.Any(x => !x.HasSummaryData))
+                @if (State.Performance.Any(x => !x.HasSummaryData))
                 {
                     <p class="chart-note">@NoData means the engineer is not in the monthly utilization export, so timesheet and approval have no source. Their score is weighted on attendance alone rather than counted as zero.</p>
                 }
@@ -258,22 +262,16 @@
 
 @if (_spotlightName is not null)
 {
-    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="Month"
-                        Item="SpotlightItem" TeamRadar="Analytics.Radar(Items)"
+    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="State.SelectedMonth"
+                        Item="SpotlightItem" TeamRadar="Analytics.Radar(State.Performance)"
                         TrendMonths="HeatmapMonths" TrendValues="SpotlightTrend"
-                        Peer="Analytics.PeerBreakdownFor(PeerReviews, _spotlightName)"
+                        Peer="Analytics.PeerBreakdownFor(State.PeerReviews, _spotlightName)"
                         Alerts="Alerts.Where(x => PersonName.Matches(x.EmployeeName, _spotlightName)).ToArray()"
                         OnClose="() => _spotlightName = null"
-                        OnOpenProfile='name => OnNavigate.InvokeAsync($"employee:{name}")' />
+                        OnOpenProfile='name => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}")' />
 }
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPerformanceItem> History { get; set; } = [];
-    [Parameter, EditorRequired] public DateTime Month { get; set; }
-    [Parameter] public IReadOnlyList<PeerReviewItem> PeerReviews { get; set; } = [];
-    [Parameter] public int ExcludedCount { get; set; }
-    [Parameter] public EventCallback<string> OnNavigate { get; set; }
 
     private const string NoData = "—";
     private static readonly string[] Bands = ["good", "warning", "serious", "critical"];
@@ -293,25 +291,25 @@
     [JSInvokable]
     public void DrilldownTo(string name) { Spotlight(name); StateHasChanged(); }
 
-    private DateTime Previous => Month.AddMonths(-1);
-    private IReadOnlyList<Anomaly> Alerts => Analytics.Anomalies(Items, PreviousScores);
-    private Analytics.PeerSummary Peers => Analytics.Peers(PeerReviews);
+    private DateTime Previous => State.SelectedMonth.AddMonths(-1);
+    private IReadOnlyList<Anomaly> Alerts => Analytics.Anomalies(State.Performance, PreviousScores);
+    private Analytics.PeerSummary Peers => Analytics.Peers(State.PeerReviews);
 
-    private Dictionary<string, decimal> PreviousScores => History
+    private Dictionary<string, decimal> PreviousScores => State.History
         .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
         .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
         .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
 
-    private List<DateTime> HeatmapMonths => History
+    private List<DateTime> HeatmapMonths => State.History
         .Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).TakeLast(6).ToList();
 
-    private string[] HeatmapNames => History.Select(x => x.EmployeeName).Distinct(StringComparer.OrdinalIgnoreCase)
+    private string[] HeatmapNames => State.History.Select(x => x.EmployeeName).Distinct(StringComparer.OrdinalIgnoreCase)
         .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
 
-    private decimal TeamScore => Items.Count == 0 ? 0 : decimal.Round(Items.Average(x => x.OperationalScore), 1);
+    private decimal TeamScore => State.Performance.Count == 0 ? 0 : decimal.Round(State.Performance.Average(x => x.OperationalScore), 1);
 
     private IReadOnlyList<decimal> TrendSeries => HeatmapMonths
-        .Select(m => History.Where(x => x.Year == m.Year && x.Month == m.Month)
+        .Select(m => State.History.Where(x => x.Year == m.Year && x.Month == m.Month)
             .Select(x => x.OperationalScore).DefaultIfEmpty(0).Average())
         .ToArray();
 
@@ -326,47 +324,47 @@
     }
 
     private MonthlyPerformanceItem? SpotlightItem => _spotlightName is null
-        ? null : Items.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName));
+        ? null : State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName));
 
     private IReadOnlyList<decimal> SpotlightTrend => _spotlightName is null
         ? []
-        : HeatmapMonths.Select(m => History
+        : HeatmapMonths.Select(m => State.History
             .Where(x => x.Year == m.Year && x.Month == m.Month && PersonName.Matches(x.EmployeeName, _spotlightName))
             .Select(x => x.OperationalScore).DefaultIfEmpty(0).First()).ToArray();
 
     private IReadOnlyList<MonthlyPerformanceItem> SearchMatches => string.IsNullOrWhiteSpace(_query)
         ? []
-        : Items.Where(x => x.EmployeeName.Contains(_query, StringComparison.OrdinalIgnoreCase))
+        : State.Performance.Where(x => x.EmployeeName.Contains(_query, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(x => x.OperationalScore).Take(6).ToArray();
 
     private decimal Average(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly = false)
     {
-        var scope = summaryOnly ? Items.Where(x => x.HasSummaryData).ToArray() : Items.ToArray();
+        var scope = summaryOnly ? State.Performance.Where(x => x.HasSummaryData).ToArray() : State.Performance.ToArray();
         return scope.Length == 0 ? 0 : decimal.Round(scope.Average(selector), 1);
     }
 
-    private string MeasuredLabel => Items.Count(x => x.HasSummaryData) == Items.Count
+    private string MeasuredLabel => State.Performance.Count(x => x.HasSummaryData) == State.Performance.Count
         ? "Entered vs compliance hours"
-        : $"{Items.Count(x => x.HasSummaryData)} of {Items.Count} in the utilization export";
-    private string ExcludedLabel => ExcludedCount == 0 ? "All imported engineers" : $"{ExcludedCount} excluded by configuration";
+        : $"{State.Performance.Count(x => x.HasSummaryData)} of {State.Performance.Count} in the utilization export";
+    private string ExcludedLabel => State.ExcludedNames.Count == 0 ? "All imported engineers" : $"{State.ExcludedNames.Count} excluded by configuration";
     private string CriticalLabel => Alerts.Count(x => x.Level == AlertLevel.Critical) is var c && c > 0 ? $"{c} critical" : "None critical";
 
-    private decimal TimesheetFillRate => Items.Sum(x => x.ExpectedTimesheetDays) == 0
-        ? 0 : decimal.Round(Items.Sum(x => x.TimesheetFilledDays) * 100m / Items.Sum(x => x.ExpectedTimesheetDays), 1);
-    private decimal TotalPunchHours => Items.Sum(x => x.PunchHours);
-    private decimal TotalBookedHours => Items.Sum(x => x.AttendanceTimesheetHours);
+    private decimal TimesheetFillRate => State.Performance.Sum(x => x.ExpectedTimesheetDays) == 0
+        ? 0 : decimal.Round(State.Performance.Sum(x => x.TimesheetFilledDays) * 100m / State.Performance.Sum(x => x.ExpectedTimesheetDays), 1);
+    private decimal TotalPunchHours => State.Performance.Sum(x => x.PunchHours);
+    private decimal TotalBookedHours => State.Performance.Sum(x => x.AttendanceTimesheetHours);
 
-    private IReadOnlyList<MonthlyPerformanceItem> VarianceRows => Items
+    private IReadOnlyList<MonthlyPerformanceItem> VarianceRows => State.Performance
         .Where(x => Math.Abs(x.ReconciliationVariance) >= 1)
         .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(5).ToArray();
 
-    private int BandCount(string band) => Items.Count(x => Analytics.ScoreBand(x.OperationalScore) == band);
+    private int BandCount(string band) => State.Performance.Count(x => Analytics.ScoreBand(x.OperationalScore) == band);
 
     private void ToggleBandFilter(string band) => _bandFilter = _bandFilter == band ? null : band;
 
     private IReadOnlyList<MonthlyPerformanceItem> FilteredPerformanceItems => _bandFilter is null
-        ? Items
-        : Items.Where(x => Analytics.ScoreBand(x.OperationalScore) == _bandFilter).ToArray();
+        ? State.Performance
+        : State.Performance.Where(x => Analytics.ScoreBand(x.OperationalScore) == _bandFilter).ToArray();
     private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
     private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
 
@@ -378,17 +376,30 @@
         else if (e.Key == "Escape") _query = string.Empty;
     }
 
-    protected override void OnParametersSet()
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    // Routed pages aren't re-rendered just because MainLayout (which owns the month picker) is —
+    // @Body doesn't cascade parameters the way an explicitly-declared child component would, so
+    // each page that reads AppState reactively has to ask for its own re-render on Changed.
+    private void OnStateChanged()
     {
-        var signature = $"{Items.Count}|{Items.Sum(x => x.OperationalScore):0.0}|{History.Count}|{PeerReviews.Count}|{Month:yyyyMM}";
+        CheckChartsPending();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void CheckChartsPending()
+    {
+        var signature = $"{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}|{State.History.Count}|{State.PeerReviews.Count}|{State.SelectedMonth:yyyyMM}";
         if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
     }
+
+    protected override void OnParametersSet() => CheckChartsPending();
 
     private bool _chartsPending;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_chartsPending || Items.Count == 0) return;
+        if (!_chartsPending || State.Performance.Count == 0) return;
         _chartsPending = false;
         await RenderChartsAsync();
     }
@@ -401,7 +412,7 @@
             await JS.InvokeVoidAsync("epaCharts.registerDrilldown", _selfRef);
         }
 
-        var points = Items.Select(x => new
+        var points = State.Performance.Select(x => new
         {
             x = (double)x.Workload(),
             y = (double)x.Utilization,
@@ -411,7 +422,7 @@
         }).ToArray();
         await JS.InvokeVoidAsync("epaCharts.scatter", "chart-scatter", points, (double)Analytics.WorkloadCeiling, (double)Analytics.UtilizationTarget);
 
-        var axes = Analytics.Radar(Items);
+        var axes = Analytics.Radar(State.Performance);
         await JS.InvokeVoidAsync("epaCharts.radar", "chart-radar", axes.Select(a => a.Label).ToArray(), 100,
             new object[]
             {
@@ -432,7 +443,7 @@
         {
             var months = HeatmapMonths;
             var names = HeatmapNames;
-            var lookup = History.ToLookup(x => (x.EmployeeName.ToLowerInvariant(), x.Year, x.Month));
+            var lookup = State.History.ToLookup(x => (x.EmployeeName.ToLowerInvariant(), x.Year, x.Month));
             var cells = new List<object>();
             for (var yi = 0; yi < names.Length; yi++)
                 for (var xi = 0; xi < months.Count; xi++)
@@ -451,7 +462,7 @@
 
         if (Peers.TotalFeedback > 0)
         {
-            var graph = Analytics.Network(PeerReviews);
+            var graph = Analytics.Network(State.PeerReviews);
             await JS.InvokeVoidAsync("epaCharts.network", "chart-network",
                 graph.Nodes.Select(n => new { name = n.Name, received = n.Received, given = n.Given, tooltip = n.Tooltip, initials = Analytics.Initials(n.Name) }).ToArray(),
                 graph.Links.Select(l => new { source = l.Source, target = l.Target, value = l.Value, tooltip = l.Tooltip }).ToArray(),
@@ -461,6 +472,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        State.Changed -= OnStateChanged;
         foreach (var id in ChartIds)
         {
             try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }

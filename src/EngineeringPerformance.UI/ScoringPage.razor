@@ -1,0 +1,23 @@
+@page "/scoring"
+
+<section class="single-pane">
+    <div class="section-title">
+        <div><h2>Category weights</h2><p>Configure the contribution of each category. The total must equal 100.</p></div>
+        <strong class="weight-total @(WeightTotal == 100 ? "valid" : "invalid")">@WeightTotal%</strong>
+    </div>
+    <div class="weight-list">
+        @Weight("Assignment execution", () => _execution, v => _execution = v)
+        @Weight("Ownership & accountability", () => _ownership, v => _ownership = v)
+        @Weight("Collaboration", () => _collaboration, v => _collaboration = v)
+        @Weight("Operational discipline", () => _discipline, v => _discipline = v)
+        @Weight("Professional excellence", () => _excellence, v => _excellence = v)
+        @Weight("Continuous improvement", () => _improvement, v => _improvement = v)
+        @Weight("Growth & learning", () => _growth, v => _growth = v)
+    </div>
+</section>
+
+@code {
+    private decimal _execution = 25, _ownership = 15, _collaboration = 15, _discipline = 15, _excellence = 10, _improvement = 10, _growth = 10;
+    private decimal WeightTotal => _execution + _ownership + _collaboration + _discipline + _excellence + _improvement + _growth;
+    private RenderFragment Weight(string label, Func<decimal> get, Action<decimal> set) => @<label class="weight-row"><span>@label</span><input type="number" min="0" max="100" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? v : 0)" /><b>%</b></label>;
+}
