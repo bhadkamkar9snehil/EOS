@@ -360,7 +360,7 @@ b.critical { color: #d03b3b; }
 .team-select { height: 32px; border: 1px solid #cbd4df; background: #fff; padding: 0 8px; font-size: 12px; border-radius: var(--radius-sm); max-width: 100%; }
 
 .data-table .table-head.roster, .data-row.roster { grid-template-columns: 100px minmax(180px, 1fr) 180px 140px 170px; }
-.data-table .table-head.roster.full, .data-row.roster.full { grid-template-columns: 90px minmax(170px, 1fr) 100px 160px 130px 210px 120px 220px; }
+.data-table .table-head.roster.full, .data-row.roster.full { grid-template-columns: 72px minmax(210px, 1.3fr) 92px minmax(150px, 170px) 118px minmax(180px, 210px) 112px 234px; gap: 14px; }
 .roster-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 13px; }
 .roster-name small { font-size: 10.5px; color: var(--muted); display: flex; gap: 5px; flex-wrap: wrap; }
 .tag-row { display: flex; gap: 5px; flex-wrap: wrap; }
@@ -445,6 +445,7 @@ b.critical { color: #d03b3b; }
 
 .single-pane { padding: 28px; max-width: 1180px; }
 .single-pane.narrow { max-width: 760px; }
+.single-pane.wide { max-width: 1640px; }
 .form-row { display: flex; align-items: end; gap: 12px; padding: 18px; background: #f7f9fc; border: 1px solid var(--line); margin-bottom: 22px; }
 .form-row label, .template-card label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: #5f6c7d; }
 .form-row .grow { flex: 1; }
@@ -531,6 +532,9 @@ b.critical { color: #d03b3b; }
     .import-table .table-head, .import-row { grid-template-columns: minmax(190px, 1fr) minmax(190px, 1fr) 100px 82px; }
     .import-table .table-head span:nth-child(3), .import-row .filename { display: none; }
     .data-table .table-head, .data-row { grid-template-columns: 96px minmax(140px, 1fr) 124px 106px 170px; }
+    .data-table .table-head.roster.full, .data-row.roster.full { grid-template-columns: 64px minmax(160px, 1fr) 80px 120px 190px 200px; }
+    .data-table .table-head.roster.full > :nth-child(5), .data-row.roster.full > :nth-child(5),
+    .data-table .table-head.roster.full > :nth-child(7), .data-row.roster.full > :nth-child(7) { display: none; }
     .alert-list { grid-template-columns: minmax(0, 1fr); }
     .performance-head, .performance-row { grid-template-columns: minmax(140px, 1.4fr) 104px repeat(4, 72px); }
     .performance-head span:nth-last-child(-n+3), .performance-row span:nth-last-child(-n+3) { display: none; }

@@ -12,7 +12,7 @@
    seniority, analysis inclusion), team assignment, and billable/consultant/probation
    status all live on the same row instead of being split across two screens. *@
 
-<section class="single-pane">
+<section class="single-pane wide">
     <div class="section-title compact">
         <p>Consultants are always non-billable; probation can be corrected per person.</p>
         <div class="section-actions">
@@ -128,10 +128,6 @@
                         <option value="on">Probation: On</option>
                         <option value="off">Probation: Off</option>
                     </select>
-                    @if (!employee.IsConsultant && !employee.IsOnProbation)
-                    {
-                        <span class="tag muted">Permanent</span>
-                    }
                 </span>
                 <label class="switch" title="@(employee.IsExcluded ? "Excluded from every Overview figure" : "Counted in the analysis")">
                     <input type="checkbox" checked="@(!employee.IsExcluded)" @onchange="e => ToggleExclusionAsync(employee, !(bool)(e.Value ?? false))" />
