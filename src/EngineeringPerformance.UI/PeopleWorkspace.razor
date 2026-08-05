@@ -1,6 +1,8 @@
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IFileDialogService Dialogs
+@inject IApplicationDatabase Database
+@inject AppState State
 
 @* Employee master, teams and classification in one place: identity (code, name,
    seniority, analysis inclusion), team assignment, and billable/consultant/probation
@@ -14,7 +16,7 @@
             {
                 <span class="excluded-pill">@ExcludedCount excluded from analysis</span>
             }
-            <button class="action secondary small" @onclick="ImportRosterAsync" disabled="@_busy">Import from ERP roster</button>
+            <button class="action secondary small" @onclick="ImportRosterAsync" disabled="@State.Busy">Import from ERP roster</button>
         </div>
     </div>
 
@@ -22,17 +24,17 @@
         <label>Employee code<input @bind="_newCode" placeholder="E1042" /></label>
         <label class="grow">Employee name<input @bind="_newName" placeholder="Full name" /></label>
         <label>Level<input type="number" min="1" max="99" @bind="_newLevel" /></label>
-        <button class="action" @onclick="AddEmployeeAsync" disabled="@_busy">Add employee</button>
+        <button class="action" @onclick="AddEmployeeAsync" disabled="@State.Busy">Add employee</button>
     </div>
 
     <div class="form-row">
         <label class="grow">New team name<input @bind="_newTeamName" placeholder="e.g. X-Force Execution" @onkeydown="OnNewTeamKeyDown" /></label>
-        <button class="action secondary" @onclick="AddTeamAsync" disabled="@_busy">Create team</button>
+        <button class="action secondary" @onclick="AddTeamAsync" disabled="@State.Busy">Create team</button>
     </div>
-    @if (Teams.Count > 0)
+    @if (State.Teams.Count > 0)
     {
         <div class="team-grid compact">
-            @foreach (var team in Teams)
+            @foreach (var team in State.Teams)
             {
                 <div class="team-card">
                     <div class="team-card-head">
@@ -52,8 +54,8 @@
                         }
                     </div>
                     <div class="team-card-actions">
-                        <button class="action small" @onclick="() => RenameTeamAsync(team)" disabled="@(_busy || !IsTeamRenamed(team))">Rename</button>
-                        <button class="danger" @onclick="() => DeleteTeamAsync(team)" disabled="@_busy">Delete</button>
+                        <button class="action small" @onclick="() => RenameTeamAsync(team)" disabled="@(State.Busy || !IsTeamRenamed(team))">Rename</button>
+                        <button class="danger" @onclick="() => DeleteTeamAsync(team)" disabled="@State.Busy">Delete</button>
                     </div>
                 </div>
             }
@@ -64,7 +66,7 @@
         <div class="table-head roster full">
             <span>Code</span><span>Engineer</span><span>Level</span><span>Team</span><span>Billable</span><span>Employment</span><span>In analysis</span><span></span>
         </div>
-        @foreach (var employee in Employees)
+        @foreach (var employee in State.Employees)
         {
             <div class="data-row roster full @(employee.IsExcluded ? "excluded" : null)">
                 <code>@employee.EmployeeCode</code>
@@ -83,7 +85,7 @@
                 <select class="team-select" value="@(employee.TeamId?.ToString() ?? "")"
                         @onchange="e => AssignTeamAsync(employee, e.Value?.ToString())">
                     <option value="">— Unassigned —</option>
-                    @foreach (var team in Teams)
+                    @foreach (var team in State.Teams)
                     {
                         <option value="@team.Id">@team.Name</option>
                     }
@@ -116,12 +118,12 @@
                 </label>
                 <div class="row-actions">
                     <button class="action small secondary" @onclick="() => OpenAnalysis(employee)" title="Open full performance analysis">Analysis →</button>
-                    <button class="action small" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(_busy || !IsDirty(employee))">Save</button>
-                    <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@_busy">Remove</button>
+                    <button class="action small" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(State.Busy || !IsDirty(employee))">Save</button>
+                    <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@State.Busy">Remove</button>
                 </div>
             </div>
         }
-        @if (Employees.Count == 0)
+        @if (State.Employees.Count == 0)
         {
             <div class="table-empty">No employees yet. Add one above, or import the ERP roster — it registers every engineer it finds.</div>
         }
@@ -129,20 +131,14 @@
 </section>
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
-    [Parameter, EditorRequired] public IReadOnlyList<TeamItem> Teams { get; set; } = [];
-    [Parameter] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
-    [Parameter] public EventCallback<(string Message, bool IsError)> OnResult { get; set; }
-    [Parameter] public EventCallback OnChanged { get; set; }
     [Parameter] public EventCallback<string> OnNavigate { get; set; }
-    [Parameter] public IApplicationDatabase Database { get; set; } = default!;
 
-    private int ExcludedCount => Employees.Count(x => x.IsExcluded);
+    private int ExcludedCount => State.Employees.Count(x => x.IsExcluded);
 
     private decimal? TeamAverageScore(TeamItem team)
     {
-        var names = Employees.Where(e => e.TeamId == team.Id).Select(e => e.Name).ToArray();
-        var scores = Items.Where(i => names.Any(n => PersonName.Matches(i.EmployeeName, n)) && i.OperationalScore > 0)
+        var names = State.Employees.Where(e => e.TeamId == team.Id).Select(e => e.Name).ToArray();
+        var scores = State.Performance.Where(i => names.Any(n => PersonName.Matches(i.EmployeeName, n)) && i.OperationalScore > 0)
             .Select(i => i.OperationalScore).ToArray();
         return scores.Length == 0 ? null : decimal.Round(scores.Average(), 1);
     }
@@ -155,15 +151,13 @@
     private string _newTeamName = string.Empty;
     private readonly Dictionary<int, string> _editTeamNames = [];
 
-    private bool _busy;
-
     // ---------- Employees ----------
 
     private async Task AddEmployeeAsync()
     {
         if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newName))
         {
-            await OnResult.InvokeAsync(("Employee code and name are required.", true));
+            State.ShowMessage("Employee code and name are required.", true);
             return;
         }
         await RunAsync(async () =>
@@ -171,7 +165,7 @@
             await Database.AddEmployeeAsync(_newCode, _newName, _newLevel);
             _newCode = _newName = string.Empty;
             _newLevel = 1;
-            await OnResult.InvokeAsync(("Employee added.", false));
+            State.ShowMessage("Employee added.");
         });
     }
 
@@ -179,12 +173,12 @@
     {
         var name = _editName.TryGetValue(employee.Id, out var n) ? n : employee.Name;
         var level = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
-        if (string.IsNullOrWhiteSpace(name)) { await OnResult.InvokeAsync(("Employee name is required.", true)); return; }
-        if (level is < 1 or > 99) { await OnResult.InvokeAsync(("Seniority level must be between 1 and 99.", true)); return; }
+        if (string.IsNullOrWhiteSpace(name)) { State.ShowMessage("Employee name is required.", true); return; }
+        if (level is < 1 or > 99) { State.ShowMessage("Seniority level must be between 1 and 99.", true); return; }
         await RunAsync(async () =>
         {
             await Database.UpdateEmployeeAsync(employee.Id, name, level);
-            await OnResult.InvokeAsync(($"{name.Trim()} updated to level {level}.", false));
+            State.ShowMessage($"{name.Trim()} updated to level {level}.");
         });
     }
 
@@ -202,13 +196,13 @@
         await RunAsync(async () =>
         {
             await Database.SetExclusionAsync(employee.Name, excluded);
-            await OnResult.InvokeAsync((excluded ? $"{employee.Name} is excluded from the analysis." : $"{employee.Name} is included in the analysis.", false));
+            State.ShowMessage(excluded ? $"{employee.Name} is excluded from the analysis." : $"{employee.Name} is included in the analysis.");
         });
 
     private async Task OpenAnalysis(EmployeeListItem employee) => await OnNavigate.InvokeAsync($"employee:{employee.Name}");
 
     private async Task RemoveEmployeeAsync(int id) =>
-        await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); await OnResult.InvokeAsync(("Employee removed.", false)); });
+        await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); State.ShowMessage("Employee removed."); });
 
     private async Task ImportRosterAsync()
     {
@@ -216,7 +210,7 @@
         await RunAsync(async () =>
         {
             var changed = await Database.ImportEmployeeRosterAsync(path);
-            await OnResult.InvokeAsync((changed == 0 ? "Roster imported — no new employees or seniority changes." : $"Roster imported: {changed} employee(s) created or updated.", false));
+            State.ShowMessage(changed == 0 ? "Roster imported — no new employees or seniority changes." : $"Roster imported: {changed} employee(s) created or updated.");
         });
     }
 
@@ -234,7 +228,7 @@
     {
         if (string.IsNullOrWhiteSpace(_newTeamName))
         {
-            await OnResult.InvokeAsync(("Enter a team name first.", true));
+            State.ShowMessage("Enter a team name first.", true);
             return;
         }
         await RunAsync(async () =>
@@ -242,7 +236,7 @@
             await Database.AddTeamAsync(_newTeamName);
             var created = _newTeamName.Trim();
             _newTeamName = string.Empty;
-            await OnResult.InvokeAsync(($"Team “{created}” created.", false));
+            State.ShowMessage($"Team “{created}” created.");
         });
     }
 
@@ -253,7 +247,7 @@
         {
             await Database.RenameTeamAsync(team.Id, name);
             _editTeamNames.Remove(team.Id);
-            await OnResult.InvokeAsync(($"Team renamed to “{name.Trim()}”.", false));
+            State.ShowMessage($"Team renamed to “{name.Trim()}”.");
         });
     }
 
@@ -261,7 +255,7 @@
         await RunAsync(async () =>
         {
             await Database.DeleteTeamAsync(team.Id);
-            await OnResult.InvokeAsync(($"Team “{team.Name}” deleted; {team.MemberCount} member(s) unassigned.", false));
+            State.ShowMessage($"Team “{team.Name}” deleted; {team.MemberCount} member(s) unassigned.");
         });
 
     private async Task AssignTeamAsync(EmployeeListItem employee, string? teamId) =>
@@ -269,14 +263,14 @@
         {
             int? id = int.TryParse(teamId, out var parsed) ? parsed : null;
             await Database.AssignTeamAsync(employee.Id, id);
-            await OnResult.InvokeAsync(($"{employee.Name} {(id is null ? "unassigned" : "assigned")}.", false));
+            State.ShowMessage($"{employee.Name} {(id is null ? "unassigned" : "assigned")}.");
         });
 
     private async Task SetNonBillableAsync(EmployeeListItem employee, bool nonBillable) =>
         await RunAsync(async () =>
         {
             await Database.SetNonBillableAsync(employee.Id, nonBillable);
-            await OnResult.InvokeAsync(($"{employee.Name} marked {(nonBillable ? "non-billable" : "billable")}.", false));
+            State.ShowMessage($"{employee.Name} marked {(nonBillable ? "non-billable" : "billable")}.");
         });
 
     private async Task SetProbationAsync(EmployeeListItem employee, string? mode) =>
@@ -284,15 +278,9 @@
         {
             bool? value = mode switch { "on" => true, "off" => false, _ => null };
             await Database.SetProbationAsync(employee.Id, value);
-            await OnResult.InvokeAsync(($"{employee.Name} probation set to {(value is null ? "auto (roster)" : value.Value ? "on" : "off")}.", false));
+            State.ShowMessage($"{employee.Name} probation set to {(value is null ? "auto (roster)" : value.Value ? "on" : "off")}.");
         });
 
-    private async Task RunAsync(Func<Task> action)
-    {
-        if (_busy) return;
-        _busy = true;
-        try { await action(); await OnChanged.InvokeAsync(); }
-        catch (Exception ex) { await OnResult.InvokeAsync((ex.Message, true)); }
-        finally { _busy = false; }
-    }
+    private async Task RunAsync(Func<Task> action) =>
+        await State.RunAsync(async () => { await action(); await State.RefreshAsync(); });
 }

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Infrastructure;
+using EngineeringPerformance.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -20,6 +21,7 @@ public partial class App : System.Windows.Application
             services.AddWpfBlazorWebView();
             services.AddLocalInfrastructure(dataDirectory);
             services.AddSingleton<IFileDialogService, WindowsFileDialogService>();
+            services.AddSingleton<AppState>();
             services.AddSingleton<MainWindow>();
         }).Build();
     }
