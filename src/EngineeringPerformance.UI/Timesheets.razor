@@ -33,11 +33,14 @@
                     <small>@FilteredRows.Count of @Rows.Count engineer(s) — click a header to sort</small>
                 </div>
                 <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter by name or team…" />
-                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid" RowClass="@(row => row.HasGap ? "row-flag" : null)">
+                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid" RowClass="@RowSeverityClass">
                     <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
-                        <span class="roster-name">
-                            @context.Name
-                            <small>
+                        @context.Name
+                    </TemplateColumn>
+                    <TemplateColumn Title="Status">
+                        @if (context.IsConsultant || context.IsOnProbation || context.IsNonBillable)
+                        {
+                            <span class="tag-row">
                                 @if (context.IsConsultant)
                                 {
                                     <span class="tag consultant">Consultant</span>
@@ -50,30 +53,36 @@
                                 {
                                     <span class="tag muted">Non-billable</span>
                                 }
-                            </small>
-                        </span>
+                            </span>
+                        }
                     </TemplateColumn>
                     <PropertyColumn Title="Team" Property="@(x => x.TeamName)" Sortable="true" />
                     <TemplateColumn Title="Filled" Sortable="true" SortBy="@_sortByFilled">
-                        @context.FilledDays / @context.ExpectedDays
+                        <span class="num">@context.FilledDays / @context.ExpectedDays</span>
                     </TemplateColumn>
                     <TemplateColumn Title="Missing" Sortable="true" SortBy="@_sortByMissing">
-                        <span class="@(context.MissingDays > 0 ? "flag-critical" : null)">@context.MissingDays</span>
+                        <span class="num @MissingSeverityClass(context.MissingDays)">@context.MissingDays</span>
                     </TemplateColumn>
                     <TemplateColumn Title="Fill rate" Sortable="true" SortBy="@_sortByFillRate">
-                        @Analytics.Format(context.FillRate)%
+                        <span class="score-cell">
+                            <b class="@Analytics.ScoreBand(context.FillRate)">@Analytics.Format(context.FillRate)%</b>
+                            <i class="score-bar @Analytics.ScoreBand(context.FillRate)" style="width:@Analytics.Svg((double)context.FillRate * 0.42)px"></i>
+                        </span>
                     </TemplateColumn>
                     <TemplateColumn Title="Entered h" Sortable="true" SortBy="@_sortByEntered">
-                        @Analytics.Format(context.EnteredHours)
+                        <span class="num">@Hours(context.EnteredHours)</span>
                     </TemplateColumn>
-                    <TemplateColumn Title="Awaiting approval" Sortable="true" SortBy="@_sortByPending">
-                        <span class="@(context.HasPendingApproval ? "flag-warning" : null)">@Analytics.Format(context.PendingApprovalHours)</span>
-                    </TemplateColumn>
+                    @if (AnyPendingApproval)
+                    {
+                        <TemplateColumn Title="Awaiting approval" Sortable="true" SortBy="@_sortByPending">
+                            <span class="num @(context.HasPendingApproval ? "flag-warning" : null)">@Hours(context.PendingApprovalHours)</span>
+                        </TemplateColumn>
+                    }
                     <TemplateColumn Title="Billable h" Sortable="true" SortBy="@_sortByBillable">
-                        @Analytics.Format(context.BillableHours)
+                        <span class="num">@Hours(context.BillableHours)</span>
                     </TemplateColumn>
                     <TemplateColumn Title="Capacity" Sortable="true" SortBy="@_sortByCapacity">
-                        @(context.IsNonBillable ? "n/a" : Analytics.Format(context.CapacityUtilization) + "%")
+                        <span class="num">@(context.IsNonBillable ? "n/a" : context.CapacityUtilization <= 0 ? "—" : Analytics.Format(context.CapacityUtilization) + "%")</span>
                     </TemplateColumn>
                 </QuickGrid>
                 @if (FilteredRows.Count == 0)
@@ -110,6 +119,27 @@
         : Rows.Where(x => x.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase) || (x.TeamName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
     private IReadOnlyList<Analytics.ComplianceRow> WithGaps => Rows.Where(x => x.HasGap).ToArray();
     private IReadOnlyList<Analytics.ComplianceRow> AwaitingApproval => Rows.Where(x => x.HasPendingApproval).ToArray();
+    private bool AnyPendingApproval => Rows.Any(x => x.HasPendingApproval);
+
+    // Graduated severity instead of a flat on/off flag: a couple of missed days reads very
+    // differently from a full no-show, and the color should say so at a glance.
+    private static string? MissingSeverityClass(int missingDays) => missingDays switch
+    {
+        <= 0 => null,
+        <= 3 => "flag-warning",
+        _ => "flag-critical"
+    };
+
+    private static string? RowSeverityClass(Analytics.ComplianceRow row) => row.MissingDays switch
+    {
+        <= 0 => null,
+        <= 3 => "row-flag",
+        _ => "row-flag-critical"
+    };
+
+    // A literal zero hours reads as "nothing here" — an em dash is faster to scan across a
+    // column than a wall of repeated "0.0"s, and doesn't compete visually with real values.
+    private static string Hours(decimal value) => value <= 0 ? "—" : Analytics.Format(value) + " h";
 
     private int TotalExpected => Rows.Sum(x => x.ExpectedDays);
     private int TotalFilled => Rows.Sum(x => x.FilledDays);

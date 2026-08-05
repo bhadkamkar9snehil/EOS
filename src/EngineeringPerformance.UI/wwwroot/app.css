@@ -393,6 +393,8 @@ b.critical { color: #d03b3b; }
 .epa-grid tbody tr { min-height: 44px; border-bottom: 1px solid var(--line-soft); }
 .epa-grid tbody tr:hover { background: #f7faff; }
 .epa-grid tbody tr.row-flag { background: #fffaf7; }
+.epa-grid tbody tr.row-flag-critical { background: #fdf2f2; }
+.epa-grid .num { display: block; text-align: right; }
 .epa-grid tbody td { padding: 10px; color: #526174; font-variant-numeric: tabular-nums; vertical-align: middle; }
 .epa-grid .col-title { display: inline-flex; align-items: center; gap: 4px; }
 .epa-grid .sort-indicator { margin-left: 3px; opacity: .6; }
