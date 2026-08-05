@@ -304,9 +304,17 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         var storedPath = Path.Combine(importDirectory, $"{(int)reportType}-{Path.GetFileName(sourcePath)}");
         File.Copy(sourcePath, storedPath, true);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var previous = await context.ImportedSourceFiles.SingleOrDefaultAsync(x => x.Year == year && x.Month == month && x.ReportType == reportType, cancellationToken);
-        if (previous is not null) context.ImportedSourceFiles.Remove(previous);
-        context.ImportedSourceFiles.Add(new ImportedSourceFile(reportType, year, month, inspection.FileName, storedPath, inspection.SheetNames.Count));
+        // A multi-month export (attendance/detailed timesheet) covers every month it contains data
+        // for, not just the UI's currently selected month — recording only the selected month would
+        // make the readiness indicator wrong for the other months once weekly re-uploads start.
+        var coveredMonths = performance.Select(x => (x.Year, x.Month)).Distinct().DefaultIfEmpty((year, month)).ToArray();
+        foreach (var (coveredYear, coveredMonth) in coveredMonths)
+        {
+            var previous = await context.ImportedSourceFiles.SingleOrDefaultAsync(
+                x => x.Year == coveredYear && x.Month == coveredMonth && x.ReportType == reportType, cancellationToken);
+            if (previous is not null) context.ImportedSourceFiles.Remove(previous);
+            context.ImportedSourceFiles.Add(new ImportedSourceFile(reportType, coveredYear, coveredMonth, inspection.FileName, storedPath, inspection.SheetNames.Count));
+        }
         // A multi-month export yields one row per employee per month, so the same employee code
         // recurs many times; codes queued earlier in this batch aren't visible to a database
         // query yet, so they're tracked here to avoid inserting a duplicate employee.

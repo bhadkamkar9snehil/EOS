@@ -68,13 +68,16 @@
                             <li><span>Punch vs timesheet</span><b class="@(Math.Abs(Item.ReconciliationVariance) > 5 ? "down" : null)">@Analytics.Format(Item.ReconciliationVariance, "0.0") h</b></li>
                             <li><span>Non-billable hours</span><b>@Analytics.Format(Item.NonBillableHours, "0.0")</b></li>
                         </ul>
-
-                        <h3 class="sub-head">Category performance vs team average</h3>
-                        <div id="spotlight-radar" class="spotlight-chart"></div>
                     }
                 </div>
 
                 <div class="spotlight-col">
+                    @if (Item is not null)
+                    {
+                        <h3 class="sub-head">Category performance vs team average</h3>
+                        <div id="spotlight-radar" class="spotlight-chart"></div>
+                    }
+
                     <h3 class="sub-head">Peer feedback</h3>
                     @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
                     {
