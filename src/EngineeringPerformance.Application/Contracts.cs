@@ -13,7 +13,6 @@ public sealed record OperationalScoringSettings(
     public decimal Total => TimesheetCompletionWeight + ApprovalCompletionWeight + AttendanceDisciplineWeight;
     public bool IsValid => TimesheetCompletionWeight >= 0m && ApprovalCompletionWeight >= 0m &&
                            AttendanceDisciplineWeight >= 0m && Total == 100m;
-
     public static OperationalScoringSettings Default { get; } = new();
 }
 
@@ -28,47 +27,27 @@ public interface IApplicationDatabase
     Task ImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default);
     Task<int> ImportPackageAsync(int year, int month, string zipPath, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default);
-
-    /// <summary>Performance rows for the given month and the months preceding it, oldest first.</summary>
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default);
 
-    /// <summary>Current operational-score weights. Stored locally and applied to every imported month.</summary>
-    Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default);
+    Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(OperationalScoringSettings.Default);
 
-    /// <summary>Saves operational-score weights and recalculates every existing monthly performance row. Returns rows recalculated.</summary>
-    Task<int> SaveOperationalScoringSettingsAsync(OperationalScoringSettings settings, CancellationToken cancellationToken = default);
+    Task<int> SaveOperationalScoringSettingsAsync(OperationalScoringSettings settings, CancellationToken cancellationToken = default) =>
+        Task.FromException<int>(new NotSupportedException("This database implementation does not support configurable operational scoring."));
 
-    /// <summary>Imports one review workbook, or a ZIP of them, replacing the month's peer feedback.</summary>
     Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default);
     Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Imports the ERP's employee roster export: creates any employee not yet in the master and
-    /// syncs seniority, email, consultant and probation status from the roster. Not month-scoped —
-    /// this is a live snapshot. Returns the number of employees created or updated.
-    /// </summary>
     Task<int> ImportEmployeeRosterAsync(string filePath, CancellationToken cancellationToken = default);
-
     Task SetNonBillableAsync(int employeeId, bool value, CancellationToken cancellationToken = default);
     Task AssignTeamAsync(int employeeId, int? teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>Manually sets probation status, overriding the ERP roster's value. Pass null to clear the override and revert to the roster.</summary>
     Task SetProbationAsync(int employeeId, bool? value, CancellationToken cancellationToken = default);
-
-    /// <summary>Manually sets up-down (daily train commuter) status. Pass null to revert to the ERP roster's value.</summary>
     Task SetUpdownAsync(int employeeId, bool? value, CancellationToken cancellationToken = default);
-
-    /// <summary>Append-only import log, newest first. Pass null for year/month to see every month.</summary>
     Task<IReadOnlyList<ImportHistoryItem>> GetImportHistoryAsync(int? year = null, int? month = null, int take = 200, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<TeamItem>> GetTeamsAsync(CancellationToken cancellationToken = default);
     Task<int> AddTeamAsync(string name, CancellationToken cancellationToken = default);
     Task RenameTeamAsync(int teamId, string name, CancellationToken cancellationToken = default);
-    /// <summary>Deletes the team; members are unassigned, not removed.</summary>
     Task DeleteTeamAsync(int teamId, CancellationToken cancellationToken = default);
 }
 
@@ -87,14 +66,13 @@ public sealed record EmployeeListItem(
 
 public sealed record TeamItem(int Id, string Name, int MemberCount);
 
-/// <summary>One row of the append-only import log, for the upload-history view.</summary>
 public sealed record ImportHistoryItem(
     int Id, ReportType ReportType, int Year, int Month,
     string OriginalFileName, int RowCount, bool ReplacedExisting, DateTime ImportedUtc)
 {
-    /// <summary>Stored in UTC; every display of it is local, since imports are a local-desk activity.</summary>
     public DateTime ImportedLocal => DateTime.SpecifyKind(ImportedUtc, DateTimeKind.Utc).ToLocalTime();
 }
+
 public sealed record MonthlyPerformanceItem(string EmployeeName, string? EmployeeCode, decimal OperationalScore,
     decimal TimesheetCompletionScore, decimal ApprovalScore, decimal AttendanceDisciplineScore,
     decimal EnteredHours, decimal ComplianceHours, decimal BillableHours, decimal DetailedHours,
@@ -104,13 +82,8 @@ public sealed record MonthlyPerformanceItem(string EmployeeName, string? Employe
     int TimesheetFilledDays, int ExpectedTimesheetDays, decimal NonBillableHours, decimal TrainingHours,
     decimal ApprovedHours = 0)
 {
-    /// <summary>The monthly utilization export is the only source of compliance hours.</summary>
     public bool HasSummaryData => ComplianceHours > 0;
-
-    /// <summary>Punch hours booked against hours recorded on the timesheet, in hours.</summary>
     public decimal ReconciliationVariance => PunchHours - AttendanceTimesheetHours;
-
-    /// <summary>Share of compliance capacity actually entered, uncapped so overrun stays visible.</summary>
     public decimal Utilization => ComplianceHours <= 0 ? 0 : decimal.Round(EnteredHours / ComplianceHours * 100m, 1);
 }
 
@@ -124,30 +97,17 @@ public interface IWorkbookService
     WorkbookInspection Inspect(string filePath);
     ReportType DetectReportType(string filePath);
     IReadOnlyList<EmployeeMonthlyPerformance> ReadPerformance(string filePath, ReportType reportType, int year, int month);
-
-    /// <summary>Reads the completed peer review sheet out of a generated review workbook.</summary>
     IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month);
-
-    /// <summary>Reads the ERP's employee roster export (code, name, seniority derived from Band Level).</summary>
     IReadOnlyList<RosterEntry> ReadEmployeeRoster(string filePath);
-
     void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null);
     IReadOnlyList<string> GenerateEngineerTemplates(string destinationFolder, IReadOnlyList<Employee> employees, int year, int month);
-
-    /// <summary>Formatted single-employee performance report, covering the score, category breakdown, peer feedback and alerts for that month.</summary>
     void GenerateEmployeeReport(string destinationPath, EmployeeReportData data);
-
-    /// <summary>Formatted whole-team performance report for the month.</summary>
     void GenerateTeamReport(string destinationPath, TeamReportData data);
 }
 
 public sealed record WorkbookInspection(string FileName, IReadOnlyList<string> SheetNames, long Length);
 public sealed record RosterEntry(string EmployeeCode, string Name, int SeniorityLevel, string? Email, bool IsConsultant, bool IsOnProbation, bool IsUpdown = false);
 
-/// <summary>
-/// Everything <see cref="IWorkbookService.GenerateEmployeeReport"/> needs, gathered by the
-/// caller from plain Application/Domain types so report layout stays out of the UI project.
-/// </summary>
 public sealed record EmployeeReportData(
     string EmployeeName, string EmployeeCode, int SeniorityLevel, int Year, int Month,
     MonthlyPerformanceItem? Current, IReadOnlyList<MonthlyPerformanceItem> History,
