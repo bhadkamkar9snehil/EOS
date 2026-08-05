@@ -57,31 +57,31 @@
                         }
                     </TemplateColumn>
                     <PropertyColumn Title="Team" Property="@(x => x.TeamName)" Sortable="true" />
-                    <TemplateColumn Title="Filled" Sortable="true" SortBy="@_sortByFilled">
+                    <TemplateColumn Title="Filled (d)" Align="Align.Right" Sortable="true" SortBy="@_sortByFilled">
                         <span class="num">@context.FilledDays / @context.ExpectedDays</span>
                     </TemplateColumn>
-                    <TemplateColumn Title="Missing" Sortable="true" SortBy="@_sortByMissing">
+                    <TemplateColumn Title="Missing (d)" Align="Align.Right" Sortable="true" SortBy="@_sortByMissing">
                         <span class="num @MissingSeverityClass(context.MissingDays)">@context.MissingDays</span>
                     </TemplateColumn>
-                    <TemplateColumn Title="Fill rate" Sortable="true" SortBy="@_sortByFillRate">
+                    <TemplateColumn Title="Fill rate (%)" Align="Align.Right" Sortable="true" SortBy="@_sortByFillRate">
                         <span class="score-cell">
                             <b class="@Analytics.ScoreBand(context.FillRate)">@Analytics.Format(context.FillRate)%</b>
                             <i class="score-bar @Analytics.ScoreBand(context.FillRate)" style="width:@Analytics.Svg((double)context.FillRate * 0.42)px"></i>
                         </span>
                     </TemplateColumn>
-                    <TemplateColumn Title="Entered h" Sortable="true" SortBy="@_sortByEntered">
+                    <TemplateColumn Title="Entered (h)" Align="Align.Right" Sortable="true" SortBy="@_sortByEntered">
                         <span class="num">@Hours(context.EnteredHours)</span>
                     </TemplateColumn>
                     @if (AnyPendingApproval)
                     {
-                        <TemplateColumn Title="Awaiting approval" Sortable="true" SortBy="@_sortByPending">
+                        <TemplateColumn Title="Awaiting (h)" Align="Align.Right" Sortable="true" SortBy="@_sortByPending">
                             <span class="num @(context.HasPendingApproval ? "flag-warning" : null)">@Hours(context.PendingApprovalHours)</span>
                         </TemplateColumn>
                     }
-                    <TemplateColumn Title="Billable h" Sortable="true" SortBy="@_sortByBillable">
+                    <TemplateColumn Title="Billable (h)" Align="Align.Right" Sortable="true" SortBy="@_sortByBillable">
                         <span class="num">@Hours(context.BillableHours)</span>
                     </TemplateColumn>
-                    <TemplateColumn Title="Capacity" Sortable="true" SortBy="@_sortByCapacity">
+                    <TemplateColumn Title="Capacity (%)" Align="Align.Right" Sortable="true" SortBy="@_sortByCapacity">
                         <span class="num">@(context.IsNonBillable ? "n/a" : context.CapacityUtilization <= 0 ? "—" : Analytics.Format(context.CapacityUtilization) + "%")</span>
                     </TemplateColumn>
                 </QuickGrid>

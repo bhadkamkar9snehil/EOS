@@ -381,22 +381,31 @@ b.critical { color: #d03b3b; }
 }
 .grid-filter:focus { outline: none; border-color: #9bb8e4; }
 
-/* QuickGrid renders a real <table>; styled to match .performance-table's look. */
-.epa-grid { width: 100%; border-collapse: collapse; border-top: 1px solid var(--line); font-size: 12px; }
+/* QuickGrid renders a real <table>; styled to match .performance-table's look.
+   QuickGrid does not ship its own stylesheet here (only app.css is loaded), and its header
+   label is a real <button> element — left un-reset, WebView2 draws it with native button
+   chrome (border, background, radius), which is what made every header look like a chip. */
+.epa-grid { width: 100%; border-collapse: collapse; border-top: 1px solid var(--line); border-left: 1px solid var(--line); font-size: 12px; }
 .epa-grid thead th {
     height: 36px; color: #657184; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .05em; text-align: left; padding: 0 10px; border-bottom: 1px solid var(--line-soft);
-    white-space: nowrap; cursor: default;
+    letter-spacing: .05em; text-align: left; padding: 0; border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line); background: #f7f9fc; white-space: nowrap; cursor: default;
 }
 .epa-grid thead th.sortable-column { cursor: pointer; user-select: none; }
-.epa-grid thead th.sortable-column:hover { color: #2b3648; }
+.epa-grid thead th.col-justify-right .col-header-content { justify-content: flex-end; }
+.epa-grid .col-header-content { display: flex; align-items: center; height: 100%; padding: 0 10px; }
+.epa-grid .col-title {
+    all: unset; display: inline-flex; align-items: center; gap: 4px; cursor: inherit;
+    font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit;
+}
+.epa-grid thead th.sortable-column:hover .col-title { color: #2b3648; }
 .epa-grid tbody tr { min-height: 44px; border-bottom: 1px solid var(--line-soft); }
 .epa-grid tbody tr:hover { background: #f7faff; }
 .epa-grid tbody tr.row-flag { background: #fffaf7; }
 .epa-grid tbody tr.row-flag-critical { background: #fdf2f2; }
 .epa-grid .num { display: block; text-align: right; }
-.epa-grid tbody td { padding: 10px; color: #526174; font-variant-numeric: tabular-nums; vertical-align: middle; }
-.epa-grid .col-title { display: inline-flex; align-items: center; gap: 4px; }
+.epa-grid tbody td { padding: 10px; color: #526174; font-variant-numeric: tabular-nums; vertical-align: middle; border-right: 1px solid var(--line-soft); }
+.epa-grid tbody td:last-child, .epa-grid thead th:last-child { border-right: 0; }
 .epa-grid .sort-indicator { margin-left: 3px; opacity: .6; }
 .epa-grid .paginator { display: none; }
 
