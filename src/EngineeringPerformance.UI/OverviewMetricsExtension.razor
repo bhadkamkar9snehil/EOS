@@ -1,5 +1,6 @@
 @using EngineeringPerformance.Application
 @inject AppState State
+@inject IApplicationDatabase Database
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
@@ -7,69 +8,84 @@
 @if (State.Performance.Count > 0)
 {
     <section class="analytics-extension overview-extension">
-        <header class="analytics-section-head">
-            <div>
-                <span class="analytics-eyebrow">Operational command center</span>
-                <h2>Capacity, delivery and exception signals</h2>
-                <p>The most decision-useful imported metrics, positioned before the wider diagnostic dashboard.</p>
-            </div>
-            <button class="action secondary small" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
-        </header>
-
-        <div class="metric-ribbon executive-ribbon">
-            @Metric("Entered hours", State.Performance.Sum(x => x.EnteredHours), "h", "primary")
-            @Metric("Approved hours", State.Performance.Sum(x => x.ApprovedHours), "h", "good")
-            @Metric("Billable share", BillableShare, "%", "accent")
-            @Metric("Timesheet coverage", TimesheetCoverage, "%", TimesheetCoverage >= 90 ? "good" : "warning")
-            @Metric("Absolute reconciliation gap", AbsoluteVariance, "h", AbsoluteVariance >= 100 ? "risk" : "warning")
-            @Metric("Detailed entries", State.Performance.Sum(x => x.DetailedEntries), "", "neutral")
+        <div class="kpi-row analytics-kpi-row">
+            @Kpi("Entered hours", State.Performance.Sum(x => x.EnteredHours), "h")
+            @Kpi("Approved hours", State.Performance.Sum(x => x.ApprovedHours), "h", "good")
+            @Kpi("Billable share", BillableShare, "%")
+            @Kpi("Timesheet coverage", TimesheetCoverage, "%", TimesheetCoverage >= 90 ? "good" : "warning")
+            @Kpi("Missing timesheet days", MissingTimesheetDays, "", MissingTimesheetDays > 0 ? "warning" : "good")
+            @Kpi("Absolute reconciliation gap", AbsoluteVariance, "h", AbsoluteVariance >= 100 ? "critical" : "warning")
         </div>
 
-        <div class="extension-grid command-grid">
-            <section class="card span-8 command-chart">
+        <div class="refined-overview-grid">
+            <section class="card span-8 score-stack-card">
                 <div class="card-head">
-                    <div><h2>Score composition by engineer</h2><small>Operational score and the three weighted inputs</small></div>
-                    <span class="card-kicker">Component diagnosis</span>
+                    <div>
+                        <h2>Operational score composition</h2>
+                        <small>Weighted contribution points from timesheet completion, approval completion and attendance discipline</small>
+                    </div>
                 </div>
-                <div id="overview-score-components" class="echart tall"></div>
+                <div id="overview-score-components"
+                     class="echart"
+                     style="height:@ScoreChartHeightPx}px"></div>
+                <p class="chart-explanation">Each stacked bar totals the engineer's operational score. Missing utilization data automatically removes the unavailable timesheet and approval weights rather than treating them as zero.</p>
             </section>
 
-            <section class="card span-4 command-signals">
-                <div class="card-head"><div><h2>Priority signals</h2><small>Where review should start</small></div></div>
-                <div class="signal-summary">
+            <section class="card span-4 review-priorities-card">
+                <div class="card-head">
+                    <div><h2>Review priorities</h2><small>One consolidated people-review panel</small></div>
+                    <button class="link" @onclick='() => Navigation.NavigateTo("/data")'>Numerical audit →</button>
+                </div>
+
+                <div class="review-summary">
                     <div><span>Missing timesheet days</span><strong>@MissingTimesheetDays</strong></div>
                     <div><span>Attendance exception days</span><strong>@TotalExceptionDays</strong></div>
-                    <div><span>Engineers with ≥ 40 h variance</span><strong>@HighVarianceCount</strong></div>
+                    <div><span>Variance ≥ 40 h</span><strong>@HighVarianceCount</strong></div>
                 </div>
-                <h3 class="sub-head">Largest reconciliation gaps</h3>
-                <ol class="metric-ranking compact">
-                    @foreach (var item in VarianceLeaders.Take(4))
-                    {
-                        <li><span>@item.EmployeeName</span><b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b></li>
-                    }
-                </ol>
+
+                <section class="review-section">
+                    <h3>Top performers</h3>
+                    <ol class="review-list">
+                        @foreach (var item in TopPerformers)
+                        {
+                            <li><span>@item.EmployeeName</span><b class="good">@Analytics.Format(item.OperationalScore)</b></li>
+                        }
+                    </ol>
+                </section>
+
+                <section class="review-section">
+                    <h3>Needs attention</h3>
+                    <ol class="review-list">
+                        @foreach (var item in NeedsAttention)
+                        {
+                            <li><span>@item.EmployeeName</span><b class="@(item.OperationalScore < 55 ? "critical" : "warning")">@Analytics.Format(item.OperationalScore)</b></li>
+                        }
+                    </ol>
+                </section>
+
+                <section class="review-section">
+                    <h3>Attendance & reconciliation</h3>
+                    <ol class="review-list">
+                        @foreach (var item in AttendanceReview)
+                        {
+                            <li>
+                                <span>@item.EmployeeName</span>
+                                <b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b>
+                                <small>@ExceptionCount(item) exception day(s): @item.MissingPunchDays punch · @item.LateDays late · @item.EarlyDays early · @item.LessDurationDays short</small>
+                            </li>
+                        }
+                    </ol>
+                </section>
             </section>
 
-            <section class="card span-8 command-chart">
+            <section class="card wide hours-allocation-card">
                 <div class="card-head">
-                    <div><h2>Hours allocation by engineer</h2><small>Billable, non-billable, training and office presence</small></div>
-                    <span class="card-kicker">Capacity profile</span>
+                    <div>
+                        <h2>Hours allocation by engineer</h2>
+                        <small>Billable, non-billable, training and office presence; these are quantities, not performance judgements</small>
+                    </div>
                 </div>
                 <div id="overview-hours-allocation" class="echart tall"></div>
-            </section>
-
-            <section class="card span-4 command-signals">
-                <div class="card-head"><div><h2>Exception concentration</h2><small>Combined attendance exception days</small></div></div>
-                <ol class="metric-ranking exception-ranking">
-                    @foreach (var item in ExceptionLeaders)
-                    {
-                        <li>
-                            <span>@item.EmployeeName</span>
-                            <b>@ExceptionCount(item)</b>
-                            <small>@item.MissingPunchDays punch · @item.LateDays late · @item.EarlyDays early · @item.LessDurationDays short</small>
-                        </li>
-                    }
-                </ol>
             </section>
         </div>
     </section>
@@ -78,8 +94,13 @@
 @code {
     private bool _pending = true;
     private string? _signature;
+    private OperationalScoringSettings _settings = OperationalScoringSettings.Default;
 
-    protected override void OnInitialized() => State.Changed += OnChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnChanged;
+        _settings = await Database.GetOperationalScoringSettingsAsync();
+    }
 
     private void OnChanged()
     {
@@ -89,7 +110,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var signature = $"{State.SelectedMonth:yyyyMM}|{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}";
+        var signature = $"{State.SelectedMonth:yyyyMM}|{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}|{_settings.TimesheetCompletionWeight:0.###}|{_settings.ApprovalCompletionWeight:0.###}|{_settings.AttendanceDisciplineWeight:0.###}";
         if (!_pending && signature == _signature) return;
         _pending = false;
         _signature = signature;
@@ -97,13 +118,28 @@
 
         var rows = State.Performance.OrderByDescending(x => x.OperationalScore).ToArray();
         var labels = rows.Select(x => x.EmployeeName).ToArray();
-        await JS.InvokeVoidAsync("epaCharts.verticalBars", "overview-score-components", labels, new object[]
+
+        await JS.InvokeVoidAsync("epaAnalyticsCharts.weightedStack", "overview-score-components", labels, new object[]
         {
-            new { name = "Operational", color = "#0F6E9E", values = rows.Select(x => (object)x.OperationalScore).ToArray() },
-            new { name = "Timesheet", color = "#C85A22", values = rows.Select(x => x.HasSummaryData ? (object)x.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Approval", color = "#7A4BB0", values = rows.Select(x => x.HasSummaryData ? (object)x.ApprovalScore : null).ToArray() },
-            new { name = "Attendance", color = "#1E8C5A", values = rows.Select(x => (object)x.AttendanceDisciplineScore).ToArray() }
-        }, 100, "%");
+            new
+            {
+                name = $"Timesheet ({Analytics.Format(_settings.TimesheetCompletionWeight, "0.#")}%)",
+                color = "#C85A22",
+                values = rows.Select(x => x.HasSummaryData ? (object)Contribution(x, x.TimesheetCompletionScore, _settings.TimesheetCompletionWeight) : null).ToArray()
+            },
+            new
+            {
+                name = $"Approval ({Analytics.Format(_settings.ApprovalCompletionWeight, "0.#")}%)",
+                color = "#7A4BB0",
+                values = rows.Select(x => x.HasSummaryData ? (object)Contribution(x, x.ApprovalScore, _settings.ApprovalCompletionWeight) : null).ToArray()
+            },
+            new
+            {
+                name = $"Attendance ({Analytics.Format(_settings.AttendanceDisciplineWeight, "0.#")}%)",
+                color = "#1E8C5A",
+                values = rows.Select(x => (object)Contribution(x, x.AttendanceDisciplineScore, _settings.AttendanceDisciplineWeight)).ToArray()
+            }
+        }, rows.Select(x => x.OperationalScore).ToArray(), " pts");
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "overview-hours-allocation", labels, new object[]
         {
@@ -113,6 +149,18 @@
             new { name = "Office", color = "#1E8C5A", values = rows.Select(x => (object)x.OfficeHours).ToArray() }
         }, null, " h");
     }
+
+    private decimal Contribution(MonthlyPerformanceItem item, decimal componentScore, decimal componentWeight)
+    {
+        var availableWeight = item.HasSummaryData
+            ? _settings.Total
+            : _settings.AttendanceDisciplineWeight;
+
+        if (availableWeight <= 0 || componentWeight <= 0) return 0;
+        return decimal.Round(componentScore * componentWeight / availableWeight, 1);
+    }
+
+    private int ScoreChartHeightPx => Math.Max(390, State.Performance.Count * 29 + 70);
 
     private decimal BillableShare
     {
@@ -137,19 +185,24 @@
     private int TotalExceptionDays => State.Performance.Sum(ExceptionCount);
     private int HighVarianceCount => State.Performance.Count(x => Math.Abs(x.ReconciliationVariance) >= 40m);
 
-    private IReadOnlyList<MonthlyPerformanceItem> VarianceLeaders => State.Performance
-        .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(6).ToArray();
+    private IReadOnlyList<MonthlyPerformanceItem> TopPerformers => State.Performance
+        .OrderByDescending(x => x.OperationalScore).Take(4).ToArray();
 
-    private IReadOnlyList<MonthlyPerformanceItem> ExceptionLeaders => State.Performance
-        .OrderByDescending(ExceptionCount).Take(6).ToArray();
+    private IReadOnlyList<MonthlyPerformanceItem> NeedsAttention => State.Performance
+        .OrderBy(x => x.OperationalScore).Take(4).ToArray();
+
+    private IReadOnlyList<MonthlyPerformanceItem> AttendanceReview => State.Performance
+        .OrderByDescending(x => Math.Abs(x.ReconciliationVariance))
+        .ThenByDescending(ExceptionCount)
+        .Take(4)
+        .ToArray();
 
     private static int ExceptionCount(MonthlyPerformanceItem x) => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays;
     private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
 
-    private RenderFragment Metric(string label, decimal value, string unit, string tone) => @<div class="metric-tile @tone">
-        <span>@label</span>
-        <strong>@Analytics.Format(value, unit == "" ? "0" : "0.0")</strong>
-        <small>@unit</small>
+    private RenderFragment Kpi(string label, decimal value, string unit, string? tone = null) => @<div class="kpi @tone">
+        <span class="kpi-label">@label</span>
+        <span class="kpi-value"><strong>@Analytics.Format(value, unit == "" ? "0" : "0.0")</strong>@if (!string.IsNullOrEmpty(unit)) { <b>@unit</b> }</span>
     </div>;
 
     public async ValueTask DisposeAsync()
