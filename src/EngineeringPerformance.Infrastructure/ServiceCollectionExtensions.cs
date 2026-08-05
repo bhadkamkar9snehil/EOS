@@ -11,8 +11,12 @@ public static class ServiceCollectionExtensions
         Directory.CreateDirectory(dataDirectory);
         var databasePath = Path.Combine(dataDirectory, "engineering-performance.db");
         services.AddPooledDbContextFactory<PerformanceDbContext>(options => options.UseSqlite($"Data Source={databasePath};Cache=Shared"));
-        services.AddSingleton<IApplicationDatabase, LocalApplicationDatabase>();
         services.AddSingleton<IWorkbookService, WorkbookService>();
+        services.AddSingleton<LocalApplicationDatabase>();
+        services.AddSingleton<IApplicationDatabase>(sp => new ConfigurableApplicationDatabase(
+            sp.GetRequiredService<LocalApplicationDatabase>(),
+            sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
+            dataDirectory));
         return services;
     }
 }
