@@ -5,10 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EngineeringPerformance.Infrastructure;
 
-/// <summary>
-/// Adds persisted operational-score configuration and recalculation to the local database
-/// without changing the existing SQLite schema. Settings are stored beside the database.
-/// </summary>
 public sealed class ConfigurableApplicationDatabase(
     LocalApplicationDatabase inner,
     IDbContextFactory<PerformanceDbContext> contextFactory,
@@ -42,7 +38,6 @@ public sealed class ConfigurableApplicationDatabase(
     {
         if (!settings.IsValid)
             throw new InvalidOperationException("Operational scoring weights must be non-negative and total exactly 100%.");
-
         await WriteSettingsAsync(settings, cancellationToken);
         return await RecalculateAllAsync(settings, cancellationToken);
     }
@@ -62,12 +57,12 @@ public sealed class ConfigurableApplicationDatabase(
         var rows = await context.EmployeeMonthlyPerformances.ToListAsync(cancellationToken);
         foreach (var row in rows)
         {
-            var metrics = new[]
-            {
-                new MetricInput("timesheet", row.TimesheetCompletionScore, settings.TimesheetCompletionWeight / 100m, row.ComplianceHours > 0),
-                new MetricInput("approval", row.ApprovalScore, settings.ApprovalCompletionWeight / 100m, row.EnteredHours > 0),
-                new MetricInput("attendance", row.AttendanceDisciplineScore, settings.AttendanceDisciplineWeight / 100m, row.ExpectedTimesheetDays > 0)
-            };
+            MetricInput[] metrics =
+            [
+                new("timesheet", row.TimesheetCompletionScore, settings.TimesheetCompletionWeight / 100m, row.ComplianceHours > 0),
+                new("approval", row.ApprovalScore, settings.ApprovalCompletionWeight / 100m, row.EnteredHours > 0),
+                new("attendance", row.AttendanceDisciplineScore, settings.AttendanceDisciplineWeight / 100m, row.ExpectedTimesheetDays > 0)
+            ];
             row.OperationalScore = metrics.Any(x => x.IsApplicable)
                 ? WeightedScoreCalculator.Calculate(metrics)
                 : 0m;
@@ -81,6 +76,46 @@ public sealed class ConfigurableApplicationDatabase(
         var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
         await RecalculateAllAsync(settings, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var excluded = await ReadExcludedNamesAsync(context, cancellationToken);
+        var rows = await context.EmployeeMonthlyPerformances
+            .Where(x => x.Year == year && x.Month == month)
+            .OrderByDescending(x => x.OperationalScore).ThenBy(x => x.EmployeeName)
+            .ToListAsync(cancellationToken);
+        return rows.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(Project).ToArray();
+    }
+
+    public async Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default)
+    {
+        var newest = new DateTime(year, month, 1);
+        var oldest = newest.AddMonths(-Math.Max(0, monthsBack - 1));
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var excluded = await ReadExcludedNamesAsync(context, cancellationToken);
+        var rows = await context.EmployeeMonthlyPerformances
+            .Where(x => x.Year * 100 + x.Month >= oldest.Year * 100 + oldest.Month &&
+                        x.Year * 100 + x.Month <= newest.Year * 100 + newest.Month)
+            .OrderBy(x => x.Year).ThenBy(x => x.Month).ThenBy(x => x.EmployeeName)
+            .ToListAsync(cancellationToken);
+        return rows.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(Project).ToArray();
+    }
+
+    private static async Task<HashSet<string>> ReadExcludedNamesAsync(PerformanceDbContext context, CancellationToken cancellationToken)
+    {
+        var names = await context.AnalysisExclusions.Select(x => x.EmployeeName).ToListAsync(cancellationToken);
+        return new HashSet<string>(names.Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static MonthlyPerformanceItem Project(EmployeeMonthlyPerformance x) => new(
+        x.EmployeeName, x.EmployeeCode, x.OperationalScore, x.TimesheetCompletionScore,
+        x.ApprovalScore, x.AttendanceDisciplineScore, x.EnteredHours, x.ComplianceHours,
+        x.BillableHours, x.DetailedHours, x.DetailedEntries, x.UniqueProjects,
+        x.AttendanceDays, x.LeaveDays, x.MissingPunchDays, x.LateDays, x.EarlyDays,
+        x.LessDurationDays, x.Year, x.Month, x.PunchHours, x.AttendanceTimesheetHours,
+        x.TimesheetFilledDays, x.ExpectedTimesheetDays, x.NonBillableHours,
+        x.TrainingHours, x.ApprovedHours, x.OfficeHours);
 
     public Task<DashboardSnapshot> GetDashboardAsync(int? year = null, int? month = null, CancellationToken cancellationToken = default) => inner.GetDashboardAsync(year, month, cancellationToken);
     public Task<IReadOnlyList<EmployeeListItem>> GetEmployeesAsync(CancellationToken cancellationToken = default) => inner.GetEmployeesAsync(cancellationToken);
@@ -101,8 +136,6 @@ public sealed class ConfigurableApplicationDatabase(
         return count;
     }
 
-    public Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default) => inner.GetMonthlyPerformanceAsync(year, month, cancellationToken);
-    public Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default) => inner.GetPerformanceHistoryAsync(year, month, monthsBack, cancellationToken);
     public Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default) => inner.ImportEngineerReviewsAsync(year, month, path, cancellationToken);
     public Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default) => inner.GetPeerReviewsAsync(year, month, cancellationToken);
     public Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default) => inner.GetExcludedNamesAsync(cancellationToken);
