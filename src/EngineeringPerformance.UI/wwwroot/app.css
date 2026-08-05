@@ -266,6 +266,49 @@ code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; }
 .readiness span { font-size: 10.5px; color: var(--muted); }
 .readiness strong { font-size: 13px; color: var(--primary-strong); font-weight: 700; }
 
+/* Global engineer search, in the topbar so it's available from every page rather than
+   duplicated per-page (Overview used to have its own copy — removed in favour of this one). */
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.global-search { position: relative; }
+.icon-button {
+    width: 34px; height: 34px; display: grid; place-items: center; padding: 0;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    background: var(--surface-raised); color: var(--ink-soft); cursor: pointer;
+}
+.icon-button svg { width: 16px; height: 16px; }
+.icon-button:hover, .icon-button.selected { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
+.global-search-popover {
+    width: 380px; position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dropdown);
+    overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius);
+    background: var(--surface-raised); box-shadow: var(--shadow-raised);
+}
+.global-search-field {
+    display: grid; grid-template-columns: 22px minmax(0, 1fr) 26px; align-items: center; gap: 6px;
+    padding: 9px; border-bottom: 1px solid var(--line); background: var(--surface-soft);
+}
+.global-search-field > span { display: grid; place-items: center; color: var(--muted); }
+.global-search-field svg { width: 14px; height: 14px; }
+.global-search-field input { width: 100%; height: var(--control-h-lg); padding: 0 9px; font-size: 12px; }
+.global-search-field button { width: 26px; height: 26px; border: 0; background: transparent; color: var(--muted); font-size: 17px; cursor: pointer; }
+.global-search-results { max-height: 340px; overflow-y: auto; padding: 5px; }
+.global-search-results > p { margin: 0; padding: 16px 12px; color: var(--muted); font-size: 11.5px; text-align: center; }
+.global-search-results > button {
+    width: 100%; min-height: 48px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center; gap: 9px; padding: 7px 9px; border: 0; border-radius: var(--radius-sm);
+    background: transparent; color: var(--ink); text-align: left; cursor: pointer;
+}
+.global-search-results > button:hover { background: var(--primary-soft); }
+.search-avatar {
+    width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line);
+    border-radius: var(--radius-sm); background: var(--surface-soft); color: var(--primary-strong);
+    font-size: 9.5px; font-weight: 750;
+}
+.search-person { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.search-person strong, .search-person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-person strong { font-size: 11.5px; }
+.search-person small { color: var(--muted); font-size: 10px; }
+.global-search-results > button > b { font-size: 11px; font-variant-numeric: tabular-nums; }
+
 /* Collapses to zero height when it holds no toast, whitespace nodes included. */
 .toast-slot { font-size: 0; line-height: 0; }
 .toast {
@@ -731,6 +774,18 @@ b.down { color: var(--critical); }
 .epa-grid .num-left { display: block; text-align: left; }
 .epa-grid .filename { display: block; min-width: 0; }
 
+/* Imported data's row is ~25 columns wide; keep Engineer visible while the rest scrolls. */
+.wide-grid-scroll { position: relative; overflow-x: auto; }
+.imported-metrics-grid thead th:first-child, .imported-metrics-grid tbody td:first-child {
+    position: sticky; left: 0; min-width: 200px; max-width: 220px;
+}
+.imported-metrics-grid thead th:first-child { z-index: var(--z-sticky); background: var(--table-header); box-shadow: 2px 0 0 var(--table-header-line); }
+.imported-metrics-grid tbody td:first-child { z-index: 1; background: var(--table-row); box-shadow: 2px 0 0 var(--line); }
+.imported-metrics-grid tbody tr:nth-child(even) td:first-child { background: var(--table-row-alt); }
+.imported-metrics-grid tbody tr:hover td:first-child { background: var(--table-row-hover); }
+.imported-data-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.imported-data-toolbar span { font-size: 11px; color: var(--muted); }
+
 /* Row-level severity is reserved for genuinely critical rows. Milder states are
    carried by the cell that actually failed, so the table does not read as one
    undifferentiated wall of red. */
@@ -844,24 +899,34 @@ b.down { color: var(--critical); }
 .kpi-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .kpi {
     position: relative;
-    padding: 9px 12px;
+    padding: 8px 12px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    min-height: 58px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: 62px;
     cursor: default;
 }
 .kpi.accent { background: var(--surface-soft); border-color: var(--line-strong); }
 .kpi.accent strong { color: var(--primary-strong); }
+.kpi.good strong { color: var(--good); }
+.kpi.warning strong { color: var(--warn); }
+.kpi.serious strong { color: var(--serious); }
 .kpi.critical { border-color: #DCB0A9; }
+.kpi.critical strong { color: var(--critical); }
 .kpi-label {
     font-size: 10px; color: var(--muted); text-transform: uppercase;
     letter-spacing: .05em; font-weight: 700; line-height: 1.3; min-width: 0;
 }
-.kpi-value { display: flex; align-items: baseline; gap: 4px; flex: none; }
+.kpi-value { display: flex; align-items: baseline; gap: 4px; }
 .kpi strong { font-size: 23px; font-weight: 650; letter-spacing: -.02em; line-height: 1; color: var(--ink); }
 .kpi-value b { font-size: 11px; font-weight: 700; }
+/* Third line of context, e.g. "vs Jun" or "Attendance-derived score" — kept above the 9.5px
+   floor and truncated rather than wrapped, so a long hint never grows the tile. */
+.kpi-hint {
+    font-size: 10px; color: var(--muted); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .overview-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
 .overview-grid > .card { grid-column: span 4; }
@@ -870,7 +935,49 @@ b.down { color: var(--critical); }
 .overview-grid > .card.span-4 { grid-column: span 4; }
 .overview-grid > .card.span-5 { grid-column: span 5; }
 .overview-grid > .card.span-6 { grid-column: span 6; }
+.overview-grid > .card.span-7 { grid-column: span 7; }
 .overview-grid > .card.span-8 { grid-column: span 8; }
+
+/* Score distribution: full-width strip with the team score anchored on the right —
+   answers "how are we doing" before the reader looks at anything else. */
+.score-distribution-strip { margin-bottom: 12px; }
+.score-distribution-strip .card-head { margin-bottom: 10px; }
+.distribution-total { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.distribution-total.good { color: var(--good); }
+.distribution-total.warning { color: var(--warn); }
+.distribution-total.serious { color: var(--serious); }
+.distribution-total.critical { color: var(--critical); }
+.score-distribution-strip .distribution { height: 34px; margin-bottom: 0; }
+.score-distribution-strip .band { flex-direction: column; gap: 1px; font-size: 10px; }
+.score-distribution-strip .band span { font-size: 9.5px; font-weight: 600; opacity: .9; text-transform: none; }
+.score-distribution-strip .band b { font-size: 14px; }
+
+.chart-empty {
+    min-height: 200px; display: grid; place-items: center; padding: 20px;
+    border: 1px dashed var(--line-strong); border-radius: var(--radius-sm);
+    background: var(--surface-soft); color: var(--muted); font-size: 11.5px; text-align: center;
+}
+
+/* Cross-month / week-over-week heatmaps: height is set per-instance via a custom property
+   (not interpolated directly into the `height:` value) so a stray character in the Razor
+   expression can never produce malformed CSS. */
+.period-heatmap { height: var(--period-height, 300px); }
+
+.score-composition-chart { min-height: 320px; height: 100%; }
+
+/* Attendance & reconciliation: compact clickable rows, not a card-per-person grid. */
+.signal-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.signal-row {
+    width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center;
+    gap: 9px; padding: 7px 0; border: 0; border-top: 1px solid var(--line-soft);
+    background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit;
+}
+.signal-list li:first-child .signal-row { border-top: 0; }
+.signal-name { min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 12px; color: var(--ink); }
+.signal-name small { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.signal-variance { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.signal-variance.over { color: var(--serious); }
+.signal-variance.under { color: var(--primary-strong); }
 
 .distribution { display: flex; height: 26px; gap: 2px; margin-bottom: 11px; }
 .band {
@@ -1208,7 +1315,8 @@ i.critical { background: var(--critical); }
 
 @media (max-width: 1600px) {
     .overview-grid > .card.span-3 { grid-column: span 4; }
-    .overview-grid > .card.span-5 { grid-column: span 6; }
+    .overview-grid > .card.span-5,
+    .overview-grid > .card.span-7 { grid-column: span 6; }
     .overview-grid > .card.span-8 { grid-column: span 12; }
 }
 
@@ -1218,8 +1326,9 @@ i.critical { background: var(--critical); }
     .overview-grid > .card.span-3,
     .overview-grid > .card.span-4,
     .overview-grid > .card.span-5 { grid-column: span 6; }
-    /* span-6 is already half the grid, so it stays paired; only the 8-wide panels
+    /* span-6 is already half the grid, so it stays paired; only the 7/8-wide panels
        need the full row once the third column is gone. */
+    .overview-grid > .card.span-7,
     .overview-grid > .card.span-8 { grid-column: 1 / -1; }
     .template-cards { grid-template-columns: minmax(0, 1fr); }
 }

@@ -91,11 +91,6 @@
         </div>
 
         <main class="@($"content route-{CurrentRoute}")">
-            @if (CurrentRoute == "overview" && State.Performance.Count > 0)
-            {
-                <OverviewLead />
-                <OverviewMetricsExtension />
-            }
             @Body
         </main>
         <footer><span>Data stored locally in SQLite</span><span>Last refreshed @State.LastRefresh.ToString("h:mm tt")</span></footer>

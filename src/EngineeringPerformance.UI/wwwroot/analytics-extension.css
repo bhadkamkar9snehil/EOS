@@ -5,7 +5,9 @@
    appended second page beneath the real page.
    ========================================================================== */
 
-.content.route-overview,
+/* Overview is a single component in normal document order — it doesn't need the flex/order
+   trick below. That trick remains for the employee-detail route, which still composes its
+   page from ordered sections. */
 .content.route-employee {
     display: flex;
     flex-direction: column;
@@ -13,27 +15,8 @@
     background: var(--canvas);
 }
 
-.content.route-overview > .overview,
 .content.route-employee > .overview {
     display: contents;
-}
-
-.content.route-overview .overview > .spotlight-search {
-    order: 1;
-    margin: 18px var(--gutter) 10px;
-}
-.content.route-overview .overview > .kpi-row {
-    order: 2;
-    margin: 0 var(--gutter) 12px;
-}
-.content.route-overview > .overview-extension { order: 3; }
-.content.route-overview .overview > .overview-grid {
-    order: 4;
-    margin: 0 var(--gutter) 28px;
-}
-.content.route-overview .overview > .empty-state {
-    order: 1;
-    margin: 18px var(--gutter) 28px;
 }
 
 .content.route-employee .overview > .back-link {
