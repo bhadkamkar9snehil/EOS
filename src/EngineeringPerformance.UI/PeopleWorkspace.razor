@@ -23,8 +23,6 @@
         </div>
     </div>
 
-    @* Two independent creation actions, each in its own labelled panel — previously they were
-       two identical bars and it was not obvious they wrote to different tables. *@
     <div class="create-panels">
         <EditForm Model="_newEmployee" OnValidSubmit="AddEmployeeAsync">
             <DataAnnotationsValidator />
@@ -97,10 +95,7 @@
             <span class="cell">Team</span>
             <span class="cell">Billable</span>
             <span class="cell">Employment</span>
-            <span class="cell"
-                  title="Daily commute classification. Auto follows the ERP roster.">
-                Commute
-            </span>
+            <span class="cell" title="Daily commute classification imported from the ERP roster.">Commute</span>
             <span class="cell">In analysis</span>
             <span class="cell">Actions</span>
         </div>
@@ -160,12 +155,11 @@
                 </div>
                 <div class="cell">
                     <select class="team-select updown-select"
-                            value="@(employee.UpdownOverride is null ? "auto" : employee.UpdownOverride.Value ? "on" : "off")"
-                            title="Auto follows the ERP roster. Commute identifies employees with a recurring daily travel arrangement."
+                            value="@(employee.IsUpdown ? "on" : "off")"
+                            title="Daily commute classification. The imported roster supplies the initial value."
                             @onchange="e => SetUpdownAsync(employee, e.Value?.ToString())">
-                        <option value="auto">Auto (@(employee.IsUpdown ? "yes" : "no"))</option>
-                        <option value="on">Commute</option>
-                        <option value="off">No commute</option>
+                        <option value="on">Yes</option>
+                        <option value="off">No</option>
                     </select>
                 </div>
                 <div class="cell">
@@ -232,8 +226,6 @@
         public string Name { get; set; } = string.Empty;
     }
 
-    // ---------- Employees ----------
-
     private async Task AddEmployeeAsync() =>
         await RunAsync(async () =>
         {
@@ -242,8 +234,6 @@
             State.ShowMessage("Employee added.");
         });
 
-    // Names come from the ERP roster and are the key every import matches on, so they are shown
-    // read-only here — editing one locally would silently orphan that person's imported rows.
     private async Task SaveEmployeeAsync(EmployeeListItem employee)
     {
         var level = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
@@ -285,8 +275,6 @@
             State.ShowMessage(changed == 0 ? "Roster imported — no new employees or seniority changes." : $"Roster imported: {changed} employee(s) created or updated.");
         });
     }
-
-    // ---------- Teams ----------
 
     private bool IsTeamRenamed(TeamItem team) =>
         _editTeamNames.TryGetValue(team.Id, out var name) && !string.IsNullOrWhiteSpace(name) && name.Trim() != team.Name;
@@ -336,22 +324,9 @@
     private async Task SetUpdownAsync(EmployeeListItem employee, string? mode) =>
         await RunAsync(async () =>
         {
-            bool? value = mode switch
-            {
-                "on" => true,
-                "off" => false,
-                _ => null
-            };
-
+            var value = mode == "on";
             await Database.SetUpdownAsync(employee.Id, value);
-
-            State.ShowMessage(
-                $"{employee.Name} commute status set to " +
-                (value is null
-                    ? "Auto (ERP roster)."
-                    : value.Value
-                        ? "Commute."
-                        : "No commute."));
+            State.ShowMessage($"{employee.Name} commute set to {(value ? "Yes" : "No")}.");
         });
 
     private async Task SetProbationAsync(EmployeeListItem employee, string? mode) =>
