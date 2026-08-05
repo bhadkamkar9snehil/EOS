@@ -1,19 +1,10 @@
 /* ==========================================================================
    Overview refinement
-   Keeps imported analytics in the established EOS visual language: standard
-   KPI cards, one neutral card surface, one consolidated people-review panel,
-   and no decorative section banners or accent rails.
+   Standard KPI language, neutral theme-derived cards, consolidated review
+   signals and a larger workload visualization.
    ========================================================================== */
 
-:root,
-:root[data-theme="clay-sage"] { --card-surface: #F5F5F1; }
-:root[data-theme="harbor-blue"] { --card-surface: #F4F7F9; }
-:root[data-theme="forest-ledger"] { --card-surface: #F8F6EE; }
-:root[data-theme="graphite-copper"] { --card-surface: #F6F3F0; }
-:root[data-theme="alpine-ink"] { --card-surface: #F5F7FA; }
-
-/* Cards are deliberately neutral and consistent. White remains reserved for
-   controls and the top bar, so analytical cards sit naturally on the canvas. */
+/* Analytical surfaces inherit each palette instead of defaulting to white. */
 .card,
 .kpi,
 .settings-card,
@@ -25,23 +16,15 @@
     background: var(--card-surface);
 }
 
-/* Remove the duplicate attendance exception block from Score distribution.
-   Its information is consolidated into Review priorities below. */
+/* Duplicate information is consolidated into Review priorities. */
 .content.route-overview .overview > .overview-grid > .card:first-child > .sub-head,
-.content.route-overview .overview > .overview-grid > .card:first-child > .exception-row {
-    display: none;
-}
-
-/* Existing Top quartile and Needs attention cards are superseded by the one
-   consolidated Review priorities card. Element order is stable in Overview. */
+.content.route-overview .overview > .overview-grid > .card:first-child > .exception-row,
 .content.route-overview .overview > .overview-grid > .card:nth-child(4),
 .content.route-overview .overview > .overview-grid > .card:nth-child(5) {
     display: none;
 }
 
-/* The original three-card row now has a deliberate 3 / 6 / 3 hierarchy. The
-   workload plot gets the room it needs, while Score distribution no longer
-   stretches to the chart height and leaves a large empty cavity. */
+/* Existing analytical row: compact distribution, dominant workload, radar. */
 .content.route-overview .overview > .overview-grid > .card:nth-child(1) {
     grid-column: span 3;
     align-self: start;
@@ -53,7 +36,7 @@
     grid-column: span 6;
 }
 .content.route-overview .overview > .overview-grid > .card:nth-child(2) .echart.tall {
-    height: 400px;
+    height: 430px;
 }
 .content.route-overview .overview > .overview-grid > .card:nth-child(3) {
     grid-column: span 3;
@@ -64,7 +47,6 @@
     padding-bottom: 12px;
 }
 
-/* Reuse the exact existing KPI component instead of inventing another tile. */
 .analytics-kpi-row {
     margin-bottom: 12px;
 }
@@ -74,23 +56,17 @@
 .analytics-kpi-row .kpi.critical {
     background: var(--card-surface);
 }
-.analytics-kpi-row .kpi.critical strong {
-    color: var(--critical);
-}
-.analytics-kpi-row .kpi.warning strong {
-    color: var(--warn);
-}
-.analytics-kpi-row .kpi.good strong {
-    color: var(--good);
-}
+.analytics-kpi-row .kpi.critical strong { color: var(--critical); }
+.analytics-kpi-row .kpi.warning strong { color: var(--warn); }
+.analytics-kpi-row .kpi.good strong { color: var(--good); }
 
 .refined-overview-grid {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 12px;
 }
-.refined-overview-grid > .span-8 { grid-column: span 8; }
-.refined-overview-grid > .span-4 { grid-column: span 4; }
+.refined-overview-grid > .span-7 { grid-column: span 7; }
+.refined-overview-grid > .span-5 { grid-column: span 5; }
 .refined-overview-grid > .wide { grid-column: 1 / -1; }
 
 .score-stack-card,
@@ -115,6 +91,7 @@
     line-height: 1.35;
 }
 
+/* ---------- Consolidated review panel ---------- */
 .review-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -123,7 +100,7 @@
 }
 .review-summary > div {
     min-width: 0;
-    min-height: 54px;
+    min-height: 56px;
     padding: 8px 9px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
@@ -139,7 +116,7 @@
     display: block;
     margin-top: 4px;
     color: var(--ink);
-    font-size: 17px;
+    font-size: 18px;
     font-variant-numeric: tabular-nums;
 }
 
@@ -163,16 +140,28 @@
 }
 .review-section-title {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 7px;
+    margin-bottom: 9px;
 }
-.review-section-title h3 { margin: 0; }
-.review-section-title small {
+.review-section-title h3 {
+    margin: 0 0 2px;
+}
+.review-section-title div > small,
+.review-section-title > span {
     color: var(--muted);
-    font-size: 9px;
+    font-size: 8.8px;
 }
+.review-section-title > span {
+    flex: none;
+    padding: 3px 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-raised);
+    font-weight: 650;
+}
+
 .review-list {
     list-style: none;
     margin: 0;
@@ -204,53 +193,61 @@
 .review-list b.warning { color: var(--warn); }
 .review-list b.critical { color: var(--critical); }
 
+/* ---------- Attendance and reconciliation ---------- */
 .attendance-review-section {
-    margin-top: 11px;
+    margin-top: 12px;
 }
 .attendance-signal-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
+    grid-template-columns: 1fr;
+    gap: 9px;
 }
 .attendance-signal {
     min-width: 0;
-    padding: 9px;
+    padding: 11px;
     border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: var(--surface-soft);
+    border-radius: 6px;
+    background:
+        linear-gradient(135deg,
+            color-mix(in srgb, var(--signal-punch) 5%, var(--card-surface)),
+            var(--card-surface) 42%);
     color: var(--ink);
     text-align: left;
     cursor: pointer;
-    transition: border-color .12s ease, background-color .12s ease, transform .12s ease;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent);
+    transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
 }
 .attendance-signal:hover {
     border-color: var(--primary);
-    background: var(--primary-soft);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 13%, transparent);
     transform: translateY(-1px);
 }
+
 .attendance-signal-head {
     display: grid;
-    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 7px;
+    gap: 9px;
 }
 .signal-avatar {
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     display: grid;
     place-items: center;
-    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--line));
+    border-radius: 7px;
     background: var(--primary-soft);
     color: var(--primary-strong);
     font-style: normal;
-    font-size: 8.5px;
-    font-weight: 750;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .02em;
 }
 .signal-person {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
 }
 .signal-person strong,
 .signal-person small {
@@ -258,56 +255,169 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.signal-person strong { font-size: 10.5px; }
-.signal-person small { color: var(--muted); font-size: 8.5px; }
-.attendance-signal-head > b {
+.signal-person strong { font-size: 11.5px; }
+.signal-person small { color: var(--muted); font-size: 8.8px; }
+
+.signal-score-band {
+    min-width: 42px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--surface-raised);
+    color: var(--ink);
     font-size: 10.5px;
+    font-weight: 750;
     font-variant-numeric: tabular-nums;
 }
-.attendance-signal-head > b.warning { color: var(--warn); }
-.attendance-signal-head > b.critical { color: var(--critical); }
+.signal-score-band.good { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, var(--line)); }
+.signal-score-band.warning { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, var(--line)); }
+.signal-score-band.serious { color: var(--serious); border-color: color-mix(in srgb, var(--serious) 35%, var(--line)); }
+.signal-score-band.critical { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 35%, var(--line)); }
+
+.duration-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr .9fr;
+    gap: 7px;
+    margin-top: 10px;
+}
+.duration-stat {
+    min-width: 0;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 7px 8px;
+    border: 1px solid var(--line);
+    border-left-width: 4px;
+    border-radius: 4px;
+}
+.duration-stat small {
+    color: var(--muted);
+    font-size: 8.2px;
+    line-height: 1.2;
+}
+.duration-stat b {
+    margin-top: 4px;
+    color: var(--ink);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+.punch-duration {
+    border-left-color: var(--signal-punch);
+    background: var(--signal-punch-soft);
+}
+.punch-duration b { color: var(--signal-punch); }
+.timesheet-duration {
+    border-left-color: var(--signal-timesheet);
+    background: var(--signal-timesheet-soft);
+}
+.timesheet-duration b { color: var(--signal-timesheet); }
+.variance-duration {
+    border-left-color: var(--signal-short);
+    background: var(--signal-short-soft);
+}
+.variance-duration b { color: var(--signal-short); }
+
 .variance-meter {
     display: block;
-    height: 4px;
-    margin: 8px 0 7px;
+    height: 5px;
+    margin: 9px 0;
     overflow: hidden;
-    border-radius: 3px;
+    border-radius: 4px;
     background: var(--line-soft);
 }
 .variance-meter i {
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--warn), var(--critical));
+    background: linear-gradient(90deg, var(--signal-timesheet), var(--signal-short));
 }
-.signal-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+
+.exception-type-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
 }
-.signal-chips i {
-    padding: 2px 5px;
+.exception-type {
+    min-width: 0;
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 6px;
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: 4px;
     background: var(--surface-raised);
     color: var(--muted);
+}
+.exception-type > i {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 4px;
+    background: var(--surface-soft);
+    color: var(--muted);
+    font-size: 7px;
     font-style: normal;
-    font-size: 7.8px;
-    font-weight: 650;
+    font-weight: 800;
 }
-.signal-chips i.active {
-    border-color: var(--warn);
-    background: var(--warn-soft);
-    color: var(--warn);
+.exception-type small {
+    overflow: hidden;
+    font-size: 7.6px;
+    line-height: 1.15;
+    text-overflow: ellipsis;
 }
+.exception-type b {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+.exception-type.active { font-weight: 650; }
 
-.hours-allocation-card {
-    margin-top: 0;
+.exception-type.missing-punch.active {
+    border-color: color-mix(in srgb, var(--signal-missing) 42%, var(--line));
+    background: var(--signal-missing-soft);
+    color: var(--signal-missing);
 }
+.exception-type.missing-punch.active > i { background: var(--signal-missing); color: #fff; }
 
-@media (max-width: 1250px) {
-    .refined-overview-grid > .span-8,
-    .refined-overview-grid > .span-4 {
+.exception-type.late.active {
+    border-color: color-mix(in srgb, var(--signal-late) 42%, var(--line));
+    background: var(--signal-late-soft);
+    color: var(--signal-late);
+}
+.exception-type.late.active > i { background: var(--signal-late); color: #fff; }
+
+.exception-type.early.active {
+    border-color: color-mix(in srgb, var(--signal-early) 42%, var(--line));
+    background: var(--signal-early-soft);
+    color: var(--signal-early);
+}
+.exception-type.early.active > i { background: var(--signal-early); color: #fff; }
+
+.exception-type.short.active {
+    border-color: color-mix(in srgb, var(--signal-short) 42%, var(--line));
+    background: var(--signal-short-soft);
+    color: var(--signal-short);
+}
+.exception-type.short.active > i { background: var(--signal-short); color: #fff; }
+
+.exception-type.missing-ts.active {
+    border-color: color-mix(in srgb, var(--signal-timesheet) 42%, var(--line));
+    background: var(--signal-timesheet-soft);
+    color: var(--signal-timesheet);
+}
+.exception-type.missing-ts.active > i { background: var(--signal-timesheet); color: #fff; }
+
+.hours-allocation-card { margin-top: 0; }
+
+@media (max-width: 1360px) {
+    .refined-overview-grid > .span-7,
+    .refined-overview-grid > .span-5 {
         grid-column: 1 / -1;
     }
     .review-priorities-card {
@@ -320,6 +430,12 @@
     .review-priorities-card > .attendance-review-section {
         grid-column: 1 / -1;
     }
+    .attendance-signal-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1250px) {
     .content.route-overview .overview > .overview-grid > .card:nth-child(1),
     .content.route-overview .overview > .overview-grid > .card:nth-child(2),
     .content.route-overview .overview > .overview-grid > .card:nth-child(3) {
@@ -327,9 +443,15 @@
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 920px) {
     .review-priorities-card { display: flex; }
     .review-summary,
     .review-dual-grid,
-    .attendance-signal-grid { grid-template-columns: 1fr; }
+    .attendance-signal-grid,
+    .duration-grid {
+        grid-template-columns: 1fr;
+    }
+    .exception-type-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
