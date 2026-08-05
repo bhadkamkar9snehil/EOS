@@ -30,74 +30,97 @@
                     <p>This person has no imported rows for the selected month, so there is nothing to score.</p>
                 </div>
             }
-            else
-            {
-                <div class="spotlight-gauge-row">
-                    <div id="spotlight-gauge" class="spotlight-gauge"></div>
-                    <ul class="spotlight-stats">
-                        <li><span>Timesheet</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.TimesheetCompletionScore, "0") + "%" : "—")</b></li>
-                        <li><span>Approval</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.ApprovalScore, "0") + "%" : "—")</b></li>
-                        <li><span>Attendance</span><b>@Analytics.Format(Item.AttendanceDisciplineScore, "0")%</b></li>
-                        <li><span>Workload</span><b>@Analytics.Format(Item.Workload(), "0.0") h/d</b></li>
-                        <li><span>Billable</span><b>@Analytics.Format(Item.BillableHours, "0") h</b></li>
-                        <li><span>Projects</span><b>@Item.UniqueProjects</b></li>
-                    </ul>
-                </div>
 
-                @if (TrendValues.Count >= 2)
-                {
-                    <h3 class="sub-head">Score trend</h3>
-                    <div id="spotlight-trend" class="spotlight-chart short"></div>
-                }
-
-                <h3 class="sub-head">Category performance vs team average</h3>
-                <div id="spotlight-radar" class="spotlight-chart"></div>
-            }
-
-            <h3 class="sub-head">Peer feedback</h3>
-            @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
-            {
-                <p class="chart-note">No peer feedback involving @Name this month.</p>
-            }
-            else
-            {
-                <div class="mini-tiles">
-                    <div><strong>@Peer.ReceivedCount</strong><span>Received</span></div>
-                    <div><strong>@Peer.GivenCount</strong><span>Given</span></div>
-                    <div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received</span></div>
-                </div>
-                @if (Peer.ReceivedCount > 0)
-                {
-                    <div id="spotlight-peerbars" class="spotlight-chart short"></div>
-                    @if (Peer.Received.Any(x => !string.IsNullOrWhiteSpace(x.Comment)))
+            <div class="spotlight-columns">
+                <div class="spotlight-col">
+                    @if (Item is not null)
                     {
-                        <ul class="comment-list">
-                            @foreach (var review in Peer.Received.Where(x => !string.IsNullOrWhiteSpace(x.Comment)))
-                            {
-                                <li><strong>@review.ReviewerName</strong><p>@review.Comment</p></li>
-                            }
+                        <div class="spotlight-gauge-row">
+                            <div id="spotlight-gauge" class="spotlight-gauge"></div>
+                            <ul class="spotlight-stats">
+                                <li><span>Timesheet</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.TimesheetCompletionScore, "0") + "%" : "—")</b></li>
+                                <li><span>Approval</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.ApprovalScore, "0") + "%" : "—")</b></li>
+                                <li><span>Attendance</span><b>@Analytics.Format(Item.AttendanceDisciplineScore, "0")%</b></li>
+                                <li><span>Workload</span><b>@Analytics.Format(Item.Workload(), "0.0") h/d</b></li>
+                                <li><span>Billable</span><b>@Analytics.Format(Item.BillableHours, "0") h</b></li>
+                                <li><span>Projects</span><b>@Item.UniqueProjects</b></li>
+                            </ul>
+                        </div>
+
+                        @if (TrendValues.Count >= 2)
+                        {
+                            <h3 class="sub-head">Score trend</h3>
+                            <div id="spotlight-trend" class="spotlight-chart short"></div>
+                        }
+
+                        <h3 class="sub-head">This month in detail</h3>
+                        <ul class="spotlight-detail-grid">
+                            <li><span>Entered hours</span><b>@Analytics.Format(Item.EnteredHours, "0.0")</b></li>
+                            <li><span>Approved hours</span><b>@Analytics.Format(Item.ApprovedHours, "0.0")</b></li>
+                            <li><span>Compliance hours</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.ComplianceHours, "0.0") : "—")</b></li>
+                            <li><span>Timesheet days</span><b>@Item.TimesheetFilledDays / @Item.ExpectedTimesheetDays</b></li>
+                            <li><span>Attendance days</span><b>@Analytics.Format(Item.AttendanceDays, "0")</b></li>
+                            <li><span>Leave days</span><b>@Analytics.Format(Item.LeaveDays, "0")</b></li>
+                            <li><span>Missing punch</span><b>@Item.MissingPunchDays</b></li>
+                            <li><span>Late arrivals</span><b>@Item.LateDays</b></li>
+                            <li><span>Early departures</span><b>@Item.EarlyDays</b></li>
+                            <li><span>Short duration days</span><b>@Item.LessDurationDays</b></li>
+                            <li><span>Punch vs timesheet</span><b class="@(Math.Abs(Item.ReconciliationVariance) > 5 ? "down" : null)">@Analytics.Format(Item.ReconciliationVariance, "0.0") h</b></li>
+                            <li><span>Non-billable hours</span><b>@Analytics.Format(Item.NonBillableHours, "0.0")</b></li>
                         </ul>
-                    }
-                }
-            }
 
-            <h3 class="sub-head">Alerts for @Name</h3>
-            @if (Alerts.Count == 0)
-            {
-                <p class="chart-note">No rule fired against @Name this month.</p>
-            }
-            else
-            {
-                <div class="alert-list single">
-                    @foreach (var alert in Alerts)
+                        <h3 class="sub-head">Category performance vs team average</h3>
+                        <div id="spotlight-radar" class="spotlight-chart"></div>
+                    }
+                </div>
+
+                <div class="spotlight-col">
+                    <h3 class="sub-head">Peer feedback</h3>
+                    @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
                     {
-                        <div class="alert @Level(alert.Level)">
-                            <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
-                            <span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span>
+                        <p class="chart-note">No peer feedback involving @Name this month.</p>
+                    }
+                    else
+                    {
+                        <div class="mini-tiles">
+                            <div><strong>@Peer.ReceivedCount</strong><span>Received</span></div>
+                            <div><strong>@Peer.GivenCount</strong><span>Given</span></div>
+                            <div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received</span></div>
+                        </div>
+                        @if (Peer.ReceivedCount > 0)
+                        {
+                            <div id="spotlight-peerbars" class="spotlight-chart short"></div>
+                            @if (Peer.Received.Any(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                            {
+                                <ul class="comment-list">
+                                    @foreach (var review in Peer.Received.Where(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                                    {
+                                        <li><strong>@review.ReviewerName</strong><p>@review.Comment</p></li>
+                                    }
+                                </ul>
+                            }
+                        }
+                    }
+
+                    <h3 class="sub-head">Alerts for @Name</h3>
+                    @if (Alerts.Count == 0)
+                    {
+                        <p class="chart-note">No rule fired against @Name this month.</p>
+                    }
+                    else
+                    {
+                        <div class="alert-list single">
+                            @foreach (var alert in Alerts)
+                            {
+                                <div class="alert @Level(alert.Level)">
+                                    <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
+                                    <span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
-            }
+            </div>
         </div>
     </aside>
 </div>
