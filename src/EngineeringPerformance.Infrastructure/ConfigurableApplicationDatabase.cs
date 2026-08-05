@@ -8,6 +8,7 @@ namespace EngineeringPerformance.Infrastructure;
 public sealed class ConfigurableApplicationDatabase(
     LocalApplicationDatabase inner,
     IDbContextFactory<PerformanceDbContext> contextFactory,
+    IWorkbookService workbookService,
     string dataDirectory) : IApplicationDatabase
 {
     private readonly string _settingsPath = Path.Combine(dataDirectory, "operational-scoring.json");
@@ -102,6 +103,51 @@ public sealed class ConfigurableApplicationDatabase(
         return rows.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(Project).ToArray();
     }
 
+    /// <summary>
+    /// Reads dated detailed-timesheet and attendance rows from the source files already stored by
+    /// the import pipeline. Monthly utilization is intentionally excluded: it is one monthly total
+    /// and cannot be divided into weeks without inventing values.
+    /// </summary>
+    public async Task<IReadOnlyList<WeeklyPerformanceItem>> GetWeeklyPerformanceAsync(
+        int year,
+        int month,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var excluded = await ReadExcludedNamesAsync(context, cancellationToken);
+        var sources = await context.ImportedSourceFiles
+            .Where(x => x.Year == year && x.Month == month &&
+                        (x.ReportType == ReportType.DetailedTimesheetTransactions ||
+                         x.ReportType == ReportType.AttendanceLeaveUaaTimesheet))
+            .OrderBy(x => x.ReportType)
+            .ToListAsync(cancellationToken);
+
+        var merged = new Dictionary<(string Name, DateTime WeekStart), WeeklyAccumulator>();
+        foreach (var source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!File.Exists(source.StoredPath)) continue;
+
+            var rows = workbookService.ReadWeeklyPerformance(source.StoredPath, source.ReportType, year, month);
+            foreach (var row in rows)
+            {
+                var normalizedName = PersonName.Normalize(row.EmployeeName);
+                if (excluded.Contains(normalizedName)) continue;
+
+                var key = (normalizedName.ToUpperInvariant(), row.WeekStart.Date);
+                if (!merged.TryGetValue(key, out var item))
+                    merged[key] = item = new WeeklyAccumulator(normalizedName, row.WeekStart.Date);
+                item.Merge(row);
+            }
+        }
+
+        return merged.Values
+            .Select(x => x.ToItem())
+            .OrderBy(x => x.WeekStart)
+            .ThenBy(x => x.EmployeeName)
+            .ToArray();
+    }
+
     private static async Task<HashSet<string>> ReadExcludedNamesAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
         var names = await context.AnalysisExclusions.Select(x => x.EmployeeName).ToListAsync(cancellationToken);
@@ -150,4 +196,52 @@ public sealed class ConfigurableApplicationDatabase(
     public Task<int> AddTeamAsync(string name, CancellationToken cancellationToken = default) => inner.AddTeamAsync(name, cancellationToken);
     public Task RenameTeamAsync(int teamId, string name, CancellationToken cancellationToken = default) => inner.RenameTeamAsync(teamId, name, cancellationToken);
     public Task DeleteTeamAsync(int teamId, CancellationToken cancellationToken = default) => inner.DeleteTeamAsync(teamId, cancellationToken);
+
+    private sealed class WeeklyAccumulator(string employeeName, DateTime weekStart)
+    {
+        private string? _employeeCode;
+        private decimal _detailedHours;
+        private int _detailedEntries;
+        private int _uniqueProjects;
+        private decimal _punchHours;
+        private decimal _timesheetHours;
+        private int _filledDays;
+        private int _expectedDays;
+        private int _missingPunchDays;
+        private int _lateDays;
+        private int _earlyDays;
+        private int _lessDurationDays;
+
+        public void Merge(WeeklyPerformanceItem row)
+        {
+            _employeeCode ??= row.EmployeeCode;
+            _detailedHours += row.DetailedHours;
+            _detailedEntries += row.DetailedEntries;
+            _uniqueProjects = Math.Max(_uniqueProjects, row.UniqueProjects);
+            _punchHours += row.PunchHours;
+            _timesheetHours += row.TimesheetHours;
+            _filledDays += row.FilledDays;
+            _expectedDays += row.ExpectedDays;
+            _missingPunchDays += row.MissingPunchDays;
+            _lateDays += row.LateDays;
+            _earlyDays += row.EarlyDays;
+            _lessDurationDays += row.LessDurationDays;
+        }
+
+        public WeeklyPerformanceItem ToItem() => new(
+            employeeName,
+            _employeeCode,
+            weekStart,
+            _detailedHours,
+            _detailedEntries,
+            _uniqueProjects,
+            _punchHours,
+            _timesheetHours,
+            _filledDays,
+            _expectedDays,
+            _missingPunchDays,
+            _lateDays,
+            _earlyDays,
+            _lessDurationDays);
+    }
 }
