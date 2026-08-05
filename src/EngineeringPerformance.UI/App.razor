@@ -14,7 +14,6 @@
             @NavButton("imports", "Data imports", "⇧")
             @NavButton("timesheets", "Timesheets", "✓")
             @NavButton("employees", "Employees", "◎")
-            @NavButton("teams", "Teams", "⛃")
             @NavButton("peer-insights", "Peer Insights", "⇄")
             @NavButton("templates", "Templates", "□")
             @NavButton("reports", "Reports", "▤")
@@ -42,8 +41,7 @@
             @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" PeerReviews="_peerReviews" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
             else if (_page == "imports") { @ImportWorkspace() }
             else if (_page == "timesheets") { <Timesheets Items="_performance" Employees="_employees" Month="_selectedMonth" OnNavigate="Navigate" /> }
-            else if (_page == "employees") { @EmployeeWorkspace() }
-            else if (_page == "teams") { <TeamsPage Employees="_employees" Teams="_teams" Database="Database" OnResult="HandleReportResult" OnChanged="RefreshAsync" /> }
+            else if (_page == "employees") { <PeopleWorkspace Employees="_employees" Teams="_teams" Database="Database" OnResult="HandleReportResult" OnChanged="RefreshAsync" /> }
             else if (_page == "peer-insights") { <PeerInsights Items="_performance" PeerReviews="_peerReviews" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "employee-detail" && _employeeDetailName is not null) { <EmployeeDetail Name="_employeeDetailName" Items="_performance" History="_history" PeerReviews="_peerReviews" Employees="_employees" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "templates") { @TemplateWorkspace() }
@@ -69,11 +67,7 @@
     private bool _isError;
     private bool _busy;
     private DateTime _lastRefresh = DateTime.Now;
-    private string _newCode = string.Empty, _newName = string.Empty;
-    private int _newLevel = 1;
     private int? _templateEmployeeId;
-    private readonly Dictionary<int, string> _editName = [];
-    private readonly Dictionary<int, int> _editLevel = [];
     private decimal _execution = 25, _ownership = 15, _collaboration = 15, _discipline = 15, _excellence = 10, _improvement = 10, _growth = 10;
 
     private static DateTime DefaultReportingMonth()
@@ -84,8 +78,8 @@
 
     private string PageTitleText => _page switch
     {
-        "imports" => "Data imports", "timesheets" => "Timesheets & approvals", "employees" => "Employees",
-        "teams" => "Teams", "peer-insights" => "Peer Insights",
+        "imports" => "Data imports", "timesheets" => "Timesheets & approvals", "employees" => "Employees & teams",
+        "peer-insights" => "Peer Insights",
         "templates" => "Review templates", "reports" => "Reports", "scoring" => "Scoring", "settings" => "Settings",
         "employee-detail" => _employeeDetailName ?? "Employee",
         _ => "Overview"
@@ -94,8 +88,7 @@
     {
         "imports" => "Load the three ERP exports and the completed engineer reviews for this month.",
         "timesheets" => "Who has not filled and what is still awaiting approval.",
-        "employees" => "Employee master, identity codes and seniority levels.",
-        "teams" => "Group engineers into teams and classify billable, consultant and probation status.",
+        "employees" => "Identity, seniority, team assignment, and billable/consultant/probation status.",
         "peer-insights" => "Every reviewer, every rating, the whole network — for this month.",
         "employee-detail" => "Performance across every month currently loaded.",
         "templates" => "Create personalized review workbooks for one engineer or the whole team.",
@@ -131,8 +124,6 @@
         _excluded = await Database.GetExcludedNamesAsync();
         _peerReviews = await Database.GetPeerReviewsAsync(_selectedMonth.Year, _selectedMonth.Month);
         _teams = await Database.GetTeamsAsync();
-        _editName.Clear(); _editLevel.Clear();
-        foreach (var employee in _employees) { _editName[employee.Id] = employee.Name; _editLevel[employee.Id] = employee.SeniorityLevel; }
         _lastRefresh = DateTime.Now;
     }
 
@@ -166,52 +157,6 @@
         var path = Dialogs.PickWorkbookOrZip(); if (path is null) return;
         if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { _message = "Select a ZIP package for combined import."; _isError = true; return; }
         await RunAsync(async () => { var count = await Database.ImportPackageAsync(_selectedMonth.Year, _selectedMonth.Month, path); await RefreshAsync(); _message = count == 0 ? "No recognizable workbooks were found in the ZIP." : $"{count} workbook(s) imported from the package."; _isError = count == 0; });
-    }
-
-    private async Task AddEmployeeAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newName)) { _message = "Employee code and name are required."; _isError = true; return; }
-        await RunAsync(async () => { await Database.AddEmployeeAsync(_newCode, _newName, _newLevel); _newCode = _newName = string.Empty; _newLevel = 1; await RefreshAsync(); _message = "Employee added."; });
-    }
-
-    private async Task SaveEmployeeAsync(EmployeeListItem employee)
-    {
-        var name = _editName.TryGetValue(employee.Id, out var n) ? n : employee.Name;
-        var level = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
-        if (string.IsNullOrWhiteSpace(name)) { _message = "Employee name is required."; _isError = true; return; }
-        if (level is < 1 or > 99) { _message = "Seniority level must be between 1 and 99."; _isError = true; return; }
-        await RunAsync(async () => { await Database.UpdateEmployeeAsync(employee.Id, name, level); await RefreshAsync(); _message = $"{name.Trim()} updated to level {level}."; });
-    }
-
-    private bool IsDirty(EmployeeListItem employee) =>
-        (_editName.TryGetValue(employee.Id, out var n) && n.Trim() != employee.Name) ||
-        (_editLevel.TryGetValue(employee.Id, out var l) && l != employee.SeniorityLevel);
-
-    private void AdjustLevel(EmployeeListItem employee, int delta)
-    {
-        var current = _editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel;
-        _editLevel[employee.Id] = Math.Clamp(current + delta, 1, 99);
-    }
-
-    private async Task ToggleExclusionAsync(EmployeeListItem employee, bool excluded) =>
-        await RunAsync(async () =>
-        {
-            await Database.SetExclusionAsync(employee.Name, excluded);
-            await RefreshAsync();
-            _message = excluded ? $"{employee.Name} is excluded from the analysis." : $"{employee.Name} is included in the analysis.";
-        });
-
-    private async Task RemoveEmployeeAsync(int id) => await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); await RefreshAsync(); _message = "Employee removed."; });
-
-    private async Task ImportRosterAsync()
-    {
-        var path = Dialogs.PickWorkbook(); if (path is null) return;
-        await RunAsync(async () =>
-        {
-            var changed = await Database.ImportEmployeeRosterAsync(path);
-            await RefreshAsync();
-            _message = changed == 0 ? "Roster imported — no new employees or seniority changes." : $"Roster imported: {changed} employee(s) created or updated.";
-        });
     }
 
     private void GenerateTemplate()
@@ -284,54 +229,6 @@
             }
         </aside>
     </div>;
-
-    // ---------- Employees ----------
-
-    private RenderFragment EmployeeWorkspace() => @<section class="single-pane">
-        <div class="section-title">
-            <div><h2>Employee master</h2><p>Employee code is the source identity and cannot change. Edit the name or seniority level and save the row. Excluded people are left out of every Overview figure.</p></div>
-            <div class="section-actions">
-                @if (_excluded.Count > 0)
-                {
-                    <span class="excluded-pill">@_excluded.Count excluded from analysis</span>
-                }
-                <button class="action secondary small" @onclick="ImportRosterAsync" disabled="@_busy">Import from ERP roster</button>
-            </div>
-        </div>
-        <div class="form-row">
-            <label>Employee code<input @bind="_newCode" placeholder="E1042" /></label>
-            <label class="grow">Employee name<input @bind="_newName" placeholder="Full name" /></label>
-            <label>Level<input type="number" min="1" max="99" @bind="_newLevel" /></label>
-            <button class="action" @onclick="AddEmployeeAsync" disabled="@_busy">Add employee</button>
-        </div>
-        <div class="data-table">
-            <div class="table-head"><span>Code</span><span>Employee name</span><span>Seniority level</span><span>In analysis</span><span></span></div>
-            @foreach (var employee in _employees)
-            {
-                <div class="data-row @(employee.IsExcluded ? "excluded" : null)">
-                    <code>@employee.EmployeeCode</code>
-                    <input class="cell-input" value="@(_editName.TryGetValue(employee.Id, out var n) ? n : employee.Name)" @onchange="e => _editName[employee.Id] = e.Value?.ToString() ?? string.Empty" />
-                    <div class="level-editor">
-                        <button title="Decrease level" @onclick="() => AdjustLevel(employee, -1)">−</button>
-                        <input type="number" min="1" max="99" value="@(_editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel)" @onchange="e => _editLevel[employee.Id] = int.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 1, 99) : employee.SeniorityLevel" />
-                        <button title="Increase level" @onclick="() => AdjustLevel(employee, 1)">+</button>
-                    </div>
-                    <label class="switch" title="@(employee.IsExcluded ? "Excluded from every Overview figure" : "Counted in the analysis")">
-                        <input type="checkbox" checked="@(!employee.IsExcluded)" @onchange="e => ToggleExclusionAsync(employee, !(bool)(e.Value ?? false))" />
-                        <span>@(employee.IsExcluded ? "Excluded" : "Included")</span>
-                    </label>
-                    <div class="row-actions">
-                        <button class="action small" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(_busy || !IsDirty(employee))">Save</button>
-                        <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@_busy">Remove</button>
-                    </div>
-                </div>
-            }
-            @if (_employees.Count == 0)
-            {
-                <div class="table-empty">No employees yet. Add one above, or import the attendance export — it registers every engineer it finds.</div>
-            }
-        </div>
-    </section>;
 
     // ---------- Templates ----------
 
