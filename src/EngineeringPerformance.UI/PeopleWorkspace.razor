@@ -98,8 +98,8 @@
             <span class="cell">Billable</span>
             <span class="cell">Employment</span>
             <span class="cell"
-                  title="Daily train commuter. UAA may be raised regularly and normal departure is around 18:00.">
-                Up-down
+                  title="Daily commute classification. Auto follows the ERP roster.">
+                Commute
             </span>
             <span class="cell">In analysis</span>
             <span class="cell">Actions</span>
@@ -134,10 +134,13 @@
                     </select>
                 </div>
                 <div class="cell">
-                    <label class="switch" title="@(employee.IsConsultant ? "Consultants are always non-billable" : "Non-billable engineers are excluded from billable-capacity tracking")">
-                        <input type="checkbox" checked="@(!employee.IsNonBillable)" disabled="@employee.IsConsultant"
+                    <label class="switch compact-switch"
+                           title="@(employee.IsConsultant ? "Consultants are always non-billable" : employee.IsNonBillable ? "Currently non-billable" : "Currently billable")">
+                        <input type="checkbox"
+                               aria-label="Billable status for @employee.Name"
+                               checked="@(!employee.IsNonBillable)"
+                               disabled="@employee.IsConsultant"
                                @onchange="e => SetNonBillableAsync(employee, !(bool)(e.Value ?? false))" />
-                        <span>@(employee.IsNonBillable ? "Non-billable" : "Billable")</span>
                     </label>
                 </div>
                 <div class="cell">
@@ -158,17 +161,20 @@
                 <div class="cell">
                     <select class="team-select updown-select"
                             value="@(employee.UpdownOverride is null ? "auto" : employee.UpdownOverride.Value ? "on" : "off")"
-                            title="Auto follows the ERP roster. Up-down employees commute daily and normally leave around 18:00."
+                            title="Auto follows the ERP roster. Commute identifies employees with a recurring daily travel arrangement."
                             @onchange="e => SetUpdownAsync(employee, e.Value?.ToString())">
                         <option value="auto">Auto (@(employee.IsUpdown ? "yes" : "no"))</option>
-                        <option value="on">Up-down</option>
-                        <option value="off">Not up-down</option>
+                        <option value="on">Commute</option>
+                        <option value="off">No commute</option>
                     </select>
                 </div>
                 <div class="cell">
-                    <label class="switch" title="@(employee.IsExcluded ? "Excluded from every Overview figure" : "Counted in the analysis")">
-                        <input type="checkbox" checked="@(!employee.IsExcluded)" @onchange="e => ToggleExclusionAsync(employee, !(bool)(e.Value ?? false))" />
-                        <span>@(employee.IsExcluded ? "Excluded" : "Included")</span>
+                    <label class="switch compact-switch"
+                           title="@(employee.IsExcluded ? "Excluded from every Overview figure" : "Counted in the analysis")">
+                        <input type="checkbox"
+                               aria-label="Analysis inclusion for @employee.Name"
+                               checked="@(!employee.IsExcluded)"
+                               @onchange="e => ToggleExclusionAsync(employee, !(bool)(e.Value ?? false))" />
                     </label>
                 </div>
                 <div class="cell">
@@ -340,12 +346,12 @@
             await Database.SetUpdownAsync(employee.Id, value);
 
             State.ShowMessage(
-                $"{employee.Name} Up-down status set to " +
+                $"{employee.Name} commute status set to " +
                 (value is null
                     ? "Auto (ERP roster)."
                     : value.Value
-                        ? "Up-down."
-                        : "Not up-down."));
+                        ? "Commute."
+                        : "No commute."));
         });
 
     private async Task SetProbationAsync(EmployeeListItem employee, string? mode) =>
