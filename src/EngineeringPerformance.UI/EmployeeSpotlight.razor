@@ -3,127 +3,88 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-@* Slide-over profile for one engineer. Opened by clicking their name anywhere
-   on Overview, or via the spotlight search box. Self-contained: owns its own
-   ECharts instances and disposes them on close. *@
-
 <div class="spotlight-backdrop" @onclick="Close">
-    <aside class="spotlight-drawer" @onclick:stopPropagation="true">
+    <aside class="spotlight-drawer analytics-spotlight" @onclick:stopPropagation="true">
         <header class="spotlight-head">
             <span class="avatar big">@Initials(Name)</span>
-            <div class="spotlight-title">
-                <h2>@Name</h2>
-                <small>@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small>
-            </div>
-            @if (OnOpenProfile.HasDelegate)
-            {
-                <button class="link" @onclick="() => OnOpenProfile.InvokeAsync(Name)">Full history →</button>
-            }
+            <div class="spotlight-title"><h2>@Name</h2><small>@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small></div>
+            @if (OnOpenProfile.HasDelegate) { <button class="link" @onclick="() => OnOpenProfile.InvokeAsync(Name)">Full history →</button> }
             <button class="spotlight-close" @onclick="Close" title="Close">×</button>
         </header>
 
         <div class="spotlight-body">
             @if (Item is null)
             {
-                <div class="locked">
-                    <strong>No @Month.ToString("MMMM yyyy") data for @Name</strong>
-                    <p>This person has no imported rows for the selected month, so there is nothing to score.</p>
-                </div>
+                <div class="locked"><strong>No @Month.ToString("MMMM yyyy") data for @Name</strong><p>This person has no imported rows for the selected month.</p></div>
             }
+            else
+            {
+                <div class="spotlight-kpi-strip">
+                    @Kpi("Operational", Item.OperationalScore)
+                    @Kpi("Timesheet", Item.TimesheetCompletionScore, Item.HasSummaryData)
+                    @Kpi("Approval", Item.ApprovalScore, Item.HasSummaryData)
+                    @Kpi("Attendance", Item.AttendanceDisciplineScore)
+                    @Kpi("Utilization", Item.Utilization, Item.HasSummaryData)
+                </div>
 
-            <div class="spotlight-columns">
-                <div class="spotlight-col">
-                    @if (Item is not null)
-                    {
-                        <div class="spotlight-gauge-row">
-                            <div id="spotlight-gauge" class="spotlight-gauge"></div>
-                            <ul class="spotlight-stats">
-                                <li><span>Timesheet</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.TimesheetCompletionScore, "0") + "%" : "—")</b></li>
-                                <li><span>Approval</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.ApprovalScore, "0") + "%" : "—")</b></li>
-                                <li><span>Attendance</span><b>@Analytics.Format(Item.AttendanceDisciplineScore, "0")%</b></li>
-                                <li><span>Workload</span><b>@Analytics.Format(Item.Workload(), "0.0") h/d</b></li>
-                                <li><span>Billable</span><b>@Analytics.Format(Item.BillableHours, "0") h</b></li>
-                                <li><span>Projects</span><b>@Item.UniqueProjects</b></li>
-                            </ul>
-                        </div>
-
+                <div class="spotlight-columns">
+                    <div class="spotlight-col">
+                        <section class="spotlight-panel">
+                            <div class="card-head"><h3>Hours allocation</h3><small>Current month</small></div>
+                            <div id="spotlight-hours" class="spotlight-chart"></div>
+                        </section>
+                        <section class="spotlight-panel">
+                            <div class="card-head"><h3>Attendance and reconciliation</h3><small>Current month</small></div>
+                            <div id="spotlight-attendance" class="spotlight-chart short"></div>
+                        </section>
                         @if (TrendValues.Count >= 2)
                         {
-                            <h3 class="sub-head">Score trend</h3>
-                            <div id="spotlight-trend" class="spotlight-chart short"></div>
+                            <section class="spotlight-panel"><div class="card-head"><h3>Score trend</h3><small>@TrendValues.Count months</small></div><div id="spotlight-trend" class="spotlight-chart short"></div></section>
                         }
+                    </div>
 
-                        <h3 class="sub-head">This month in detail</h3>
-                        <ul class="spotlight-detail-grid">
-                            <li><span>Entered hours</span><b>@Analytics.Format(Item.EnteredHours, "0.0")</b></li>
-                            <li><span>Approved hours</span><b>@Analytics.Format(Item.ApprovedHours, "0.0")</b></li>
-                            <li><span>Compliance hours</span><b>@(Item.HasSummaryData ? Analytics.Format(Item.ComplianceHours, "0.0") : "—")</b></li>
-                            <li><span>Timesheet days</span><b>@Item.TimesheetFilledDays / @Item.ExpectedTimesheetDays</b></li>
-                            <li><span>Attendance days</span><b>@Analytics.Format(Item.AttendanceDays, "0")</b></li>
-                            <li><span>Leave days</span><b>@Analytics.Format(Item.LeaveDays, "0")</b></li>
-                            <li><span>Missing punch</span><b>@Item.MissingPunchDays</b></li>
-                            <li><span>Late arrivals</span><b>@Item.LateDays</b></li>
-                            <li><span>Early departures</span><b>@Item.EarlyDays</b></li>
-                            <li><span>Short duration days</span><b>@Item.LessDurationDays</b></li>
-                            <li><span>Punch vs timesheet</span><b class="@(Math.Abs(Item.ReconciliationVariance) > 5 ? "down" : null)">@Analytics.Format(Item.ReconciliationVariance, "0.0") h</b></li>
-                            <li><span>Non-billable hours</span><b>@Analytics.Format(Item.NonBillableHours, "0.0")</b></li>
-                        </ul>
-                    }
-                </div>
+                    <div class="spotlight-col">
+                        <section class="spotlight-panel">
+                            <div class="card-head"><h3>Current numerical detail</h3><small>Imported and calculated</small></div>
+                            <div class="spotlight-metric-groups">
+                                <div><h4>Capacity</h4>@Row("Compliance", Item.ComplianceHours, Item.HasSummaryData, "h")@Row("Entered", Item.EnteredHours, true, "h")@Row("Approved", Item.ApprovedHours, true, "h")@Row("Office", Item.OfficeHours, true, "h")</div>
+                                <div><h4>Allocation</h4>@Row("Billable", Item.BillableHours, true, "h")@Row("Non-billable", Item.NonBillableHours, true, "h")@Row("Training", Item.TrainingHours, true, "h")@Row("Detailed", Item.DetailedHours, true, "h")</div>
+                                <div><h4>Attendance</h4>@Row("Punch", Item.PunchHours, true, "h")@Row("Attendance TS", Item.AttendanceTimesheetHours, true, "h")@Row("Variance", Item.ReconciliationVariance, true, "h", true)@Row("Attendance days", Item.AttendanceDays)</div>
+                                <div><h4>Activity</h4>@Row("Filled days", Item.TimesheetFilledDays)@Row("Expected days", Item.ExpectedTimesheetDays)@Row("Entries", Item.DetailedEntries)@Row("Projects", Item.UniqueProjects)</div>
+                                <div><h4>Exceptions</h4>@Row("Missing punch", Item.MissingPunchDays)@Row("Late", Item.LateDays)@Row("Early", Item.EarlyDays)@Row("Less duration", Item.LessDurationDays)</div>
+                                <div><h4>Leave</h4>@Row("Leave days", Item.LeaveDays)@Row("Reconciliation", Math.Abs(Item.ReconciliationVariance), true, "h")</div>
+                            </div>
+                        </section>
 
-                <div class="spotlight-col">
-                    @if (Item is not null)
-                    {
-                        <h3 class="sub-head">Category performance vs team average</h3>
-                        <div id="spotlight-radar" class="spotlight-chart"></div>
-                    }
+                        <section class="spotlight-panel">
+                            <div class="card-head"><h3>Category performance</h3><small>Against team average</small></div>
+                            <div id="spotlight-radar" class="spotlight-chart"></div>
+                        </section>
 
-                    <h3 class="sub-head">Peer feedback</h3>
-                    @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
-                    {
-                        <p class="chart-note">No peer feedback involving @Name this month.</p>
-                    }
-                    else
-                    {
-                        <div class="mini-tiles">
-                            <div><strong>@Peer.ReceivedCount</strong><span>Received</span></div>
-                            <div><strong>@Peer.GivenCount</strong><span>Given</span></div>
-                            <div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received</span></div>
-                        </div>
-                        @if (Peer.ReceivedCount > 0)
-                        {
-                            <div id="spotlight-peerbars" class="spotlight-chart short"></div>
-                            @if (Peer.Received.Any(x => !string.IsNullOrWhiteSpace(x.Comment)))
+                        <section class="spotlight-panel">
+                            <div class="card-head"><h3>Peer feedback</h3><small>@Peer.ReceivedCount received · @Peer.GivenCount given</small></div>
+                            @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
+                            { <p class="chart-note">No peer feedback involving @Name this month.</p> }
+                            else
                             {
-                                <ul class="comment-list">
-                                    @foreach (var review in Peer.Received.Where(x => !string.IsNullOrWhiteSpace(x.Comment)))
-                                    {
-                                        <li><strong>@review.ReviewerName</strong><p>@review.Comment</p></li>
-                                    }
-                                </ul>
+                                <div class="mini-tiles"><div><strong>@Peer.ReceivedCount</strong><span>Received</span></div><div><strong>@Peer.GivenCount</strong><span>Given</span></div><div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average</span></div></div>
                             }
-                        }
-                    }
+                        </section>
 
-                    <h3 class="sub-head">Alerts for @Name</h3>
-                    @if (Alerts.Count == 0)
-                    {
-                        <p class="chart-note">No rule fired against @Name this month.</p>
-                    }
-                    else
-                    {
-                        <div class="alert-list single">
-                            @foreach (var alert in Alerts)
+                        <section class="spotlight-panel">
+                            <div class="card-head"><h3>Alerts</h3><small>@Alerts.Count</small></div>
+                            @if (Alerts.Count == 0) { <p class="chart-note">No rule fired against @Name this month.</p> }
+                            else
                             {
-                                <div class="alert @Level(alert.Level)">
-                                    <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
-                                    <span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span>
+                                <div class="alert-list single">
+                                    @foreach (var alert in Alerts)
+                                    { <div class="alert @Level(alert.Level)"><span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span><span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span></div> }
                                 </div>
                             }
-                        </div>
-                    }
+                        </section>
+                    </div>
                 </div>
-            </div>
+            }
         </div>
     </aside>
 </div>
@@ -144,53 +105,54 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_rendered) return;
+        if (_rendered || Item is null) return;
         _rendered = true;
 
-        if (Item is not null)
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "spotlight-hours", new[] { "Current" }, new object[]
         {
-            await JS.InvokeVoidAsync("epaCharts.gauge", "spotlight-gauge", Item.OperationalScore, Analytics.ScoreBand(Item.OperationalScore));
+            new { name = "Billable", color = "#0F6E9E", values = new object[] { Item.BillableHours } },
+            new { name = "Non-billable", color = "#C85A22", values = new object[] { Item.NonBillableHours } },
+            new { name = "Training", color = "#7A4BB0", values = new object[] { Item.TrainingHours } },
+            new { name = "Office", color = "#1E8C5A", values = new object[] { Item.OfficeHours } }
+        }, null, " h");
 
-            if (TrendValues.Count >= 2)
-                await JS.InvokeVoidAsync("epaCharts.trend", "spotlight-trend",
-                    TrendMonths.Select(m => m.ToString("MMM yy")).ToArray(), TrendValues, null);
-
-            var mine = Analytics.RadarValues(Item);
-            var axisNames = TeamRadar.Select(a => a.Label).ToArray();
-            var teamValues = TeamRadar.Select(a => a.TeamAverage).ToArray();
-            await JS.InvokeVoidAsync("epaCharts.radar", "spotlight-radar", axisNames, 100,
-                new object[]
-                {
-                    new { name = Name, color = "#C85A22", values = mine },
-                    new { name = "Team average", color = "#0F6E9E", values = teamValues }
-                });
-        }
-
-        if (Peer.ReceivedCount > 0)
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "spotlight-attendance", new[] { "Hours", "Days" }, new object[]
         {
-            string[] dims = ["Collaboration", "Communication", "Reliability", "Technical help"];
-            decimal[] values = [Peer.Collaboration, Peer.Communication, Peer.Reliability, Peer.TechnicalHelp];
-            await JS.InvokeVoidAsync("epaCharts.bars", "spotlight-peerbars", dims, values, (string[]?)null, 5, string.Empty);
-        }
+            new { name = "Punch / attendance", color = "#0F6E9E", values = new object[] { Item.PunchHours, Item.AttendanceDays } },
+            new { name = "Timesheet / leave", color = "#1E8C5A", values = new object[] { Item.AttendanceTimesheetHours, Item.LeaveDays } }
+        }, null, string.Empty);
+
+        if (TrendValues.Count >= 2)
+            await JS.InvokeVoidAsync("epaCharts.trend", "spotlight-trend", TrendMonths.Select(m => m.ToString("MMM yy")).ToArray(), TrendValues, null);
+
+        var mine = Analytics.RadarValues(Item);
+        await JS.InvokeVoidAsync("epaCharts.radar", "spotlight-radar", TeamRadar.Select(a => a.Label).ToArray(), 100,
+            new object[]
+            {
+                new { name = Name, color = "#C85A22", values = mine },
+                new { name = "Team average", color = "#0F6E9E", values = TeamRadar.Select(a => a.TeamAverage).ToArray() }
+            });
     }
+
+    private RenderFragment Kpi(string label, decimal value, bool available = true) => @<div><span>@label</span><strong>@(available ? Analytics.Format(value) : "—")</strong></div>;
+    private RenderFragment Row(string label, decimal value, bool available = true, string suffix = "", bool signed = false) => @<p><span>@label</span><b>@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></p>;
 
     private async Task Close()
     {
-        foreach (var id in new[] { "spotlight-gauge", "spotlight-trend", "spotlight-radar", "spotlight-peerbars" })
-            await JS.InvokeVoidAsync("epaCharts.dispose", id);
+        await DisposeCharts();
         await OnClose.InvokeAsync();
     }
 
-    public async ValueTask DisposeAsync()
+    private async Task DisposeCharts()
     {
-        foreach (var id in new[] { "spotlight-gauge", "spotlight-trend", "spotlight-radar", "spotlight-peerbars" })
+        foreach (var id in new[] { "spotlight-hours", "spotlight-attendance", "spotlight-trend", "spotlight-radar" })
         {
             try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
         }
     }
 
+    public async ValueTask DisposeAsync() => await DisposeCharts();
     private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
     private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
-    private static string Initials(string name) =>
-        string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
 }
