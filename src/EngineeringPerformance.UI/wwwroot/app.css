@@ -144,19 +144,19 @@ code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; }
 .rank-list li.clickable:hover, .performance-row.clickable:hover, .alert.clickable:hover { box-shadow: var(--shadow-raised); transform: translateY(-1px); position: relative; z-index: 1; }
 .rank-list li.clickable:hover .rank-name { color: #114b96; }
 
-/* Slide-over drawer: CSS keyframe animation on mount avoids a two-frame JS transition trick. */
-.spotlight-backdrop { position: fixed; inset: 0; background: rgba(11,20,35,.44); z-index: var(--z-drawer); animation: fadeIn .2s ease both; }
-.spotlight-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: min(460px, 92vw); background: #fff; box-shadow: var(--shadow-drawer); display: flex; flex-direction: column; animation: slideInRight .28s cubic-bezier(.2,.8,.2,1) both; }
+/* Full-screen modal: CSS keyframe animation on mount avoids a two-frame JS transition trick. */
+.spotlight-backdrop { position: fixed; inset: 0; background: rgba(11,20,35,.5); z-index: var(--z-drawer); display: flex; align-items: center; justify-content: center; padding: 26px; animation: fadeIn .2s ease both; }
+.spotlight-drawer { position: relative; width: min(1180px, 100%); height: min(940px, 100%); background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-drawer); display: flex; flex-direction: column; animation: modalIn .22s cubic-bezier(.2,.8,.2,1) both; overflow: hidden; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-.spotlight-head { display: flex; align-items: center; gap: 14px; padding: 20px 22px; border-bottom: 1px solid var(--line); flex: none; }
+@keyframes modalIn { from { opacity: 0; transform: scale(.97) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.spotlight-head { display: flex; align-items: center; gap: 14px; padding: 20px 26px; border-bottom: 1px solid var(--line); flex: none; }
 .spotlight-title { flex: 1; min-width: 0; }
 .spotlight-title h2 { margin: 0; font-size: 17px; }
 .spotlight-title small { color: var(--muted); font-size: 11.5px; }
 .avatar.big { width: 42px; height: 42px; font-size: 14px; }
 .spotlight-close { border: 0; background: transparent; font-size: 22px; line-height: 1; color: #8d97a6; cursor: pointer; padding: 4px 8px; }
 .spotlight-close:hover { color: #2b3648; }
-.spotlight-body { flex: 1; overflow-y: auto; padding: 18px 22px 32px; }
+.spotlight-body { flex: 1; overflow-y: auto; padding: 22px 26px 36px; max-width: 900px; margin: 0 auto; width: 100%; }
 .spotlight-gauge-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 10px; margin-bottom: 6px; }
 .spotlight-gauge { height: 150px; }
 .spotlight-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 14px; }
