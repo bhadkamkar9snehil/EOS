@@ -3,16 +3,16 @@
 // of tearing the chart down every refresh.
 (function () {
     const PALETTE = {
-        blue: '#2a78d6', orange: '#eb6834', aqua: '#1baf7a', violet: '#4a3aa7',
-        good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b',
-        grid: '#e1e0d9', axis: '#c3c2b7', muted: '#898781', ink: '#0b0b0b'
+        blue: '#0F6E9E', orange: '#C85A22', aqua: '#1E8C5A', violet: '#7A4BB0',
+        good: '#3F7D55', warning: '#A9762A', serious: '#B4653C', critical: '#A94236',
+        grid: '#E4E5E1', axis: '#B8BCB8', muted: '#737C78', ink: '#202623'
     };
     const BAND_COLOR = { good: PALETTE.good, warning: PALETTE.warning, serious: PALETTE.serious, critical: PALETTE.critical };
 
     // One consistent tooltip skin for every chart — a plain dark card, no series-colored
     // borders. Mismatched colored tooltip "speech bubbles" per chart read as unfinished.
     const TOOLTIP_BASE = {
-        backgroundColor: '#1c2430', borderWidth: 0, padding: [9, 12],
+        backgroundColor: '#2A3330', borderWidth: 0, padding: [9, 12],
         textStyle: { color: '#f3f5f8', fontSize: 12, lineHeight: 18 },
         extraCssText: 'box-shadow:0 8px 20px rgba(10,16,28,.28); border-radius:6px;'
     };
@@ -94,7 +94,7 @@
             radar: {
                 indicator: indicatorNames.map(n => ({ name: n, max: maxValue })),
                 radius: '68%',
-                axisName: { color: '#52514e', fontSize: 11 },
+                axisName: { color: '#4F5955', fontSize: 11 },
                 splitArea: { areaStyle: { color: ['transparent'] } },
                 splitLine: { lineStyle: { color: PALETTE.grid } },
                 axisLine: { lineStyle: { color: PALETTE.grid } }
@@ -122,12 +122,12 @@
             grid: { left: 42, right: 16, top: 20, bottom: 66 },
             tooltip: { ...TOOLTIP_BASE, trigger: 'item', formatter: (p) => `<strong>${p.data[3]}</strong><br/><span style="opacity:.7">Click the point to open the profile</span>` },
             legend: {
-                bottom: 4, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4d5a6c' },
+                bottom: 4, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4F5955' },
                 data: Object.keys(nameOf).map(k => nameOf[k])
             },
             xAxis: {
                 name: 'Average punch hours per accountable day', nameLocation: 'middle', nameGap: 22,
-                nameTextStyle: { color: '#52514e', fontSize: 10 },
+                nameTextStyle: { color: '#4F5955', fontSize: 10 },
                 min: 0, max: 12, splitLine: { lineStyle: { color: PALETTE.grid } },
                 axisLine: { lineStyle: { color: PALETTE.axis } }, axisLabel: { fontSize: 10, color: PALETTE.muted }
             },
@@ -203,7 +203,7 @@
         chart.setOption({
             ...baseAnimation,
             grid: { left: 40, right: 20, top: 34, bottom: 30 },
-            legend: { top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4d5a6c' } },
+            legend: { top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4F5955' } },
             tooltip: {
                 ...TOOLTIP_BASE, trigger: 'axis',
                 formatter: (params) => {
@@ -228,10 +228,10 @@
             tooltip: { ...TOOLTIP_BASE, position: 'top', formatter: (p) => `<strong>${p.data.tooltip}</strong>${drillable ? '<br/><span style="opacity:.7">Click to open profile</span>' : ''}` },
             grid: { left: 140, right: 12, top: 10, bottom: 30 },
             xAxis: { type: 'category', data: xCategories, splitArea: { show: false }, axisLabel: { fontSize: 10, color: PALETTE.muted }, axisLine: { lineStyle: { color: PALETTE.axis } } },
-            yAxis: { type: 'category', data: yCategories, axisLabel: { fontSize: 11, color: '#2b3648' }, axisLine: { show: false }, splitArea: { show: false } },
+            yAxis: { type: 'category', data: yCategories, axisLabel: { fontSize: 11, color: '#202623' }, axisLine: { show: false }, splitArea: { show: false } },
             visualMap: {
                 min: 0, max: 100, show: false,
-                inRange: { color: ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'] }
+                inRange: { color: ['#DDE9EF', '#B9D4E1', '#8EBBCF', '#5F9DB9', '#3B80A1', '#1F6686', '#0E4C68'] }
             },
             series: [{
                 // ECharts 6.1's heatmap visual-channel color mapping breaks when the data
@@ -261,10 +261,10 @@
                 name: n.name, value: degree, tooltip: n.tooltip, symbolSize: size,
                 itemStyle: isHub
                     ? { color: PALETTE.blue, borderColor: '#a9c9f2', borderWidth: 3 }
-                    : { color: '#dbe7fb', borderColor: '#b9d1f4', borderWidth: 1.5 },
+                    : { color: '#DEE8EE', borderColor: '#BBD2DE', borderWidth: 1.5 },
                 label: {
                     show: true, formatter: n.initials, position: 'inside',
-                    color: isHub ? '#ffffff' : '#0f4d99', fontSize: isHub ? 13 : 10.5, fontWeight: 700
+                    color: isHub ? '#ffffff' : '#0E4C68', fontSize: isHub ? 13 : 10.5, fontWeight: 700
                 }
             };
         });
@@ -274,7 +274,7 @@
             series: [{
                 type: 'graph', layout: 'circular', roam: true, draggable: true, cursor: 'pointer',
                 circular: { rotateLabel: false },
-                lineStyle: { color: '#c7d2e2', curveness: 0.22, width: 1.2, opacity: 0.8 },
+                lineStyle: { color: '#CBD1CE', curveness: 0.22, width: 1.2, opacity: 0.8 },
                 emphasis: { focus: 'adjacency', lineStyle: { width: 2.4, color: PALETTE.blue }, label: { fontSize: 12 } },
                 data, links,
                 edgeSymbol: ['none', 'arrow'], edgeSymbolSize: 6
@@ -300,12 +300,12 @@
                 }
             },
             xAxis: { min: 0, max: max || null, splitLine: { lineStyle: { color: PALETTE.grid } }, axisLabel: { fontSize: 10, color: PALETTE.muted }, axisLine: { show: false } },
-            yAxis: { type: 'category', data: categories, axisLabel: { fontSize: 11, color: '#2b3648' }, axisLine: { show: false }, axisTick: { show: false } },
+            yAxis: { type: 'category', data: categories, axisLabel: { fontSize: 11, color: '#202623' }, axisLine: { show: false }, axisTick: { show: false } },
             series: [{
                 type: 'bar', cursor: drillable ? 'pointer' : 'default',
                 data: values.map((v, i) => ({ value: v, itemStyle: { color: (colors && colors[i]) || PALETTE.blue, borderRadius: [0, 4, 4, 0] } })),
                 barWidth: 14,
-                label: { show: true, position: 'right', formatter: (p) => p.value.toFixed(decimals) + (suffix || ''), fontSize: 11, fontWeight: 600, color: '#2b3648' }
+                label: { show: true, position: 'right', formatter: (p) => p.value.toFixed(decimals) + (suffix || ''), fontSize: 11, fontWeight: 600, color: '#202623' }
             }]
         });
         chart.off('click');
@@ -319,7 +319,7 @@
         chart.setOption({
             ...baseAnimation,
             grid: { left: 40, right: 20, top: 34, bottom: 30 },
-            legend: { show: series.length > 1, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4d5a6c' } },
+            legend: { show: series.length > 1, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#4F5955' } },
             tooltip: {
                 ...TOOLTIP_BASE, trigger: 'axis', axisPointer: { type: 'shadow' },
                 formatter: (params) => {

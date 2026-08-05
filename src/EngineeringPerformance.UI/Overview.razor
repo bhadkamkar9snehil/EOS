@@ -83,9 +83,9 @@
                 <div class="card-head"><h2>Category performance</h2><small>Operational dimensions</small></div>
                 <div id="chart-radar" class="echart"></div>
                 <ul class="chart-legend">
-                    <li><i style="background:#2a78d6"></i>Team average</li>
-                    <li><i style="background:#eb6834"></i>Top quartile</li>
-                    <li><i style="background:#1baf7a"></i>Bottom quartile</li>
+                    <li><i style="background:#0F6E9E"></i>Team average</li>
+                    <li><i style="background:#C85A22"></i>Top quartile</li>
+                    <li><i style="background:#1E8C5A"></i>Bottom quartile</li>
                 </ul>
             </section>
 
@@ -291,27 +291,66 @@
     [JSInvokable]
     public void DrilldownTo(string name) { Spotlight(name); StateHasChanged(); }
 
+    // Everything below is derived from State.History / State.Performance, which only change
+    // when AppState raises Changed. They used to be expression-bodied properties that the
+    // markup and each other re-evaluated many times per render — PreviousScores alone rebuilt
+    // a dictionary over the whole history on every access, and Alerts, CriticalLabel and
+    // TeamScoreDelta each pulled on it. Computed once per state change instead.
+    private IReadOnlyList<Anomaly> _alerts = [];
+    private Analytics.PeerSummary? _peers;
+    private Dictionary<string, decimal> _previousScores = new(StringComparer.OrdinalIgnoreCase);
+    private List<DateTime> _heatmapMonths = [];
+    private string[] _heatmapNames = [];
+    private decimal _teamScore;
+    private IReadOnlyList<decimal> _trendSeries = [];
+    private IReadOnlyList<MonthlyPerformanceItem> _varianceRows = [];
+    private readonly Dictionary<string, int> _bandCounts = new(StringComparer.Ordinal);
+
+    private void RecomputeDerived()
+    {
+        var previous = State.SelectedMonth.AddMonths(-1);
+        _previousScores = State.History
+            .Where(x => x.Year == previous.Year && x.Month == previous.Month)
+            .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
+
+        _alerts = Analytics.Anomalies(State.Performance, _previousScores);
+        _peers = Analytics.Peers(State.PeerReviews);
+
+        _heatmapMonths = State.History
+            .Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).TakeLast(6).ToList();
+        _heatmapNames = State.History.Select(x => x.EmployeeName).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+
+        _teamScore = State.Performance.Count == 0 ? 0 : decimal.Round(State.Performance.Average(x => x.OperationalScore), 1);
+
+        // One pass over history per month instead of a nested scan per month.
+        var byMonth = State.History.GroupBy(x => (x.Year, x.Month))
+            .ToDictionary(g => g.Key, g => g.Average(x => x.OperationalScore));
+        _trendSeries = _heatmapMonths
+            .Select(m => byMonth.TryGetValue((m.Year, m.Month), out var v) ? v : 0m).ToArray();
+
+        _varianceRows = State.Performance
+            .Where(x => Math.Abs(x.ReconciliationVariance) >= 1)
+            .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(5).ToArray();
+
+        _bandCounts.Clear();
+        foreach (var band in Bands) _bandCounts[band] = 0;
+        foreach (var item in State.Performance)
+        {
+            var band = Analytics.ScoreBand(item.OperationalScore);
+            _bandCounts[band] = _bandCounts.TryGetValue(band, out var c) ? c + 1 : 1;
+        }
+    }
+
     private DateTime Previous => State.SelectedMonth.AddMonths(-1);
-    private IReadOnlyList<Anomaly> Alerts => Analytics.Anomalies(State.Performance, PreviousScores);
-    private Analytics.PeerSummary Peers => Analytics.Peers(State.PeerReviews);
-
-    private Dictionary<string, decimal> PreviousScores => State.History
-        .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
-        .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
-        .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
-
-    private List<DateTime> HeatmapMonths => State.History
-        .Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).TakeLast(6).ToList();
-
-    private string[] HeatmapNames => State.History.Select(x => x.EmployeeName).Distinct(StringComparer.OrdinalIgnoreCase)
-        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
-
-    private decimal TeamScore => State.Performance.Count == 0 ? 0 : decimal.Round(State.Performance.Average(x => x.OperationalScore), 1);
-
-    private IReadOnlyList<decimal> TrendSeries => HeatmapMonths
-        .Select(m => State.History.Where(x => x.Year == m.Year && x.Month == m.Month)
-            .Select(x => x.OperationalScore).DefaultIfEmpty(0).Average())
-        .ToArray();
+    private IReadOnlyList<Anomaly> Alerts => _alerts;
+    private Analytics.PeerSummary Peers => _peers ??= Analytics.Peers(State.PeerReviews);
+    private Dictionary<string, decimal> PreviousScores => _previousScores;
+    private List<DateTime> HeatmapMonths => _heatmapMonths;
+    private string[] HeatmapNames => _heatmapNames;
+    private decimal TeamScore => _teamScore;
+    private IReadOnlyList<decimal> TrendSeries => _trendSeries;
 
     private decimal? TeamScoreDelta
     {
@@ -354,11 +393,9 @@
     private decimal TotalPunchHours => State.Performance.Sum(x => x.PunchHours);
     private decimal TotalBookedHours => State.Performance.Sum(x => x.AttendanceTimesheetHours);
 
-    private IReadOnlyList<MonthlyPerformanceItem> VarianceRows => State.Performance
-        .Where(x => Math.Abs(x.ReconciliationVariance) >= 1)
-        .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(5).ToArray();
+    private IReadOnlyList<MonthlyPerformanceItem> VarianceRows => _varianceRows;
 
-    private int BandCount(string band) => State.Performance.Count(x => Analytics.ScoreBand(x.OperationalScore) == band);
+    private int BandCount(string band) => _bandCounts.TryGetValue(band, out var c) ? c : 0;
 
     private void ToggleBandFilter(string band) => _bandFilter = _bandFilter == band ? null : band;
 
@@ -376,13 +413,18 @@
         else if (e.Key == "Escape") _query = string.Empty;
     }
 
-    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+        RecomputeDerived();
+    }
 
     // Routed pages aren't re-rendered just because MainLayout (which owns the month picker) is —
     // @Body doesn't cascade parameters the way an explicitly-declared child component would, so
     // each page that reads AppState reactively has to ask for its own re-render on Changed.
     private void OnStateChanged()
     {
+        RecomputeDerived();
         CheckChartsPending();
         InvokeAsync(StateHasChanged);
     }
@@ -393,7 +435,7 @@
         if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
     }
 
-    protected override void OnParametersSet() => CheckChartsPending();
+    protected override void OnParametersSet() { RecomputeDerived(); CheckChartsPending(); }
 
     private bool _chartsPending;
 
@@ -426,16 +468,16 @@
         await JS.InvokeVoidAsync("epaCharts.radar", "chart-radar", axes.Select(a => a.Label).ToArray(), 100,
             new object[]
             {
-                new { name = "Team average", color = "#2a78d6", values = axes.Select(a => a.TeamAverage).ToArray() },
-                new { name = "Top quartile", color = "#eb6834", values = axes.Select(a => a.TopQuartile).ToArray() },
-                new { name = "Bottom quartile", color = "#1baf7a", values = axes.Select(a => a.BottomQuartile).ToArray() }
+                new { name = "Team average", color = "#0F6E9E", values = axes.Select(a => a.TeamAverage).ToArray() },
+                new { name = "Top quartile", color = "#C85A22", values = axes.Select(a => a.TopQuartile).ToArray() },
+                new { name = "Bottom quartile", color = "#1E8C5A", values = axes.Select(a => a.BottomQuartile).ToArray() }
             });
 
         if (VarianceRows.Count > 0)
         {
             var names = VarianceRows.Select(x => x.EmployeeName).ToArray();
             var values = VarianceRows.Select(x => (double)Math.Abs(x.ReconciliationVariance)).ToArray();
-            var colors = VarianceRows.Select(x => x.ReconciliationVariance > 0 ? "#eb6834" : "#2a78d6").ToArray();
+            var colors = VarianceRows.Select(x => x.ReconciliationVariance > 0 ? "#C85A22" : "#0F6E9E").ToArray();
             await JS.InvokeVoidAsync("epaCharts.bars", "chart-variance", names, values, colors, (object?)null, " h", true);
         }
 

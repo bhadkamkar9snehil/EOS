@@ -19,9 +19,9 @@
     {
         <div class="kpi-row">
             @Kpi("Fill rate", Analytics.Format(FillRate) + "%", $"{TotalFilled} of {TotalExpected} accountable days")
-            @Kpi("Engineers with gaps", WithGaps.Count.ToString(), WithGaps.Count == 0 ? "Everyone up to date" : "Unfilled timesheet days")
-            @Kpi("Missing days", Rows.Sum(x => x.MissingDays).ToString(), "Total across the team")
-            @Kpi("Awaiting approval", Analytics.Format(Rows.Sum(x => x.PendingApprovalHours), "0") + " h", $"{AwaitingApproval.Count} engineer(s)")
+            @Kpi("Engineers with gaps", _withGaps.ToString(), _withGaps == 0 ? "Everyone up to date" : "Unfilled timesheet days")
+            @Kpi("Missing days", _missingDays.ToString(), "Total across the team")
+            @Kpi("Awaiting approval", Analytics.Format(_pendingHours, "0") + " h", $"{_awaitingApproval} engineer(s)")
             @Kpi("Billable capacity used", Analytics.Format(CapacityUsed) + "%", $"vs {Analytics.Format(Analytics.MonthlyBillableCapacityHours, "0")} h per billable engineer")
             @Kpi("Freshers on probation", Probationers.ToString(), "From the ERP roster")
         </div>
@@ -95,9 +95,37 @@
 </div>
 
 @code {
-    protected override void OnInitialized() => State.Changed += OnStateChanged;
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+        Recompute();
+    }
+
+    private void OnStateChanged() => InvokeAsync(() => { Recompute(); StateHasChanged(); });
     public void Dispose() => State.Changed -= OnStateChanged;
+
+    // Analytics.Compliance is an O(rows x employees) join with a name normalisation per pair.
+    // It used to hang off an expression-bodied property that the markup touched thirteen times
+    // per render, so every keystroke in the filter box re-ran the whole join thirteen times.
+    // It is now computed once per state change, along with the aggregates derived from it.
+    private void Recompute()
+    {
+        _rows = Analytics.Compliance(State.Performance, State.Employees);
+        _withGaps = _rows.Count(x => x.HasGap);
+        _awaitingApproval = _rows.Count(x => x.HasPendingApproval);
+        _missingDays = _rows.Sum(x => x.MissingDays);
+        _pendingHours = _rows.Sum(x => x.PendingApprovalHours);
+        _totalExpected = _rows.Sum(x => x.ExpectedDays);
+        _totalFilled = _rows.Sum(x => x.FilledDays);
+        _probationers = State.Employees.Count(x => x.IsOnProbation);
+
+        var billable = _rows.Where(x => !x.IsNonBillable).ToArray();
+        _capacityUsed = billable.Length == 0
+            ? 0
+            : decimal.Round(billable.Sum(x => x.BillableHours) / (billable.Length * Analytics.MonthlyBillableCapacityHours) * 100m, 1);
+
+        _filterCache = null;
+    }
 
     // QuickGrid's SortBy attribute can't parse an inline generic-method call in Razor markup
     // (the compiler treats "<Analytics.ComplianceRow>" as a markup tag), so each sort order is
@@ -113,13 +141,30 @@
 
     private string _filter = string.Empty;
 
-    private IReadOnlyList<Analytics.ComplianceRow> Rows => Analytics.Compliance(State.Performance, State.Employees);
-    private IReadOnlyList<Analytics.ComplianceRow> FilteredRows => string.IsNullOrWhiteSpace(_filter)
-        ? Rows
-        : Rows.Where(x => x.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase) || (x.TeamName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
-    private IReadOnlyList<Analytics.ComplianceRow> WithGaps => Rows.Where(x => x.HasGap).ToArray();
-    private IReadOnlyList<Analytics.ComplianceRow> AwaitingApproval => Rows.Where(x => x.HasPendingApproval).ToArray();
-    private bool AnyPendingApproval => Rows.Any(x => x.HasPendingApproval);
+    private IReadOnlyList<Analytics.ComplianceRow> _rows = [];
+    private IReadOnlyList<Analytics.ComplianceRow>? _filterCache;
+    private string? _filterCacheKey;
+    private int _withGaps, _awaitingApproval, _missingDays, _totalExpected, _totalFilled, _probationers;
+    private decimal _pendingHours, _capacityUsed;
+
+    private IReadOnlyList<Analytics.ComplianceRow> Rows => _rows;
+
+    /// <summary>Filtered view, rebuilt only when the filter text actually changes.</summary>
+    private IReadOnlyList<Analytics.ComplianceRow> FilteredRows
+    {
+        get
+        {
+            if (_filterCache is not null && _filterCacheKey == _filter) return _filterCache;
+            _filterCacheKey = _filter;
+            _filterCache = string.IsNullOrWhiteSpace(_filter)
+                ? _rows
+                : _rows.Where(x => x.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase)
+                                || (x.TeamName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
+            return _filterCache;
+        }
+    }
+
+    private bool AnyPendingApproval => _awaitingApproval > 0;
 
     // Graduated severity instead of a flat on/off flag: a couple of missed days reads very
     // differently from a full no-show, and the color should say so at a glance.
@@ -143,21 +188,11 @@
     // column than a wall of repeated "0.0"s, and doesn't compete visually with real values.
     private static string Hours(decimal value) => value <= 0 ? "—" : Analytics.Format(value) + " h";
 
-    private int TotalExpected => Rows.Sum(x => x.ExpectedDays);
-    private int TotalFilled => Rows.Sum(x => x.FilledDays);
-    private decimal FillRate => TotalExpected == 0 ? 0 : decimal.Round(TotalFilled * 100m / TotalExpected, 1);
-
-    private decimal CapacityUsed
-    {
-        get
-        {
-            var billable = Rows.Where(x => !x.IsNonBillable).ToArray();
-            if (billable.Length == 0) return 0;
-            return decimal.Round(billable.Sum(x => x.BillableHours) / (billable.Length * Analytics.MonthlyBillableCapacityHours) * 100m, 1);
-        }
-    }
-
-    private int Probationers => State.Employees.Count(x => x.IsOnProbation);
+    private int TotalExpected => _totalExpected;
+    private int TotalFilled => _totalFilled;
+    private decimal FillRate => _totalExpected == 0 ? 0 : decimal.Round(_totalFilled * 100m / _totalExpected, 1);
+    private decimal CapacityUsed => _capacityUsed;
+    private int Probationers => _probationers;
 
     private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi" title="@hint">
         <span class="kpi-label">@label</span>

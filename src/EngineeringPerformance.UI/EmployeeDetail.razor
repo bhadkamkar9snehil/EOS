@@ -40,27 +40,30 @@
         </div>
 
         <div class="overview-grid">
-            <section class="card wide">
+            <section class="card span-8">
                 <div class="card-head"><h2>Score history</h2><small>@Months.Count month(s) loaded</small></div>
                 <div id="detail-trend" class="echart tall"></div>
                 <ul class="chart-legend">
-                    <li><i style="background:#2a78d6"></i>Operational score</li>
-                    <li><i style="background:#eb6834"></i>Timesheet completion</li>
-                    <li><i style="background:#1baf7a"></i>Attendance discipline</li>
-                    <li><i style="background:#4a3aa7"></i>Approval</li>
+                    <li><i style="background:#0F6E9E"></i>Operational score</li>
+                    <li><i style="background:#C85A22"></i>Timesheet completion</li>
+                    <li><i style="background:#1E8C5A"></i>Attendance discipline</li>
+                    <li><i style="background:#7A4BB0"></i>Approval</li>
                 </ul>
             </section>
 
-            <section class="card">
+            <section class="card span-4">
                 <div class="card-head"><h2>Category performance</h2><small>@LatestLabel vs team average</small></div>
                 <div id="detail-radar" class="echart"></div>
             </section>
 
-            <section class="card">
+            <section class="card span-4">
                 <div class="card-head"><h2>Peer feedback</h2><small>@LatestLabel</small></div>
                 @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
                 {
-                    <p class="chart-note">No peer feedback involving @Name this month.</p>
+                    <div class="locked compact-empty">
+                        <strong>No peer feedback for @LatestLabel</strong>
+                        <p>Ratings appear here once completed review workbooks naming @Name are uploaded on Data imports.</p>
+                    </div>
                 }
                 else
                 {
@@ -81,25 +84,25 @@
                 }
             </section>
 
-            <section class="card wide">
+            <section class="card span-8">
                 <div class="card-head"><h2>Monthly compliance</h2><small>Score, timesheet fill, approval and attendance — @Months.Count month(s)</small></div>
                 <div id="detail-compliance-bars" class="echart tall"></div>
                 <ul class="chart-legend">
-                    <li><i style="background:#2a78d6"></i>Score</li>
-                    <li><i style="background:#eb6834"></i>Timesheet fill</li>
-                    <li><i style="background:#4a3aa7"></i>Approval</li>
-                    <li><i style="background:#1baf7a"></i>Attendance</li>
+                    <li><i style="background:#0F6E9E"></i>Score</li>
+                    <li><i style="background:#C85A22"></i>Timesheet fill</li>
+                    <li><i style="background:#7A4BB0"></i>Approval</li>
+                    <li><i style="background:#1E8C5A"></i>Attendance</li>
                 </ul>
             </section>
 
-            <section class="card">
+            <section class="card span-6">
                 <div class="card-head"><h2>Billable hours</h2><small>Per month</small></div>
-                <div id="detail-billable-bars" class="echart"></div>
+                <div id="detail-billable-bars" class="echart short"></div>
             </section>
 
-            <section class="card">
+            <section class="card span-6">
                 <div class="card-head"><h2>Workload</h2><small>Average hours per accountable day</small></div>
-                <div id="detail-workload-bars" class="echart"></div>
+                <div id="detail-workload-bars" class="echart short"></div>
             </section>
 
             <section class="card wide">
@@ -206,10 +209,10 @@
         var labels = Months.Select(m => new DateTime(m.Year, m.Month, 1).ToString("MMM yy")).ToArray();
         await JS.InvokeVoidAsync("epaCharts.multiline", "detail-trend", labels, new object[]
         {
-            new { name = "Operational score", color = "#2a78d6", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
-            new { name = "Timesheet completion", color = "#eb6834", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Attendance discipline", color = "#1baf7a", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
-            new { name = "Approval", color = "#4a3aa7", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
+            new { name = "Operational score", color = "#0F6E9E", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet completion", color = "#C85A22", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Attendance discipline", color = "#1E8C5A", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
+            new { name = "Approval", color = "#7A4BB0", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
         });
 
         var axes = Analytics.Radar(State.Performance);
@@ -219,27 +222,27 @@
             await JS.InvokeVoidAsync("epaCharts.radar", "detail-radar", axes.Select(a => a.Label).ToArray(), 100,
                 new object[]
                 {
-                    new { name = Name, color = "#eb6834", values = mine },
-                    new { name = "Team average", color = "#2a78d6", values = axes.Select(a => a.TeamAverage).ToArray() }
+                    new { name = Name, color = "#C85A22", values = mine },
+                    new { name = "Team average", color = "#0F6E9E", values = axes.Select(a => a.TeamAverage).ToArray() }
                 });
         }
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-compliance-bars", labels, new object[]
         {
-            new { name = "Score", color = "#2a78d6", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
-            new { name = "Timesheet fill", color = "#eb6834", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Approval", color = "#4a3aa7", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() },
-            new { name = "Attendance", color = "#1baf7a", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() }
+            new { name = "Score", color = "#0F6E9E", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet fill", color = "#C85A22", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Approval", color = "#7A4BB0", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() },
+            new { name = "Attendance", color = "#1E8C5A", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() }
         }, 100, "%");
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-billable-bars", labels, new object[]
         {
-            new { name = "Billable hours", color = "#2a78d6", values = Months.Select(m => (object)m.BillableHours).ToArray() }
+            new { name = "Billable hours", color = "#0F6E9E", values = Months.Select(m => (object)m.BillableHours).ToArray() }
         }, null, " h");
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-workload-bars", labels, new object[]
         {
-            new { name = "Workload", color = "#1baf7a", values = Months.Select(m => (object)m.Workload()).ToArray() }
+            new { name = "Workload", color = "#1E8C5A", values = Months.Select(m => (object)m.Workload()).ToArray() }
         }, null, " h/d");
     }
 
