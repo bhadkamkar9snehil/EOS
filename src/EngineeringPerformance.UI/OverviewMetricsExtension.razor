@@ -1,0 +1,111 @@
+@using EngineeringPerformance.Application
+@inject AppState State
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (State.Performance.Count > 0)
+{
+    <section class="analytics-extension overview-extension">
+        <div class="extension-heading">
+            <div><h2>Operational data profile</h2><p>Additional views over the same imported numerical fields shown in Imported data.</p></div>
+        </div>
+
+        <div class="metric-ribbon">
+            @Metric("Entered hours", State.Performance.Sum(x => x.EnteredHours), "h")
+            @Metric("Approved hours", State.Performance.Sum(x => x.ApprovedHours), "h")
+            @Metric("Billable hours", State.Performance.Sum(x => x.BillableHours), "h")
+            @Metric("Office hours", State.Performance.Sum(x => x.OfficeHours), "h")
+            @Metric("Detailed entries", State.Performance.Sum(x => x.DetailedEntries), "")
+            @Metric("Projects", State.Performance.Sum(x => x.UniqueProjects), "")
+        </div>
+
+        <div class="extension-grid">
+            <section class="card span-6">
+                <div class="card-head"><h2>Score composition by engineer</h2><small>Operational and component scores</small></div>
+                <div id="overview-score-components" class="echart tall"></div>
+            </section>
+            <section class="card span-6">
+                <div class="card-head"><h2>Hours allocation by engineer</h2><small>Billable, non-billable, training and office hours</small></div>
+                <div id="overview-hours-allocation" class="echart tall"></div>
+            </section>
+            <section class="card span-6">
+                <div class="card-head"><h2>Highest reconciliation variance</h2><small>Punch hours minus attendance-timesheet hours</small></div>
+                <ol class="metric-ranking">
+                    @foreach (var item in VarianceLeaders)
+                    {
+                        <li><span>@item.EmployeeName</span><b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b></li>
+                    }
+                </ol>
+            </section>
+            <section class="card span-6">
+                <div class="card-head"><h2>Attendance exception concentration</h2><small>Highest combined exception days</small></div>
+                <ol class="metric-ranking">
+                    @foreach (var item in ExceptionLeaders)
+                    {
+                        <li><span>@item.EmployeeName</span><b>@ExceptionCount(item)</b><small>@item.MissingPunchDays punch · @item.LateDays late · @item.EarlyDays early · @item.LessDurationDays short</small></li>
+                    }
+                </ol>
+            </section>
+        </div>
+    </section>
+}
+
+@code {
+    private bool _pending = true;
+    private string? _signature;
+
+    protected override void OnInitialized() => State.Changed += OnChanged;
+
+    private void OnChanged()
+    {
+        _pending = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var signature = $"{State.SelectedMonth:yyyyMM}|{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}";
+        if (!_pending && signature == _signature) return;
+        _pending = false;
+        _signature = signature;
+        if (State.Performance.Count == 0) return;
+
+        var rows = State.Performance.OrderByDescending(x => x.OperationalScore).ToArray();
+        var labels = rows.Select(x => x.EmployeeName).ToArray();
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "overview-score-components", labels, new object[]
+        {
+            new { name = "Operational", color = "#0F6E9E", values = rows.Select(x => (object)x.OperationalScore).ToArray() },
+            new { name = "Timesheet", color = "#C85A22", values = rows.Select(x => x.HasSummaryData ? (object)x.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Approval", color = "#7A4BB0", values = rows.Select(x => x.HasSummaryData ? (object)x.ApprovalScore : null).ToArray() },
+            new { name = "Attendance", color = "#1E8C5A", values = rows.Select(x => (object)x.AttendanceDisciplineScore).ToArray() }
+        }, 100, "%");
+
+        await JS.InvokeVoidAsync("epaCharts.verticalBars", "overview-hours-allocation", labels, new object[]
+        {
+            new { name = "Billable", color = "#0F6E9E", values = rows.Select(x => (object)x.BillableHours).ToArray() },
+            new { name = "Non-billable", color = "#C85A22", values = rows.Select(x => (object)x.NonBillableHours).ToArray() },
+            new { name = "Training", color = "#7A4BB0", values = rows.Select(x => (object)x.TrainingHours).ToArray() },
+            new { name = "Office", color = "#1E8C5A", values = rows.Select(x => (object)x.OfficeHours).ToArray() }
+        }, null, " h");
+    }
+
+    private IReadOnlyList<MonthlyPerformanceItem> VarianceLeaders => State.Performance
+        .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(6).ToArray();
+
+    private IReadOnlyList<MonthlyPerformanceItem> ExceptionLeaders => State.Performance
+        .OrderByDescending(ExceptionCount).Take(6).ToArray();
+
+    private static int ExceptionCount(MonthlyPerformanceItem x) => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays;
+    private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
+
+    private RenderFragment Metric(string label, decimal value, string unit) => @<div><span>@label</span><strong>@Analytics.Format(value, unit == "" ? "0" : "0.0")</strong><small>@unit</small></div>;
+
+    public async ValueTask DisposeAsync()
+    {
+        State.Changed -= OnChanged;
+        foreach (var id in new[] { "overview-score-components", "overview-hours-allocation" })
+        {
+            try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
+        }
+    }
+}
