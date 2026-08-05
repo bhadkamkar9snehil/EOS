@@ -6,32 +6,53 @@
     <div class="section-title settings-title">
         <div>
             <h2>Appearance</h2>
-            <p>Choose a complete visual system. Each theme updates the shell, analytical canvas, tables, controls, status surfaces and selected states together.</p>
+            <p>Choose a complete visual system. The selected palette updates navigation, analytical surfaces, tables, controls, charts and status signals together.</p>
         </div>
         <span class="current-theme-label">Current: <strong>@CurrentTheme.Name</strong></span>
     </div>
 
+    <div class="theme-toolbar">
+        @foreach (var group in ThemeGroups)
+        {
+            <button type="button"
+                    class="@(_filter == group.Key ? "selected" : null)"
+                    @onclick="() => _filter = group.Key">
+                @group.Label
+                <span>@ThemeCount(group.Key)</span>
+            </button>
+        }
+    </div>
+
     <div class="theme-grid" role="list" aria-label="Application themes">
-        @foreach (var theme in Themes)
+        @foreach (var theme in FilteredThemes)
         {
             <button type="button"
                     class="theme-option @(_currentTheme == theme.Key ? "selected" : null)"
                     aria-pressed="@(_currentTheme == theme.Key)"
                     @onclick="() => ApplyThemeAsync(theme)">
-                <span class="theme-preview" data-preview="@theme.Key" aria-hidden="true">
-                    <i class="preview-nav"><b></b><b></b><b></b></i>
+                <span class="theme-preview" style="@PreviewStyle(theme)" aria-hidden="true">
+                    <i class="preview-nav">
+                        <b></b><b></b><b></b><b></b>
+                    </i>
                     <i class="preview-canvas">
                         <b class="preview-kpi"></b>
                         <b class="preview-kpi"></b>
-                        <b class="preview-chart"><em></em><em></em><em></em><em></em></b>
+                        <b class="preview-chart">
+                            <em></em><em></em><em></em><em></em><em></em>
+                        </b>
                     </i>
                 </span>
                 <span class="theme-option-copy">
-                    <strong>@theme.Name</strong>
+                    <span class="theme-name-row">
+                        <strong>@theme.Name</strong>
+                        <i>@GroupLabel(theme.Group)</i>
+                    </span>
                     <small>@theme.Description</small>
-                    <span class="theme-swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                    <span class="theme-swatches" style="@PreviewStyle(theme)" aria-hidden="true">
+                        <i></i><i></i><i></i><i></i><i></i>
+                    </span>
                 </span>
-                <span class="theme-check">@(_currentTheme == theme.Key ? "Selected" : "Apply")</span>
+                <span class="theme-check">@(_currentTheme == theme.Key ? "Selected" : "Apply theme")</span>
             </button>
         }
     </div>
@@ -53,12 +74,12 @@
         <section class="settings-card">
             <div class="settings-card-head">
                 <span class="settings-card-icon">◎</span>
-                <div><h3>Theme behaviour</h3><p>The selection is stored locally and restored before the application interface is drawn.</p></div>
+                <div><h3>Theme behaviour</h3><p>The palette is stored locally, restored before the interface is drawn, and used by every ECharts renderer.</p></div>
             </div>
             <div class="settings-facts">
-                <div><span>Persistence</span><strong>Local to this Windows profile</strong></div>
-                <div><span>Data impact</span><strong>None</strong></div>
-                <div><span>Scoring impact</span><strong>None</strong></div>
+                <div><span>Available palettes</span><strong>@Themes.Length</strong></div>
+                <div><span>Chart recolouring</span><strong>Automatic</strong></div>
+                <div><span>Data or scoring impact</span><strong>None</strong></div>
                 <div><span>Restart required</span><strong>No</strong></div>
             </div>
         </section>
@@ -66,16 +87,47 @@
 </section>
 
 @code {
-    private string _currentTheme = "clay-sage";
+    private string _currentTheme = "graphite";
+    private string _filter = "all";
+
+    private static readonly ThemeGroup[] ThemeGroups =
+    [
+        new("all", "All"),
+        new("neutral", "Neutral"),
+        new("blue", "Blue / Teal"),
+        new("green", "Green"),
+        new("warm", "Warm"),
+        new("expressive", "Expressive")
+    ];
 
     private static readonly ThemeOption[] Themes =
     [
-        new("clay-sage", "Clay Sage", "Warm neutral canvas, graphite structure and restrained clay accents."),
-        new("harbor-blue", "Harbor Blue", "Cool gray surfaces, navy structure and clear teal interaction states."),
-        new("forest-ledger", "Forest Ledger", "Ivory analytical canvas, deep forest navigation and brass highlights."),
-        new("graphite-copper", "Graphite Copper", "Crisp stone surfaces with charcoal structure and controlled copper emphasis."),
-        new("alpine-ink", "Alpine Ink", "Bright, high-clarity analytical surfaces with ink-blue structure and cobalt focus."),
+        new("graphite", "Graphite", "Executive neutral", "neutral", "#f4f7fb", "#ffffff", "#0f172a", "#2563eb", "#15803d", "#b45309", "#b91c1c"),
+        new("ledger", "Ledger", "Fintech calm", "neutral", "#f7f8fa", "#ffffff", "#101828", "#175cd3", "#067647", "#b54708", "#b42318"),
+        new("harbor", "Harbor", "Teal operations", "blue", "#eef3f8", "#ffffff", "#102a43", "#0f766e", "#15803d", "#b45309", "#b91c1c"),
+        new("alloy", "Alloy", "Indigo product", "expressive", "#f3f4f6", "#ffffff", "#111827", "#4f46e5", "#166534", "#b45309", "#b91c1c"),
+        new("meridian", "Meridian", "Corporate blue", "blue", "#f2f6fb", "#ffffff", "#10213a", "#1d4ed8", "#15803d", "#b45309", "#b91c1c"),
+        new("sterling", "Sterling", "Steel neutral", "neutral", "#f3f4f6", "#ffffff", "#1f2937", "#0f766e", "#0f766e", "#c2410c", "#b91c1c"),
+        new("pine", "Pine", "Industrial green", "green", "#f3f7f4", "#ffffff", "#132a1d", "#166534", "#15803d", "#a16207", "#b91c1c"),
+        new("ember", "Ember", "Warm enterprise", "warm", "#f8f5f2", "#ffffff", "#292524", "#c2410c", "#15803d", "#b45309", "#b91c1c"),
+        new("atlas", "Atlas", "SaaS cobalt", "blue", "#f4f7fd", "#ffffff", "#132239", "#2563eb", "#15803d", "#b45309", "#b91c1c"),
+        new("canvas", "Canvas", "Soft neutral", "neutral", "#f9fafb", "#ffffff", "#1f2937", "#475569", "#15803d", "#b45309", "#b91c1c"),
+        new("quartz", "Quartz", "Monochrome crisp", "neutral", "#f5f5f5", "#ffffff", "#171717", "#262626", "#15803d", "#b45309", "#b91c1c"),
+        new("sandstone", "Sandstone", "ERP warm neutral", "warm", "#faf7f2", "#fffdf9", "#292524", "#92400e", "#15803d", "#b45309", "#b91c1c"),
+        new("aurora", "Aurora", "Bright product blue", "blue", "#f3f8ff", "#ffffff", "#153a66", "#0f6cbd", "#15803d", "#b45309", "#b91c1c"),
+        new("clover", "Clover", "Fresh SaaS green", "green", "#f3fbf6", "#ffffff", "#123524", "#15803d", "#15803d", "#a16207", "#b91c1c"),
+        new("fjord", "Fjord", "Slate teal blend", "blue", "#f2f7fa", "#ffffff", "#1f3a4a", "#0f766e", "#15803d", "#b45309", "#b91c1c"),
+        new("blossom", "Blossom", "Rose product suite", "expressive", "#fff6fb", "#ffffff", "#4a1235", "#db2777", "#15803d", "#c2410c", "#be123c"),
+        new("dune", "Dune", "Sand and bronze", "warm", "#fcf8f1", "#fffdfa", "#53331a", "#b7791f", "#2f855a", "#b45309", "#b91c1c"),
+        new("glacier", "Glacier", "Icy analytics blue", "blue", "#f5faff", "#ffffff", "#12375b", "#0284c7", "#15803d", "#b45309", "#b91c1c"),
+        new("orchard", "Orchard", "Olive and apricot", "green", "#f8f9f2", "#ffffff", "#3f4f1f", "#4d7c0f", "#4d7c0f", "#b45309", "#b91c1c"),
+        new("studio", "Studio", "Editorial plum", "expressive", "#faf7ff", "#ffffff", "#3b1d63", "#7c3aed", "#15803d", "#b45309", "#b91c1c"),
+        new("marina", "Marina", "Ocean operations", "blue", "#f3fafc", "#ffffff", "#0f3a4a", "#0891b2", "#15803d", "#b45309", "#b91c1c"),
+        new("meadow", "Meadow", "Sage planning", "green", "#f5faf5", "#ffffff", "#1d3b2a", "#2f855a", "#2f855a", "#a16207", "#b91c1c")
     ];
+
+    private IEnumerable<ThemeOption> FilteredThemes =>
+        _filter == "all" ? Themes : Themes.Where(x => x.Group == _filter);
 
     private ThemeOption CurrentTheme => Themes.FirstOrDefault(x => x.Key == _currentTheme) ?? Themes[0];
 
@@ -92,5 +144,28 @@
         State.ShowMessage($"Theme changed to {theme.Name}.");
     }
 
-    private sealed record ThemeOption(string Key, string Name, string Description);
+    private static string PreviewStyle(ThemeOption theme) =>
+        $"--preview-bg:{theme.Background};--preview-surface:{theme.Surface};--preview-header:{theme.Header};" +
+        $"--preview-accent:{theme.Accent};--preview-success:{theme.Success};--preview-warning:{theme.Warning};--preview-danger:{theme.Danger};";
+
+    private static string GroupLabel(string group) =>
+        ThemeGroups.First(x => x.Key == group).Label;
+
+    private static int ThemeCount(string group) =>
+        group == "all" ? Themes.Length : Themes.Count(x => x.Group == group);
+
+    private sealed record ThemeOption(
+        string Key,
+        string Name,
+        string Description,
+        string Group,
+        string Background,
+        string Surface,
+        string Header,
+        string Accent,
+        string Success,
+        string Warning,
+        string Danger);
+
+    private sealed record ThemeGroup(string Key, string Label);
 }
