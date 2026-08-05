@@ -13,9 +13,18 @@
             <div><h2>Data inputs</h2><p>The ERP exports keep their system-generated names. Match each row using the expected export below — detection uses workbook columns, so a renamed file still lands in the right slot.</p></div>
             <button class="action" @onclick="UploadZipAsync" disabled="@State.Busy">Upload ZIP</button>
         </div>
+        <ol class="workflow">
+            @WorkflowStep(1, "Select reporting month", true)
+            @WorkflowStep(2, "Upload the three ERP exports", State.SystemReadyCount >= 3)
+            @WorkflowStep(3, "Validate imported rows", State.Performance.Count > 0)
+            @WorkflowStep(4, "Generate review templates", State.ReviewsUploaded)
+            @WorkflowStep(5, "Upload completed reviews", State.ReviewsUploaded)
+            @WorkflowStep(6, "Review calculated scores", State.Performance.Count > 0 && State.ReviewsUploaded)
+        </ol>
+
         <div class="import-table">
             <div class="table-head import-grid">
-                <span class="cell">Input</span><span class="cell">Expected ERP export</span><span class="cell">Loaded file</span><span class="cell">Status</span><span class="cell">Action</span>
+                <span class="cell">Input</span><span class="cell">Expected ERP export</span><span class="cell">Loaded file</span><span class="cell">Reporting period</span><span class="cell">Imported at</span><span class="cell">Status</span><span class="cell">Action</span>
             </div>
             @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
             {
@@ -30,6 +39,12 @@
                         <span class="filename" title="@slot.FileName">@(slot.FileName ?? "—")</span>
                     </div>
                     <div class="cell">
+                        <span class="filename">@State.SelectedMonth.ToString("MMMM yyyy")</span>
+                    </div>
+                    <div class="cell">
+                        <span class="filename">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM, HH:mm") : "—")</span>
+                    </div>
+                    <div class="cell">
                         <span class="status @(slot.Status == SourceStatus.Uploaded ? "ok" : null)">@(slot.Status == SourceStatus.Uploaded ? "Ready" : "Not uploaded")</span>
                     </div>
                     <div class="cell">
@@ -40,7 +55,17 @@
         </div>
         <div class="callout">
             <strong>Which month does an export belong to?</strong>
-            <p>ERP exports are generated after month end, so the file name carries the export date, not the reporting month. The utilization export named <code>…04-Aug-2026…</code> contains July 2026 data. Select the reporting month at the top of the window before uploading — this application opens on the last completed month by default.</p>
+            <p>
+                The attendance and detailed-timesheet exports carry a date on every row, so they can span
+                several months and each row is filed under its own month automatically.
+            </p>
+            <p>
+                The utilization summary is different: it is a single total per employee for whatever period
+                the ERP was asked for. A summary covering more than one calendar month is rejected rather
+                than split, because nothing in the file says how much of each total belongs to which month —
+                any division would be an estimate presented as a reported figure. Export it once per
+                calendar month (<code>01-Aug-2026 to 31-Aug-2026</code>) and it will import.
+            </p>
         </div>
     </section>
     <aside class="activity-pane">
@@ -58,9 +83,26 @@
 </div>
 
 @code {
-    protected override void OnInitialized() => State.Changed += OnStateChanged;
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    private IReadOnlyList<ImportHistoryItem> _history = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnStateChanged;
+        await ReloadHistoryAsync();
+    }
+
+    private void OnStateChanged() => InvokeAsync(async () => { await ReloadHistoryAsync(); StateHasChanged(); });
     public void Dispose() => State.Changed -= OnStateChanged;
+
+    private async Task ReloadHistoryAsync() =>
+        _history = await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
+
+    /// <summary>Most recent recorded import for a slot, or null when it predates the audit log.</summary>
+    private DateTime? ImportedAt(ReportType type) =>
+        _history.Where(x => x.ReportType == type).Select(x => (DateTime?)x.ImportedLocal).FirstOrDefault();
+
+    private RenderFragment WorkflowStep(int number, string label, bool done) =>
+        @<li class="workflow-step @(done ? "done" : null)"><i>@(done ? "✓" : number.ToString())</i>@label</li>;
 
     private async Task UploadAsync(ReportType type)
     {

@@ -130,12 +130,14 @@
         _ => "flag-critical"
     };
 
-    private static string? RowSeverityClass(Analytics.ComplianceRow row) => row.MissingDays switch
-    {
-        <= 0 => null,
-        <= 3 => "row-flag",
-        _ => "row-flag-critical"
-    };
+    // Row fill is reserved for a genuinely critical state — nothing logged at all for the
+    // whole month. Any other gap is carried by an amber marker on the row plus the Missing
+    // and Fill rate cells; painting most of the table red made every engineer look equally
+    // delinquent and drowned out the handful who actually are.
+    private static string? RowSeverityClass(Analytics.ComplianceRow row) =>
+        row.ExpectedDays > 0 && row.FilledDays == 0 ? "row-flag-critical"
+        : row.MissingDays > 0 ? "row-flag"
+        : null;
 
     // A literal zero hours reads as "nothing here" — an em dash is faster to scan across a
     // column than a wall of repeated "0.0"s, and doesn't compete visually with real values.

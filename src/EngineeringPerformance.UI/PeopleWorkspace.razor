@@ -23,35 +23,41 @@
         </div>
     </div>
 
-    <EditForm Model="_newEmployee" OnValidSubmit="AddEmployeeAsync">
-        <DataAnnotationsValidator />
-        <div class="form-row">
-            <label>Employee code
-                <InputText @bind-Value="_newEmployee.Code" placeholder="E1042" />
-                <ValidationMessage For="() => _newEmployee.Code" />
-            </label>
-            <label class="grow">Employee name
-                <InputText @bind-Value="_newEmployee.Name" placeholder="Full name" />
-                <ValidationMessage For="() => _newEmployee.Name" />
-            </label>
-            <label>Level
-                <InputNumber @bind-Value="_newEmployee.Level" min="1" max="99" />
-                <ValidationMessage For="() => _newEmployee.Level" />
-            </label>
-            <button type="submit" class="action" disabled="@State.Busy">Add employee</button>
-        </div>
-    </EditForm>
+    @* Two independent creation actions, each in its own labelled panel — previously they were
+       two identical bars and it was not obvious they wrote to different tables. *@
+    <div class="create-panels">
+        <EditForm Model="_newEmployee" OnValidSubmit="AddEmployeeAsync">
+            <DataAnnotationsValidator />
+            <div class="form-row">
+                <span class="form-legend">Add employee</span>
+                <label>Employee code
+                    <InputText @bind-Value="_newEmployee.Code" placeholder="E1042" />
+                    <ValidationMessage For="() => _newEmployee.Code" />
+                </label>
+                <label class="grow">Employee name
+                    <InputText @bind-Value="_newEmployee.Name" placeholder="Full name" />
+                    <ValidationMessage For="() => _newEmployee.Name" />
+                </label>
+                <label>Level
+                    <InputNumber @bind-Value="_newEmployee.Level" min="1" max="99" />
+                    <ValidationMessage For="() => _newEmployee.Level" />
+                </label>
+                <button type="submit" class="action" disabled="@State.Busy">Add employee</button>
+            </div>
+        </EditForm>
 
-    <EditForm Model="_newTeam" OnValidSubmit="AddTeamAsync">
-        <DataAnnotationsValidator />
-        <div class="form-row">
-            <label class="grow">New team name
-                <InputText @bind-Value="_newTeam.Name" placeholder="e.g. X-Force Execution" />
-                <ValidationMessage For="() => _newTeam.Name" />
-            </label>
-            <button type="submit" class="action secondary" disabled="@State.Busy">Create team</button>
-        </div>
-    </EditForm>
+        <EditForm Model="_newTeam" OnValidSubmit="AddTeamAsync">
+            <DataAnnotationsValidator />
+            <div class="form-row">
+                <span class="form-legend">Create team</span>
+                <label class="grow">Team name
+                    <InputText @bind-Value="_newTeam.Name" placeholder="e.g. X-Force Execution" />
+                    <ValidationMessage For="() => _newTeam.Name" />
+                </label>
+                <button type="submit" class="action secondary" disabled="@State.Busy">Create team</button>
+            </div>
+        </EditForm>
+    </div>
     @if (State.Teams.Count > 0)
     {
         <div class="team-grid compact">

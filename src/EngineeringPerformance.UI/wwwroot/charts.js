@@ -144,7 +144,7 @@
                 })),
                 {
                     type: 'line', silent: true, symbol: 'none', markLine: {
-                        symbol: 'none', label: { formatter: '{b}', fontSize: 9, color: PALETTE.muted },
+                        symbol: 'none', label: { formatter: '{b}', fontSize: 10, color: PALETTE.muted },
                         lineStyle: { type: 'dashed', color: PALETTE.muted },
                         data: [{ xAxis: ceilingX, label: { formatter: ceilingX + ' h/day' } }, { yAxis: targetY, label: { formatter: targetY + '% target' } }]
                     }, data: []
