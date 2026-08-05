@@ -1,114 +1,150 @@
 @page "/scoring"
 @using EngineeringPerformance.Application
+@inject IApplicationDatabase Database
+@inject AppState State
 
-@* Current scoring configuration. Weights are held in this page only — they are not
-   persisted, versioned by month, or applied to already-calculated scores. The copy
-   below says so plainly rather than implying historical behaviour that does not exist. *@
+<section class="single-pane wide scoring-page">
+    <div class="section-title">
+        <div>
+            <h2>Operational score configuration</h2>
+            <p>These three weights control the operational score shown across Overview, Imported data, Timesheets, reports and employee analysis.</p>
+        </div>
+    </div>
 
-<section class="single-pane">
+    <div class="operational-scoring-layout">
+        <div class="card operational-weight-card">
+            <div class="card-head">
+                <h2>Operational weights</h2>
+                <small>Persisted locally</small>
+            </div>
+
+            <div class="operational-weight-list">
+                @OperationalWeight("Timesheet completion", "Entered hours against compliance hours", () => _timesheet, v => _timesheet = v)
+                @OperationalWeight("Approval completion", "Approved hours against entered hours", () => _approval, v => _approval = v)
+                @OperationalWeight("Attendance discipline", "Filled days, punches, duration and punctuality", () => _attendance, v => _attendance = v)
+            </div>
+
+            <div class="scoring-save-row">
+                <div class="weight-total-panel @(IsOperationalValid ? "valid" : "invalid")">
+                    <span>Total</span>
+                    <strong>@Analytics.Format(OperationalTotal, "0.#")%</strong>
+                    <small>@OperationalValidationText</small>
+                </div>
+                <button class="action secondary" @onclick="ResetOperational" disabled="@State.Busy">Reset 55 / 15 / 30</button>
+                <button class="action" @onclick="SaveAndRecalculateAsync" disabled="@(State.Busy || !IsOperationalValid)">Save &amp; recalculate</button>
+            </div>
+        </div>
+
+        <div class="card operational-preview-card">
+            <div class="card-head">
+                <h2>Current weighting</h2>
+                <small>Applied proportionally when a source is unavailable</small>
+            </div>
+            <div class="operational-weight-stack" role="img" aria-label="@OperationalStackDescription">
+                @if (_timesheet > 0) { <i class="weight-timesheet" style="flex:@Analytics.Svg((double)_timesheet)"></i> }
+                @if (_approval > 0) { <i class="weight-approval" style="flex:@Analytics.Svg((double)_approval)"></i> }
+                @if (_attendance > 0) { <i class="weight-attendance" style="flex:@Analytics.Svg((double)_attendance)"></i> }
+            </div>
+            <ul class="operational-legend">
+                <li><i class="weight-timesheet"></i><span>Timesheet completion</span><b>@Analytics.Format(_timesheet, "0.#")%</b></li>
+                <li><i class="weight-approval"></i><span>Approval completion</span><b>@Analytics.Format(_approval, "0.#")%</b></li>
+                <li><i class="weight-attendance"></i><span>Attendance discipline</span><b>@Analytics.Format(_attendance, "0.#")%</b></li>
+            </ul>
+            <div class="callout scoring-callout">
+                <strong>Recalculation scope</strong>
+                <p>Saving recalculates every existing monthly employee row in SQLite. New imports automatically use the saved weights.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title scoring-secondary-title">
+        <div>
+            <h2>Review framework preview</h2>
+            <p>These seven category controls remain a planning preview. They do not alter the operational score above.</p>
+        </div>
+    </div>
+
     <div class="scoring-grid">
         <div class="scoring-col">
-            <div class="section-title">
-                <div><h2>Category weights</h2></div>
-            </div>
-            <div class="weight-list">
-                @Weight("Assignment execution", () => _execution, v => _execution = v)
-                @Weight("Ownership &amp; accountability", () => _ownership, v => _ownership = v)
-                @Weight("Collaboration", () => _collaboration, v => _collaboration = v)
-                @Weight("Operational discipline", () => _discipline, v => _discipline = v)
-                @Weight("Professional excellence", () => _excellence, v => _excellence = v)
-                @Weight("Continuous improvement", () => _improvement, v => _improvement = v)
-                @Weight("Growth &amp; learning", () => _growth, v => _growth = v)
+            <div class="card">
+                <div class="card-head"><h2>Review category weights</h2><small>Preview only</small></div>
+                <div class="weight-list">
+                    @Weight("Assignment execution", () => _execution, v => _execution = v)
+                    @Weight("Ownership &amp; accountability", () => _ownership, v => _ownership = v)
+                    @Weight("Collaboration", () => _collaboration, v => _collaboration = v)
+                    @Weight("Operational discipline", () => _discipline, v => _discipline = v)
+                    @Weight("Professional excellence", () => _excellence, v => _excellence = v)
+                    @Weight("Continuous improvement", () => _improvement, v => _improvement = v)
+                    @Weight("Growth &amp; learning", () => _growth, v => _growth = v)
+                </div>
             </div>
         </div>
 
         <div class="scoring-col">
             <div class="card">
-                <div class="card-head">
-                    <h2>Weight validation</h2>
-                    <small>Must total 100%</small>
-                </div>
+                <div class="card-head"><h2>Review-weight validation</h2><small>Must total 100%</small></div>
                 <div class="validation-row">
-                    <span class="weight-total @(IsValid ? "valid" : "invalid")">@Analytics.Format(WeightTotal, "0.#")%</span>
-                    <span class="validation-verdict @(IsValid ? "ok" : "bad")">
-                        @(IsValid ? "Valid" : WeightTotal > 100
-                            ? $"Over by {Analytics.Format(WeightTotal - 100, "0.#")} — reduce"
-                            : $"Under by {Analytics.Format(100 - WeightTotal, "0.#")} — add")
-                    </span>
-                </div>
-                <div class="weight-stack" role="img" aria-label="@StackDescription">
-                    @foreach (var (label, value, tone) in Categories)
-                    {
-                        @if (value > 0)
-                        {
-                            <i class="@tone" style="flex:@Analytics.Svg((double)value)" title="@label — @Analytics.Format(value, "0.#")%"></i>
-                        }
-                    }
+                    <span class="weight-total @(IsReviewValid ? "valid" : "invalid")">@Analytics.Format(ReviewTotal, "0.#")%</span>
+                    <span class="validation-verdict @(IsReviewValid ? "ok" : "bad")">@(IsReviewValid ? "Valid preview" : ReviewTotal > 100 ? $"Over by {Analytics.Format(ReviewTotal - 100, "0.#")}" : $"Under by {Analytics.Format(100 - ReviewTotal, "0.#")}")</span>
                 </div>
             </div>
-
             <div class="card">
-                <div class="card-head">
-                    <h2>Contribution preview</h2>
-                    <small>Worked example, not live data</small>
-                </div>
-                <p class="chart-note preview-lead">
-                    A hypothetical engineer scoring @PreviewRating out of 5 in every category would land at
-                    <b>@Analytics.Format(PreviewTotal)</b> out of 100. Each bar is that category's share.
-                </p>
-                <ul class="contribution-list">
-                    @foreach (var (label, value, tone) in Categories)
-                    {
-                        <li>
-                            <span class="contribution-label">@((MarkupString)label)</span>
-                            <span class="contribution-track"><i class="@tone" style="width:@Analytics.Svg((double)(WeightTotal <= 0 ? 0 : value / WeightTotal * 100))%"></i></span>
-                            <b>@Analytics.Format(value * PreviewRating / 5m, "0.#") / @Analytics.Format(value, "0.#")</b>
-                        </li>
-                    }
-                </ul>
-            </div>
-
-            <div class="card">
-                <div class="card-head">
-                    <h2>Score bands</h2>
-                    <small>Applied across the application</small>
-                </div>
+                <div class="card-head"><h2>Score bands</h2><small>Applied across the application</small></div>
                 <ul class="band-list">
                     @foreach (var (band, label, range) in Bands)
                     {
                         <li><i class="@band"></i><span>@label</span><b>@range</b></li>
                     }
                 </ul>
-                <p class="chart-note">
-                    Bands are fixed in <code>Analytics.ScoreBand</code> and are not editable here.
-                </p>
             </div>
         </div>
     </div>
 </section>
 
 @code {
+    private decimal _timesheet = 55m;
+    private decimal _approval = 15m;
+    private decimal _attendance = 30m;
+
     private decimal _execution = 25, _ownership = 15, _collaboration = 15, _discipline = 15,
                     _excellence = 10, _improvement = 10, _growth = 10;
 
-    /// <summary>Illustrative rating used by the preview; deliberately a constant, not imported data.</summary>
-    private const decimal PreviewRating = 4m;
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await Database.GetOperationalScoringSettingsAsync();
+        _timesheet = settings.TimesheetCompletionWeight;
+        _approval = settings.ApprovalCompletionWeight;
+        _attendance = settings.AttendanceDisciplineWeight;
+    }
 
-    private decimal WeightTotal => _execution + _ownership + _collaboration + _discipline + _excellence + _improvement + _growth;
-    private bool IsValid => WeightTotal == 100m;
-    private decimal PreviewTotal => WeightTotal * PreviewRating / 5m;
+    private decimal OperationalTotal => _timesheet + _approval + _attendance;
+    private bool IsOperationalValid => _timesheet >= 0 && _approval >= 0 && _attendance >= 0 && OperationalTotal == 100m;
+    private string OperationalValidationText => IsOperationalValid ? "Ready to apply" : OperationalTotal > 100m
+        ? $"Reduce by {Analytics.Format(OperationalTotal - 100m, "0.#")}%"
+        : $"Add {Analytics.Format(100m - OperationalTotal, "0.#")}%";
 
-    // Tones reuse the score-band palette so a weight bar and a score chip read the same way.
-    private IEnumerable<(string Label, decimal Value, string Tone)> Categories =>
-    [
-        ("Assignment execution", _execution, "good"),
-        ("Ownership &amp; accountability", _ownership, "warning"),
-        ("Collaboration", _collaboration, "serious"),
-        ("Operational discipline", _discipline, "critical"),
-        ("Professional excellence", _excellence, "good"),
-        ("Continuous improvement", _improvement, "warning"),
-        ("Growth &amp; learning", _growth, "serious")
-    ];
+    private string OperationalStackDescription => $"Timesheet completion {_timesheet}%, approval completion {_approval}%, attendance discipline {_attendance}%";
+
+    private async Task SaveAndRecalculateAsync()
+    {
+        await State.RunAsync(async () =>
+        {
+            var settings = new OperationalScoringSettings(_timesheet, _approval, _attendance);
+            var count = await Database.SaveOperationalScoringSettingsAsync(settings);
+            await State.RefreshAsync();
+            State.ShowMessage($"Operational scoring saved. {count} monthly performance rows recalculated.");
+        });
+    }
+
+    private void ResetOperational()
+    {
+        _timesheet = 55m;
+        _approval = 15m;
+        _attendance = 30m;
+    }
+
+    private decimal ReviewTotal => _execution + _ownership + _collaboration + _discipline + _excellence + _improvement + _growth;
+    private bool IsReviewValid => ReviewTotal == 100m;
 
     private static IEnumerable<(string Band, string Label, string Range)> Bands =>
     [
@@ -118,17 +154,16 @@
         ("critical", "Critical", "below 55")
     ];
 
-    /// <summary>Text alternative for the stacked bar, so the split is not conveyed by colour alone.</summary>
-    private string StackDescription =>
-        "Weight split: " + string.Join(", ", Categories
-            .Where(x => x.Value > 0)
-            .Select(x => $"{x.Label.Replace("&amp;", "and")} {Analytics.Format(x.Value, "0.#")}%"));
+    private RenderFragment OperationalWeight(string label, string detail, Func<decimal> get, Action<decimal> set) =>
+        @<label class="operational-weight-row">
+            <span><strong>@label</strong><small>@detail</small></span>
+            <span class="weight-input"><input type="number" min="0" max="100" step="1" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b>%</b></span>
+        </label>;
 
     private RenderFragment Weight(string label, Func<decimal> get, Action<decimal> set) =>
         @<label class="weight-row">
             <span>@((MarkupString)label)</span>
-            <input type="number" min="0" max="100" value="@get()"
-                   @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" />
+            <input type="number" min="0" max="100" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" />
             <b>%</b>
         </label>;
 }
