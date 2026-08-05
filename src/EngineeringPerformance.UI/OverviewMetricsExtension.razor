@@ -18,7 +18,7 @@
         </div>
 
         <div class="refined-overview-grid">
-            <section class="card span-8 score-stack-card">
+            <section class="card span-7 score-stack-card">
                 <div class="card-head">
                     <div>
                         <h2>Operational score composition</h2>
@@ -30,7 +30,7 @@
                      style="height:@ScoreChartHeightPx}px"></div>
             </section>
 
-            <section class="card span-4 review-priorities-card">
+            <section class="card span-5 review-priorities-card">
                 <div class="card-head">
                     <div><h2>Review priorities</h2><small>Consolidated people-review signals</small></div>
                     <button class="link" @onclick='() => Navigation.NavigateTo("/data")'>Numerical audit →</button>
@@ -66,9 +66,13 @@
 
                 <section class="review-section attendance-review-section">
                     <div class="review-section-title">
-                        <h3>Attendance &amp; reconciliation</h3>
-                        <small>Largest absolute hour gaps</small>
+                        <div>
+                            <h3>Attendance &amp; reconciliation</h3>
+                            <small>Punch, timesheet duration and exception types shown independently</small>
+                        </div>
+                        <span>Largest gaps</span>
                     </div>
+
                     <div class="attendance-signal-grid">
                         @foreach (var item in AttendanceReview)
                         {
@@ -80,18 +84,48 @@
                                     <i class="signal-avatar">@Initials(item.EmployeeName)</i>
                                     <span class="signal-person">
                                         <strong>@item.EmployeeName</strong>
-                                        <small>@ExceptionCount(item) exception day(s)</small>
+                                        <small>@ExceptionCount(item) attendance exception day(s)</small>
                                     </span>
-                                    <b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b>
+                                    <span class="signal-score-band @Analytics.ScoreBand(item.OperationalScore)">
+                                        @Analytics.Format(item.OperationalScore)
+                                    </span>
                                 </span>
+
+                                <span class="duration-grid">
+                                    <span class="duration-stat punch-duration">
+                                        <small>Punch duration</small>
+                                        <b>@Analytics.Format(item.PunchHours) h</b>
+                                    </span>
+                                    <span class="duration-stat timesheet-duration">
+                                        <small>Timesheet duration</small>
+                                        <b>@Analytics.Format(item.AttendanceTimesheetHours) h</b>
+                                    </span>
+                                    <span class="duration-stat variance-duration">
+                                        <small>Variance</small>
+                                        <b>@Signed(item.ReconciliationVariance) h</b>
+                                    </span>
+                                </span>
+
                                 <span class="variance-meter" aria-hidden="true">
                                     <i style="@($"width:{VarianceWidth(item)}%")"></i>
                                 </span>
-                                <span class="signal-chips">
-                                    <i class="@(item.MissingPunchDays > 0 ? "active" : null)">Punch @item.MissingPunchDays</i>
-                                    <i class="@(item.LateDays > 0 ? "active" : null)">Late @item.LateDays</i>
-                                    <i class="@(item.EarlyDays > 0 ? "active" : null)">Early @item.EarlyDays</i>
-                                    <i class="@(item.LessDurationDays > 0 ? "active" : null)">Short @item.LessDurationDays</i>
+
+                                <span class="exception-type-grid">
+                                    <span class="exception-type missing-punch @(item.MissingPunchDays > 0 ? "active" : null)">
+                                        <i>MP</i><small>Missing punch</small><b>@item.MissingPunchDays</b>
+                                    </span>
+                                    <span class="exception-type late @(item.LateDays > 0 ? "active" : null)">
+                                        <i>LT</i><small>Late</small><b>@item.LateDays</b>
+                                    </span>
+                                    <span class="exception-type early @(item.EarlyDays > 0 ? "active" : null)">
+                                        <i>ER</i><small>Early</small><b>@item.EarlyDays</b>
+                                    </span>
+                                    <span class="exception-type short @(item.LessDurationDays > 0 ? "active" : null)">
+                                        <i>SH</i><small>Short duration</small><b>@item.LessDurationDays</b>
+                                    </span>
+                                    <span class="exception-type missing-ts @(MissingTimesheetDaysFor(item) > 0 ? "active" : null)">
+                                        <i>TS</i><small>Missing timesheet</small><b>@MissingTimesheetDaysFor(item)</b>
+                                    </span>
                                 </span>
                             </button>
                         }
@@ -202,7 +236,7 @@
     }
 
     private decimal AbsoluteVariance => State.Performance.Sum(x => Math.Abs(x.ReconciliationVariance));
-    private int MissingTimesheetDays => State.Performance.Sum(x => Math.Max(0, x.ExpectedTimesheetDays - x.TimesheetFilledDays));
+    private int MissingTimesheetDays => State.Performance.Sum(MissingTimesheetDaysFor);
     private int TotalExceptionDays => State.Performance.Sum(ExceptionCount);
     private int HighVarianceCount => State.Performance.Count(x => Math.Abs(x.ReconciliationVariance) >= 40m);
 
@@ -223,8 +257,14 @@
     private decimal VarianceWidth(MonthlyPerformanceItem item) =>
         decimal.Round(Math.Min(100m, Math.Abs(item.ReconciliationVariance) / MaxAttendanceVariance * 100m), 1);
 
-    private static int ExceptionCount(MonthlyPerformanceItem x) => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays;
-    private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
+    private static int MissingTimesheetDaysFor(MonthlyPerformanceItem item) =>
+        Math.Max(0, item.ExpectedTimesheetDays - item.TimesheetFilledDays);
+
+    private static int ExceptionCount(MonthlyPerformanceItem item) =>
+        item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
+
+    private static string Signed(decimal value) =>
+        value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
 
     private static string Initials(string name) => string.Concat(name
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
