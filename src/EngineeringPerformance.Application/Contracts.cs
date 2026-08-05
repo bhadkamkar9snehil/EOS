@@ -29,6 +29,9 @@ public interface IApplicationDatabase
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<WeeklyPerformanceItem>> GetWeeklyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<WeeklyPerformanceItem>>([]);
+
     Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(OperationalScoringSettings.Default);
 
@@ -87,6 +90,48 @@ public sealed record MonthlyPerformanceItem(string EmployeeName, string? Employe
     public decimal Utilization => ComplianceHours <= 0 ? 0 : decimal.Round(EnteredHours / ComplianceHours * 100m, 1);
 }
 
+/// <summary>
+/// A factual Monday-to-Sunday aggregation built only from dated detailed-timesheet and attendance rows.
+/// Monthly utilization totals are deliberately not divided into weeks because that would be an estimate.
+/// </summary>
+public sealed record WeeklyPerformanceItem(
+    string EmployeeName,
+    string? EmployeeCode,
+    DateTime WeekStart,
+    decimal DetailedHours,
+    int DetailedEntries,
+    int UniqueProjects,
+    decimal PunchHours,
+    decimal TimesheetHours,
+    int FilledDays,
+    int ExpectedDays,
+    int MissingPunchDays,
+    int LateDays,
+    int EarlyDays,
+    int LessDurationDays)
+{
+    public DateTime WeekEnd => WeekStart.AddDays(6);
+    public int MissingTimesheetDays => Math.Max(0, ExpectedDays - FilledDays);
+    public decimal ReconciliationVariance => PunchHours - TimesheetHours;
+    public decimal TimesheetFillRate => ExpectedDays <= 0 ? 0m : decimal.Round(FilledDays * 100m / ExpectedDays, 1);
+
+    public decimal AttendanceDisciplineScore
+    {
+        get
+        {
+            if (ExpectedDays <= 0) return 0m;
+            var fill = Percentage(FilledDays, ExpectedDays);
+            var punch = 100m - Percentage(MissingPunchDays, ExpectedDays);
+            var duration = 100m - Percentage(LessDurationDays, ExpectedDays);
+            var punctuality = 100m - Percentage(LateDays + EarlyDays, ExpectedDays * 2m);
+            return decimal.Round(fill * .40m + punch * .25m + duration * .20m + punctuality * .15m, 1);
+        }
+    }
+
+    private static decimal Percentage(decimal value, decimal denominator) =>
+        denominator <= 0 ? 0m : Math.Clamp(decimal.Round(value / denominator * 100m, 1), 0m, 100m);
+}
+
 public sealed record PeerReviewItem(
     string ReviewerName, string ReviewerCode, string SubjectName, string SubjectCode,
     decimal Collaboration, decimal Communication, decimal Reliability, decimal TechnicalHelp,
@@ -97,6 +142,7 @@ public interface IWorkbookService
     WorkbookInspection Inspect(string filePath);
     ReportType DetectReportType(string filePath);
     IReadOnlyList<EmployeeMonthlyPerformance> ReadPerformance(string filePath, ReportType reportType, int year, int month);
+    IReadOnlyList<WeeklyPerformanceItem> ReadWeeklyPerformance(string filePath, ReportType reportType, int year, int month);
     IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month);
     IReadOnlyList<RosterEntry> ReadEmployeeRoster(string filePath);
     void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null);
