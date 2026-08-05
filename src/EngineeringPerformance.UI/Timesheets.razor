@@ -28,43 +28,58 @@
 
         <div class="overview-grid">
             <section class="card wide">
-                <div class="card-head"><h2>Timesheet compliance</h2><small>@Rows.Count engineer(s), highest gap first</small></div>
-                <div class="performance-table compliance">
-                    <div class="performance-head">
-                        <span>Engineer</span><span>Team</span><span>Filled</span><span>Missing</span><span>Fill rate</span>
-                        <span>Entered h</span><span>Awaiting approval</span><span>Billable h</span><span>Capacity</span>
-                    </div>
-                    @foreach (var row in Rows)
-                    {
-                        <div class="performance-row @(row.HasGap ? "row-flag" : null)">
-                            <span class="roster-name">
-                                @row.Name
-                                <small>
-                                    @if (row.IsConsultant)
-                                    {
-                                        <span class="tag consultant">Consultant</span>
-                                    }
-                                    @if (row.IsOnProbation)
-                                    {
-                                        <span class="tag probation">Probation</span>
-                                    }
-                                    @if (row.IsNonBillable)
-                                    {
-                                        <span class="tag muted">Non-billable</span>
-                                    }
-                                </small>
-                            </span>
-                            <span>@(row.TeamName ?? "—")</span>
-                            <span>@row.FilledDays / @row.ExpectedDays</span>
-                            <span class="@(row.MissingDays > 0 ? "flag-critical" : null)">@row.MissingDays</span>
-                            <span>@Analytics.Format(row.FillRate)%</span>
-                            <span>@Analytics.Format(row.EnteredHours)</span>
-                            <span class="@(row.HasPendingApproval ? "flag-warning" : null)">@Analytics.Format(row.PendingApprovalHours)</span>
-                            <span>@Analytics.Format(row.BillableHours)</span>
-                            <span>@(row.IsNonBillable ? "n/a" : Analytics.Format(row.CapacityUtilization) + "%")</span>
-                        </div>
-                    }
+                <div class="card-head">
+                    <h2>Timesheet compliance</h2>
+                    <small>@FilteredRows.Count of @Rows.Count engineer(s) — click a header to sort</small>
                 </div>
+                <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter by name or team…" />
+                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid" RowClass="@(row => row.HasGap ? "row-flag" : null)">
+                    <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
+                        <span class="roster-name">
+                            @context.Name
+                            <small>
+                                @if (context.IsConsultant)
+                                {
+                                    <span class="tag consultant">Consultant</span>
+                                }
+                                @if (context.IsOnProbation)
+                                {
+                                    <span class="tag probation">Probation</span>
+                                }
+                                @if (context.IsNonBillable)
+                                {
+                                    <span class="tag muted">Non-billable</span>
+                                }
+                            </small>
+                        </span>
+                    </TemplateColumn>
+                    <PropertyColumn Title="Team" Property="@(x => x.TeamName)" Sortable="true" />
+                    <TemplateColumn Title="Filled" Sortable="true" SortBy="@_sortByFilled">
+                        @context.FilledDays / @context.ExpectedDays
+                    </TemplateColumn>
+                    <TemplateColumn Title="Missing" Sortable="true" SortBy="@_sortByMissing">
+                        <span class="@(context.MissingDays > 0 ? "flag-critical" : null)">@context.MissingDays</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Fill rate" Sortable="true" SortBy="@_sortByFillRate">
+                        @Analytics.Format(context.FillRate)%
+                    </TemplateColumn>
+                    <TemplateColumn Title="Entered h" Sortable="true" SortBy="@_sortByEntered">
+                        @Analytics.Format(context.EnteredHours)
+                    </TemplateColumn>
+                    <TemplateColumn Title="Awaiting approval" Sortable="true" SortBy="@_sortByPending">
+                        <span class="@(context.HasPendingApproval ? "flag-warning" : null)">@Analytics.Format(context.PendingApprovalHours)</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Billable h" Sortable="true" SortBy="@_sortByBillable">
+                        @Analytics.Format(context.BillableHours)
+                    </TemplateColumn>
+                    <TemplateColumn Title="Capacity" Sortable="true" SortBy="@_sortByCapacity">
+                        @(context.IsNonBillable ? "n/a" : Analytics.Format(context.CapacityUtilization) + "%")
+                    </TemplateColumn>
+                </QuickGrid>
+                @if (FilteredRows.Count == 0)
+                {
+                    <p class="chart-note">No engineer matches “@_filter”.</p>
+                }
             </section>
         </div>
     }
@@ -75,7 +90,24 @@
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
     public void Dispose() => State.Changed -= OnStateChanged;
 
+    // QuickGrid's SortBy attribute can't parse an inline generic-method call in Razor markup
+    // (the compiler treats "<Analytics.ComplianceRow>" as a markup tag), so each sort order is
+    // a plain field the column can reference by name instead.
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByName = GridSort<Analytics.ComplianceRow>.ByAscending(x => x.Name);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByFilled = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.FilledDays);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByMissing = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.MissingDays);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByFillRate = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.FillRate);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByEntered = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.EnteredHours);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByPending = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.PendingApprovalHours);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByBillable = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.BillableHours);
+    private static readonly GridSort<Analytics.ComplianceRow> _sortByCapacity = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.CapacityUtilization);
+
+    private string _filter = string.Empty;
+
     private IReadOnlyList<Analytics.ComplianceRow> Rows => Analytics.Compliance(State.Performance, State.Employees);
+    private IReadOnlyList<Analytics.ComplianceRow> FilteredRows => string.IsNullOrWhiteSpace(_filter)
+        ? Rows
+        : Rows.Where(x => x.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase) || (x.TeamName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
     private IReadOnlyList<Analytics.ComplianceRow> WithGaps => Rows.Where(x => x.HasGap).ToArray();
     private IReadOnlyList<Analytics.ComplianceRow> AwaitingApproval => Rows.Where(x => x.HasPendingApproval).ToArray();
 
