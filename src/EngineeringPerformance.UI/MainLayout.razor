@@ -42,7 +42,7 @@
             { <div class="toast @(State.IsError ? "error" : "success")">@State.Message<button @onclick="State.ClearMessage">×</button></div> }
         </div>
 
-        <main class="content">
+        <main class="@($"content route-{CurrentRoute}")">
             @Body
             @if (CurrentRoute == "overview")
             {
@@ -129,7 +129,7 @@
         "templates" => "Create personalized review workbooks for one engineer or the whole team.",
         "reports" => "Export a formatted, printable performance report.",
         "scoring" => "Configure operational score weights and recalculate all stored months.",
-        "settings" => "Where this application stores its data.",
+        "settings" => "Appearance, theme and local storage.",
         _ => $"Team performance for {State.SelectedMonth:MMMM yyyy}."
     };
 
