@@ -6,16 +6,16 @@
    controls rather than compressed table text. */
 .data-table .table-head.roster.full,
 .data-row.roster.full {
-    min-width: 1360px;
+    min-width: 1320px;
     grid-template-columns:
         68px
         minmax(200px, 2.05fr)
         118px
         minmax(150px, 1.05fr)
-        100px
+        76px
         minmax(184px, 1.25fr)
         124px
-        112px
+        88px
         minmax(286px, 1.7fr);
 }
 
@@ -99,6 +99,28 @@
     box-shadow: none;
 }
 
+/* Billable and analysis state are binary columns. The header already names the
+   state, so a compact checkbox is clearer than repeating a text label per row. */
+.compact-switch {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    gap: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.compact-switch:hover {
+    border-color: var(--line);
+    background: var(--surface-soft);
+}
+
+.compact-switch input {
+    width: 16px;
+    height: 16px;
+}
+
 /* Actions: three real controls with a clear hierarchy. */
 .data-row.roster.full .cell:nth-child(9) {
     padding: 0 10px;
@@ -175,16 +197,16 @@
 @media (max-width: 980px) {
     .data-table .table-head.roster.full,
     .data-row.roster.full {
-        min-width: 1360px;
+        min-width: 1320px;
         grid-template-columns:
             68px
             220px
             118px
             150px
-            100px
+            76px
             184px
             124px
-            112px
+            88px
             286px;
     }
 }
