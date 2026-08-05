@@ -1,48 +1,73 @@
 @using EngineeringPerformance.Application
 @inject AppState State
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 @if (State.Performance.Count > 0)
 {
     <section class="analytics-extension overview-extension">
-        <div class="extension-heading">
-            <div><h2>Operational data profile</h2><p>Additional views over the same imported numerical fields shown in Imported data.</p></div>
+        <header class="analytics-section-head">
+            <div>
+                <span class="analytics-eyebrow">Operational command center</span>
+                <h2>Capacity, delivery and exception signals</h2>
+                <p>The most decision-useful imported metrics, positioned before the wider diagnostic dashboard.</p>
+            </div>
+            <button class="action secondary small" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
+        </header>
+
+        <div class="metric-ribbon executive-ribbon">
+            @Metric("Entered hours", State.Performance.Sum(x => x.EnteredHours), "h", "primary")
+            @Metric("Approved hours", State.Performance.Sum(x => x.ApprovedHours), "h", "good")
+            @Metric("Billable share", BillableShare, "%", "accent")
+            @Metric("Timesheet coverage", TimesheetCoverage, "%", TimesheetCoverage >= 90 ? "good" : "warning")
+            @Metric("Absolute reconciliation gap", AbsoluteVariance, "h", AbsoluteVariance >= 100 ? "risk" : "warning")
+            @Metric("Detailed entries", State.Performance.Sum(x => x.DetailedEntries), "", "neutral")
         </div>
 
-        <div class="metric-ribbon">
-            @Metric("Entered hours", State.Performance.Sum(x => x.EnteredHours), "h")
-            @Metric("Approved hours", State.Performance.Sum(x => x.ApprovedHours), "h")
-            @Metric("Billable hours", State.Performance.Sum(x => x.BillableHours), "h")
-            @Metric("Office hours", State.Performance.Sum(x => x.OfficeHours), "h")
-            @Metric("Detailed entries", State.Performance.Sum(x => x.DetailedEntries), "")
-            @Metric("Projects", State.Performance.Sum(x => x.UniqueProjects), "")
-        </div>
-
-        <div class="extension-grid">
-            <section class="card span-6">
-                <div class="card-head"><h2>Score composition by engineer</h2><small>Operational and component scores</small></div>
+        <div class="extension-grid command-grid">
+            <section class="card span-8 command-chart">
+                <div class="card-head">
+                    <div><h2>Score composition by engineer</h2><small>Operational score and the three weighted inputs</small></div>
+                    <span class="card-kicker">Component diagnosis</span>
+                </div>
                 <div id="overview-score-components" class="echart tall"></div>
             </section>
-            <section class="card span-6">
-                <div class="card-head"><h2>Hours allocation by engineer</h2><small>Billable, non-billable, training and office hours</small></div>
-                <div id="overview-hours-allocation" class="echart tall"></div>
-            </section>
-            <section class="card span-6">
-                <div class="card-head"><h2>Highest reconciliation variance</h2><small>Punch hours minus attendance-timesheet hours</small></div>
-                <ol class="metric-ranking">
-                    @foreach (var item in VarianceLeaders)
+
+            <section class="card span-4 command-signals">
+                <div class="card-head"><div><h2>Priority signals</h2><small>Where review should start</small></div></div>
+                <div class="signal-summary">
+                    <div><span>Missing timesheet days</span><strong>@MissingTimesheetDays</strong></div>
+                    <div><span>Attendance exception days</span><strong>@TotalExceptionDays</strong></div>
+                    <div><span>Engineers with ≥ 40 h variance</span><strong>@HighVarianceCount</strong></div>
+                </div>
+                <h3 class="sub-head">Largest reconciliation gaps</h3>
+                <ol class="metric-ranking compact">
+                    @foreach (var item in VarianceLeaders.Take(4))
                     {
                         <li><span>@item.EmployeeName</span><b class="@(Math.Abs(item.ReconciliationVariance) >= 40 ? "critical" : "warning")">@Signed(item.ReconciliationVariance) h</b></li>
                     }
                 </ol>
             </section>
-            <section class="card span-6">
-                <div class="card-head"><h2>Attendance exception concentration</h2><small>Highest combined exception days</small></div>
-                <ol class="metric-ranking">
+
+            <section class="card span-8 command-chart">
+                <div class="card-head">
+                    <div><h2>Hours allocation by engineer</h2><small>Billable, non-billable, training and office presence</small></div>
+                    <span class="card-kicker">Capacity profile</span>
+                </div>
+                <div id="overview-hours-allocation" class="echart tall"></div>
+            </section>
+
+            <section class="card span-4 command-signals">
+                <div class="card-head"><div><h2>Exception concentration</h2><small>Combined attendance exception days</small></div></div>
+                <ol class="metric-ranking exception-ranking">
                     @foreach (var item in ExceptionLeaders)
                     {
-                        <li><span>@item.EmployeeName</span><b>@ExceptionCount(item)</b><small>@item.MissingPunchDays punch · @item.LateDays late · @item.EarlyDays early · @item.LessDurationDays short</small></li>
+                        <li>
+                            <span>@item.EmployeeName</span>
+                            <b>@ExceptionCount(item)</b>
+                            <small>@item.MissingPunchDays punch · @item.LateDays late · @item.EarlyDays early · @item.LessDurationDays short</small>
+                        </li>
                     }
                 </ol>
             </section>
@@ -89,6 +114,29 @@
         }, null, " h");
     }
 
+    private decimal BillableShare
+    {
+        get
+        {
+            var entered = State.Performance.Sum(x => x.EnteredHours);
+            return entered <= 0 ? 0 : decimal.Round(State.Performance.Sum(x => x.BillableHours) * 100m / entered, 1);
+        }
+    }
+
+    private decimal TimesheetCoverage
+    {
+        get
+        {
+            var expected = State.Performance.Sum(x => x.ExpectedTimesheetDays);
+            return expected <= 0 ? 0 : decimal.Round(State.Performance.Sum(x => x.TimesheetFilledDays) * 100m / expected, 1);
+        }
+    }
+
+    private decimal AbsoluteVariance => State.Performance.Sum(x => Math.Abs(x.ReconciliationVariance));
+    private int MissingTimesheetDays => State.Performance.Sum(x => Math.Max(0, x.ExpectedTimesheetDays - x.TimesheetFilledDays));
+    private int TotalExceptionDays => State.Performance.Sum(ExceptionCount);
+    private int HighVarianceCount => State.Performance.Count(x => Math.Abs(x.ReconciliationVariance) >= 40m);
+
     private IReadOnlyList<MonthlyPerformanceItem> VarianceLeaders => State.Performance
         .OrderByDescending(x => Math.Abs(x.ReconciliationVariance)).Take(6).ToArray();
 
@@ -98,7 +146,11 @@
     private static int ExceptionCount(MonthlyPerformanceItem x) => x.MissingPunchDays + x.LateDays + x.EarlyDays + x.LessDurationDays;
     private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
 
-    private RenderFragment Metric(string label, decimal value, string unit) => @<div><span>@label</span><strong>@Analytics.Format(value, unit == "" ? "0" : "0.0")</strong><small>@unit</small></div>;
+    private RenderFragment Metric(string label, decimal value, string unit, string tone) => @<div class="metric-tile @tone">
+        <span>@label</span>
+        <strong>@Analytics.Format(value, unit == "" ? "0" : "0.0")</strong>
+        <small>@unit</small>
+    </div>;
 
     public async ValueTask DisposeAsync()
     {
