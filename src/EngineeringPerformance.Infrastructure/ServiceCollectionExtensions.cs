@@ -16,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IApplicationDatabase>(sp => new ConfigurableApplicationDatabase(
             sp.GetRequiredService<LocalApplicationDatabase>(),
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
+            sp.GetRequiredService<IWorkbookService>(),
             dataDirectory));
         return services;
     }
