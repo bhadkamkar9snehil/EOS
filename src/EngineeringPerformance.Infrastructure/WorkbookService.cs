@@ -248,7 +248,10 @@ public sealed partial class WorkbookService : IWorkbookService
             DateTime? probationCompleteDate = columns.TryGetValue("Probation Complete Date", out var probationDateCol)
                 && sheet.Cell(row, probationDateCol).TryGetValue<DateTime>(out var pcd) ? pcd : null;
             var isOnProbation = probationFlag && (probationCompleteDate is null || probationCompleteDate.Value.Date >= DateTime.Today);
-            results.Add(new RosterEntry(code, name, level, string.IsNullOrWhiteSpace(email) ? null : email, isConsultant, isOnProbation));
+            // Optional: older roster exports predate the column, so its absence means "not up-down"
+            // rather than an unreadable file.
+            var isUpdown = columns.TryGetValue("IsUpdown", out var updownCol) && Flag(sheet.Cell(row, updownCol));
+            results.Add(new RosterEntry(code, name, level, string.IsNullOrWhiteSpace(email) ? null : email, isConsultant, isOnProbation, isUpdown));
         }
         return results;
     }

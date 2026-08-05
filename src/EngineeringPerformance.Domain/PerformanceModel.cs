@@ -25,6 +25,19 @@ public sealed class Employee
     public bool? ProbationOverride { get; private set; }
     /// <summary>What "on probation" means everywhere else in the app — the override if one is set, otherwise the roster value.</summary>
     public bool IsOnProbation => ProbationOverride ?? IsOnProbationFromRoster;
+    /// <summary>
+    /// True for an engineer who commutes in and out by train from a nearby town. Their UAA is
+    /// raised every day and they have to leave around 18:00, so early-going and short-duration
+    /// exceptions are expected for them rather than a discipline problem. From the ERP roster.
+    /// </summary>
+    public bool IsUpdownFromRoster { get; private set; }
+
+    /// <summary>A person's manual correction of up-down status; takes precedence until cleared.</summary>
+    public bool? UpdownOverride { get; private set; }
+
+    /// <summary>What "up-down" means everywhere else — the override if set, otherwise the roster value.</summary>
+    public bool IsUpdown => UpdownOverride ?? IsUpdownFromRoster;
+
     /// <summary>Manually classified: excluded from billable-capacity tracking (200 h/month baseline).</summary>
     public bool IsNonBillable { get; private set; }
     public int? TeamId { get; private set; }
@@ -39,15 +52,19 @@ public sealed class Employee
     }
 
     /// <summary>Applies facts the ERP roster is authoritative for — synced on every roster import, not user-editable.</summary>
-    public void SyncRosterFacts(string? email, bool isConsultant, bool isOnProbation)
+    public void SyncRosterFacts(string? email, bool isConsultant, bool isOnProbation, bool isUpdown)
     {
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         IsConsultant = isConsultant;
         IsOnProbationFromRoster = isOnProbation;
+        IsUpdownFromRoster = isUpdown;
     }
 
     /// <summary>Manually correct probation status. Pass null to clear the override and defer back to the roster.</summary>
     public void SetProbationOverride(bool? value) => ProbationOverride = value;
+
+    /// <summary>Manually correct up-down status. Pass null to clear the override and defer to the roster.</summary>
+    public void SetUpdownOverride(bool? value) => UpdownOverride = value;
 
     public void SetNonBillable(bool value) => IsNonBillable = value;
     public void AssignTeam(int? teamId) => TeamId = teamId;

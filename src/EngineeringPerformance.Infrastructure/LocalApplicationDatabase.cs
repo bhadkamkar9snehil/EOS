@@ -119,14 +119,15 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         var excluded = await ReadExclusionsAsync(context, cancellationToken);
         var teams = await context.Teams.ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
         var employees = await context.Employees.OrderBy(x => x.Name)
-            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, x.Email, x.IsConsultant, x.IsOnProbationFromRoster, x.ProbationOverride, x.IsNonBillable, x.TeamId })
+            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, x.Email, x.IsConsultant, x.IsOnProbationFromRoster, x.ProbationOverride, x.IsUpdownFromRoster, x.UpdownOverride, x.IsNonBillable, x.TeamId })
             .ToListAsync(cancellationToken);
         return employees.Select(x => new EmployeeListItem(
             x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, excluded.Contains(PersonName.Normalize(x.Name)),
             // Consultants are always non-billable — a fact about the engagement, not a per-person
             // preference — so it's forced here regardless of the manual flag.
             x.Email, x.IsConsultant, x.ProbationOverride ?? x.IsOnProbationFromRoster, x.ProbationOverride, x.IsConsultant || x.IsNonBillable,
-            x.TeamId, x.TeamId.HasValue && teams.TryGetValue(x.TeamId.Value, out var teamName) ? teamName : null)).ToArray();
+            x.TeamId, x.TeamId.HasValue && teams.TryGetValue(x.TeamId.Value, out var teamName) ? teamName : null,
+            x.UpdownOverride ?? x.IsUpdownFromRoster, x.UpdownOverride)).ToArray();
     }
 
     public async Task SetProbationAsync(int employeeId, bool? value, CancellationToken cancellationToken = default)
@@ -135,6 +136,15 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         var employee = await context.Employees.FindAsync([employeeId], cancellationToken);
         if (employee is null) return;
         employee.SetProbationOverride(value);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SetUpdownAsync(int employeeId, bool? value, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var employee = await context.Employees.FindAsync([employeeId], cancellationToken);
+        if (employee is null) return;
+        employee.SetUpdownOverride(value);
         await context.SaveChangesAsync(cancellationToken);
     }
 
@@ -240,7 +250,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             if (existing is null)
             {
                 var created = new Employee(entry.EmployeeCode, entry.Name, entry.SeniorityLevel);
-                created.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation);
+                created.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation, entry.IsUpdown);
                 context.Employees.Add(created);
                 changed++;
             }
@@ -248,7 +258,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             {
                 var before = (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbationFromRoster);
                 existing.SetSeniorityLevel(entry.SeniorityLevel);
-                existing.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation);
+                existing.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation, entry.IsUpdown);
                 if (before != (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbationFromRoster)) changed++;
             }
         }

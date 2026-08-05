@@ -41,6 +41,9 @@ public interface IApplicationDatabase
     /// <summary>Manually sets probation status, overriding the ERP roster's value. Pass null to clear the override and revert to the roster.</summary>
     Task SetProbationAsync(int employeeId, bool? value, CancellationToken cancellationToken = default);
 
+    /// <summary>Manually sets up-down (daily train commuter) status. Pass null to revert to the ERP roster's value.</summary>
+    Task SetUpdownAsync(int employeeId, bool? value, CancellationToken cancellationToken = default);
+
     /// <summary>Append-only import log, newest first. Pass null for year/month to see every month.</summary>
     Task<IReadOnlyList<ImportHistoryItem>> GetImportHistoryAsync(int? year = null, int? month = null, int take = 200, CancellationToken cancellationToken = default);
 
@@ -62,7 +65,7 @@ public interface IFileDialogService
 public sealed record EmployeeListItem(
     int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,
     string? Email, bool IsConsultant, bool IsOnProbation, bool? ProbationOverride, bool IsNonBillable,
-    int? TeamId, string? TeamName);
+    int? TeamId, string? TeamName, bool IsUpdown = false, bool? UpdownOverride = null);
 
 public sealed record TeamItem(int Id, string Name, int MemberCount);
 
@@ -121,7 +124,7 @@ public interface IWorkbookService
 }
 
 public sealed record WorkbookInspection(string FileName, IReadOnlyList<string> SheetNames, long Length);
-public sealed record RosterEntry(string EmployeeCode, string Name, int SeniorityLevel, string? Email, bool IsConsultant, bool IsOnProbation);
+public sealed record RosterEntry(string EmployeeCode, string Name, int SeniorityLevel, string? Email, bool IsConsultant, bool IsOnProbation, bool IsUpdown = false);
 
 /// <summary>
 /// Everything <see cref="IWorkbookService.GenerateEmployeeReport"/> needs, gathered by the
