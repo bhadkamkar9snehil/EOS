@@ -10,16 +10,21 @@
     <aside class="nav-rail">
         <div class="brand"><img src="_content/EngineeringPerformance.UI/app-icon.png" alt="" /><span>Engineering<br />Performance</span></div>
         <nav>
-            @NavButton("overview", "Overview", "⌂")
-            @NavButton("imports", "Data imports", "⇧")
-            @NavButton("timesheets", "Timesheets", "✓")
-            @NavButton("employees", "Employees", "◎")
-            @NavButton("peer-insights", "Peer Insights", "⇄")
-            @NavButton("templates", "Templates", "□")
-            @NavButton("reports", "Reports", "▤")
-            @NavButton("scoring", "Scoring", "↗")
+            <span class="nav-group-label">Analyze</span>
+            @NavButton("overview", "Overview", Icon.Overview)
+            @NavButton("timesheets", "Timesheets", Icon.Timesheets)
+            @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
+            @NavButton("reports", "Reports", Icon.Reports)
+
+            <span class="nav-group-label">Manage</span>
+            @NavButton("imports", "Data imports", Icon.Imports)
+            @NavButton("employees", "Employees", Icon.Employees)
+            @NavButton("templates", "Templates", Icon.Templates)
+
+            <span class="nav-group-label">Configure</span>
+            @NavButton("scoring", "Scoring", Icon.Scoring)
         </nav>
-        <div class="nav-footer"><button class="@(_page == "settings" ? "selected" : null)" @onclick='() => Navigate("settings")'>⚙ <span>Settings</span></button><small>Local database</small></div>
+        <div class="nav-footer"><button class="@(_page == "settings" ? "selected" : null)" @onclick='() => Navigate("settings")'><b>@((MarkupString)Icon.Settings)</b><span>Settings</span></button><small>Local database</small></div>
     </aside>
 
     <section class="workspace">
@@ -104,7 +109,25 @@
     protected override async Task OnInitializedAsync() => await RefreshAsync();
     protected override Task OnAfterRenderAsync(bool firstRender) { if (firstRender) { var p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance"); Directory.CreateDirectory(p); File.WriteAllText(Path.Combine(p, "ui-ready.marker"), DateTime.UtcNow.ToString("O")); } return Task.CompletedTask; }
 
-    private RenderFragment NavButton(string page, string label, string icon) => @<button class="@(_page == page ? "selected" : null)" @onclick="() => Navigate(page)"><b>@icon</b><span>@label</span></button>;
+    private RenderFragment NavButton(string page, string label, string icon) => @<button class="@(_page == page ? "selected" : null)" @onclick="() => Navigate(page)"><b>@((MarkupString)icon)</b><span>@label</span></button>;
+
+    /// <summary>Stroke-only 20x20 glyphs (currentColor) so hover/selected states recolor via CSS alone, no per-icon overrides.</summary>
+    private static class Icon
+    {
+        private const string Wrap = "<svg viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">{0}</svg>";
+        private static string Svg(string paths) => string.Format(Wrap, paths);
+        private const string Stroke = "stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"";
+
+        public static readonly string Overview = Svg($"<path d=\"M3 10.5 10 4l7 6.5\" {Stroke}/><path d=\"M5 9v7h10V9\" {Stroke}/><path d=\"M8 16v-4h4v4\" {Stroke}/>");
+        public static readonly string Imports = Svg($"<path d=\"M10 13V4\" {Stroke}/><path d=\"M6.5 7.5 10 4l3.5 3.5\" {Stroke}/><path d=\"M4 13v3h12v-3\" {Stroke}/>");
+        public static readonly string Timesheets = Svg($"<rect x=\"4\" y=\"4\" width=\"12\" height=\"12\" rx=\"2.5\" {Stroke}/><path d=\"M7 10.2 9 12l4-4.2\" {Stroke}/>");
+        public static readonly string Employees = Svg($"<circle cx=\"7.5\" cy=\"7\" r=\"2.4\" {Stroke}/><path d=\"M3.2 16c.5-2.7 2.2-4.2 4.3-4.2s3.8 1.5 4.3 4.2\" {Stroke}/><circle cx=\"14.2\" cy=\"7.6\" r=\"1.9\" {Stroke}/><path d=\"M13 11.9c1.9.2 3.1 1.5 3.6 3.9\" {Stroke}/>");
+        public static readonly string PeerInsights = Svg($"<path d=\"M4 6h9l-2.2-2.2\" {Stroke}/><path d=\"M16 14H7l2.2 2.2\" {Stroke}/>");
+        public static readonly string Templates = Svg($"<rect x=\"4.5\" y=\"3.5\" width=\"11\" height=\"13\" rx=\"1.6\" {Stroke}/><path d=\"M7 7.5h6M7 10.5h6M7 13.5h3.5\" {Stroke}/>");
+        public static readonly string Reports = Svg($"<path d=\"M4.5 16V9.5M10 16V4M15.5 16v-6\" {Stroke}/>");
+        public static readonly string Scoring = Svg($"<circle cx=\"10\" cy=\"10\" r=\"6.2\" {Stroke}/><circle cx=\"10\" cy=\"10\" r=\"2.6\" {Stroke}/>");
+        public static readonly string Settings = Svg($"<circle cx=\"10\" cy=\"10\" r=\"2.6\" {Stroke}/><path d=\"M10 3.6v1.8M10 14.6v1.8M16.4 10h-1.8M5.4 10H3.6M14.6 5.4l-1.3 1.3M6.7 13.3l-1.3 1.3M14.6 14.6l-1.3-1.3M6.7 6.7 5.4 5.4\" {Stroke}/>");
+    }
     private string? _employeeDetailName;
     private void Navigate(string page)
     {
