@@ -8,15 +8,6 @@
 @if (State.Performance.Count > 0)
 {
     <section class="analytics-extension overview-extension">
-        <div class="kpi-row analytics-kpi-row">
-            @Kpi("Entered hours", State.Performance.Sum(x => x.EnteredHours), "h")
-            @Kpi("Approved hours", State.Performance.Sum(x => x.ApprovedHours), "h", "good")
-            @Kpi("Billable share", BillableShare, "%")
-            @Kpi("Timesheet coverage", TimesheetCoverage, "%", TimesheetCoverage >= 90 ? "good" : "warning")
-            @Kpi("Missing timesheet days", MissingTimesheetDays, "", MissingTimesheetDays > 0 ? "warning" : "good")
-            @Kpi("Absolute reconciliation gap", AbsoluteVariance, "h", AbsoluteVariance >= 100 ? "critical" : "warning")
-        </div>
-
         <div class="refined-overview-grid">
             <section class="card span-7 score-stack-card">
                 <div class="card-head">
@@ -25,9 +16,7 @@
                         <small>Weighted contribution points from timesheet completion, approval completion and attendance discipline</small>
                     </div>
                 </div>
-                <div id="overview-score-components"
-                     class="echart"
-                     style="height:@ScoreChartHeightPx}px"></div>
+                <div id="overview-score-components" class="echart score-composition-chart"></div>
             </section>
 
             <section class="card span-5 review-priorities-card">
@@ -86,61 +75,28 @@
                                         <strong>@item.EmployeeName</strong>
                                         <small>@ExceptionCount(item) attendance exception day(s)</small>
                                     </span>
-                                    <span class="signal-score-band @Analytics.ScoreBand(item.OperationalScore)">
-                                        @Analytics.Format(item.OperationalScore)
-                                    </span>
+                                    <span class="signal-score-band @Analytics.ScoreBand(item.OperationalScore)">@Analytics.Format(item.OperationalScore)</span>
                                 </span>
 
                                 <span class="duration-grid">
-                                    <span class="duration-stat punch-duration">
-                                        <small>Punch duration</small>
-                                        <b>@Analytics.Format(item.PunchHours) h</b>
-                                    </span>
-                                    <span class="duration-stat timesheet-duration">
-                                        <small>Timesheet duration</small>
-                                        <b>@Analytics.Format(item.AttendanceTimesheetHours) h</b>
-                                    </span>
-                                    <span class="duration-stat variance-duration">
-                                        <small>Variance</small>
-                                        <b>@Signed(item.ReconciliationVariance) h</b>
-                                    </span>
+                                    <span class="duration-stat punch-duration"><small>Punch duration</small><b>@Analytics.Format(item.PunchHours) h</b></span>
+                                    <span class="duration-stat timesheet-duration"><small>Timesheet duration</small><b>@Analytics.Format(item.AttendanceTimesheetHours) h</b></span>
+                                    <span class="duration-stat variance-duration"><small>Variance</small><b>@Signed(item.ReconciliationVariance) h</b></span>
                                 </span>
 
-                                <span class="variance-meter" aria-hidden="true">
-                                    <i style="@($"width:{VarianceWidth(item)}%")"></i>
-                                </span>
+                                <span class="variance-meter" aria-hidden="true"><i style="@($"width:{VarianceWidth(item)}%")"></i></span>
 
                                 <span class="exception-type-grid">
-                                    <span class="exception-type missing-punch @(item.MissingPunchDays > 0 ? "active" : null)">
-                                        <i>MP</i><small>Missing punch</small><b>@item.MissingPunchDays</b>
-                                    </span>
-                                    <span class="exception-type late @(item.LateDays > 0 ? "active" : null)">
-                                        <i>LT</i><small>Late</small><b>@item.LateDays</b>
-                                    </span>
-                                    <span class="exception-type early @(item.EarlyDays > 0 ? "active" : null)">
-                                        <i>ER</i><small>Early</small><b>@item.EarlyDays</b>
-                                    </span>
-                                    <span class="exception-type short @(item.LessDurationDays > 0 ? "active" : null)">
-                                        <i>SH</i><small>Short duration</small><b>@item.LessDurationDays</b>
-                                    </span>
-                                    <span class="exception-type missing-ts @(MissingTimesheetDaysFor(item) > 0 ? "active" : null)">
-                                        <i>TS</i><small>Missing timesheet</small><b>@MissingTimesheetDaysFor(item)</b>
-                                    </span>
+                                    <span class="exception-type missing-punch @(item.MissingPunchDays > 0 ? "active" : null)"><i>MP</i><small>Missing punch</small><b>@item.MissingPunchDays</b></span>
+                                    <span class="exception-type late @(item.LateDays > 0 ? "active" : null)"><i>LT</i><small>Late</small><b>@item.LateDays</b></span>
+                                    <span class="exception-type early @(item.EarlyDays > 0 ? "active" : null)"><i>ER</i><small>Early</small><b>@item.EarlyDays</b></span>
+                                    <span class="exception-type short @(item.LessDurationDays > 0 ? "active" : null)"><i>SH</i><small>Short duration</small><b>@item.LessDurationDays</b></span>
+                                    <span class="exception-type missing-ts @(MissingTimesheetDaysFor(item) > 0 ? "active" : null)"><i>TS</i><small>Missing timesheet</small><b>@MissingTimesheetDaysFor(item)</b></span>
                                 </span>
                             </button>
                         }
                     </div>
                 </section>
-            </section>
-
-            <section class="card wide hours-allocation-card">
-                <div class="card-head">
-                    <div>
-                        <h2>Hours allocation by engineer</h2>
-                        <small>Billable, non-billable, training and office presence; these are quantities, not performance judgements</small>
-                    </div>
-                </div>
-                <div id="overview-hours-allocation" class="echart tall"></div>
             </section>
         </div>
     </section>
@@ -179,73 +135,37 @@
             new
             {
                 name = $"Timesheet ({Analytics.Format(_settings.TimesheetCompletionWeight, "0.#")}%)",
-                color = "#C85A22",
+                color = "#0F6E9E",
                 values = rows.Select(x => x.HasSummaryData ? (object)Contribution(x, x.TimesheetCompletionScore, _settings.TimesheetCompletionWeight) : null).ToArray()
             },
             new
             {
                 name = $"Approval ({Analytics.Format(_settings.ApprovalCompletionWeight, "0.#")}%)",
-                color = "#7A4BB0",
+                color = "#A9762A",
                 values = rows.Select(x => x.HasSummaryData ? (object)Contribution(x, x.ApprovalScore, _settings.ApprovalCompletionWeight) : null).ToArray()
             },
             new
             {
                 name = $"Attendance ({Analytics.Format(_settings.AttendanceDisciplineWeight, "0.#")}%)",
-                color = "#1E8C5A",
+                color = "#3F7D55",
                 values = rows.Select(x => (object)Contribution(x, x.AttendanceDisciplineScore, _settings.AttendanceDisciplineWeight)).ToArray()
             }
         }, rows.Select(x => x.OperationalScore).ToArray(), " pts");
-
-        await JS.InvokeVoidAsync("epaCharts.verticalBars", "overview-hours-allocation", labels, new object[]
-        {
-            new { name = "Billable", color = "#0F6E9E", values = rows.Select(x => (object)x.BillableHours).ToArray() },
-            new { name = "Non-billable", color = "#C85A22", values = rows.Select(x => (object)x.NonBillableHours).ToArray() },
-            new { name = "Training", color = "#7A4BB0", values = rows.Select(x => (object)x.TrainingHours).ToArray() },
-            new { name = "Office", color = "#1E8C5A", values = rows.Select(x => (object)x.OfficeHours).ToArray() }
-        }, null, " h");
     }
 
     private decimal Contribution(MonthlyPerformanceItem item, decimal componentScore, decimal componentWeight)
     {
-        var availableWeight = item.HasSummaryData
-            ? _settings.Total
-            : _settings.AttendanceDisciplineWeight;
-
+        var availableWeight = item.HasSummaryData ? _settings.Total : _settings.AttendanceDisciplineWeight;
         if (availableWeight <= 0 || componentWeight <= 0) return 0;
         return decimal.Round(componentScore * componentWeight / availableWeight, 1);
     }
 
-    private int ScoreChartHeightPx => Math.Max(390, State.Performance.Count * 29 + 70);
-
-    private decimal BillableShare
-    {
-        get
-        {
-            var entered = State.Performance.Sum(x => x.EnteredHours);
-            return entered <= 0 ? 0 : decimal.Round(State.Performance.Sum(x => x.BillableHours) * 100m / entered, 1);
-        }
-    }
-
-    private decimal TimesheetCoverage
-    {
-        get
-        {
-            var expected = State.Performance.Sum(x => x.ExpectedTimesheetDays);
-            return expected <= 0 ? 0 : decimal.Round(State.Performance.Sum(x => x.TimesheetFilledDays) * 100m / expected, 1);
-        }
-    }
-
-    private decimal AbsoluteVariance => State.Performance.Sum(x => Math.Abs(x.ReconciliationVariance));
     private int MissingTimesheetDays => State.Performance.Sum(MissingTimesheetDaysFor);
     private int TotalExceptionDays => State.Performance.Sum(ExceptionCount);
     private int HighVarianceCount => State.Performance.Count(x => Math.Abs(x.ReconciliationVariance) >= 40m);
 
-    private IReadOnlyList<MonthlyPerformanceItem> TopPerformers => State.Performance
-        .OrderByDescending(x => x.OperationalScore).Take(4).ToArray();
-
-    private IReadOnlyList<MonthlyPerformanceItem> NeedsAttention => State.Performance
-        .OrderBy(x => x.OperationalScore).Take(4).ToArray();
-
+    private IReadOnlyList<MonthlyPerformanceItem> TopPerformers => State.Performance.OrderByDescending(x => x.OperationalScore).Take(4).ToArray();
+    private IReadOnlyList<MonthlyPerformanceItem> NeedsAttention => State.Performance.OrderBy(x => x.OperationalScore).Take(4).ToArray();
     private IReadOnlyList<MonthlyPerformanceItem> AttendanceReview => State.Performance
         .OrderByDescending(x => Math.Abs(x.ReconciliationVariance))
         .ThenByDescending(ExceptionCount)
@@ -253,38 +173,16 @@
         .ToArray();
 
     private decimal MaxAttendanceVariance => Math.Max(1m, AttendanceReview.Select(x => Math.Abs(x.ReconciliationVariance)).DefaultIfEmpty(1m).Max());
-
-    private decimal VarianceWidth(MonthlyPerformanceItem item) =>
-        decimal.Round(Math.Min(100m, Math.Abs(item.ReconciliationVariance) / MaxAttendanceVariance * 100m), 1);
-
-    private static int MissingTimesheetDaysFor(MonthlyPerformanceItem item) =>
-        Math.Max(0, item.ExpectedTimesheetDays - item.TimesheetFilledDays);
-
-    private static int ExceptionCount(MonthlyPerformanceItem item) =>
-        item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
-
-    private static string Signed(decimal value) =>
-        value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
-
-    private static string Initials(string name) => string.Concat(name
-        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-        .Take(2)
-        .Select(x => char.ToUpperInvariant(x[0])));
-
-    private void OpenEmployee(MonthlyPerformanceItem item) =>
-        Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(item.EmployeeName)}");
-
-    private RenderFragment Kpi(string label, decimal value, string unit, string? tone = null) => @<div class="kpi @tone">
-        <span class="kpi-label">@label</span>
-        <span class="kpi-value"><strong>@Analytics.Format(value, unit == "" ? "0" : "0.0")</strong>@if (!string.IsNullOrEmpty(unit)) { <b>@unit</b> }</span>
-    </div>;
+    private decimal VarianceWidth(MonthlyPerformanceItem item) => decimal.Round(Math.Min(100m, Math.Abs(item.ReconciliationVariance) / MaxAttendanceVariance * 100m), 1);
+    private static int MissingTimesheetDaysFor(MonthlyPerformanceItem item) => Math.Max(0, item.ExpectedTimesheetDays - item.TimesheetFilledDays);
+    private static int ExceptionCount(MonthlyPerformanceItem item) => item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
+    private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
+    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+    private void OpenEmployee(MonthlyPerformanceItem item) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(item.EmployeeName)}");
 
     public async ValueTask DisposeAsync()
     {
         State.Changed -= OnChanged;
-        foreach (var id in new[] { "overview-score-components", "overview-hours-allocation" })
-        {
-            try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
-        }
+        try { await JS.InvokeVoidAsync("epaCharts.dispose", "overview-score-components"); } catch (JSDisconnectedException) { }
     }
 }
