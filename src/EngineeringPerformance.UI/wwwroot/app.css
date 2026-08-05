@@ -450,6 +450,8 @@ b.critical { color: #d03b3b; }
 .form-row .grow { flex: 1; }
 .form-row input, .template-card input, .template-card select { height: 36px; border: 1px solid #cbd4df; background: #fff; padding: 0 10px; color: #182438; }
 .form-row label:not(.grow) input { width: 150px; }
+.form-row input.invalid { border-color: #d03b3b; }
+.validation-message { color: #c0392b; font-size: 10.5px; font-weight: 600; margin-top: 2px; }
 .data-table .table-head, .data-row { display: grid; align-items: center; gap: 16px; border-bottom: 1px solid var(--line-soft); grid-template-columns: 120px minmax(190px, 1fr) 140px 118px 190px; }
 .data-row { min-height: 58px; font-size: 13px; }
 .data-row.excluded { background: #fbfbfa; }

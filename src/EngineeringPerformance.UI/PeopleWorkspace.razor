@@ -1,4 +1,5 @@
 @page "/employees"
+@using System.ComponentModel.DataAnnotations
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
 @inject IFileDialogService Dialogs
@@ -23,17 +24,35 @@
         </div>
     </div>
 
-    <div class="form-row">
-        <label>Employee code<input @bind="_newCode" placeholder="E1042" /></label>
-        <label class="grow">Employee name<input @bind="_newName" placeholder="Full name" /></label>
-        <label>Level<input type="number" min="1" max="99" @bind="_newLevel" /></label>
-        <button class="action" @onclick="AddEmployeeAsync" disabled="@State.Busy">Add employee</button>
-    </div>
+    <EditForm Model="_newEmployee" OnValidSubmit="AddEmployeeAsync">
+        <DataAnnotationsValidator />
+        <div class="form-row">
+            <label>Employee code
+                <InputText @bind-Value="_newEmployee.Code" placeholder="E1042" />
+                <ValidationMessage For="() => _newEmployee.Code" />
+            </label>
+            <label class="grow">Employee name
+                <InputText @bind-Value="_newEmployee.Name" placeholder="Full name" />
+                <ValidationMessage For="() => _newEmployee.Name" />
+            </label>
+            <label>Level
+                <InputNumber @bind-Value="_newEmployee.Level" min="1" max="99" />
+                <ValidationMessage For="() => _newEmployee.Level" />
+            </label>
+            <button type="submit" class="action" disabled="@State.Busy">Add employee</button>
+        </div>
+    </EditForm>
 
-    <div class="form-row">
-        <label class="grow">New team name<input @bind="_newTeamName" placeholder="e.g. X-Force Execution" @onkeydown="OnNewTeamKeyDown" /></label>
-        <button class="action secondary" @onclick="AddTeamAsync" disabled="@State.Busy">Create team</button>
-    </div>
+    <EditForm Model="_newTeam" OnValidSubmit="AddTeamAsync">
+        <DataAnnotationsValidator />
+        <div class="form-row">
+            <label class="grow">New team name
+                <InputText @bind-Value="_newTeam.Name" placeholder="e.g. X-Force Execution" />
+                <ValidationMessage For="() => _newTeam.Name" />
+            </label>
+            <button type="submit" class="action secondary" disabled="@State.Busy">Create team</button>
+        </div>
+    </EditForm>
     @if (State.Teams.Count > 0)
     {
         <div class="team-grid compact">
@@ -147,31 +166,40 @@
         return scores.Length == 0 ? null : decimal.Round(scores.Average(), 1);
     }
 
-    private string _newCode = string.Empty, _newName = string.Empty;
-    private int _newLevel = 1;
+    private NewEmployeeModel _newEmployee = new();
     private readonly Dictionary<int, string> _editName = [];
     private readonly Dictionary<int, int> _editLevel = [];
 
-    private string _newTeamName = string.Empty;
+    private NewTeamModel _newTeam = new();
     private readonly Dictionary<int, string> _editTeamNames = [];
+
+    private sealed class NewEmployeeModel
+    {
+        [Required(ErrorMessage = "Employee code is required.")]
+        public string Code { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Employee name is required.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Range(1, 99, ErrorMessage = "Seniority level must be between 1 and 99.")]
+        public int Level { get; set; } = 1;
+    }
+
+    private sealed class NewTeamModel
+    {
+        [Required(ErrorMessage = "Enter a team name first.")]
+        public string Name { get; set; } = string.Empty;
+    }
 
     // ---------- Employees ----------
 
-    private async Task AddEmployeeAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newName))
-        {
-            State.ShowMessage("Employee code and name are required.", true);
-            return;
-        }
+    private async Task AddEmployeeAsync() =>
         await RunAsync(async () =>
         {
-            await Database.AddEmployeeAsync(_newCode, _newName, _newLevel);
-            _newCode = _newName = string.Empty;
-            _newLevel = 1;
+            await Database.AddEmployeeAsync(_newEmployee.Code, _newEmployee.Name, _newEmployee.Level);
+            _newEmployee = new NewEmployeeModel();
             State.ShowMessage("Employee added.");
         });
-    }
 
     private async Task SaveEmployeeAsync(EmployeeListItem employee)
     {
@@ -223,26 +251,14 @@
     private bool IsTeamRenamed(TeamItem team) =>
         _editTeamNames.TryGetValue(team.Id, out var name) && !string.IsNullOrWhiteSpace(name) && name.Trim() != team.Name;
 
-    private async Task OnNewTeamKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await AddTeamAsync();
-    }
-
-    private async Task AddTeamAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_newTeamName))
-        {
-            State.ShowMessage("Enter a team name first.", true);
-            return;
-        }
+    private async Task AddTeamAsync() =>
         await RunAsync(async () =>
         {
-            await Database.AddTeamAsync(_newTeamName);
-            var created = _newTeamName.Trim();
-            _newTeamName = string.Empty;
+            await Database.AddTeamAsync(_newTeam.Name);
+            var created = _newTeam.Name.Trim();
+            _newTeam = new NewTeamModel();
             State.ShowMessage($"Team “{created}” created.");
         });
-    }
 
     private async Task RenameTeamAsync(TeamItem team)
     {
