@@ -11,6 +11,7 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
     public DbSet<EmployeeMonthlyPerformance> EmployeeMonthlyPerformances => Set<EmployeeMonthlyPerformance>();
     public DbSet<PeerReview> PeerReviews => Set<PeerReview>();
     public DbSet<Team> Teams => Set<Team>();
+    public DbSet<AnalysisExclusion> AnalysisExclusions => Set<AnalysisExclusion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +60,12 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
             entity.Property(x => x.SubjectName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Comment).HasMaxLength(2000);
             entity.HasIndex(x => new { x.Year, x.Month, x.ReviewerCode, x.SubjectCode }).IsUnique();
+        });
+        modelBuilder.Entity<AnalysisExclusion>(entity =>
+        {
+            entity.ToTable("analysis_exclusion");
+            entity.HasKey(x => x.EmployeeName);
+            entity.Property(x => x.EmployeeName).HasMaxLength(200);
         });
         modelBuilder.Entity<EmployeeMonthlyPerformance>(entity =>
         {

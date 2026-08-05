@@ -100,6 +100,19 @@ public sealed class ReportingMonth
     public DateTime CreatedUtc { get; private set; } = DateTime.UtcNow;
 }
 
+/// <summary>A person left out of every Overview figure, keyed on their normalized name.</summary>
+public sealed class AnalysisExclusion
+{
+    private AnalysisExclusion() { }
+    public AnalysisExclusion(string employeeName)
+    {
+        EmployeeName = string.IsNullOrWhiteSpace(employeeName) ? throw new ArgumentException("A value is required.", nameof(employeeName)) : employeeName.Trim();
+        CreatedUtc = DateTime.UtcNow;
+    }
+    public string EmployeeName { get; private set; } = string.Empty;
+    public DateTime CreatedUtc { get; private set; } = DateTime.UtcNow;
+}
+
 public enum ReportType { MonthlyTimesheetSummary = 1, DetailedTimesheetTransactions = 2, AttendanceLeaveUaaTimesheet = 3, EngineerReviewWorkbook = 4 }
 public enum SourceStatus { NotUploaded = 0, Uploaded = 1, Warnings = 2, BlockingErrors = 3, Superseded = 4 }
 

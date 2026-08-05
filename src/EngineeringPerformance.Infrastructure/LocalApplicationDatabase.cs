@@ -10,93 +10,43 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        await context.Database.EnsureCreatedAsync(cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS imported_source_file (
-                Id INTEGER NOT NULL CONSTRAINT PK_imported_source_file PRIMARY KEY AUTOINCREMENT,
-                ReportType INTEGER NOT NULL,
-                Year INTEGER NOT NULL,
-                Month INTEGER NOT NULL,
-                OriginalFileName TEXT NOT NULL,
-                StoredPath TEXT NOT NULL,
-                SheetCount INTEGER NOT NULL,
-                ImportedUtc TEXT NOT NULL
-            );
-            """, cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_imported_source_file_Year_Month_ReportType
-            ON imported_source_file (Year, Month, ReportType);
-            """, cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS employee_monthly_performance (
-                Id INTEGER NOT NULL CONSTRAINT PK_employee_monthly_performance PRIMARY KEY AUTOINCREMENT,
-                Year INTEGER NOT NULL, Month INTEGER NOT NULL, EmployeeName TEXT NOT NULL, EmployeeCode TEXT NULL,
-                ComplianceHours TEXT NOT NULL DEFAULT '0', EnteredHours TEXT NOT NULL DEFAULT '0', ApprovedHours TEXT NOT NULL DEFAULT '0',
-                BillableHours TEXT NOT NULL DEFAULT '0', NonBillableHours TEXT NOT NULL DEFAULT '0', TrainingHours TEXT NOT NULL DEFAULT '0',
-                OfficeHours TEXT NOT NULL DEFAULT '0', DetailedHours TEXT NOT NULL DEFAULT '0', DetailedEntries INTEGER NOT NULL DEFAULT 0,
-                UniqueProjects INTEGER NOT NULL DEFAULT 0, AttendanceDays TEXT NOT NULL DEFAULT '0', LeaveDays TEXT NOT NULL DEFAULT '0',
-                PunchHours TEXT NOT NULL DEFAULT '0', AttendanceTimesheetHours TEXT NOT NULL DEFAULT '0', TimesheetFilledDays INTEGER NOT NULL DEFAULT 0,
-                ExpectedTimesheetDays INTEGER NOT NULL DEFAULT 0, MissingPunchDays INTEGER NOT NULL DEFAULT 0, LateDays INTEGER NOT NULL DEFAULT 0,
-                EarlyDays INTEGER NOT NULL DEFAULT 0, LessDurationDays INTEGER NOT NULL DEFAULT 0, TimesheetCompletionScore TEXT NOT NULL DEFAULT '0',
-                ApprovalScore TEXT NOT NULL DEFAULT '0', AttendanceDisciplineScore TEXT NOT NULL DEFAULT '0', OperationalScore TEXT NOT NULL DEFAULT '0'
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_employee_monthly_performance_Year_Month_EmployeeName
-            ON employee_monthly_performance (Year, Month, EmployeeName);
-            """, cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS analysis_exclusion (
-                EmployeeName TEXT NOT NULL CONSTRAINT PK_analysis_exclusion PRIMARY KEY,
-                CreatedUtc TEXT NOT NULL
-            );
-            """, cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS peer_review (
-                Id INTEGER NOT NULL CONSTRAINT PK_peer_review PRIMARY KEY AUTOINCREMENT,
-                Year INTEGER NOT NULL, Month INTEGER NOT NULL,
-                ReviewerCode TEXT NOT NULL, ReviewerName TEXT NOT NULL,
-                SubjectCode TEXT NOT NULL, SubjectName TEXT NOT NULL,
-                Collaboration TEXT NOT NULL DEFAULT '0', Communication TEXT NOT NULL DEFAULT '0',
-                Reliability TEXT NOT NULL DEFAULT '0', TechnicalHelp TEXT NOT NULL DEFAULT '0',
-                Comment TEXT NULL
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_peer_review_Year_Month_Reviewer_Subject
-            ON peer_review (Year, Month, ReviewerCode, SubjectCode);
-            """, cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS team (
-                Id INTEGER NOT NULL CONSTRAINT PK_team PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_team_Name ON team (Name);
-            """, cancellationToken);
-
-        // The employee table predates these columns; EnsureCreatedAsync only creates a
-        // table that doesn't exist yet, so an existing database needs them added by hand.
-        await EnsureColumnAsync(context, "employee", "Email", "TEXT NULL", cancellationToken);
-        await EnsureColumnAsync(context, "employee", "IsConsultant", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
-        await EnsureColumnAsync(context, "employee", "IsOnProbation", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
-        await EnsureColumnAsync(context, "employee", "IsNonBillable", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
-        await EnsureColumnAsync(context, "employee", "TeamId", "INTEGER NULL", cancellationToken);
-        await EnsureColumnAsync(context, "employee", "ProbationOverride", "INTEGER NULL", cancellationToken);
-
+        await BaselineExistingDatabaseAsync(context, cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
         await SeedDefaultExclusionsAsync(context, cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;", cancellationToken);
     }
 
     /// <summary>
-    /// Adds a column to an existing table if it is missing. SQLite cannot parameterize DDL
-    /// identifiers, so these are interpolated — safe because every caller passes a compile-time
-    /// literal, never user input.
+    /// A database built by the pre-migrations code (raw CREATE TABLE / ALTER TABLE calls) already
+    /// has every table and column the InitialBaseline migration would create — so running that
+    /// migration's Up() against it would fail on "table already exists". Detected by the absence
+    /// of the migrations history table alongside the presence of the old "employee" table, this
+    /// marks InitialBaseline as already applied without executing it, exactly the documented
+    /// approach for adopting migrations on an existing database. A genuinely fresh install has
+    /// neither table yet, so MigrateAsync proceeds normally and creates everything from scratch.
     /// </summary>
-#pragma warning disable EF1002 // Fixed internal literals; no user input reaches this SQL.
-    private static async Task EnsureColumnAsync(PerformanceDbContext context, string table, string column, string definition, CancellationToken cancellationToken)
+    private static async Task BaselineExistingDatabaseAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
-        var existing = await context.Database.SqlQueryRaw<string>($"SELECT name AS Value FROM pragma_table_info('{table}')").ToListAsync(cancellationToken);
-        if (existing.Contains(column, StringComparer.OrdinalIgnoreCase)) return;
-        await context.Database.ExecuteSqlRawAsync($"ALTER TABLE {table} ADD COLUMN {column} {definition};", cancellationToken);
+        var historyExists = await context.Database.SqlQueryRaw<int>(
+            "SELECT COUNT(*) AS Value FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory'").SingleAsync(cancellationToken);
+        if (historyExists > 0) return;
+
+        var employeeTableExists = await context.Database.SqlQueryRaw<int>(
+            "SELECT COUNT(*) AS Value FROM sqlite_master WHERE type='table' AND name='employee'").SingleAsync(cancellationToken);
+        if (employeeTableExists == 0) return;
+
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE "__EFMigrationsHistory" (
+                "MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY,
+                "ProductVersion" TEXT NOT NULL
+            );
+            """, cancellationToken);
+        var baselineMigrationId = context.Database.GetMigrations().Single();
+        await context.Database.ExecuteSqlRawAsync(
+            """INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") VALUES ({0}, {1})""",
+            [baselineMigrationId, "10.0.10"], cancellationToken);
     }
-#pragma warning restore EF1002
 
     /// <summary>
     /// Names that are never part of the analysis. Seeded once, on a database that has
@@ -106,17 +56,15 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
 
     private static async Task SeedDefaultExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
-        var seeded = await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM analysis_exclusion").SingleAsync(cancellationToken);
-        if (seeded > 0) return;
+        if (await context.AnalysisExclusions.AnyAsync(cancellationToken)) return;
         foreach (var name in DefaultExclusions)
-            await context.Database.ExecuteSqlRawAsync(
-                "INSERT OR IGNORE INTO analysis_exclusion (EmployeeName, CreatedUtc) VALUES ({0}, {1})",
-                [name, DateTime.UtcNow.ToString("O")], cancellationToken);
+            context.AnalysisExclusions.Add(new AnalysisExclusion(name));
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task<HashSet<string>> ReadExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
-        var names = await context.Database.SqlQueryRaw<string>("SELECT EmployeeName AS Value FROM analysis_exclusion").ToListAsync(cancellationToken);
+        var names = await context.AnalysisExclusions.Select(x => x.EmployeeName).ToListAsync(cancellationToken);
         // Compared on normalized names: the exports spell the same person with varying spacing.
         return new HashSet<string>(names.Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
     }
@@ -130,14 +78,19 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
     public async Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(employeeName)) return;
+        var trimmed = employeeName.Trim();
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await context.AnalysisExclusions.SingleOrDefaultAsync(
+            x => x.EmployeeName.ToLower() == trimmed.ToLower(), cancellationToken);
         if (excluded)
-            await context.Database.ExecuteSqlRawAsync(
-                "INSERT OR IGNORE INTO analysis_exclusion (EmployeeName, CreatedUtc) VALUES ({0}, {1})",
-                [employeeName.Trim(), DateTime.UtcNow.ToString("O")], cancellationToken);
-        else
-            await context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM analysis_exclusion WHERE EmployeeName = {0} COLLATE NOCASE", [employeeName.Trim()], cancellationToken);
+        {
+            if (existing is null) context.AnalysisExclusions.Add(new AnalysisExclusion(trimmed));
+        }
+        else if (existing is not null)
+        {
+            context.AnalysisExclusions.Remove(existing);
+        }
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<DashboardSnapshot> GetDashboardAsync(int? year = null, int? month = null, CancellationToken cancellationToken = default)
