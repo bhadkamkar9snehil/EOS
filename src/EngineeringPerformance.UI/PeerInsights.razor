@@ -165,9 +165,8 @@
         _selfRef?.Dispose();
     }
 
-    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi">
+    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi" title="@hint">
         <span class="kpi-label">@label</span>
-        <strong>@value</strong>
-        <small>@hint</small>
+        <span class="kpi-value"><strong>@value</strong></span>
     </div>;
 }

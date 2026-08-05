@@ -1,4 +1,5 @@
 @using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
 @inject IFileDialogService Dialogs
 
 @* Employee master, teams and classification in one place: identity (code, name,
@@ -6,11 +7,8 @@
    status all live on the same row instead of being split across two screens. *@
 
 <section class="single-pane">
-    <div class="section-title">
-        <div>
-            <h2>Employees &amp; teams</h2>
-            <p>Employee code is the source identity and cannot change. Consultant status comes from the ERP roster and consultants are always non-billable; probation defaults from the roster's completion date but can be corrected per person.</p>
-        </div>
+    <div class="section-title compact">
+        <p>Employee code is the source identity and cannot change. Consultants are always non-billable; probation can be corrected per person.</p>
         <div class="section-actions">
             @if (ExcludedCount > 0)
             {
@@ -41,6 +39,17 @@
                         <input class="cell-input team-name" value="@(_editTeamNames.TryGetValue(team.Id, out var n) ? n : team.Name)"
                                @onchange="e => _editTeamNames[team.Id] = e.Value?.ToString() ?? string.Empty" />
                         <span class="team-count">@team.MemberCount</span>
+                    </div>
+                    @{ var avg = TeamAverageScore(team); }
+                    <div class="team-card-stat">
+                        @if (avg is not null)
+                        {
+                            <b class="@Analytics.ScoreBand(avg.Value)">@Analytics.Format(avg.Value)</b><span>avg operational score</span>
+                        }
+                        else
+                        {
+                            <span class="muted-note">No scored members yet this month</span>
+                        }
                     </div>
                     <div class="team-card-actions">
                         <button class="action small" @onclick="() => RenameTeamAsync(team)" disabled="@(_busy || !IsTeamRenamed(team))">Rename</button>
@@ -122,12 +131,21 @@
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<TeamItem> Teams { get; set; } = [];
+    [Parameter] public IReadOnlyList<MonthlyPerformanceItem> Items { get; set; } = [];
     [Parameter] public EventCallback<(string Message, bool IsError)> OnResult { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
     [Parameter] public EventCallback<string> OnNavigate { get; set; }
     [Parameter] public IApplicationDatabase Database { get; set; } = default!;
 
     private int ExcludedCount => Employees.Count(x => x.IsExcluded);
+
+    private decimal? TeamAverageScore(TeamItem team)
+    {
+        var names = Employees.Where(e => e.TeamId == team.Id).Select(e => e.Name).ToArray();
+        var scores = Items.Where(i => names.Any(n => PersonName.Matches(i.EmployeeName, n)) && i.OperationalScore > 0)
+            .Select(i => i.OperationalScore).ToArray();
+        return scores.Length == 0 ? null : decimal.Round(scores.Average(), 1);
+    }
 
     private string _newCode = string.Empty, _newName = string.Empty;
     private int _newLevel = 1;

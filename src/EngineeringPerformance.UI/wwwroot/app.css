@@ -75,6 +75,8 @@ footer { display: flex; align-items: center; justify-content: space-between; pad
 .section-title { margin-bottom: 18px; }
 .section-title h2, .card-head h2, .activity-pane h2 { font-size: 18px; margin: 0 0 5px; font-weight: 650; }
 .section-title p { margin: 0; color: var(--muted); font-size: 13px; max-width: 760px; line-height: 1.5; }
+.section-title.compact { align-items: center; margin-bottom: 12px; }
+.section-title.compact p { font-size: 12px; }
 .action {
     border: 1px solid var(--blue-dark); background: linear-gradient(180deg, #1e70e5, var(--blue) 55%, var(--blue-dark));
     color: #fff; height: 38px; padding: 0 18px; cursor: pointer; font-weight: 650; white-space: nowrap;
@@ -173,21 +175,21 @@ code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; }
 .empty-state h2 { margin: 0 0 10px; font-size: 19px; }
 .empty-state p { margin: 0 0 22px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 
-.kpi-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+.kpi-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
 .kpi {
     position: relative; background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 14px 17px 13px; display: flex; flex-direction: column; gap: 6px; min-width: 0;
-    box-shadow: var(--shadow-resting);
+    padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0;
+    box-shadow: var(--shadow-resting); cursor: default;
 }
 .kpi.accent { background: #f7fafd; border-color: #c9daf0; }
 .kpi.accent strong { color: #0f4d99; }
 .kpi.critical { border-color: #f0c6c6; }
-.kpi-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
-.kpi strong { font-size: 29px; font-weight: 650; letter-spacing: -.02em; line-height: 1.08; font-variant-numeric: tabular-nums; }
-.kpi small { font-size: 11px; color: #7d8798; line-height: 1.45; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
-.kpi small b { font-weight: 700; }
-b.up, .kpi small b.up { color: #05730a; }
-b.down, .kpi small b.down { color: #b1332a; }
+.kpi-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; line-height: 1.25; min-width: 0; }
+.kpi-value { display: flex; align-items: baseline; gap: 5px; flex: none; }
+.kpi strong { font-size: 24px; font-weight: 650; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi-value b { font-size: 11px; font-weight: 700; }
+b.up, .kpi-value b.up { color: #05730a; }
+b.down, .kpi-value b.down { color: #b1332a; }
 
 /* Cards stretch to the row height so a tall chart never leaves a neighbour
    floating above dead space; content inside sits at the top. */
@@ -215,6 +217,8 @@ b.down, .kpi small b.down { color: #b1332a; }
 
 .distribution { display: flex; height: 36px; gap: 2px; margin-bottom: 14px; }
 .band { display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; min-width: 26px; border-radius: 4px; }
+.band.clickable { cursor: pointer; transition: filter .12s ease; }
+.band.clickable:hover { filter: brightness(1.1); }
 .band.good, i.good { background: #0ca30c; }
 .band.warning, i.warning { background: #fab219; }
 .band.serious, i.serious { background: #ec835a; }
@@ -318,6 +322,9 @@ b.critical { color: #d03b3b; }
 .team-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .team-name { font-weight: 650; font-size: 13.5px; flex: 1; }
 .team-count { background: #eaf1fb; color: #175ab8; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; flex: none; }
+.team-card-stat { display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px; font-size: 11px; color: var(--muted); }
+.team-card-stat b { font-size: 18px; font-weight: 700; }
+.team-card-stat .muted-note { font-size: 11px; }
 .team-card-actions { display: flex; gap: 8px; }
 .team-select { height: 32px; border: 1px solid #cbd4df; background: #fff; padding: 0 8px; font-size: 12px; border-radius: var(--radius-sm); max-width: 100%; }
 
