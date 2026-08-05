@@ -5,10 +5,8 @@ namespace EngineeringPerformance.UI;
 
 /// <summary>
 /// Single shared source of the current reporting month and everything loaded for it — employees,
-/// performance, history, teams, exclusions, peer reviews — plus the toast message shown in the
-/// shell. Registered once for the app's lifetime (this is a single-window desktop app, not a
-/// multi-user server, so there is exactly one of these). Pages inject it directly instead of
-/// each declaring the same half-dozen [Parameter]s and having App.razor pass them all down.
+/// performance, history, weekly detail, teams, exclusions, peer reviews — plus the toast message
+/// shown in the shell. Registered once for the app's lifetime.
 /// </summary>
 public sealed class AppState(IApplicationDatabase database)
 {
@@ -17,6 +15,7 @@ public sealed class AppState(IApplicationDatabase database)
     public IReadOnlyList<EmployeeListItem> Employees { get; private set; } = [];
     public IReadOnlyList<MonthlyPerformanceItem> Performance { get; private set; } = [];
     public IReadOnlyList<MonthlyPerformanceItem> History { get; private set; } = [];
+    public IReadOnlyList<WeeklyPerformanceItem> WeeklyPerformance { get; private set; } = [];
     public IReadOnlyList<string> ExcludedNames { get; private set; } = [];
     public IReadOnlyList<PeerReviewItem> PeerReviews { get; private set; } = [];
     public IReadOnlyList<TeamItem> Teams { get; private set; } = [];
@@ -26,14 +25,12 @@ public sealed class AppState(IApplicationDatabase database)
     public bool IsError { get; private set; }
     public bool Busy { get; private set; }
 
-    /// <summary>The employee name shown in the topbar heading while on the /employee/{Name} route. Set by that page.</summary>
     public string? SpotlightName { get; set; }
 
     public int ReadyCount => Snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded) ?? 0;
     public int SystemReadyCount => Snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded && x.ReportType != ReportType.EngineerReviewWorkbook) ?? 0;
     public bool ReviewsUploaded => Snapshot?.SourceSlots.Any(x => x.ReportType == ReportType.EngineerReviewWorkbook && x.Status == SourceStatus.Uploaded) ?? false;
 
-    /// <summary>Raised after any state change, so components outside the normal parameter-cascade know to re-render.</summary>
     public event Action? Changed;
 
     public async Task RefreshAsync()
@@ -42,6 +39,7 @@ public sealed class AppState(IApplicationDatabase database)
         Employees = await database.GetEmployeesAsync();
         Performance = await database.GetMonthlyPerformanceAsync(SelectedMonth.Year, SelectedMonth.Month);
         History = await database.GetPerformanceHistoryAsync(SelectedMonth.Year, SelectedMonth.Month, 6);
+        WeeklyPerformance = await database.GetWeeklyPerformanceAsync(SelectedMonth.Year, SelectedMonth.Month);
         ExcludedNames = await database.GetExcludedNamesAsync();
         PeerReviews = await database.GetPeerReviewsAsync(SelectedMonth.Year, SelectedMonth.Month);
         Teams = await database.GetTeamsAsync();
@@ -71,7 +69,6 @@ public sealed class AppState(IApplicationDatabase database)
         Changed?.Invoke();
     }
 
-    /// <summary>Runs an action with the busy flag held and the message cleared/reported, mirroring the pattern every page's own RunAsync used to hand-roll.</summary>
     public async Task RunAsync(Func<Task> action)
     {
         if (Busy) return;
