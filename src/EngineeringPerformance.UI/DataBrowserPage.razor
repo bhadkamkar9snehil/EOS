@@ -50,6 +50,7 @@
                     <TemplateColumn Title="Billable (h)" Align="Align.Right" Sortable="true" SortBy="@_byBillable"><span class="num">@Num(context.BillableHours)</span></TemplateColumn>
                     <TemplateColumn Title="Non-bill (h)" Align="Align.Right"><span class="num">@Num(context.NonBillableHours)</span></TemplateColumn>
                     <TemplateColumn Title="Training (h)" Align="Align.Right"><span class="num">@Num(context.TrainingHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Office (h)" Align="Align.Right"><span class="num">@Num(context.OfficeHours)</span></TemplateColumn>
                     <TemplateColumn Title="Detailed (h)" Align="Align.Right"><span class="num">@Num(context.DetailedHours)</span></TemplateColumn>
                     <TemplateColumn Title="Entries" Align="Align.Right" Sortable="true" SortBy="@_byEntries"><span class="num">@(context.DetailedEntries == 0 ? "—" : context.DetailedEntries.ToString())</span></TemplateColumn>
                     <TemplateColumn Title="Projects" Align="Align.Right"><span class="num">@(context.UniqueProjects == 0 ? "—" : context.UniqueProjects.ToString())</span></TemplateColumn>
