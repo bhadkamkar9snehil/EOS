@@ -1,4 +1,5 @@
 @using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
 @inherits LayoutComponentBase
 @inject AppState State
 @inject NavigationManager Navigation
@@ -30,11 +31,58 @@
 
     <section class="workspace">
         <header class="topbar">
-            <div class="page-heading"><h1>@PageTitleText</h1><p>@PageSubtitleText</p></div>
-            <div class="month-control">
-                <span>Reporting month</span><button title="Previous month" @onclick="() => State.PreviousMonthAsync()">‹</button><strong>@State.SelectedMonth.ToString("MMMM yyyy")</strong><button title="Next month" @onclick="() => State.NextMonthAsync()">›</button>
+            <div class="page-heading"><h1>@PageTitleText</h1></div>
+            <div class="topbar-actions">
+                <div class="global-search">
+                    <button type="button"
+                            class="icon-button @(_searchOpen ? "selected" : null)"
+                            title="Search engineers"
+                            aria-label="Search engineers"
+                            aria-expanded="@_searchOpen"
+                            @onclick="ToggleSearch">
+                        @((MarkupString)Icon.Search)
+                    </button>
+                    @if (_searchOpen)
+                    {
+                        <div class="global-search-popover">
+                            <div class="global-search-field">
+                                <span>@((MarkupString)Icon.Search)</span>
+                                <input autofocus
+                                       value="@_searchQuery"
+                                       @oninput="OnSearchInput"
+                                       @onkeydown="OnSearchKeyDown"
+                                       placeholder="Search engineer or employee code" />
+                                <button type="button" title="Close search" @onclick="CloseSearch">×</button>
+                            </div>
+                            <div class="global-search-results">
+                                @if (SearchResults.Count == 0)
+                                {
+                                    <p>@(string.IsNullOrWhiteSpace(_searchQuery) ? "Type a name or employee code." : "No matching engineer.")</p>
+                                }
+                                else
+                                {
+                                    @foreach (var result in SearchResults)
+                                    {
+                                        <button type="button" @onclick="() => OpenEmployee(result.Name)">
+                                            <span class="search-avatar">@Analytics.Initials(result.Name)</span>
+                                            <span class="search-person"><strong>@result.Name</strong><small>@result.EmployeeCode</small></span>
+                                            @if (result.Score is not null)
+                                            {
+                                                <b class="@Analytics.ScoreBand(result.Score.Value)">@Analytics.Format(result.Score.Value)</b>
+                                            }
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="month-control">
+                    <span>Reporting month</span><button title="Previous month" @onclick="PreviousMonthAsync">‹</button><strong>@State.SelectedMonth.ToString("MMMM yyyy")</strong><button title="Next month" @onclick="NextMonthAsync">›</button>
+                </div>
+                <div class="readiness"><span>Readiness</span><strong>@State.ReadyCount / 4 inputs</strong></div>
             </div>
-            <div class="readiness"><span>Readiness</span><strong>@State.ReadyCount / 4 inputs</strong></div>
         </header>
 
         <div class="toast-slot">
@@ -43,21 +91,21 @@
         </div>
 
         <main class="@($"content route-{CurrentRoute}")">
-            @Body
-            @if (CurrentRoute == "overview")
+            @if (CurrentRoute == "overview" && State.Performance.Count > 0)
             {
+                <OverviewLead />
                 <OverviewMetricsExtension />
             }
-            else if (CurrentRoute == "employee" && !string.IsNullOrWhiteSpace(CurrentEmployeeName))
-            {
-                <EmployeeMetricsExtension Name="@CurrentEmployeeName" />
-            }
+            @Body
         </main>
         <footer><span>Data stored locally in SQLite</span><span>Last refreshed @State.LastRefresh.ToString("h:mm tt")</span></footer>
     </section>
 </div>
 
 @code {
+    private bool _searchOpen;
+    private string _searchQuery = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         State.Changed += OnStateChanged;
@@ -77,9 +125,12 @@
     }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         State.ClearMessage();
+        _searchOpen = false;
+        _searchQuery = string.Empty;
         InvokeAsync(StateHasChanged);
     }
 
@@ -118,24 +169,70 @@
         "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee",
         _ => "Overview"
     };
-    private string PageSubtitleText => CurrentRoute switch
+
+    private IReadOnlyList<SearchResult> SearchResults
     {
-        "imports" => "Load the three ERP exports and the completed engineer reviews for this month.",
-        "data" => "Every row the imports produced, and the log of what was uploaded when.",
-        "timesheets" => "Who has not filled and what is still awaiting approval.",
-        "employees" => "Identity, seniority, team assignment, and billable/consultant/probation status.",
-        "peer-insights" => "Every reviewer, every rating, the whole network — for this month.",
-        "employee" => "Performance across every month currently loaded.",
-        "templates" => "Create personalized review workbooks for one engineer or the whole team.",
-        "reports" => "Export a formatted, printable performance report.",
-        "scoring" => "Configure operational score weights and recalculate all stored months.",
-        "settings" => "Appearance, theme and local storage.",
-        _ => $"Team performance for {State.SelectedMonth:MMMM yyyy}."
-    };
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_searchQuery)) return [];
+            var query = _searchQuery.Trim();
+            var performance = State.Performance.ToDictionary(x => PersonName.Normalize(x.EmployeeName), StringComparer.OrdinalIgnoreCase);
+            return State.Employees
+                .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase) || x.EmployeeCode.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(x => x.Name)
+                .Take(10)
+                .Select(x => new SearchResult(
+                    x.Name,
+                    x.EmployeeCode,
+                    performance.TryGetValue(PersonName.Normalize(x.Name), out var row) ? row.OperationalScore : null))
+                .ToArray();
+        }
+    }
+
+    private void ToggleSearch()
+    {
+        _searchOpen = !_searchOpen;
+        if (!_searchOpen) _searchQuery = string.Empty;
+    }
+
+    private void CloseSearch()
+    {
+        _searchOpen = false;
+        _searchQuery = string.Empty;
+    }
+
+    private void OnSearchInput(ChangeEventArgs args) => _searchQuery = args.Value?.ToString() ?? string.Empty;
+
+    private void OnSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") CloseSearch();
+        else if (args.Key == "Enter" && SearchResults.FirstOrDefault() is { } first) OpenEmployee(first.Name);
+    }
+
+    private void OpenEmployee(string name)
+    {
+        CloseSearch();
+        Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
+    }
+
+    private async Task PreviousMonthAsync()
+    {
+        CloseSearch();
+        await State.PreviousMonthAsync();
+    }
+
+    private async Task NextMonthAsync()
+    {
+        CloseSearch();
+        await State.NextMonthAsync();
+    }
 
     private RenderFragment NavButton(string route, string label, string icon) => @<button class="@(CurrentRoute == route ? "selected" : null)" @onclick="() => GoTo(route)"><b>@((MarkupString)icon)</b><span>@label</span></button>;
 
     private void GoTo(string route) => Navigation.NavigateTo($"/{route}");
+
+    private sealed record SearchResult(string Name, string EmployeeCode, decimal? Score);
 
     private static class Icon
     {
@@ -143,6 +240,7 @@
         private static string Svg(string paths) => string.Format(Wrap, paths);
         private const string Stroke = "stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"";
 
+        public static readonly string Search = Svg($"<circle cx=\"8.7\" cy=\"8.7\" r=\"4.7\" {Stroke}/><path d=\"m12.2 12.2 3.7 3.7\" {Stroke}/>");
         public static readonly string Overview = Svg($"<path d=\"M3 10.5 10 4l7 6.5\" {Stroke}/><path d=\"M5 9v7h10V9\" {Stroke}/><path d=\"M8 16v-4h4v4\" {Stroke}/>");
         public static readonly string Imports = Svg($"<path d=\"M10 13V4\" {Stroke}/><path d=\"M6.5 7.5 10 4l3.5 3.5\" {Stroke}/><path d=\"M4 13v3h12v-3\" {Stroke}/>");
         public static readonly string DataBrowser = Svg($"<rect x=\"3.5\" y=\"4.5\" width=\"13\" height=\"11\" rx=\"1.6\" {Stroke}/><path d=\"M3.5 8.2h13M8.2 8.2V15.5M12.6 8.2V15.5\" {Stroke}/>");
