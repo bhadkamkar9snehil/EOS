@@ -1,11 +1,96 @@
 @page "/settings"
+@inject IJSRuntime JS
+@inject AppState State
 
-<section class="single-pane narrow">
-    <div class="section-title"><div><h2>Local application</h2><p>All performance data and imported files remain on this computer.</p></div></div>
-    <dl class="settings-list">
-        <div><dt>Database</dt><dd>%LOCALAPPDATA%\EngineeringPerformance</dd></div>
-        <div><dt>Imported files</dt><dd>%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div>
-        <div><dt>Storage mode</dt><dd>SQLite with WAL</dd></div>
-        <div><dt>Calculation</dt><dd>Immediate, in process</dd></div>
-    </dl>
+<section class="single-pane wide settings-page">
+    <div class="section-title settings-title">
+        <div>
+            <h2>Appearance</h2>
+            <p>Choose a complete visual system. Each theme updates the shell, analytical canvas, tables, controls, status surfaces and selected states together.</p>
+        </div>
+        <span class="current-theme-label">Current: <strong>@CurrentTheme.Name</strong></span>
+    </div>
+
+    <div class="theme-grid" role="list" aria-label="Application themes">
+        @foreach (var theme in Themes)
+        {
+            <button type="button"
+                    class="theme-option @(_currentTheme == theme.Key ? "selected" : null)"
+                    aria-pressed="@(_currentTheme == theme.Key)"
+                    @onclick="() => ApplyThemeAsync(theme)">
+                <span class="theme-preview" data-preview="@theme.Key" aria-hidden="true">
+                    <i class="preview-nav"><b></b><b></b><b></b></i>
+                    <i class="preview-canvas">
+                        <b class="preview-kpi"></b>
+                        <b class="preview-kpi"></b>
+                        <b class="preview-chart"><em></em><em></em><em></em><em></em></b>
+                    </i>
+                </span>
+                <span class="theme-option-copy">
+                    <strong>@theme.Name</strong>
+                    <small>@theme.Description</small>
+                    <span class="theme-swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                </span>
+                <span class="theme-check">@(_currentTheme == theme.Key ? "Selected" : "Apply")</span>
+            </button>
+        }
+    </div>
+
+    <div class="settings-section-grid">
+        <section class="settings-card">
+            <div class="settings-card-head">
+                <span class="settings-card-icon">◫</span>
+                <div><h3>Local application</h3><p>All performance data and imported files remain on this computer.</p></div>
+            </div>
+            <dl class="settings-list compact-list">
+                <div><dt>Database</dt><dd>%LOCALAPPDATA%\EngineeringPerformance</dd></div>
+                <div><dt>Imported files</dt><dd>%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div>
+                <div><dt>Storage mode</dt><dd>SQLite with WAL</dd></div>
+                <div><dt>Calculation</dt><dd>Immediate, in process</dd></div>
+            </dl>
+        </section>
+
+        <section class="settings-card">
+            <div class="settings-card-head">
+                <span class="settings-card-icon">◎</span>
+                <div><h3>Theme behaviour</h3><p>The selection is stored locally and restored before the application interface is drawn.</p></div>
+            </div>
+            <div class="settings-facts">
+                <div><span>Persistence</span><strong>Local to this Windows profile</strong></div>
+                <div><span>Data impact</span><strong>None</strong></div>
+                <div><span>Scoring impact</span><strong>None</strong></div>
+                <div><span>Restart required</span><strong>No</strong></div>
+            </div>
+        </section>
+    </div>
 </section>
+
+@code {
+    private string _currentTheme = "clay-sage";
+
+    private static readonly ThemeOption[] Themes =
+    [
+        new("clay-sage", "Clay Sage", "Warm neutral canvas, graphite structure and restrained clay accents."),
+        new("harbor-blue", "Harbor Blue", "Cool gray surfaces, navy structure and clear teal interaction states."),
+        new("forest-ledger", "Forest Ledger", "Ivory analytical canvas, deep forest navigation and brass highlights."),
+        new("graphite-copper", "Graphite Copper", "Crisp stone surfaces with charcoal structure and controlled copper emphasis."),
+        new("alpine-ink", "Alpine Ink", "Bright, high-clarity analytical surfaces with ink-blue structure and cobalt focus."),
+    ];
+
+    private ThemeOption CurrentTheme => Themes.FirstOrDefault(x => x.Key == _currentTheme) ?? Themes[0];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _currentTheme = await JS.InvokeAsync<string>("epaTheme.get");
+        StateHasChanged();
+    }
+
+    private async Task ApplyThemeAsync(ThemeOption theme)
+    {
+        _currentTheme = await JS.InvokeAsync<string>("epaTheme.apply", theme.Key);
+        State.ShowMessage($"Theme changed to {theme.Name}.");
+    }
+
+    private sealed record ThemeOption(string Key, string Name, string Description);
+}
