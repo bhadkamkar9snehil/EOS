@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Domain;
 
@@ -335,88 +334,6 @@ public static class Analytics
         .OrderByDescending(x => x.MissingDays).ThenBy(x => x.Name)
         .ToArray();
     }
-
-    /// <summary>A ready-to-send mail draft. Kept as plain text so it pastes cleanly into any client.</summary>
-    public sealed record MailDraft(string Subject, string Recipients, string Body);
-
-    /// <summary>
-    /// Chase mail addressed to the engineers with unfilled timesheet days. Recipients are the
-    /// affected engineers' own addresses, so it can go out as one mail with everyone on it.
-    /// </summary>
-    public static MailDraft EngineerChaseMail(IReadOnlyList<ComplianceRow> rows, DateTime month)
-    {
-        var offenders = rows.Where(x => x.HasGap).OrderByDescending(x => x.MissingDays).ThenBy(x => x.Name).ToArray();
-        var recipients = string.Join("; ", offenders.Where(x => !string.IsNullOrWhiteSpace(x.Email)).Select(x => x.Email));
-
-        var body = new StringBuilder();
-        body.AppendLine($"Team,");
-        body.AppendLine();
-        body.AppendLine($"The timesheet records for {month:MMMM yyyy} show unfilled days against your name. Please complete them by end of day.");
-        body.AppendLine();
-        body.AppendLine($"{"Engineer",-28} {"Missing",8} {"Filled",8} {"Expected",9}");
-        body.AppendLine(new string('-', 58));
-        foreach (var row in offenders)
-            body.AppendLine($"{Truncate(row.Name, 28),-28} {row.MissingDays,8} {row.FilledDays,8} {row.ExpectedDays,9}");
-        body.AppendLine();
-        body.AppendLine("If a day is genuinely non-working (leave, holiday, week-off) and is still showing as missing, reply and it will be checked against the attendance export.");
-        body.AppendLine();
-        body.AppendLine("Thanks,");
-
-        return new MailDraft($"Timesheet not filled — {month:MMMM yyyy} — action needed", recipients, body.ToString());
-    }
-
-    /// <summary>
-    /// Summary mail for project managers: what is unfilled and, separately, what is filled but
-    /// still waiting on their approval — the part that is theirs to action.
-    /// </summary>
-    public static MailDraft ManagerSummaryMail(IReadOnlyList<ComplianceRow> rows, DateTime month)
-    {
-        var missing = rows.Where(x => x.HasGap).OrderByDescending(x => x.MissingDays).ThenBy(x => x.Name).ToArray();
-        var pending = rows.Where(x => x.HasPendingApproval).OrderByDescending(x => x.PendingApprovalHours).ThenBy(x => x.Name).ToArray();
-
-        var totalExpected = rows.Sum(x => x.ExpectedDays);
-        var totalFilled = rows.Sum(x => x.FilledDays);
-        var fillRate = totalExpected == 0 ? 0 : decimal.Round(totalFilled * 100m / totalExpected, 1);
-
-        var body = new StringBuilder();
-        body.AppendLine("Hi,");
-        body.AppendLine();
-        body.AppendLine($"Timesheet status for {month:MMMM yyyy}:");
-        body.AppendLine();
-        body.AppendLine($"  Overall fill rate      : {Format(fillRate)}% ({totalFilled} of {totalExpected} accountable days)");
-        body.AppendLine($"  Engineers with gaps    : {missing.Length}");
-        body.AppendLine($"  Hours awaiting approval: {Format(rows.Sum(x => x.PendingApprovalHours))} across {pending.Length} engineer(s)");
-        body.AppendLine();
-
-        if (missing.Length > 0)
-        {
-            body.AppendLine("UNFILLED TIMESHEETS");
-            body.AppendLine($"{"Engineer",-28} {"Team",-18} {"Missing",8} {"Expected",9}");
-            body.AppendLine(new string('-', 66));
-            foreach (var row in missing)
-                body.AppendLine($"{Truncate(row.Name, 28),-28} {Truncate(row.TeamName ?? "—", 18),-18} {row.MissingDays,8} {row.ExpectedDays,9}");
-            body.AppendLine();
-        }
-
-        if (pending.Length > 0)
-        {
-            body.AppendLine("FILLED BUT AWAITING YOUR APPROVAL");
-            body.AppendLine($"{"Engineer",-28} {"Team",-18} {"Pending h",10} {"Entered h",10}");
-            body.AppendLine(new string('-', 70));
-            foreach (var row in pending)
-                body.AppendLine($"{Truncate(row.Name, 28),-28} {Truncate(row.TeamName ?? "—", 18),-18} {Format(row.PendingApprovalHours),10} {Format(row.EnteredHours),10}");
-            body.AppendLine();
-        }
-
-        if (missing.Length == 0 && pending.Length == 0)
-            body.AppendLine("No unfilled timesheets and nothing awaiting approval.");
-
-        body.AppendLine("Thanks,");
-        return new MailDraft($"Timesheet compliance — {month:MMMM yyyy}", string.Empty, body.ToString());
-    }
-
-    private static string Truncate(string value, int length) =>
-        value.Length <= length ? value : value[..(length - 1)] + "…";
 
     /// <summary>Least-squares projection of the next point, clamped to the score range.</summary>
     public static decimal? Forecast(IReadOnlyList<decimal> series)

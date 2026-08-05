@@ -77,6 +77,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         await EnsureColumnAsync(context, "employee", "IsOnProbation", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(context, "employee", "IsNonBillable", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(context, "employee", "TeamId", "INTEGER NULL", cancellationToken);
+        await EnsureColumnAsync(context, "employee", "ProbationOverride", "INTEGER NULL", cancellationToken);
 
         await SeedDefaultExclusionsAsync(context, cancellationToken);
         await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
@@ -165,12 +166,23 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         var excluded = await ReadExclusionsAsync(context, cancellationToken);
         var teams = await context.Teams.ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
         var employees = await context.Employees.OrderBy(x => x.Name)
-            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, x.Email, x.IsConsultant, x.IsOnProbation, x.IsNonBillable, x.TeamId })
+            .Select(x => new { x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, x.Email, x.IsConsultant, x.IsOnProbationFromRoster, x.ProbationOverride, x.IsNonBillable, x.TeamId })
             .ToListAsync(cancellationToken);
         return employees.Select(x => new EmployeeListItem(
             x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, excluded.Contains(PersonName.Normalize(x.Name)),
-            x.Email, x.IsConsultant, x.IsOnProbation, x.IsNonBillable,
+            // Consultants are always non-billable — a fact about the engagement, not a per-person
+            // preference — so it's forced here regardless of the manual flag.
+            x.Email, x.IsConsultant, x.ProbationOverride ?? x.IsOnProbationFromRoster, x.ProbationOverride, x.IsConsultant || x.IsNonBillable,
             x.TeamId, x.TeamId.HasValue && teams.TryGetValue(x.TeamId.Value, out var teamName) ? teamName : null)).ToArray();
+    }
+
+    public async Task SetProbationAsync(int employeeId, bool? value, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var employee = await context.Employees.FindAsync([employeeId], cancellationToken);
+        if (employee is null) return;
+        employee.SetProbationOverride(value);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task SetNonBillableAsync(int employeeId, bool value, CancellationToken cancellationToken = default)
@@ -271,10 +283,10 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             }
             else
             {
-                var before = (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbation);
+                var before = (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbationFromRoster);
                 existing.SetSeniorityLevel(entry.SeniorityLevel);
                 existing.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation);
-                if (before != (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbation)) changed++;
+                if (before != (existing.SeniorityLevel, existing.Email, existing.IsConsultant, existing.IsOnProbationFromRoster)) changed++;
             }
         }
         await context.SaveChangesAsync(cancellationToken);

@@ -278,8 +278,12 @@
     private DotNetObjectReference<Overview>? _selfRef;
 
     /// <summary>Called from charts.js when a chart point that names an employee is clicked.</summary>
+    /// <summary>
+    /// Unlike an @onclick handler, a JS-invoked JSInvokable method does not automatically
+    /// trigger a re-render — the state change is real but invisible without this call.
+    /// </summary>
     [JSInvokable]
-    public void DrilldownTo(string name) => Spotlight(name);
+    public void DrilldownTo(string name) { Spotlight(name); StateHasChanged(); }
 
     private DateTime Previous => Month.AddMonths(-1);
     private IReadOnlyList<Anomaly> Alerts => Analytics.Anomalies(Items, PreviousScores);

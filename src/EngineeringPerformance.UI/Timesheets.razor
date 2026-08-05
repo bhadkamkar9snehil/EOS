@@ -1,8 +1,6 @@
 @using EngineeringPerformance.Application
-@inject IJSRuntime JS
 
-@* Timesheet compliance: who has not filled, and what is filled but still awaiting approval.
-   Both mail drafts are generated from the same rows shown in the table below. *@
+@* Timesheet compliance: who has not filled, and what is filled but still awaiting approval. *@
 
 <div class="overview">
     @if (Rows.Count == 0)
@@ -25,36 +23,6 @@
         </div>
 
         <div class="overview-grid">
-            <section class="card wide">
-                <div class="card-head">
-                    <h2>Mail drafts</h2>
-                    <small>Generated from the rows below — review before sending</small>
-                </div>
-                <p class="chart-note">These are drafts to copy into your mail client. Nothing is sent from this application.</p>
-                <div class="mail-actions">
-                    <button class="action" @onclick="() => ShowMail(ManagerDraft)" disabled="@(Rows.Count == 0)">Project manager summary</button>
-                    <button class="action secondary" @onclick="() => ShowMail(EngineerDraft)" disabled="@(WithGaps.Count == 0)">
-                        Chase engineers (@WithGaps.Count)
-                    </button>
-                </div>
-
-                @if (_draft is not null)
-                {
-                    <div class="mail-preview">
-                        <div class="mail-field"><label>Subject</label><input readonly value="@_draft.Subject" /></div>
-                        @if (!string.IsNullOrWhiteSpace(_draft.Recipients))
-                        {
-                            <div class="mail-field"><label>To</label><input readonly value="@_draft.Recipients" /></div>
-                        }
-                        <div class="mail-field"><label>Body</label><textarea readonly rows="16">@_draft.Body</textarea></div>
-                        <div class="mail-actions">
-                            <button class="action small" @onclick="CopyDraftAsync">@(_copied ? "Copied" : "Copy to clipboard")</button>
-                            <button class="link" @onclick="() => _draft = null">Close</button>
-                        </div>
-                    </div>
-                }
-            </section>
-
             <section class="card wide">
                 <div class="card-head"><h2>Timesheet compliance</h2><small>@Rows.Count engineer(s), highest gap first</small></div>
                 <div class="performance-table compliance">
@@ -93,10 +61,6 @@
                         </div>
                     }
                 </div>
-                <p class="chart-note">
-                    Capacity is billable hours against the @Analytics.Format(Analytics.MonthlyBillableCapacityHours, "0") h monthly baseline, and is not applied to non-billable engineers.
-                    Missing days are accountable days (excluding week-offs and approved leave) with no timesheet entry.
-                </p>
             </section>
         </div>
     }
@@ -107,9 +71,6 @@
     [Parameter, EditorRequired] public IReadOnlyList<EmployeeListItem> Employees { get; set; } = [];
     [Parameter, EditorRequired] public DateTime Month { get; set; }
     [Parameter] public EventCallback<string> OnNavigate { get; set; }
-
-    private Analytics.MailDraft? _draft;
-    private bool _copied;
 
     private IReadOnlyList<Analytics.ComplianceRow> Rows => Analytics.Compliance(Items, Employees);
     private IReadOnlyList<Analytics.ComplianceRow> WithGaps => Rows.Where(x => x.HasGap).ToArray();
@@ -130,21 +91,6 @@
     }
 
     private int Probationers => Employees.Count(x => x.IsOnProbation);
-
-    private Analytics.MailDraft ManagerDraft => Analytics.ManagerSummaryMail(Rows, Month);
-    private Analytics.MailDraft EngineerDraft => Analytics.EngineerChaseMail(Rows, Month);
-
-    private void ShowMail(Analytics.MailDraft draft) { _draft = draft; _copied = false; }
-
-    private async Task CopyDraftAsync()
-    {
-        if (_draft is null) return;
-        var text = string.IsNullOrWhiteSpace(_draft.Recipients)
-            ? $"Subject: {_draft.Subject}\n\n{_draft.Body}"
-            : $"To: {_draft.Recipients}\nSubject: {_draft.Subject}\n\n{_draft.Body}";
-        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); _copied = true; }
-        catch (JSException) { _copied = false; }
-    }
 
     private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi">
         <span class="kpi-label">@label</span>

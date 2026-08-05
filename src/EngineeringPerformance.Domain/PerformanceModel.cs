@@ -19,8 +19,12 @@ public sealed class Employee
     public string? Email { get; private set; }
     /// <summary>True for an externally contracted consultant rather than a direct employee. From the ERP roster.</summary>
     public bool IsConsultant { get; private set; }
-    /// <summary>True while still on probation — the app's definition of "fresher". From the ERP roster.</summary>
-    public bool IsOnProbation { get; private set; }
+    /// <summary>True while still on probation per the ERP roster's Probation Complete Date, unless overridden.</summary>
+    public bool IsOnProbationFromRoster { get; private set; }
+    /// <summary>A person's manual correction of probation status; takes precedence over the roster-derived value until cleared.</summary>
+    public bool? ProbationOverride { get; private set; }
+    /// <summary>What "on probation" means everywhere else in the app — the override if one is set, otherwise the roster value.</summary>
+    public bool IsOnProbation => ProbationOverride ?? IsOnProbationFromRoster;
     /// <summary>Manually classified: excluded from billable-capacity tracking (200 h/month baseline).</summary>
     public bool IsNonBillable { get; private set; }
     public int? TeamId { get; private set; }
@@ -39,8 +43,11 @@ public sealed class Employee
     {
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         IsConsultant = isConsultant;
-        IsOnProbation = isOnProbation;
+        IsOnProbationFromRoster = isOnProbation;
     }
+
+    /// <summary>Manually correct probation status. Pass null to clear the override and defer back to the roster.</summary>
+    public void SetProbationOverride(bool? value) => ProbationOverride = value;
 
     public void SetNonBillable(bool value) => IsNonBillable = value;
     public void AssignTeam(int? teamId) => TeamId = teamId;

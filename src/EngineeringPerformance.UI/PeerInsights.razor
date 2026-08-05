@@ -113,9 +113,12 @@
     private bool _chartsPending;
     private DotNetObjectReference<PeerInsights>? _selfRef;
 
-    /// <summary>Called from charts.js when the network chart's node is clicked.</summary>
+    /// <summary>
+    /// Called from charts.js when the network chart's node is clicked. Unlike an @onclick
+    /// handler, a JS-invoked JSInvokable method does not auto-render — needs this explicitly.
+    /// </summary>
     [JSInvokable]
-    public void DrilldownTo(string name) => Spotlight(name);
+    public void DrilldownTo(string name) { Spotlight(name); StateHasChanged(); }
 
     private Analytics.PeerSummary Summary => Analytics.Peers(PeerReviews);
     private Analytics.PeerStanding? LeastReviewed => Summary.Standings.Count == 0 ? null : Summary.Standings.OrderBy(x => x.ReviewsReceived).ThenBy(x => x.Name).First();

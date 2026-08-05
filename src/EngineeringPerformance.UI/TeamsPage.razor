@@ -7,7 +7,7 @@
     <div class="section-title">
         <div>
             <h2>Teams</h2>
-            <p>Create teams and assign engineers. Consultant and probation status come from the ERP roster and are not editable here; non-billable is a local classification you control.</p>
+            <p>Create teams and assign engineers. Consultant status comes from the ERP roster and consultants are always non-billable. Probation defaults from the roster's completion date but can be corrected per person; non-billable is otherwise a local classification you control.</p>
         </div>
     </div>
 
@@ -61,8 +61,8 @@
                         <option value="@team.Id">@team.Name</option>
                     }
                 </select>
-                <label class="switch" title="Non-billable engineers are excluded from billable-capacity tracking">
-                    <input type="checkbox" checked="@(!employee.IsNonBillable)"
+                <label class="switch" title="@(employee.IsConsultant ? "Consultants are always non-billable" : "Non-billable engineers are excluded from billable-capacity tracking")">
+                    <input type="checkbox" checked="@(!employee.IsNonBillable)" disabled="@employee.IsConsultant"
                            @onchange="e => SetNonBillableAsync(employee, !(bool)(e.Value ?? false))" />
                     <span>@(employee.IsNonBillable ? "Non-billable" : "Billable")</span>
                 </label>
@@ -71,10 +71,13 @@
                     {
                         <span class="tag consultant">Consultant</span>
                     }
-                    @if (employee.IsOnProbation)
-                    {
-                        <span class="tag probation">Probation</span>
-                    }
+                    <select class="team-select probation-select" value="@(employee.ProbationOverride is null ? "auto" : employee.ProbationOverride.Value ? "on" : "off")"
+                            title="Probation status — Auto follows the ERP roster's completion date"
+                            @onchange="e => SetProbationAsync(employee, e.Value?.ToString())">
+                        <option value="auto">Probation: Auto (@(employee.IsOnProbation ? "on" : "off"))</option>
+                        <option value="on">Probation: On</option>
+                        <option value="off">Probation: Off</option>
+                    </select>
                     @if (!employee.IsConsultant && !employee.IsOnProbation)
                     {
                         <span class="tag muted">Permanent</span>
@@ -155,6 +158,14 @@
         {
             await Database.SetNonBillableAsync(employee.Id, nonBillable);
             await OnResult.InvokeAsync(($"{employee.Name} marked {(nonBillable ? "non-billable" : "billable")}.", false));
+        });
+
+    private async Task SetProbationAsync(EmployeeListItem employee, string? mode) =>
+        await RunAsync(async () =>
+        {
+            bool? value = mode switch { "on" => true, "off" => false, _ => null };
+            await Database.SetProbationAsync(employee.Id, value);
+            await OnResult.InvokeAsync(($"{employee.Name} probation set to {(value is null ? "auto (roster)" : value.Value ? "on" : "off")}.", false));
         });
 
     private async Task RunAsync(Func<Task> action)

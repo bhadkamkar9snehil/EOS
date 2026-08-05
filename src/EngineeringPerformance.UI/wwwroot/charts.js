@@ -225,7 +225,7 @@
         const chart = ensure(id); if (!chart) return;
         chart.setOption({
             ...baseAnimation,
-            tooltip: { ...TOOLTIP_BASE, position: 'top', formatter: (p) => `<strong>${p.data[3]}</strong>${drillable ? '<br/><span style="opacity:.7">Click to open profile</span>' : ''}` },
+            tooltip: { ...TOOLTIP_BASE, position: 'top', formatter: (p) => `<strong>${p.data.tooltip}</strong>${drillable ? '<br/><span style="opacity:.7">Click to open profile</span>' : ''}` },
             grid: { left: 140, right: 12, top: 10, bottom: 30 },
             xAxis: { type: 'category', data: xCategories, splitArea: { show: false }, axisLabel: { fontSize: 10, color: PALETTE.muted }, axisLine: { lineStyle: { color: PALETTE.axis } } },
             yAxis: { type: 'category', data: yCategories, axisLabel: { fontSize: 11, color: '#2b3648' }, axisLine: { show: false }, splitArea: { show: false } },
@@ -234,14 +234,17 @@
                 inRange: { color: ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'] }
             },
             series: [{
-                type: 'heatmap', data: cells.map(c => [c.x, c.y, c.value, c.tooltip]), cursor: drillable ? 'pointer' : 'default',
-                label: { show: true, formatter: (p) => p.data[2] > 0 || p.data[2] === 0 ? p.data[2].toFixed(1) : '', color: '#fff', fontSize: 10, fontWeight: 600 },
+                // ECharts 6.1's heatmap visual-channel color mapping breaks when the data
+                // array carries a 4th (non-numeric) element, so extra fields ride as a
+                // named property on an object data item instead of a bare array element.
+                type: 'heatmap', data: cells.map(c => ({ value: [c.x, c.y, c.value], tooltip: c.tooltip })), cursor: drillable ? 'pointer' : 'default',
+                label: { show: true, formatter: (p) => p.data.value[2] > 0 || p.data.value[2] === 0 ? p.data.value[2].toFixed(1) : '', color: '#fff', fontSize: 10, fontWeight: 600 },
                 itemStyle: { borderColor: '#fff', borderWidth: 3, borderRadius: 4 },
                 emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,.2)' } }
             }]
         });
         chart.off('click');
-        if (drillable) chart.on('click', (p) => { if (p.componentType === 'series') drill(yCategories[p.data[1]]); });
+        if (drillable) chart.on('click', (p) => { if (p.componentType === 'series') drill(yCategories[p.data.value[1]]); });
     }
 
     // Fixed ring layout: every node gets an equal slot around the circle, so the chart

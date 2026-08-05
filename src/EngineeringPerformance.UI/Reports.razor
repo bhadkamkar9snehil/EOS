@@ -11,11 +11,10 @@
     <div class="report-cards">
         <section class="card wide">
             <div class="card-head"><h2>Team report</h2><small>@Month.ToString("MMMM yyyy")</small></div>
-            <p class="chart-note">One workbook: team KPIs, score distribution, every engineer ranked, peer review standings and this month's alerts.</p>
+            <p class="chart-note">One workbook: team KPIs, score distribution and every engineer ranked.</p>
             <div class="report-meta">
                 <div><strong>@Items.Count</strong><span>Engineers</span></div>
                 <div><strong>@PeerReviews.Count</strong><span>Peer feedback entries</span></div>
-                <div><strong>@AlertLines.Count</strong><span>Alerts</span></div>
             </div>
             <button class="action" @onclick="GenerateTeamAsync" disabled="@(_busy || Items.Count == 0)">Generate team report</button>
             @if (Items.Count == 0)
@@ -26,7 +25,7 @@
 
         <section class="card wide">
             <div class="card-head"><h2>Employee report</h2><small>Pick one engineer</small></div>
-            <p class="chart-note">Score, category breakdown, score history, peer feedback received and given, and their alerts for the month.</p>
+            <p class="chart-note">Score, category breakdown, score history, and peer feedback received and given.</p>
             <div class="report-picker">
                 <select @bind="_selectedEmployeeId">
                     <option value="">Select employee</option>

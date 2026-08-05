@@ -22,6 +22,9 @@ public sealed class PerformanceDbContext(DbContextOptions<PerformanceDbContext> 
             entity.HasIndex(x => x.EmployeeCode).IsUnique();
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Email).HasMaxLength(320);
+            // The column predates the roster/override split and keeps its original name.
+            entity.Property(x => x.IsOnProbationFromRoster).HasColumnName("IsOnProbation");
+            entity.Ignore(x => x.IsOnProbation);
         });
         modelBuilder.Entity<Team>(entity =>
         {

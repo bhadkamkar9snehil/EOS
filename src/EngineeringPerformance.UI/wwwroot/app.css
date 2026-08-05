@@ -107,11 +107,14 @@ code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; }
 .overview { padding: 24px 28px 46px; background: #f7f9fc; min-height: 100%; }
 
 /* ECharts containers: fixed heights so cards don't jump while a chart mounts. */
-.echart { width: 100%; height: 230px; }
-.echart.short { height: 150px; }
-.echart.tall { height: 268px; }
-.echart.network-small { height: 220px; }
-.echart.network-large { height: 440px; }
+/* flex:1 fills whatever height the card was stretched to (align-items:stretch on
+   .overview-grid), so a chart in a short card never leaves dead space below its
+   legend — min-height keeps it usable at the card's own natural size too. */
+.echart { width: 100%; flex: 1 1 auto; min-height: 230px; }
+.echart.short { min-height: 150px; }
+.echart.tall { min-height: 268px; }
+.echart.network-small { min-height: 220px; }
+.echart.network-large { min-height: 440px; }
 
 .network-layout { display: grid; grid-template-columns: minmax(0, 1fr) 176px; gap: 16px; align-items: stretch; }
 .network-stats { display: flex; flex-direction: column; gap: 16px; justify-content: center; border-left: 1px solid var(--line-soft); padding-left: 16px; }
@@ -334,16 +337,6 @@ b.critical { color: #d03b3b; }
 .performance-row.row-flag { background: #fffaf7; }
 .flag-critical { color: #c0392b; font-weight: 700; }
 .flag-warning { color: #a06f00; font-weight: 700; }
-
-.mail-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
-.mail-preview { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: #fbfcfe; }
-.mail-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
-.mail-field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
-.mail-field input, .mail-field textarea {
-    border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px; background: #fff;
-    font-size: 12px; color: #2b3648; width: 100%;
-}
-.mail-field textarea { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; line-height: 1.55; resize: vertical; }
 
 .back-link { border: 0; padding: 0; margin-bottom: 14px; font-size: 12.5px; }
 .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }

@@ -241,7 +241,13 @@ public sealed partial class WorkbookService : IWorkbookService
             var level = int.TryParse(digits, out var parsed) && parsed is >= 1 and <= 99 ? parsed : 1;
             var email = columns.TryGetValue("Official Email", out var emailCol) ? Text(sheet.Cell(row, emailCol)) : null;
             var isConsultant = columns.TryGetValue("IsConsultant", out var consultantCol) && Flag(sheet.Cell(row, consultantCol));
-            var isOnProbation = columns.TryGetValue("Flg Probation", out var probationCol) && Flag(sheet.Cell(row, probationCol));
+            // "Flg Probation" is frequently stale in the ERP export — it stays set long after an
+            // employee has completed probation. "Probation Complete Date" is the reliable signal:
+            // if it's in the past (or absent while the flag is unset), probation is over.
+            var probationFlag = columns.TryGetValue("Flg Probation", out var probationCol) && Flag(sheet.Cell(row, probationCol));
+            DateTime? probationCompleteDate = columns.TryGetValue("Probation Complete Date", out var probationDateCol)
+                && sheet.Cell(row, probationDateCol).TryGetValue<DateTime>(out var pcd) ? pcd : null;
+            var isOnProbation = probationFlag && (probationCompleteDate is null || probationCompleteDate.Value.Date >= DateTime.Today);
             results.Add(new RosterEntry(code, name, level, string.IsNullOrWhiteSpace(email) ? null : email, isConsultant, isOnProbation));
         }
         return results;

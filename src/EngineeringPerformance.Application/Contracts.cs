@@ -38,6 +38,9 @@ public interface IApplicationDatabase
     Task SetNonBillableAsync(int employeeId, bool value, CancellationToken cancellationToken = default);
     Task AssignTeamAsync(int employeeId, int? teamId, CancellationToken cancellationToken = default);
 
+    /// <summary>Manually sets probation status, overriding the ERP roster's value. Pass null to clear the override and revert to the roster.</summary>
+    Task SetProbationAsync(int employeeId, bool? value, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TeamItem>> GetTeamsAsync(CancellationToken cancellationToken = default);
     Task<int> AddTeamAsync(string name, CancellationToken cancellationToken = default);
     Task RenameTeamAsync(int teamId, string name, CancellationToken cancellationToken = default);
@@ -55,7 +58,7 @@ public interface IFileDialogService
 
 public sealed record EmployeeListItem(
     int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,
-    string? Email, bool IsConsultant, bool IsOnProbation, bool IsNonBillable,
+    string? Email, bool IsConsultant, bool IsOnProbation, bool? ProbationOverride, bool IsNonBillable,
     int? TeamId, string? TeamName);
 
 public sealed record TeamItem(int Id, string Name, int MemberCount);

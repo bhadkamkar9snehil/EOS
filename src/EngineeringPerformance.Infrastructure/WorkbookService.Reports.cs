@@ -176,13 +176,6 @@ public sealed partial class WorkbookService
         }
         row++;
 
-        if (data.AlertLines.Count > 0)
-        {
-            row = SectionHeader(sheet, row, "Alerts", columns);
-            foreach (var line in data.AlertLines) { sheet.Cell(row, 1).Value = "•  " + line; sheet.Range(row, 1, row, columns).Merge(); row++; }
-            row++;
-        }
-
         Footer(sheet, row + 1, columns);
         FinishSheet(sheet, columns);
 
@@ -247,8 +240,7 @@ public sealed partial class WorkbookService
         var sheet = workbook.AddWorksheet("Team summary");
         const int columns = 9;
         Title(sheet, "Engineering Performance Report — Team", columns);
-        Subtitle(sheet, $"{new DateTime(data.Year, data.Month, 1):MMMM yyyy} — {data.Items.Count} engineers in analysis" +
-            (data.ExcludedCount > 0 ? $" ({data.ExcludedCount} excluded by configuration)" : ""), columns);
+        Subtitle(sheet, $"{new DateTime(data.Year, data.Month, 1):MMMM yyyy}", columns);
 
         var row = 4;
         row = SectionHeader(sheet, row, "Team KPIs", columns);
@@ -258,7 +250,6 @@ public sealed partial class WorkbookService
         KeyValue(sheet, row++, "Average timesheet completion", (withSummary.Length == 0 ? 0 : withSummary.Average(x => x.TimesheetCompletionScore)).ToString("0.0") + "%");
         KeyValue(sheet, row++, "Average attendance discipline", (data.Items.Count == 0 ? 0 : data.Items.Average(x => x.AttendanceDisciplineScore)).ToString("0.0") + "%");
         KeyValue(sheet, row++, "Engineers scored", data.Items.Count.ToString());
-        KeyValue(sheet, row++, "Open alerts", data.AlertLines.Count.ToString());
         row++;
 
         row = SectionHeader(sheet, row, "Score distribution", columns);
@@ -304,35 +295,6 @@ public sealed partial class WorkbookService
             row++;
         }
         row++;
-
-        if (data.PeerReviews.Count > 0)
-        {
-            row = SectionHeader(sheet, row, "Peer review standings", columns);
-            row = TableHeader(sheet, row, "Engineer", "Average received", "Received", "Given");
-            var given = data.PeerReviews.GroupBy(x => x.ReviewerName, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.Count(), StringComparer.OrdinalIgnoreCase);
-            var standings = data.PeerReviews.GroupBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase)
-                .Select(g => (Name: g.Key, Avg: g.Average(x => x.Average), Received: g.Count(), Given: given.GetValueOrDefault(g.Key)))
-                .OrderByDescending(x => x.Avg).ToArray();
-            var si = 0;
-            foreach (var s in standings)
-            {
-                ZebraRow(sheet, row, 4, si++ % 2 == 1);
-                sheet.Cell(row, 1).Value = s.Name;
-                sheet.Cell(row, 2).Value = s.Avg;
-                sheet.Cell(row, 2).Style.NumberFormat.Format = "0.00";
-                sheet.Cell(row, 3).Value = s.Received;
-                sheet.Cell(row, 4).Value = s.Given;
-                row++;
-            }
-            row++;
-        }
-
-        if (data.AlertLines.Count > 0)
-        {
-            row = SectionHeader(sheet, row, "Alerts", columns);
-            foreach (var line in data.AlertLines) { sheet.Cell(row, 1).Value = "•  " + line; sheet.Range(row, 1, row, columns).Merge(); row++; }
-            row++;
-        }
 
         Footer(sheet, row + 1, columns);
         FinishSheet(sheet, columns);
