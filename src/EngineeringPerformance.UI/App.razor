@@ -41,7 +41,7 @@
             @if (_page == "overview") { <Overview Items="_performance" History="_history" Month="_selectedMonth" PeerReviews="_peerReviews" ExcludedCount="_excluded.Count" OnNavigate="Navigate" /> }
             else if (_page == "imports") { @ImportWorkspace() }
             else if (_page == "timesheets") { <Timesheets Items="_performance" Employees="_employees" Month="_selectedMonth" OnNavigate="Navigate" /> }
-            else if (_page == "employees") { <PeopleWorkspace Employees="_employees" Teams="_teams" Database="Database" OnResult="HandleReportResult" OnChanged="RefreshAsync" /> }
+            else if (_page == "employees") { <PeopleWorkspace Employees="_employees" Teams="_teams" Database="Database" OnResult="HandleReportResult" OnChanged="RefreshAsync" OnNavigate="Navigate" /> }
             else if (_page == "peer-insights") { <PeerInsights Items="_performance" PeerReviews="_peerReviews" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "employee-detail" && _employeeDetailName is not null) { <EmployeeDetail Name="_employeeDetailName" Items="_performance" History="_history" PeerReviews="_peerReviews" Employees="_employees" Month="_selectedMonth" OnNavigate="Navigate" /> }
             else if (_page == "templates") { @TemplateWorkspace() }

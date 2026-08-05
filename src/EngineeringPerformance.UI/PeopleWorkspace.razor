@@ -106,6 +106,7 @@
                     <span>@(employee.IsExcluded ? "Excluded" : "Included")</span>
                 </label>
                 <div class="row-actions">
+                    <button class="action small secondary" @onclick="() => OpenAnalysis(employee)" title="Open full performance analysis">Analysis →</button>
                     <button class="action small" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(_busy || !IsDirty(employee))">Save</button>
                     <button class="danger" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@_busy">Remove</button>
                 </div>
@@ -123,6 +124,7 @@
     [Parameter, EditorRequired] public IReadOnlyList<TeamItem> Teams { get; set; } = [];
     [Parameter] public EventCallback<(string Message, bool IsError)> OnResult { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnNavigate { get; set; }
     [Parameter] public IApplicationDatabase Database { get; set; } = default!;
 
     private int ExcludedCount => Employees.Count(x => x.IsExcluded);
@@ -184,6 +186,8 @@
             await Database.SetExclusionAsync(employee.Name, excluded);
             await OnResult.InvokeAsync((excluded ? $"{employee.Name} is excluded from the analysis." : $"{employee.Name} is included in the analysis.", false));
         });
+
+    private async Task OpenAnalysis(EmployeeListItem employee) => await OnNavigate.InvokeAsync($"employee:{employee.Name}");
 
     private async Task RemoveEmployeeAsync(int id) =>
         await RunAsync(async () => { await Database.RemoveEmployeeAsync(id); await OnResult.InvokeAsync(("Employee removed.", false)); });
