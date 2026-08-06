@@ -82,12 +82,23 @@ public sealed record MonthlyPerformanceItem(string EmployeeName, string? Employe
     int DetailedEntries, int UniqueProjects, decimal AttendanceDays, decimal LeaveDays,
     int MissingPunchDays, int LateDays, int EarlyDays, int LessDurationDays,
     int Year, int Month, decimal PunchHours, decimal AttendanceTimesheetHours,
-    int TimesheetFilledDays, int ExpectedTimesheetDays, decimal NonBillableHours, decimal TrainingHours,
-    decimal ApprovedHours = 0, decimal OfficeHours = 0)
+    decimal TimesheetFilledDays, decimal ExpectedTimesheetDays, decimal NonBillableHours, decimal TrainingHours,
+    decimal ApprovedHours = 0, decimal OfficeHours = 0, decimal RawUtilization = 0)
 {
     public bool HasSummaryData => ComplianceHours > 0;
     public decimal ReconciliationVariance => PunchHours - AttendanceTimesheetHours;
-    public decimal Utilization => ComplianceHours <= 0 ? 0 : decimal.Round(EnteredHours / ComplianceHours * 100m, 1);
+
+    /// <summary>
+    /// The ERP's own Utilization %, trusted verbatim when present. Months imported before this
+    /// column was captured have RawUtilization stuck at its 0 default even when hours were
+    /// entered — a state the real ERP figure can never produce (its own fallback rule guarantees
+    /// a nonzero result whenever entered hours are nonzero), so that combination is the signal to
+    /// fall back to a local Entered/Compliance approximation instead of showing a false 0%.
+    /// </summary>
+    public decimal Utilization =>
+        RawUtilization > 0 || EnteredHours <= 0 || ComplianceHours <= 0
+            ? RawUtilization
+            : decimal.Round(EnteredHours / ComplianceHours * 100m, 1);
 }
 
 /// <summary>
@@ -103,15 +114,15 @@ public sealed record WeeklyPerformanceItem(
     int UniqueProjects,
     decimal PunchHours,
     decimal TimesheetHours,
-    int FilledDays,
-    int ExpectedDays,
+    decimal FilledDays,
+    decimal ExpectedDays,
     int MissingPunchDays,
     int LateDays,
     int EarlyDays,
     int LessDurationDays)
 {
     public DateTime WeekEnd => WeekStart.AddDays(6);
-    public int MissingTimesheetDays => Math.Max(0, ExpectedDays - FilledDays);
+    public decimal MissingTimesheetDays => Math.Max(0m, ExpectedDays - FilledDays);
     public decimal ReconciliationVariance => PunchHours - TimesheetHours;
     public decimal TimesheetFillRate => ExpectedDays <= 0 ? 0m : decimal.Round(FilledDays * 100m / ExpectedDays, 1);
 

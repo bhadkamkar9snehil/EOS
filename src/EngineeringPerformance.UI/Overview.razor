@@ -54,6 +54,33 @@
 
         <div class="overview-grid">
 
+            <section class="card span-4">
+                <div class="card-head"><h2>Workload &amp; utilization</h2><small>Daily punch hours vs capacity used</small></div>
+                <div id="chart-scatter" class="echart tall"></div>
+            </section>
+
+            <section class="card span-4">
+                <div class="card-head"><h2>Category performance</h2><small>Operational dimensions</small></div>
+                <div id="chart-radar" class="echart"></div>
+                <ul class="chart-legend">
+                    <li><i style="background:#0F6E9E"></i>Team average</li>
+                    <li><i style="background:#C85A22"></i>Top quartile</li>
+                    <li><i style="background:#1E8C5A"></i>Bottom quartile</li>
+                </ul>
+            </section>
+
+            <section class="card span-4">
+                <div class="card-head"><h2>Score trend &amp; forecast</h2><small>Monthly average, next-month projection</small></div>
+                @if (HeatmapMonths.Count >= 2)
+                {
+                    <div id="chart-trend" class="echart"></div>
+                }
+                else
+                {
+                    <div class="chart-empty">Needs two loaded months.</div>
+                }
+            </section>
+
             <section class="card span-6">
                 <div class="card-head"><h2>Cross-month analysis</h2><small>@MonthLabels.Length loaded month(s) · operational score</small></div>
                 @if (MonthLabels.Length < 2)
@@ -79,12 +106,12 @@
                 }
             </section>
 
-            <section class="card span-7">
+            <section class="card span-8">
                 <div class="card-head"><h2>Operational score composition</h2><small>Weighted points from timesheet completion, approval and attendance discipline</small></div>
                 <div id="overview-score-components" class="echart score-composition-chart"></div>
             </section>
 
-            <section class="card span-5">
+            <section class="card span-4">
                 <div class="card-head"><h2>Attendance &amp; reconciliation</h2><small>Punch hours vs timesheet hours, largest gaps first</small></div>
                 <div class="exception-row">
                     @Exception("Missing punch", State.Performance.Sum(x => x.MissingPunchDays))
@@ -110,33 +137,6 @@
                             </li>
                         }
                     </ul>
-                }
-            </section>
-
-            <section class="card span-4">
-                <div class="card-head"><h2>Workload &amp; utilization</h2><small>Daily punch hours vs capacity used</small></div>
-                <div id="chart-scatter" class="echart tall"></div>
-            </section>
-
-            <section class="card span-4">
-                <div class="card-head"><h2>Category performance</h2><small>Operational dimensions</small></div>
-                <div id="chart-radar" class="echart"></div>
-                <ul class="chart-legend">
-                    <li><i style="background:#0F6E9E"></i>Team average</li>
-                    <li><i style="background:#C85A22"></i>Top quartile</li>
-                    <li><i style="background:#1E8C5A"></i>Bottom quartile</li>
-                </ul>
-            </section>
-
-            <section class="card span-4">
-                <div class="card-head"><h2>Score trend &amp; forecast</h2><small>Monthly average, next-month projection</small></div>
-                @if (HeatmapMonths.Count >= 2)
-                {
-                    <div id="chart-trend" class="echart"></div>
-                }
-                else
-                {
-                    <div class="chart-empty">Needs two loaded months.</div>
                 }
             </section>
 
@@ -208,7 +208,7 @@
                 else
                 {
                     <div class="alert-list">
-                        @foreach (var alert in Alerts.Take(12))
+                        @foreach (var alert in Alerts.Take(24))
                         {
                             <div class="alert @Level(alert.Level) clickable" @onclick="() => Spotlight(alert.EmployeeName)">
                                 <span class="alert-chip">@Level(alert.Level)</span>
@@ -216,9 +216,9 @@
                             </div>
                         }
                     </div>
-                    @if (Alerts.Count > 12)
+                    @if (Alerts.Count > 24)
                     {
-                        <p class="chart-note">@(Alerts.Count - 12) more not shown.</p>
+                        <p class="chart-note">@(Alerts.Count - 24) more not shown.</p>
                     }
                 }
             </section>
@@ -234,13 +234,15 @@
                 </div>
                 <div class="performance-table">
                     <div class="performance-head">
-                        <span>Engineer</span><span>Score</span><span>Timesheet</span><span>Approval</span>
-                        <span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span><span>Projects</span>
+                        <span>Engineer</span><span>Code</span><span class="col-calc">Score</span><span class="col-calc">Timesheet</span><span class="col-calc">Approval</span>
+                        <span class="col-calc">Attendance</span><span>Utilization</span><span class="col-calc">Workload</span><span>Billable</span>
+                        <span>Punch</span><span class="col-calc">Variance</span><span class="col-calc">Filled</span><span>Entries</span><span>Projects</span>
                     </div>
                     @foreach (var item in FilteredPerformanceItems.OrderByDescending(x => x.OperationalScore))
                     {
                         <div class="performance-row clickable" @onclick="() => Spotlight(item.EmployeeName)" title="View profile">
                             <strong>@item.EmployeeName</strong>
+                            <span class="code-cell">@(item.EmployeeCode ?? "—")</span>
                             <span class="score-cell">
                                 <b class="@Analytics.ScoreBand(item.OperationalScore)">@Analytics.Format(item.OperationalScore)</b>
                                 <i class="score-bar @Analytics.ScoreBand(item.OperationalScore)" style="width:@Analytics.Svg((double)item.OperationalScore * 0.42)px"></i>
@@ -248,8 +250,12 @@
                             <span>@(item.HasSummaryData ? Analytics.Format(item.TimesheetCompletionScore, "0") + "%" : NoData)</span>
                             <span>@(item.HasSummaryData ? Analytics.Format(item.ApprovalScore, "0") + "%" : NoData)</span>
                             <span>@Analytics.Format(item.AttendanceDisciplineScore, "0")%</span>
+                            <span class="@(item.HasSummaryData ? (item.Utilization >= Analytics.UtilizationTarget ? "cell-good" : "cell-warn") : null)">@(item.HasSummaryData ? Analytics.Format(item.Utilization, "0") + "%" : NoData)</span>
                             <span>@Analytics.Format(item.Workload(), "0.0") h/d</span>
                             <span>@Analytics.Format(item.BillableHours, "0.0") h</span>
+                            <span>@Analytics.Format(item.PunchHours, "0.0") h</span>
+                            <span class="@(item.ReconciliationVariance > 0 ? "cell-over" : item.ReconciliationVariance < 0 ? "cell-under" : null)">@Signed(item.ReconciliationVariance) h</span>
+                            <span>@item.TimesheetFilledDays/@item.ExpectedTimesheetDays</span>
                             <span>@item.DetailedEntries</span>
                             <span>@item.UniqueProjects</span>
                         </div>

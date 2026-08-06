@@ -300,7 +300,7 @@ public static class Analytics
     /// </summary>
     public sealed record ComplianceRow(
         string Name, string? Code, string? Email, string? TeamName,
-        int ExpectedDays, int FilledDays, int MissingDays,
+        decimal ExpectedDays, decimal FilledDays, decimal MissingDays,
         decimal EnteredHours, decimal ApprovedHours, decimal PendingApprovalHours,
         decimal BillableHours, bool IsNonBillable, bool IsConsultant, bool IsOnProbation)
     {
@@ -322,11 +322,11 @@ public static class Analytics
         return items.Select(item =>
         {
             var employee = employees.FirstOrDefault(e => PersonName.Matches(e.Name, item.EmployeeName));
-            var pending = Math.Max(0, item.EnteredHours - item.ApprovedHours);
+            var pending = Math.Max(0m, item.EnteredHours - item.ApprovedHours);
             return new ComplianceRow(
                 item.EmployeeName, item.EmployeeCode ?? employee?.EmployeeCode, employee?.Email, employee?.TeamName,
                 item.ExpectedTimesheetDays, item.TimesheetFilledDays,
-                Math.Max(0, item.ExpectedTimesheetDays - item.TimesheetFilledDays),
+                Math.Max(0m, item.ExpectedTimesheetDays - item.TimesheetFilledDays),
                 item.EnteredHours, item.ApprovedHours, pending,
                 item.BillableHours,
                 employee?.IsNonBillable ?? false, employee?.IsConsultant ?? false, employee?.IsOnProbation ?? false);

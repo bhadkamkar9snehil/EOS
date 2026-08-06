@@ -442,7 +442,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         x.ApprovalScore, x.AttendanceDisciplineScore, x.EnteredHours, x.ComplianceHours, x.BillableHours, x.DetailedHours,
         x.DetailedEntries, x.UniqueProjects, x.AttendanceDays, x.LeaveDays, x.MissingPunchDays, x.LateDays, x.EarlyDays, x.LessDurationDays,
         x.Year, x.Month, x.PunchHours, x.AttendanceTimesheetHours, x.TimesheetFilledDays, x.ExpectedTimesheetDays,
-        x.NonBillableHours, x.TrainingHours, x.ApprovedHours);
+        x.NonBillableHours, x.TrainingHours, x.ApprovedHours, RawUtilization: x.Utilization);
 
     private static void Merge(EmployeeMonthlyPerformance current, EmployeeMonthlyPerformance incoming, ReportType type)
     {
@@ -451,6 +451,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         {
             current.ComplianceHours = incoming.ComplianceHours; current.EnteredHours = incoming.EnteredHours; current.ApprovedHours = incoming.ApprovedHours;
             current.BillableHours = incoming.BillableHours; current.NonBillableHours = incoming.NonBillableHours; current.TrainingHours = incoming.TrainingHours; current.OfficeHours = incoming.OfficeHours;
+            current.Utilization = incoming.Utilization;
         }
         else if (type == ReportType.DetailedTimesheetTransactions)
         { current.DetailedHours = incoming.DetailedHours; current.DetailedEntries = incoming.DetailedEntries; current.UniqueProjects = incoming.UniqueProjects; }

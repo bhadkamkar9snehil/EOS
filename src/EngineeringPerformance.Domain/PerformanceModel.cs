@@ -192,6 +192,11 @@ public sealed class EmployeeMonthlyPerformance
     public decimal NonBillableHours { get; set; }
     public decimal TrainingHours { get; set; }
     public decimal OfficeHours { get; set; }
+    /// <summary>The ERP's own "Utilization" % column from the monthly summary export, trusted
+    /// verbatim rather than recomputed — its formula isn't always Entered/Compliance (it appears
+    /// to prefer Billable/Compliance when billable hours exist), so deriving it locally produced
+    /// numbers that silently disagreed with what the ERP itself reports.</summary>
+    public decimal Utilization { get; set; }
     public decimal DetailedHours { get; set; }
     public int DetailedEntries { get; set; }
     public int UniqueProjects { get; set; }
@@ -199,8 +204,12 @@ public sealed class EmployeeMonthlyPerformance
     public decimal LeaveDays { get; set; }
     public decimal PunchHours { get; set; }
     public decimal AttendanceTimesheetHours { get; set; }
-    public int TimesheetFilledDays { get; set; }
-    public int ExpectedTimesheetDays { get; set; }
+    /// <summary>
+    /// Both are day-weighted, not day-counted: a Saturday contributes 0.5 (a half working
+    /// day) rather than 1, so Fill rate stays meaningful when the week includes a short day.
+    /// </summary>
+    public decimal TimesheetFilledDays { get; set; }
+    public decimal ExpectedTimesheetDays { get; set; }
     public int MissingPunchDays { get; set; }
     public int LateDays { get; set; }
     public int EarlyDays { get; set; }

@@ -1,4 +1,21 @@
 /* EOS palette library UI. Runtime colour tokens are installed by theme.js. */
+
+html,
+body,
+.app-shell,
+.workspace,
+.content,
+.topbar,
+footer,
+.card,
+.kpi,
+.data-table,
+.epa-grid,
+.settings-card,
+.theme-option {
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
 .settings-page { max-width: 1580px; margin: 0 auto; }
 .settings-title { align-items: center; margin-bottom: 12px; }
 .settings-title p { max-width: 820px; }
@@ -47,7 +64,7 @@
 .theme-toolbar button.selected {
     border-color: var(--primary);
     background: var(--primary);
-    color: #fff;
+    color: var(--primary-ink);
 }
 .theme-toolbar button span {
     min-width: 18px;
@@ -72,7 +89,7 @@
     position: relative;
     border: 1px solid var(--line-strong);
     border-radius: 7px;
-    background: var(--surface-raised);
+    background: var(--card-surface);
     color: var(--ink);
     text-align: left;
     cursor: pointer;

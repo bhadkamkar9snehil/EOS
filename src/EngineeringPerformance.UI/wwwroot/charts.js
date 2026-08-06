@@ -9,6 +9,11 @@
     };
     const BAND_COLOR = { good: PALETTE.good, warning: PALETTE.warning, serious: PALETTE.serious, critical: PALETTE.critical };
 
+    const cssVar = (name, fallback) => {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
+    };
+
     // One consistent tooltip skin for every chart — a plain dark card, no series-colored
     // borders. Mismatched colored tooltip "speech bubbles" per chart read as unfinished.
     const TOOLTIP_BASE = {
@@ -228,7 +233,7 @@
             tooltip: { ...TOOLTIP_BASE, position: 'top', formatter: (p) => `<strong>${p.data.tooltip}</strong>${drillable ? '<br/><span style="opacity:.7">Click to open profile</span>' : ''}` },
             grid: { left: 140, right: 12, top: 10, bottom: 30 },
             xAxis: { type: 'category', data: xCategories, splitArea: { show: false }, axisLabel: { fontSize: 10, color: PALETTE.muted }, axisLine: { lineStyle: { color: PALETTE.axis } } },
-            yAxis: { type: 'category', data: yCategories, axisLabel: { fontSize: 11, color: '#202623' }, axisLine: { show: false }, splitArea: { show: false } },
+            yAxis: { type: 'category', data: yCategories, axisLabel: { fontSize: 11, color: PALETTE.ink }, axisLine: { show: false }, splitArea: { show: false } },
             visualMap: {
                 min: 0, max: 100, show: false,
                 inRange: { color: ['#DDE9EF', '#B9D4E1', '#8EBBCF', '#5F9DB9', '#3B80A1', '#1F6686', '#0E4C68'] }
@@ -239,7 +244,10 @@
                 // named property on an object data item instead of a bare array element.
                 type: 'heatmap', data: cells.map(c => ({ value: [c.x, c.y, c.value], tooltip: c.tooltip })), cursor: drillable ? 'pointer' : 'default',
                 label: { show: true, formatter: (p) => p.data.value[2] > 0 || p.data.value[2] === 0 ? p.data.value[2].toFixed(1) : '', color: '#fff', fontSize: 10, fontWeight: 600 },
-                itemStyle: { borderColor: '#fff', borderWidth: 3, borderRadius: 4 },
+                // A 3px pure-white border read as a thick bright grid on dark themes — the gap
+                // between cells should match the card behind it (a thin seam), not stand out as
+                // its own high-contrast element regardless of theme.
+                itemStyle: { borderColor: cssVar('--card-surface', '#fff'), borderWidth: 1, borderRadius: 2 },
                 emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,.2)' } }
             }]
         });

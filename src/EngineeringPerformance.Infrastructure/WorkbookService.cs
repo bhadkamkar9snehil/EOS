@@ -79,6 +79,8 @@ public sealed partial class WorkbookService : IWorkbookService
             item.NonBillableHours = Number(sheet.Cell(row, Col(columns, "Non Billable Hours")));
             item.TrainingHours = Number(sheet.Cell(row, Col(columns, "Sum of Training")));
             item.OfficeHours = Number(sheet.Cell(row, Col(columns, "Sum of Office Working Hours")));
+            // The ERP exports this as a percentage-formatted cell, so the raw value is a fraction (0.53 for "53%").
+            item.Utilization = Number(sheet.Cell(row, Col(columns, "Utilization"))) * 100m;
             Calculate(item);
             results.Add(item);
         }
@@ -120,7 +122,8 @@ public sealed partial class WorkbookService : IWorkbookService
             var name = PersonName.Normalize(Text(sheet.Cell(row, Col(columns, "Employee"))));
             if (string.IsNullOrWhiteSpace(name)) continue;
             var dateCell = sheet.Cell(row, Col(columns, "Date"));
-            var (rowYear, rowMonth) = dateCell.TryGetValue<DateTime>(out var date) ? (date.Year, date.Month) : (year, month);
+            var hasDate = dateCell.TryGetValue<DateTime>(out var date);
+            var (rowYear, rowMonth) = hasDate ? (date.Year, date.Month) : (year, month);
             var key = (name, rowYear, rowMonth);
             if (!groups.TryGetValue(key, out var item)) groups[key] = item = New(name, rowYear, rowMonth);
             item.EmployeeCode ??= Text(sheet.Cell(row, Col(columns, "Emp No")));
@@ -128,14 +131,23 @@ public sealed partial class WorkbookService : IWorkbookService
             var position = Text(sheet.Cell(row, Col(columns, "Position")));
             var duty = Text(sheet.Cell(row, Col(columns, "Duty Type")));
             var approvedLeave = Text(sheet.Cell(row, Col(columns, "Leave status"))).Equals("Approved", StringComparison.OrdinalIgnoreCase);
-            if (approvedLeave || position.Equals("Leave", StringComparison.OrdinalIgnoreCase)) item.LeaveDays += attendDay;
-            var accountable = attendDay > 0 && !duty.Equals("woff", StringComparison.OrdinalIgnoreCase) && !position.Equals("Leave", StringComparison.OrdinalIgnoreCase);
+            // Sunday is always a weekly off regardless of what the ERP's own Duty Type tags it as;
+            // Saturday remains accountable but only counts as a half working day (4.5h shift).
+            var isSunday = hasDate && date.DayOfWeek == DayOfWeek.Sunday;
+            var isWeekOff = isSunday || duty.Equals("woff", StringComparison.OrdinalIgnoreCase);
+            var weekWeight = hasDate && date.DayOfWeek == DayOfWeek.Saturday ? .5m : 1m;
+            // The ERP's own export tags some week-off rows as Position="Leave" at the same time
+            // (seen on Sundays that also carry Duty Type="woff") — a day nobody could have worked
+            // is not a day of leave taken, so a week-off row is never allowed to draw down leave,
+            // regardless of what the Position/Leave-status columns say on it.
+            if (!isWeekOff && (approvedLeave || position.Equals("Leave", StringComparison.OrdinalIgnoreCase))) item.LeaveDays += attendDay;
+            var accountable = attendDay > 0 && !isWeekOff && !position.Equals("Leave", StringComparison.OrdinalIgnoreCase);
             if (!accountable) continue;
-            item.AttendanceDays += attendDay;
-            item.ExpectedTimesheetDays++;
+            item.AttendanceDays += attendDay * weekWeight;
+            item.ExpectedTimesheetDays += weekWeight;
             item.PunchHours += Number(sheet.Cell(row, Col(columns, "Punch Duration")));
             item.AttendanceTimesheetHours += Number(sheet.Cell(row, Col(columns, "Timesheet Hrs")));
-            if (Text(sheet.Cell(row, Col(columns, "Timesheet"))).Equals("Filled", StringComparison.OrdinalIgnoreCase)) item.TimesheetFilledDays++;
+            if (Text(sheet.Cell(row, Col(columns, "Timesheet"))).Equals("Filled", StringComparison.OrdinalIgnoreCase)) item.TimesheetFilledDays += weekWeight;
             if (Flag(sheet.Cell(row, Col(columns, "Flg Punch not Found")))) item.MissingPunchDays++;
             if (Flag(sheet.Cell(row, Col(columns, "Flg Late Coming")))) item.LateDays++;
             if (Flag(sheet.Cell(row, Col(columns, "Flg Early Going")))) item.EarlyDays++;

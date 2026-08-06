@@ -3,6 +3,7 @@ using System;
 using EngineeringPerformance.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EngineeringPerformance.Infrastructure.Migrations
 {
     [DbContext(typeof(PerformanceDbContext))]
-    partial class PerformanceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260806041151_DecimalExpectedFilledDays")]
+    partial class DecimalExpectedFilledDays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -176,9 +179,6 @@ namespace EngineeringPerformance.Infrastructure.Migrations
 
                     b.Property<int>("UniqueProjects")
                         .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("Utilization")
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("Year")
                         .HasColumnType("INTEGER");

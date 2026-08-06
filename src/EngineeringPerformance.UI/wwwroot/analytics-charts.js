@@ -1,4 +1,9 @@
 (() => {
+    const cssVar = (name, fallback) => {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
+    };
+
     function weightedStack(id, categories, series, totals, suffix) {
         const chart = window.epaCharts?.ensure(id);
         if (!chart) return;
@@ -38,8 +43,8 @@
                 max: 100,
                 axisLine: { show: false },
                 axisTick: { show: false },
-                axisLabel: { fontSize: 10, color: '#737C78', formatter: '{value}' },
-                splitLine: { lineStyle: { color: '#E4E5E1' } }
+                axisLabel: { fontSize: 10, color: cssVar('--ink-soft', '#475569'), formatter: '{value}' },
+                splitLine: { lineStyle: { color: cssVar('--chart-grid', '#E4E5E1') } }
             },
             yAxis: {
                 type: 'category',
@@ -47,7 +52,7 @@
                 data: categories,
                 axisLine: { show: false },
                 axisTick: { show: false },
-                axisLabel: { fontSize: 10.5, color: '#202623', width: 146, overflow: 'truncate' }
+                axisLabel: { fontSize: 10.5, color: cssVar('--chart-ink', '#202623'), width: 146, overflow: 'truncate' }
             },
             series: series.map((item, seriesIndex) => ({
                 name: item.name,

@@ -161,7 +161,7 @@ public sealed class ConfigurableApplicationDatabase(
         x.AttendanceDays, x.LeaveDays, x.MissingPunchDays, x.LateDays, x.EarlyDays,
         x.LessDurationDays, x.Year, x.Month, x.PunchHours, x.AttendanceTimesheetHours,
         x.TimesheetFilledDays, x.ExpectedTimesheetDays, x.NonBillableHours,
-        x.TrainingHours, x.ApprovedHours, x.OfficeHours);
+        x.TrainingHours, x.ApprovedHours, x.OfficeHours, x.Utilization);
 
     public Task<DashboardSnapshot> GetDashboardAsync(int? year = null, int? month = null, CancellationToken cancellationToken = default) => inner.GetDashboardAsync(year, month, cancellationToken);
     public Task<IReadOnlyList<EmployeeListItem>> GetEmployeesAsync(CancellationToken cancellationToken = default) => inner.GetEmployeesAsync(cancellationToken);
@@ -205,8 +205,8 @@ public sealed class ConfigurableApplicationDatabase(
         private int _uniqueProjects;
         private decimal _punchHours;
         private decimal _timesheetHours;
-        private int _filledDays;
-        private int _expectedDays;
+        private decimal _filledDays;
+        private decimal _expectedDays;
         private int _missingPunchDays;
         private int _lateDays;
         private int _earlyDays;

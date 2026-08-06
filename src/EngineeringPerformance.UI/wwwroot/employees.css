@@ -166,7 +166,7 @@
 .row-actions .action:not(.secondary) {
     border-color: var(--primary);
     background: var(--primary);
-    color: #fff;
+    color: var(--primary-ink);
 }
 
 .row-actions .action:not(.secondary):hover:not(:disabled) {
@@ -178,12 +178,12 @@
     opacity: 1;
     border-color: var(--line);
     background: var(--surface-muted);
-    color: #9aa19e;
+    color: var(--muted);
     cursor: default;
 }
 
 .row-actions .danger {
-    border: 1px solid #d7aaa3;
+    border: 1px solid var(--critical);
     background: var(--surface-raised);
     color: var(--critical);
 }
@@ -191,7 +191,7 @@
 .row-actions .danger:hover:not(:disabled) {
     border-color: var(--critical);
     background: var(--critical-soft);
-    color: #8e3329;
+    color: var(--critical);
 }
 
 @media (max-width: 980px) {

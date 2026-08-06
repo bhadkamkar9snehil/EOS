@@ -1,28 +1,20 @@
 (() => {
     const storageKey = "epa-theme";
     const palettes = {
+        // ---- Neutral (light) ----
         'graphite':{name:'Graphite',desc:'Executive neutral',group:'neutral',ink:'#0f172a',text:'#1e293b',text2:'#334155',muted:'#64748b',border:'#dbe2ea',bg:'#f4f7fb',surface:'#ffffff',surface2:'#f8fafc',accent:'#2563eb',accentBg:'#eff6ff',headerBg:'#0f172a',headerText:'#f8fafc',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0369a1',infoBg:'#e0f2fe'},
         'ledger':{name:'Ledger',desc:'Fintech calm',group:'neutral',ink:'#101828',text:'#1d2939',text2:'#344054',muted:'#667085',border:'#d0d5dd',bg:'#f7f8fa',surface:'#ffffff',surface2:'#f9fafb',accent:'#175cd3',accentBg:'#eff8ff',headerBg:'#101828',headerText:'#f8fafc',success:'#067647',successBg:'#ecfdf3',warning:'#b54708',warningBg:'#fffaeb',danger:'#b42318',dangerBg:'#fef3f2',info:'#175cd3',infoBg:'#eff8ff'},
-        'harbor':{name:'Harbor',desc:'Teal operations',group:'blue',ink:'#111827',text:'#1f2937',text2:'#475569',muted:'#64748b',border:'#d7dee7',bg:'#eef3f8',surface:'#ffffff',surface2:'#f7fafc',accent:'#0f766e',accentBg:'#ccfbf1',headerBg:'#102a43',headerText:'#eff6ff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0f766e',infoBg:'#ccfbf1'},
-        'alloy':{name:'Alloy',desc:'Indigo product',group:'expressive',ink:'#16181d',text:'#23262d',text2:'#4b5563',muted:'#6b7280',border:'#d8dde6',bg:'#f3f4f6',surface:'#ffffff',surface2:'#f8fafc',accent:'#4f46e5',accentBg:'#eef2ff',headerBg:'#111827',headerText:'#f9fafb',success:'#166534',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#4338ca',infoBg:'#eef2ff'},
-        'meridian':{name:'Meridian',desc:'Corporate blue',group:'blue',ink:'#0f172a',text:'#1e293b',text2:'#475569',muted:'#64748b',border:'#d5dde8',bg:'#f2f6fb',surface:'#ffffff',surface2:'#f7f9fc',accent:'#1d4ed8',accentBg:'#dbeafe',headerBg:'#10213a',headerText:'#eff6ff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#1d4ed8',infoBg:'#dbeafe'},
         'sterling':{name:'Sterling',desc:'Steel neutral',group:'neutral',ink:'#111827',text:'#1f2937',text2:'#4b5563',muted:'#6b7280',border:'#d1d5db',bg:'#f3f4f6',surface:'#ffffff',surface2:'#f8fafc',accent:'#0f766e',accentBg:'#def7ec',headerBg:'#1f2937',headerText:'#f9fafb',success:'#0f766e',successBg:'#ecfdf5',warning:'#c2410c',warningBg:'#fff7ed',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0369a1',infoBg:'#e0f2fe'},
-        'pine':{name:'Pine',desc:'Industrial green',group:'green',ink:'#111827',text:'#1f2937',text2:'#475569',muted:'#64748b',border:'#d8e2dc',bg:'#f3f7f4',surface:'#ffffff',surface2:'#f7faf7',accent:'#166534',accentBg:'#dcfce7',headerBg:'#132a1d',headerText:'#ecfdf5',success:'#15803d',successBg:'#f0fdf4',warning:'#a16207',warningBg:'#fefce8',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#166534',infoBg:'#dcfce7'},
-        'ember':{name:'Ember',desc:'Warm enterprise',group:'warm',ink:'#1c1917',text:'#292524',text2:'#57534e',muted:'#78716c',border:'#e7e5e4',bg:'#f8f5f2',surface:'#ffffff',surface2:'#fafaf9',accent:'#c2410c',accentBg:'#fff7ed',headerBg:'#292524',headerText:'#fafaf9',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#9a3412',infoBg:'#ffedd5'},
-        'atlas':{name:'Atlas',desc:'SaaS cobalt',group:'blue',ink:'#0f172a',text:'#1e293b',text2:'#334155',muted:'#64748b',border:'#dde6f2',bg:'#f4f7fd',surface:'#ffffff',surface2:'#f8fbff',accent:'#2563eb',accentBg:'#eff6ff',headerBg:'#132239',headerText:'#eff6ff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0369a1',infoBg:'#e0f2fe'},
         'canvas':{name:'Canvas',desc:'Soft neutral',group:'neutral',ink:'#111827',text:'#1f2937',text2:'#4b5563',muted:'#6b7280',border:'#e5e7eb',bg:'#f9fafb',surface:'#ffffff',surface2:'#f8fafc',accent:'#475569',accentBg:'#f1f5f9',headerBg:'#1f2937',headerText:'#f9fafb',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#475569',infoBg:'#f1f5f9'},
         'quartz':{name:'Quartz',desc:'Monochrome crisp',group:'neutral',ink:'#0a0a0a',text:'#171717',text2:'#404040',muted:'#737373',border:'#d4d4d4',bg:'#f5f5f5',surface:'#ffffff',surface2:'#fafafa',accent:'#262626',accentBg:'#f5f5f5',headerBg:'#171717',headerText:'#fafafa',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#262626',infoBg:'#f5f5f5'},
-        'sandstone':{name:'Sandstone',desc:'ERP warm neutral',group:'warm',ink:'#1f2937',text:'#374151',text2:'#4b5563',muted:'#6b7280',border:'#e5e7eb',bg:'#faf7f2',surface:'#fffdf9',surface2:'#f7f2ea',accent:'#92400e',accentBg:'#fffbeb',headerBg:'#292524',headerText:'#fafaf9',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#92400e',infoBg:'#ffedd5'},
-        'aurora':{name:'Aurora',desc:'Bright product blue',group:'blue',ink:'#10213a',text:'#1f3350',text2:'#49627e',muted:'#6c7f95',border:'#d7e3f2',bg:'#f3f8ff',surface:'#ffffff',surface2:'#f7fbff',accent:'#0f6cbd',accentBg:'#e0f2fe',headerBg:'#153a66',headerText:'#eff6ff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0f6cbd',infoBg:'#e0f2fe'},
-        'clover':{name:'Clover',desc:'Fresh SaaS green',group:'green',ink:'#10261d',text:'#1e3a2f',text2:'#4b635a',muted:'#6b7d75',border:'#d5e5dd',bg:'#f3fbf6',surface:'#ffffff',surface2:'#f7fcf8',accent:'#15803d',accentBg:'#dcfce7',headerBg:'#123524',headerText:'#ecfdf5',success:'#15803d',successBg:'#f0fdf4',warning:'#a16207',warningBg:'#fefce8',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0f766e',infoBg:'#ccfbf1'},
-        'fjord':{name:'Fjord',desc:'Slate teal blend',group:'blue',ink:'#0f172a',text:'#23364a',text2:'#476072',muted:'#64748b',border:'#d8e1ea',bg:'#f2f7fa',surface:'#ffffff',surface2:'#f8fbfd',accent:'#0f766e',accentBg:'#ccfbf1',headerBg:'#1f3a4a',headerText:'#f0fdfa',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0f766e',infoBg:'#ccfbf1'},
-        'blossom':{name:'Blossom',desc:'Rose product suite',group:'expressive',ink:'#2a1722',text:'#44263a',text2:'#6b4b5f',muted:'#8a7284',border:'#eed7e4',bg:'#fff6fb',surface:'#ffffff',surface2:'#fff9fc',accent:'#db2777',accentBg:'#fce7f3',headerBg:'#4a1235',headerText:'#fff1f8',success:'#15803d',successBg:'#f0fdf4',warning:'#c2410c',warningBg:'#fff7ed',danger:'#be123c',dangerBg:'#fff1f2',info:'#be185d',infoBg:'#fce7f3'},
-        'dune':{name:'Dune',desc:'Sand and bronze',group:'warm',ink:'#2b2115',text:'#463424',text2:'#6b5540',muted:'#8b735d',border:'#eadfcf',bg:'#fcf8f1',surface:'#fffdfa',surface2:'#faf4ea',accent:'#b7791f',accentBg:'#fef3c7',headerBg:'#53331a',headerText:'#fffaf0',success:'#2f855a',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#b7791f',infoBg:'#fef3c7'},
-        'glacier':{name:'Glacier',desc:'Icy analytics blue',group:'blue',ink:'#10233d',text:'#1d3557',text2:'#4a6585',muted:'#6b7b93',border:'#d8e5f2',bg:'#f5faff',surface:'#ffffff',surface2:'#f8fbff',accent:'#0284c7',accentBg:'#e0f2fe',headerBg:'#12375b',headerText:'#eff6ff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0284c7',infoBg:'#e0f2fe'},
-        'orchard':{name:'Orchard',desc:'Olive and apricot',group:'green',ink:'#22231a',text:'#3a3b2b',text2:'#5f604b',muted:'#7b7d66',border:'#e3e5d6',bg:'#f8f9f2',surface:'#ffffff',surface2:'#fbfbf6',accent:'#4d7c0f',accentBg:'#ecfccb',headerBg:'#3f4f1f',headerText:'#f7fee7',success:'#4d7c0f',successBg:'#ecfccb',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#a16207',infoBg:'#fef3c7'},
-        'studio':{name:'Studio',desc:'Editorial plum',group:'expressive',ink:'#20162b',text:'#352247',text2:'#5b4a70',muted:'#7b6c8f',border:'#e4dbef',bg:'#faf7ff',surface:'#ffffff',surface2:'#fcfaff',accent:'#7c3aed',accentBg:'#ede9fe',headerBg:'#3b1d63',headerText:'#f5f3ff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#7c3aed',infoBg:'#ede9fe'},
-        'marina':{name:'Marina',desc:'Ocean operations',group:'blue',ink:'#102028',text:'#163847',text2:'#4a6170',muted:'#6b7f8d',border:'#d7e4ea',bg:'#f3fafc',surface:'#ffffff',surface2:'#f7fcfd',accent:'#0891b2',accentBg:'#cffafe',headerBg:'#0f3a4a',headerText:'#ecfeff',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0891b2',infoBg:'#cffafe'},
-        'meadow':{name:'Meadow',desc:'Sage planning',group:'green',ink:'#17211a',text:'#223229',text2:'#516158',muted:'#708078',border:'#d8e2da',bg:'#f5faf5',surface:'#ffffff',surface2:'#f8fcf8',accent:'#2f855a',accentBg:'#dcfce7',headerBg:'#1d3b2a',headerText:'#f0fdf4',success:'#2f855a',successBg:'#dcfce7',warning:'#a16207',warningBg:'#fefce8',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#0f766e',infoBg:'#ccfbf1'}
+        'sandstone':{name:'Sandstone',desc:'ERP warm neutral',group:'neutral',ink:'#1f2937',text:'#374151',text2:'#4b5563',muted:'#6b7280',border:'#e5e7eb',bg:'#faf7f2',surface:'#fffdf9',surface2:'#f7f2ea',accent:'#92400e',accentBg:'#fffbeb',headerBg:'#292524',headerText:'#fafaf9',success:'#15803d',successBg:'#f0fdf4',warning:'#b45309',warningBg:'#fffbeb',danger:'#b91c1c',dangerBg:'#fef2f2',info:'#92400e',infoBg:'#ffedd5'},
+
+        // ---- Dark (inspired by well-known editor themes, non-blue accents) ----
+        'dracula':{name:'Dracula',desc:'Purple & pink classic',group:'dark',ink:'#f8f8f2',text:'#e6e6e0',text2:'#c2c4d6',muted:'#8a8ca6',border:'#44475a',bg:'#282a36',surface:'#343746',surface2:'#2f3241',accent:'#bd93f9',accentBg:'#3b3465',headerBg:'#1e1f29',headerText:'#f8f8f2',success:'#50fa7b',successBg:'#1f3327',warning:'#f1fa8c',warningBg:'#3a3820',danger:'#ff5555',dangerBg:'#3a1f22',info:'#ff79c6',infoBg:'#3a2331'},
+        'gruvbox':{name:'Gruvbox',desc:'Retro warm contrast',group:'dark',ink:'#ebdbb2',text:'#d5c4a1',text2:'#bdae93',muted:'#928374',border:'#504945',bg:'#282828',surface:'#32302f',surface2:'#2d2b2a',accent:'#fe8019',accentBg:'#3c2f1e',headerBg:'#1d2021',headerText:'#fbf1c7',success:'#8ec07c',successBg:'#1e2e28',warning:'#fabd2f',warningBg:'#3a331a',danger:'#fb4934',dangerBg:'#3a201d',info:'#83a598',infoBg:'#1c2a2c'},
+        'monokai':{name:'Monokai',desc:'Editor pink & lime',group:'dark',ink:'#f8f8f2',text:'#e0e0d4',text2:'#c2c3b8',muted:'#90918a',border:'#49493f',bg:'#272822',surface:'#33342c',surface2:'#2d2e26',accent:'#f92672',accentBg:'#3d1f2b',headerBg:'#1e1f1a',headerText:'#f8f8f2',success:'#a6e22e',successBg:'#2e3a1a',warning:'#e6db74',warningBg:'#3a3820',danger:'#fd5c63',dangerBg:'#3a1f20',info:'#ae81ff',infoBg:'#2c2440'},
+        'everforest':{name:'Everforest',desc:'Soft forest green',group:'dark',ink:'#d3c6aa',text:'#c6b89c',text2:'#9da9a0',muted:'#7a8478',border:'#4a555b',bg:'#2d353b',surface:'#343f44',surface2:'#333c41',accent:'#a7c080',accentBg:'#333d2e',headerBg:'#232a2e',headerText:'#d3c6aa',success:'#83c092',successBg:'#233029',warning:'#dbbc7f',warningBg:'#3a3423',danger:'#e67e80',dangerBg:'#3a2323',info:'#7fbbb3',infoBg:'#1f2c2c'},
+        'solarized-dark':{name:'Solarized Dark',desc:'Yellow accent, no blue',group:'dark',ink:'#eee8d5',text:'#c8cdc7',text2:'#93a1a1',muted:'#657b83',border:'#0a4552',bg:'#002b36',surface:'#073642',surface2:'#04303b',accent:'#b58900',accentBg:'#35301a',headerBg:'#00212b',headerText:'#eee8d5',success:'#859900',successBg:'#2b3315',warning:'#cb4b16',warningBg:'#3a2213',danger:'#dc322f',dangerBg:'#3a1616',info:'#d33682',infoBg:'#3a1d2c'}
     };
 
     const normalize = value => Object.prototype.hasOwnProperty.call(palettes, value) ? value : "graphite";
@@ -69,11 +61,6 @@
         return rgb.map(value => value + m);
     };
 
-    const rotate = (hex, degrees, saturation = .68, lightness = .50) => {
-        const [h, s] = rgbToHsl(hexToRgb(hex));
-        return rgbToHex(hslToRgb([(h + degrees + 360) % 360, Math.max(s, saturation), lightness]));
-    };
-
     const mix = (first, second, amount = .5) => {
         const a = hexToRgb(first);
         const b = hexToRgb(second);
@@ -85,22 +72,73 @@
         return rgbToHex(hslToRgb([h, s, Math.max(0, l - amount)]));
     };
 
+    // Picks readable ink for text painted directly on a solid fill (status chips, badges).
+    // A fixed white was assumed everywhere this pattern is used, which fails hard on themes
+    // whose status color is itself light — Gruvbox/Solarized's warning is a bright yellow, and
+    // white-on-bright-yellow is close to unreadable. Real luminance, not just lightness, decides
+    // white vs near-black the way any accessible-contrast check would.
+    const inkFor = hex => {
+        const [r, g, b] = hexToRgb(hex);
+        const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        return luminance > 0.6 ? "#141200" : "#FFFFFF";
+    };
+
+    // A single-hue sequential ramp (dataviz convention: one hue, light -> dark for
+    // magnitude) built off the accent's own hue/saturation. On light canvases low
+    // values sit near-white and high values go deep and saturated; on dark canvases
+    // the direction flips so low values blend toward the (dark) canvas and high
+    // values pop bright — either way the low/high ends stay perceptually far apart,
+    // which a flat accent-to-darkened-accent pair could not guarantee.
+    const heatScale = (hex, isDark) => {
+        const [h, s] = rgbToHsl(hexToRgb(hex));
+        const sat = Math.min(1, Math.max(s, .55));
+        const lights = isDark ? [.15, .28, .42, .58, .76] : [.94, .80, .63, .47, .30];
+        return lights.map(l => rgbToHex(hslToRgb([h, sat, l])));
+    };
+
     const set = (name, value) => document.documentElement.style.setProperty(name, value);
 
     const installTokens = palette => {
-        const chart2 = rotate(palette.accent, 42);
-        const chart4 = rotate(palette.accent, 255, .62, .52);
-        const chart8 = rotate(palette.accent, 315, .58, .50);
-        const early = rotate(palette.warning, 18, .72, .48);
-        const missing = rotate(palette.danger, -18, .70, .48);
+        const isDark = palette.group === "dark";
+        const heat = heatScale(palette.accent, isDark);
+
+        // Analytical/chart colors are deliberately muted relative to the raw palette — full-chroma
+        // brand colors read as loud/toy-like across eight simultaneous chart series. Professional
+        // chroma, still theme-matched, computed once (this used to be a second file that ran after
+        // this one and overwrote these same tokens on every theme change).
+        const restrainedAccent = mix(palette.accent, palette.text2, .12);
+        const restrainedInfo = mix(palette.info, palette.text2, .16);
+        const restrainedSuccess = mix(palette.success, palette.text2, .12);
+        const restrainedWarning = mix(palette.warning, palette.text2, .12);
+        const restrainedDanger = mix(palette.danger, palette.text2, .10);
+        const restrainedApproval = mix(palette.accent, palette.warning, .46);
+        const restrainedSecondary = mix(palette.info, palette.success, .42);
+        const restrainedTertiary = mix(palette.accent, palette.text2, .38);
+        const restrainedEarly = mix(palette.warning, palette.danger, .30);
+        const restrainedMissing = mix(palette.danger, palette.text2, .20);
+
+        const surfaceMuted = mix(palette.bg, palette.surface2, .5);
+        const surfaceSoft = mix(palette.surface2, palette.surface, .35);
+        const cardSurface = mix(palette.surface2, palette.surface, .70);
 
         const tokens = {
+            "--shadow-resting": isDark ? "0 1px 2px rgba(0, 0, 0, .5)" : "0 1px 2px rgba(32, 38, 35, .05)",
+            "--shadow-raised": isDark
+                ? "0 6px 20px rgba(0, 0, 0, .55), 0 1px 0 rgba(255, 255, 255, .05) inset"
+                : "0 4px 14px rgba(32, 38, 35, .10)",
+            "--shadow-drawer": isDark ? "0 24px 60px rgba(0, 0, 0, .65)" : "0 24px 60px rgba(20, 26, 23, .28)",
+            "--shadow-nav": isDark ? "1px 0 0 rgba(255, 255, 255, .04) inset" : "none",
+            "color-scheme": isDark ? "dark" : "light",
+            // A real surface ladder, not four names pointing at one value. Each theme still only
+            // authors three raw tones (bg / surface2 / surface); the steps between them are
+            // interpolated so canvas -> muted -> surface -> soft -> card -> raised are each a
+            // measurable step apart instead of collapsing into "canvas" and "everything else."
             "--canvas": palette.bg,
+            "--surface-muted": surfaceMuted,
             "--surface": palette.surface2,
+            "--surface-soft": surfaceSoft,
+            "--card-surface": cardSurface,
             "--surface-raised": palette.surface,
-            "--surface-muted": palette.surface2,
-            "--surface-soft": palette.surface2,
-            "--card-surface": palette.surface2,
             "--ink": palette.ink,
             "--ink-soft": palette.text2,
             "--muted": palette.muted,
@@ -109,25 +147,34 @@
             "--line-strong": mix(palette.border, palette.text2, .30),
             "--primary": palette.accent,
             "--primary-hover": darken(palette.accent, .08),
-            "--primary-strong": palette.headerBg,
+            "--primary-ink": inkFor(palette.accent),
+            /* On light themes headerBg (a dark navy/ink) doubles as legible text on soft
+               backgrounds. On dark themes headerBg is near-black, so that pairing would be
+               invisible against the equally-dark soft surfaces — use a lightened accent instead. */
+            "--primary-strong": isDark ? darken(palette.accent, -.16) : palette.headerBg,
             "--primary-soft": palette.accentBg,
             "--secondary": palette.info,
             "--secondary-hover": darken(palette.info, .08),
-            "--secondary-dark": darken(palette.info, .14),
+            "--secondary-dark": isDark ? darken(palette.info, -.08) : darken(palette.info, .14),
             "--secondary-soft": palette.infoBg,
+            "--secondary-ink": inkFor(isDark ? darken(palette.info, -.08) : darken(palette.info, .14)),
             "--good": palette.success,
             "--good-soft": palette.successBg,
+            "--good-ink": inkFor(palette.success),
             "--warn": palette.warning,
             "--warn-soft": palette.warningBg,
-            "--serious": early,
-            "--serious-soft": mix(palette.surface, early, .10),
+            "--warn-ink": inkFor(palette.warning),
+            "--serious": restrainedEarly,
+            "--serious-soft": mix(palette.surface, restrainedEarly, .10),
+            "--serious-ink": inkFor(restrainedEarly),
             "--critical": palette.danger,
             "--critical-soft": palette.dangerBg,
+            "--critical-ink": inkFor(palette.danger),
             "--table-header": palette.headerBg,
             "--table-header-text": palette.headerText,
             "--table-header-line": mix(palette.headerBg, palette.headerText, .22),
             "--table-row": palette.surface,
-            "--table-row-alt": palette.surface2,
+            "--table-row-alt": surfaceSoft,
             "--table-row-hover": palette.accentBg,
             "--nav-bg": palette.headerBg,
             "--nav-line": darken(palette.headerBg, .05),
@@ -138,42 +185,51 @@
             "--nav-hover": `color-mix(in srgb, ${palette.accent} 18%, transparent)`,
             "--nav-selected": `color-mix(in srgb, ${palette.accent} 34%, transparent)`,
             "--focus-soft": `color-mix(in srgb, ${palette.accent} 22%, transparent)`,
-            "--chart-1": palette.accent,
-            "--chart-2": chart2,
-            "--chart-3": palette.success,
-            "--chart-4": chart4,
-            "--chart-5": palette.warning,
-            "--chart-6": palette.info,
-            "--chart-7": palette.danger,
-            "--chart-8": chart8,
-            "--chart-operational": palette.accent,
-            "--chart-timesheet": chart2,
-            "--chart-approval": chart4,
-            "--chart-attendance": palette.success,
-            "--chart-billable": palette.accent,
-            "--chart-nonbillable": chart2,
-            "--chart-training": chart4,
-            "--chart-office": palette.success,
+            // Muted, theme-matched analytical colors — this was formerly a *separate* file
+            // (theme-restraint.js) that ran after this one on every theme change and silently
+            // overwrote these exact tokens with its own formula, plus triggered a second full
+            // chart repaint. There is now exactly one place these are computed.
+            "--chart-1": restrainedAccent,
+            "--chart-2": restrainedInfo,
+            "--chart-3": restrainedSuccess,
+            "--chart-4": restrainedApproval,
+            "--chart-5": restrainedWarning,
+            "--chart-6": restrainedSecondary,
+            "--chart-7": restrainedDanger,
+            "--chart-8": restrainedTertiary,
+            "--chart-operational": restrainedAccent,
+            "--chart-timesheet": restrainedInfo,
+            "--chart-approval": restrainedApproval,
+            "--chart-attendance": restrainedSuccess,
+            "--chart-billable": restrainedAccent,
+            "--chart-nonbillable": restrainedWarning,
+            "--chart-training": restrainedApproval,
+            "--chart-office": restrainedSuccess,
             "--chart-grid": mix(palette.border, palette.surface, .58),
             "--chart-axis": mix(palette.border, palette.text2, .30),
             "--chart-muted": palette.muted,
             "--chart-ink": palette.ink,
             "--chart-tooltip": palette.headerBg,
             "--chart-tooltip-text": palette.headerText,
-            "--chart-heat-low": palette.accentBg,
-            "--chart-heat-high": darken(palette.accent, .14),
-            "--signal-punch": palette.info,
-            "--signal-punch-soft": palette.infoBg,
-            "--signal-timesheet": chart4,
-            "--signal-timesheet-soft": mix(palette.surface, chart4, .11),
-            "--signal-late": palette.warning,
-            "--signal-late-soft": palette.warningBg,
-            "--signal-early": early,
-            "--signal-early-soft": mix(palette.surface, early, .11),
-            "--signal-short": palette.danger,
-            "--signal-short-soft": palette.dangerBg,
-            "--signal-missing": missing,
-            "--signal-missing-soft": mix(palette.surface, missing, .11)
+            "--chart-heat-1": heat[0],
+            "--chart-heat-2": heat[1],
+            "--chart-heat-3": heat[2],
+            "--chart-heat-4": heat[3],
+            "--chart-heat-5": heat[4],
+            "--chart-heat-low": heat[0],
+            "--chart-heat-high": heat[4],
+            "--signal-punch": restrainedInfo,
+            "--signal-punch-soft": mix(palette.surface, restrainedInfo, .07),
+            "--signal-timesheet": restrainedApproval,
+            "--signal-timesheet-soft": mix(palette.surface, restrainedApproval, .07),
+            "--signal-late": restrainedWarning,
+            "--signal-late-soft": mix(palette.surface, restrainedWarning, .07),
+            "--signal-early": restrainedEarly,
+            "--signal-early-soft": mix(palette.surface, restrainedEarly, .07),
+            "--signal-short": restrainedDanger,
+            "--signal-short-soft": mix(palette.surface, restrainedDanger, .07),
+            "--signal-missing": restrainedMissing,
+            "--signal-missing-soft": mix(palette.surface, restrainedMissing, .07)
         };
 
         Object.entries(tokens).forEach(([name, value]) => set(name, value));
@@ -201,11 +257,13 @@
         grid: cssValue("--chart-grid", "#E5E7EB"),
         axis: cssValue("--chart-axis", "#CBD5E1"),
         muted: cssValue("--chart-muted", "#64748B"),
+        inkSoft: cssValue("--ink-soft", "#475569"),
         ink: cssValue("--chart-ink", "#0F172A"),
         tooltip: cssValue("--chart-tooltip", "#0F172A"),
         tooltipText: cssValue("--chart-tooltip-text", "#F8FAFC"),
         heatLow: cssValue("--chart-heat-low", "#EFF6FF"),
         heatHigh: cssValue("--chart-heat-high", "#1D4ED8"),
+        heatScale: Array.from({ length: 5 }, (_, index) => cssValue(`--chart-heat-${index + 1}`, "#2563EB")),
         surface: cssValue("--surface-raised", "#FFFFFF")
     });
 
@@ -217,12 +275,12 @@
 
         try { localStorage.setItem(storageKey, theme); } catch { }
 
+        // Tokens are installed; notify once. theme-chart-bridge listens for this and repaints
+        // every live chart itself — calling refreshTheme directly here as well (the previous
+        // behavior) repainted every chart a second time on every theme switch for no reason.
         window.dispatchEvent(new CustomEvent("epa-theme-changed", {
             detail: { theme, palette: chartPalette() }
         }));
-
-        window.epaCharts?.refreshTheme?.();
-        window.epaAnalyticsCharts?.refreshTheme?.();
         return theme;
     };
 

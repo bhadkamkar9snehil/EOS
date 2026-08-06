@@ -57,7 +57,7 @@
     border: 1px solid var(--line);
     border-left: 3px solid var(--secondary);
     border-radius: var(--radius);
-    background: var(--surface-raised);
+    background: var(--card-surface);
     box-shadow: var(--shadow-resting);
 }
 .analytics-section-head h2 { margin: 2px 0 3px; color: var(--ink); font-size: 15px; font-weight: 680; }
@@ -84,7 +84,7 @@
     border: 1px solid var(--line);
     border-top: 3px solid var(--line-strong);
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--card-surface);
     box-shadow: var(--shadow-resting);
 }
 .metric-tile.primary { border-top-color: var(--primary); }
@@ -144,7 +144,7 @@
     min-height: 57px;
     padding: 8px;
     border: 1px solid var(--line-soft);
-    background: var(--surface-raised);
+    background: var(--card-surface);
 }
 .signal-summary span { display: block; color: var(--muted); font-size: 8.5px; line-height: 1.25; }
 .signal-summary strong { display: block; margin-top: 4px; color: var(--ink); font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -182,7 +182,7 @@
     padding: 10px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--card-surface);
     box-shadow: var(--shadow-resting);
 }
 .metric-matrix h3 {
@@ -208,7 +208,7 @@
     margin-top: 2px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    background: var(--surface-raised);
+    background: var(--card-surface);
     box-shadow: var(--shadow-resting);
 }
 .history-expansion > summary {
@@ -251,7 +251,7 @@
     padding: 11px 12px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--card-surface);
 }
 .spotlight-panel .card-head h3 { margin: 0; font-size: 12.5px; }
 .spotlight-panel .card-head small { color: var(--muted); font-size: 10px; }
@@ -268,11 +268,11 @@
     border: 1px solid var(--line-soft);
     border-radius: var(--radius-sm);
 }
-.spotlight-metric-groups h4 { margin: 0 0 5px; font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
-.spotlight-metric-groups p { margin: 0; min-height: 23px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line-soft); }
+.spotlight-metric-groups h4 { margin: 0 0 5px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
+.spotlight-metric-groups p { margin: 0; min-height: 25px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line-soft); }
 .spotlight-metric-groups p:first-of-type { border-top: 0; }
-.spotlight-metric-groups span { color: var(--muted); font-size: 10px; }
-.spotlight-metric-groups b { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.spotlight-metric-groups span { color: var(--muted); font-size: 11.5px; }
+.spotlight-metric-groups b { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 1380px) {
     .metric-ribbon { grid-template-columns: repeat(3, minmax(0, 1fr)); }

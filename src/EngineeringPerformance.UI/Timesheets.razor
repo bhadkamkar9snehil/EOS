@@ -33,7 +33,7 @@
                     <small>@FilteredRows.Count of @Rows.Count engineer(s) — click a header to sort</small>
                 </div>
                 <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter by name or team…" />
-                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid" RowClass="@RowSeverityClass">
+                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid timesheet-compliance-grid" RowClass="@RowSeverityClass">
                     <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
                         @context.Name
                     </TemplateColumn>
@@ -144,7 +144,8 @@
     private IReadOnlyList<Analytics.ComplianceRow> _rows = [];
     private IReadOnlyList<Analytics.ComplianceRow>? _filterCache;
     private string? _filterCacheKey;
-    private int _withGaps, _awaitingApproval, _missingDays, _totalExpected, _totalFilled, _probationers;
+    private int _withGaps, _awaitingApproval, _probationers;
+    private decimal _missingDays, _totalExpected, _totalFilled;
     private decimal _pendingHours, _capacityUsed;
 
     private IReadOnlyList<Analytics.ComplianceRow> Rows => _rows;
@@ -168,7 +169,7 @@
 
     // Graduated severity instead of a flat on/off flag: a couple of missed days reads very
     // differently from a full no-show, and the color should say so at a glance.
-    private static string? MissingSeverityClass(int missingDays) => missingDays switch
+    private static string? MissingSeverityClass(decimal missingDays) => missingDays switch
     {
         <= 0 => null,
         <= 3 => "flag-warning",
@@ -188,8 +189,8 @@
     // column than a wall of repeated "0.0"s, and doesn't compete visually with real values.
     private static string Hours(decimal value) => value <= 0 ? "—" : Analytics.Format(value) + " h";
 
-    private int TotalExpected => _totalExpected;
-    private int TotalFilled => _totalFilled;
+    private decimal TotalExpected => _totalExpected;
+    private decimal TotalFilled => _totalFilled;
     private decimal FillRate => _totalExpected == 0 ? 0 : decimal.Round(_totalFilled * 100m / _totalExpected, 1);
     private decimal CapacityUsed => _capacityUsed;
     private int Probationers => _probationers;

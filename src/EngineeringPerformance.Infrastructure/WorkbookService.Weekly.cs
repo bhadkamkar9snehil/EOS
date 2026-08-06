@@ -95,18 +95,23 @@ public sealed partial class WorkbookService
             var approvedLeave = Text(sheet.Cell(row, Col(columns, "Leave status")))
                 .Equals("Approved", StringComparison.OrdinalIgnoreCase);
 
+            // Same weekly-off rule as the monthly reader: Sunday is always off regardless of the
+            // ERP's own tag, and Saturday counts as half a working day.
+            var isSunday = date.DayOfWeek == DayOfWeek.Sunday;
+            var weekWeight = date.DayOfWeek == DayOfWeek.Saturday ? .5m : 1m;
             var accountable = attendDay > 0 &&
                               !approvedLeave &&
+                              !isSunday &&
                               !duty.Equals("woff", StringComparison.OrdinalIgnoreCase) &&
                               !position.Equals("Leave", StringComparison.OrdinalIgnoreCase);
             if (!accountable) continue;
 
-            item.ExpectedDays++;
+            item.ExpectedDays += weekWeight;
             item.PunchHours += Number(sheet.Cell(row, Col(columns, "Punch Duration")));
             item.TimesheetHours += Number(sheet.Cell(row, Col(columns, "Timesheet Hrs")));
 
             if (Text(sheet.Cell(row, Col(columns, "Timesheet"))).Equals("Filled", StringComparison.OrdinalIgnoreCase))
-                item.FilledDays++;
+                item.FilledDays += weekWeight;
             if (Flag(sheet.Cell(row, Col(columns, "Flg Punch not Found")))) item.MissingPunchDays++;
             if (Flag(sheet.Cell(row, Col(columns, "Flg Late Coming")))) item.LateDays++;
             if (Flag(sheet.Cell(row, Col(columns, "Flg Early Going")))) item.EarlyDays++;
@@ -132,8 +137,8 @@ public sealed partial class WorkbookService
         public HashSet<string> Projects { get; } = new(StringComparer.OrdinalIgnoreCase);
         public decimal PunchHours { get; set; }
         public decimal TimesheetHours { get; set; }
-        public int FilledDays { get; set; }
-        public int ExpectedDays { get; set; }
+        public decimal FilledDays { get; set; }
+        public decimal ExpectedDays { get; set; }
         public int MissingPunchDays { get; set; }
         public int LateDays { get; set; }
         public int EarlyDays { get; set; }

@@ -20,11 +20,13 @@
         grid: '#E5E7EB',
         axis: '#CBD5E1',
         muted: '#64748B',
+        inkSoft: '#475569',
         ink: '#0F172A',
         tooltip: '#0F172A',
         tooltipText: '#F8FAFC',
         heatLow: '#EFF6FF',
         heatHigh: '#1D4ED8',
+        heatScale: ['#EFF6FF', '#BFDBFE', '#60A5FA', '#2563EB', '#1E3A8A'],
         surface: '#FFFFFF'
     };
 
@@ -42,6 +44,13 @@
         if (value.includes('warning') || value.includes('high workload')) return p.warning;
         if (value.includes('serious')) return p.serious;
         if (value.includes('critical')) return p.critical;
+        // "Underutilized" is a fixed, theme-independent blue rather than any theme-derived token.
+        // It was first aliased to a positional series color that coincidentally equalled p.good in
+        // every theme (chart-3 IS palette.success), then to p.series[5] (theme info color), which
+        // in several palettes turned out close enough to green in lightness/saturation to still
+        // read as barely-distinguishable at small dot size. A fixed, unambiguous blue can't drift
+        // into looking like green or orange no matter which theme is active.
+        if (value.includes('underutil')) return '#0F6E9E';
         return p.series[index % p.series.length];
     }
 
@@ -67,20 +76,28 @@
             }));
         }
 
+        // A category axis names *what* each row/column is (employee, month, week) — that's an
+        // identity label, same tier as a table's first column, and needs full contrast. A value
+        // axis is a magnitude scale (0-100, hours) — that's the part that should stay muted. Both
+        // were being painted muted regardless of which one actually carried the identity, which
+        // is why employee names on the composition chart read as washed-out instead of legible.
+        // Value-axis ticks (the 0/20/40/60/80/100 scale) still need to actually be read, not just
+        // sit recessively in the layout — p.muted was tuned for decorative/tertiary use and reads
+        // as barely-there on several dark themes. p.inkSoft is the "secondary but legible" tier.
         if (current.xAxis?.length) {
-            patch.xAxis = current.xAxis.map(() => ({
+            patch.xAxis = current.xAxis.map(axis => ({
                 axisLine: { lineStyle: { color: p.axis } },
-                axisLabel: { color: p.muted },
-                nameTextStyle: { color: p.muted },
+                axisLabel: { color: axis.type === 'category' ? p.ink : p.inkSoft },
+                nameTextStyle: { color: p.inkSoft },
                 splitLine: { lineStyle: { color: p.grid } }
             }));
         }
 
         if (current.yAxis?.length) {
-            patch.yAxis = current.yAxis.map(() => ({
+            patch.yAxis = current.yAxis.map(axis => ({
                 axisLine: { lineStyle: { color: p.axis } },
-                axisLabel: { color: p.muted },
-                nameTextStyle: { color: p.muted },
+                axisLabel: { color: axis.type === 'category' ? p.ink : p.inkSoft },
+                nameTextStyle: { color: p.inkSoft },
                 splitLine: { lineStyle: { color: p.grid } }
             }));
         }
@@ -96,7 +113,7 @@
         if (current.visualMap?.length) {
             patch.visualMap = current.visualMap.map(() => ({
                 inRange: {
-                    color: [p.heatLow, p.series[5], p.series[0], p.heatHigh]
+                    color: p.heatScale && p.heatScale.length ? p.heatScale : [p.heatLow, p.series[5], p.series[0], p.heatHigh]
                 }
             }));
         }
