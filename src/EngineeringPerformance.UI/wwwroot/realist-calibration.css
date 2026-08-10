@@ -3,6 +3,13 @@ html[data-skin="realist"] .topbar{position:relative;grid-template-columns:500px 
 html[data-skin="realist"] .realist-control-bank{position:relative;width:100%;min-width:0;grid-template-columns:220px 125px 125px minmax(210px,1fr) 58px}
 html[data-skin="realist"] .topbar-actions{display:none!important}
 
+/* Brand/star and lower console proportions follow the physical reference. */
+html[data-skin="realist"] .atlas-brand{position:relative}
+html[data-skin="realist"] .atlas-brand strong i{position:absolute;right:23px;top:22px;margin:0;vertical-align:0}
+html[data-skin="realist"] .realist-lower-console{grid-template-rows:1fr 48px!important}
+html[data-skin="realist"] .realist-dial{grid-row:1}
+html[data-skin="realist"] .realist-back{grid-row:2}
+
 /* Draw monochrome mechanical glyphs instead of emoji/font-dependent symbols. */
 html[data-skin="realist"] .rcb-icon{position:relative;font-size:0;height:100%}
 html[data-skin="realist"] .rcb-icon::before{content:"";position:absolute;left:11px;top:18px;width:16px;height:15px;border:2px solid #eadbc2;border-radius:2px;box-shadow:0 1px #000}
@@ -20,6 +27,12 @@ html[data-skin="realist"] .attention-lens .atlas-panel-head h2::after{margin-lef
 
 /* Fasteners are CSS hardware, not injected DOM. */
 html[data-skin="realist"] :is(.atlas-pulse,.performance-field,.attention-lens,.movement-river,.operational-fingerprint,.workbench-header,.timesheet-pulse,.timesheet-ledger,.worksheet-intro,.people-command,.people-add-drawer,.people-roster,.collaboration-pulse,.peer-matrix-wrap,.peer-standings,.peer-comments,.primary-pane,.activity-pane,.export-lane,.template-lane,.template-contract,.operational-scoring-layout,.scoring-grid,.settings-card,.appearance-control,.skin-choice,.portrait-history,.portrait-evidence,.portrait-lower>section)::before{content:"";position:absolute;z-index:8;inset:4px;pointer-events:none;border-radius:8px;background:radial-gradient(circle at 6px 6px,#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px),radial-gradient(circle at calc(100% - 6px) 6px,#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px),radial-gradient(circle at 6px calc(100% - 6px),#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px),radial-gradient(circle at calc(100% - 6px) calc(100% - 6px),#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px);box-shadow:inset 0 0 0 1px rgba(87,76,60,.32)}
+
+/* Team score captions sit inside their physical instruments, not below them. */
+html[data-skin="realist"] .pulse-score{position:relative}
+html[data-skin="realist"] .pulse-score-meta{position:static}
+html[data-skin="realist"] .pulse-score-meta span:first-child{position:absolute;left:29px;bottom:12px}
+html[data-skin="realist"] .pulse-score-meta span:last-child{position:absolute;left:151px;bottom:12px;width:78px;text-align:center}
 
 /* Field legend as a mounted little plate, without extra Blazor DOM. */
 html[data-skin="realist"] .performance-field::after{content:"●  CURRENT (SIZE = SCORE)\A○  PREVIOUS-MONTH POSITION";white-space:pre;position:absolute;right:26px;bottom:28px;z-index:6;min-width:165px;padding:8px 11px;border:3px solid #625b50;border-radius:6px;background:url("realist-grain.svg"),linear-gradient(#e8decd,#c9bba5);background-blend-mode:soft-light,normal;box-shadow:0 3px 5px rgba(0,0,0,.3),inset 0 1px #fff6e8,inset 0 -2px rgba(73,58,40,.22);color:#282a26;font-size:9px;line-height:1.9;text-transform:uppercase;letter-spacing:.03em}
@@ -49,4 +62,5 @@ html[data-skin="realist"] :is(.workbench-page,.portrait-page,.collaboration-page
  html[data-skin="realist"] .topbar{grid-template-columns:390px minmax(0,1fr)}
  html[data-skin="realist"] .realist-control-bank{grid-template-columns:190px 105px 105px minmax(180px,1fr) 52px}
  html[data-skin="realist"] .attention-list::before{left:49%;font-size:7.5px}
+ html[data-skin="realist"] .pulse-score-meta span:last-child{left:139px}
 }
