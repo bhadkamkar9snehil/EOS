@@ -84,3 +84,81 @@
     .nav-rail button { font-size:13.25px; }
     .timesheet-ledger .epa-grid tbody td,.route-data .epa-grid tbody td { font-size:12.75px; }
 }
+
+/* --------------------------------------------------------------------------
+   1920×1080 Performance Atlas acceptance pass
+   The first real Windows/WebView capture showed three concrete composition issues:
+   a too-narrow Attention Lens forced horizontal overflow, the first viewport ended
+   early and left dead canvas, and the pulse/labels remained at utility-UI scale.
+   These rules correct those measured failures rather than adding decorative chrome.
+   -------------------------------------------------------------------------- */
+.content.route-overview { overflow-y:auto; overflow-x:hidden; }
+.atlas-page {
+    min-height:calc(100vh - 98px);
+    display:grid;
+    grid-template-rows:auto minmax(480px,1.45fr) minmax(330px,.95fr) auto;
+    align-content:stretch;
+}
+
+.atlas-pulse { min-height:184px; grid-template-columns:205px minmax(350px,1.5fr) minmax(310px,1.05fr) 225px 150px; padding-top:24px; padding-bottom:20px; }
+.pulse-score-main strong { font-size:66px; }
+.pulse-score-main span { font-size:38px; }
+.pulse-heading { font-size:11.5px; margin-bottom:16px; }
+.score-axis-dot { width:10px; height:10px; top:24px; }
+.score-bands { font-size:10.5px; }
+.score-bands b { font-size:14px; }
+.trend-mini label { font-size:10.5px; }
+.trend-mini strong { font-size:23px; }
+.atlas-spark { height:36px; }
+.readiness-light span { height:30px; font-size:10.25px; line-height:1.15; white-space:normal; overflow:visible; }
+.readiness-light i { width:24px; height:24px; }
+.pulse-pressure strong { font-size:15px; }
+.pressure-bars i { width:6px; }
+
+.atlas-primary { grid-template-columns:minmax(0,2fr) minmax(420px,1fr); min-height:480px; }
+.performance-field { display:flex; flex-direction:column; }
+#atlas-field { flex:1 1 auto; min-height:420px; height:auto; }
+.atlas-panel-head { margin-bottom:11px; }
+.atlas-panel-head h2 { font-size:15px; }
+.atlas-panel-head small { font-size:11.5px; }
+.focus-chip { font-size:11px; padding:5px 8px; background:transparent; }
+
+.attention-lens { padding-left:20px; padding-right:20px; }
+.attention-row {
+    grid-template-columns:24px 40px minmax(86px,1fr) 54px 112px 82px;
+    gap:8px;
+    min-height:72px;
+}
+.attention-avatar { width:38px; height:38px; font-size:12px; }
+.attention-rank { font-size:21px; }
+.attention-person strong { font-size:13.25px; }
+.attention-person small { font-size:10.75px; }
+.attention-score strong { font-size:23px; color:var(--atlas-petrol); }
+.attention-row:nth-child(1) .attention-score strong { color:var(--critical); }
+.attention-row:nth-child(2) .attention-score strong,
+.attention-row:nth-child(3) .attention-score strong { color:var(--atlas-orange); }
+.fingerprint-mini { gap:4px; }
+.fingerprint-mini i { height:24px; }
+.rhythm-mini { height:31px; gap:2px; }
+.rhythm-mini i { width:3px; }
+
+.atlas-secondary { min-height:330px; }
+#atlas-river { height:272px; }
+.fingerprint-legend { font-size:10.5px; gap:15px; }
+.fingerprint-head { font-size:10.5px; min-height:30px; }
+.fingerprint-row { min-height:46px; }
+.fingerprint-row label { font-size:12px; }
+.fingerprint-row strong { font-size:13px; }
+.atlas-evidence { min-height:78px; }
+.evidence-link strong { font-size:13px; }
+.evidence-link small { font-size:10.75px; }
+
+@media (max-width:1500px) {
+    .atlas-pulse { grid-template-columns:180px minmax(300px,1.4fr) minmax(270px,1fr) 200px 135px; padding-left:20px; padding-right:20px; }
+    .pulse-distribution,.pulse-trends,.pulse-readiness,.pulse-pressure { padding-left:15px; padding-right:15px; }
+    .atlas-primary { grid-template-columns:minmax(0,1.75fr) minmax(390px,1fr); }
+    .performance-field,.attention-lens { padding-left:20px; padding-right:20px; }
+    .attention-row { grid-template-columns:22px 36px minmax(78px,1fr) 50px 100px 68px; gap:6px; }
+    .attention-avatar { width:34px; height:34px; }
+    .rhythm-mini i { width:2px; }
+}
