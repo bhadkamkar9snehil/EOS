@@ -1,125 +1,143 @@
 @page "/peer-insights"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
-@inject IJSRuntime JS
 @inject AppState State
 @inject NavigationManager Navigation
-@implements IAsyncDisposable
+@implements IDisposable
 
-@* Full-depth peer review view: the whole team, every dimension, every comment.
-   Overview's Peer Review Network card is the summary; this is the drill-down. *@
-
-<div class="overview">
+<div class="collaboration-page">
     @if (Summary.TotalFeedback == 0)
     {
         <div class="empty-state">
             <h2>No peer feedback for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
-            <p>Generate review workbooks on the Templates screen — each carries a Peer Review sheet listing the whole team — then upload the completed workbooks (or a ZIP of them) into the Engineer reviews input on Data imports.</p>
-            <button class="action" @onclick='() => Navigation.NavigateTo("/templates")'>Go to templates</button>
+            <p>Generate review workbooks on the Templates screen, collect the completed sheets, and upload them through Data imports.</p>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/templates")'>Go to review templates</button>
         </div>
     }
     else
     {
-        <div class="kpi-row">
-            @Kpi("Total feedback", Summary.TotalFeedback.ToString(), "Entries recorded this month")
-            @Kpi("Unique reviewers", Summary.UniqueReviewers.ToString(), "Engineers who submitted at least one rating")
-            @Kpi("People reviewed", Summary.PeopleReviewed.ToString(), "Engineers who received at least one rating")
-            @Kpi("Average rating", Analytics.Format(Summary.AverageRating, "0.00"), "Across all dimensions and reviews")
-            @Kpi("Feedback / person", Analytics.Format(Summary.FeedbackPerReviewer), "Entries per active reviewer")
-            @Kpi("Engagement", Analytics.Format(Summary.EngagementScore) + " / 10", "vs a full round-robin ceiling")
-        </div>
+        <header class="workbench-header">
+            <div>
+                <h2>Collaboration atlas</h2>
+                <p>Coverage is shown as a reviewer × colleague matrix. Dense relationships and blind spots are visible without untangling a network graph.</p>
+            </div>
+            <div class="workbench-summary">
+                <div><span>Month</span><strong>@State.SelectedMonth.ToString("MMM yy")</strong></div>
+            </div>
+        </header>
 
-        <section class="card wide">
-            <div class="card-head"><h2>Peer review network</h2><small>@State.SelectedMonth.ToString("MMMM yyyy") — every reviewer/subject pair</small></div>
-            <div class="network-layout">
-                <div id="pi-network" class="echart network-large"></div>
-                <div class="network-stats">
-                    @if (Summary.HighestRated is not null)
+        <section class="collaboration-pulse" aria-label="Peer review pulse">
+            <div><label>Feedback entries</label><strong>@Summary.TotalFeedback</strong></div>
+            <div><label>Reviewers</label><strong>@Summary.UniqueReviewers</strong></div>
+            <div><label>People reviewed</label><strong>@Summary.PeopleReviewed</strong></div>
+            <div><label>Average rating</label><strong>@Analytics.Format(Summary.AverageRating, "0.00")</strong></div>
+            <div><label>Engagement</label><strong>@Analytics.Format(Summary.EngagementScore) / 10</strong></div>
+        </section>
+
+        <section class="collaboration-grid">
+            <div class="peer-matrix-wrap">
+                <div class="atlas-panel-head">
+                    <div><h2>Review coverage matrix</h2><small>Rows review columns · darker cells contain more recorded feedback</small></div>
+                </div>
+                <div class="peer-matrix" style="@PeerMatrixStyle">
+                    <span class="pm-label">Reviewer ↓ / colleague →</span>
+                    @foreach (var subject in PeerNames)
                     {
-                        <div class="network-highlight"><small>Highest rated</small><strong>@Summary.HighestRated.Name</strong><span>@Analytics.Format(Summary.HighestRated.Average, "0.00") avg · @Summary.HighestRated.ReviewsReceived reviews</span></div>
+                        <span class="pm-label" title="@subject">@Analytics.Initials(subject)</span>
                     }
-                    @if (Summary.MostActiveReviewer is not null)
+
+                    @foreach (var reviewer in PeerNames)
                     {
-                        <div class="network-highlight"><small>Most active reviewer</small><strong>@Summary.MostActiveReviewer.Name</strong><span>@Summary.MostActiveReviewer.ReviewsGiven reviews given</span></div>
-                    }
-                    @if (LeastReviewed is not null)
-                    {
-                        <div class="network-highlight"><small>Least visible</small><strong>@LeastReviewed.Name</strong><span>@LeastReviewed.ReviewsReceived received</span></div>
+                        <strong class="pm-label" title="@reviewer">@reviewer</strong>
+                        @foreach (var subject in PeerNames)
+                        {
+                            var count = PairCount(reviewer, subject);
+                            if (PersonName.Matches(reviewer, subject))
+                            {
+                                <span class="pm-cell" title="Self-review is not part of the peer matrix">·</span>
+                            }
+                            else if (count == 0)
+                            {
+                                <span class="pm-cell" title="@reviewer → @subject: no peer feedback">—</span>
+                            }
+                            else
+                            {
+                                <button type="button" class="pm-cell has" style="--v:@PairIntensity(count)" title="@reviewer → @subject: @count feedback entr@(count == 1 ? "y" : "ies")" @onclick="() => Spotlight(subject)">@count</button>
+                            }
+                        }
                     }
                 </div>
             </div>
-            <p class="chart-note">Drag nodes to untangle. Node size is total feedback given plus received. Click a node to open that engineer's profile.</p>
+
+            <aside class="peer-standings">
+                <div class="atlas-panel-head"><div><h2>Peer signal</h2><small>Average rating received</small></div></div>
+                <ol>
+                    @for (var i = 0; i < Breakdown.Count; i++)
+                    {
+                        var row = Breakdown[i];
+                        <li @onclick="() => Spotlight(row.Name)" title="Open @row.Name">
+                            <span>@(i + 1)</span>
+                            <span class="roster-read stack"><strong>@row.Name</strong><small>@row.Peer.ReceivedCount received · @row.Peer.GivenCount given</small></span>
+                            <b class="@(row.Peer.AverageReceived >= 4 ? "good" : row.Peer.AverageReceived >= 3 ? "warning" : row.Peer.ReceivedCount == 0 ? null : "serious")">@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.AverageReceived, "0.00"))</b>
+                        </li>
+                    }
+                </ol>
+
+                @if (Summary.MostActiveReviewer is not null)
+                {
+                    <div class="network-highlight"><small>Most active reviewer</small><strong>@Summary.MostActiveReviewer.Name</strong><span>@Summary.MostActiveReviewer.ReviewsGiven reviews given</span></div>
+                }
+                @if (LeastReviewed is not null)
+                {
+                    <div class="network-highlight"><small>Least visible</small><strong>@LeastReviewed.Name</strong><span>@LeastReviewed.ReviewsReceived received</span></div>
+                }
+            </aside>
         </section>
 
-        <div class="overview-grid">
-            <section class="card wide">
-                <div class="card-head"><h2>Standings</h2><small>Sorted by average rating received</small></div>
-                <div class="performance-table peer">
-                    <div class="performance-head">
-                        <span>Engineer</span><span>Avg received</span><span>Collaboration</span><span>Communication</span><span>Reliability</span><span>Technical help</span><span>Received</span><span>Given</span>
-                    </div>
-                    @foreach (var row in Breakdown)
+        <section class="peer-comments">
+            <div class="atlas-panel-head"><div><h2>Written evidence</h2><small>@AllComments.Count comments</small></div></div>
+            @if (AllComments.Count == 0)
+            {
+                <p class="chart-note">No reviewer left a written comment this month.</p>
+            }
+            else
+            {
+                <ul class="comment-list grid">
+                    @foreach (var c in AllComments)
                     {
-                        <div class="performance-row clickable" @onclick="() => Spotlight(row.Name)" title="View profile">
-                            <strong>@row.Name</strong>
-                            <span class="score-cell"><b class="@(row.Peer.AverageReceived >= 4 ? "good" : row.Peer.AverageReceived >= 3 ? "warning" : row.Peer.ReceivedCount == 0 ? "" : "serious")">@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.AverageReceived, "0.00"))</b></span>
-                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.Collaboration, "0.00"))</span>
-                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.Communication, "0.00"))</span>
-                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.Reliability, "0.00"))</span>
-                            <span>@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.TechnicalHelp, "0.00"))</span>
-                            <span>@row.Peer.ReceivedCount</span>
-                            <span>@row.Peer.GivenCount</span>
-                        </div>
+                        <li><strong>@c.ReviewerName → @c.SubjectName</strong><p>@c.Comment</p></li>
                     }
-                </div>
-            </section>
-
-            <section class="card wide">
-                <div class="card-head"><h2>Comments</h2><small>@AllComments.Count with written feedback</small></div>
-                @if (AllComments.Count == 0)
-                {
-                    <p class="chart-note">No reviewer left a comment this month.</p>
-                }
-                else
-                {
-                    <ul class="comment-list grid">
-                        @foreach (var c in AllComments)
-                        {
-                            <li><strong>@c.ReviewerName → @c.SubjectName</strong><p>@c.Comment</p></li>
-                        }
-                    </ul>
-                }
-            </section>
-        </div>
+                </ul>
+            }
+        </section>
     }
 </div>
 
 @if (_spotlightName is not null)
 {
     <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="State.SelectedMonth"
-                        Item="State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
-                        TeamRadar="Analytics.Radar(State.Performance)" TrendMonths="[]" TrendValues="[]"
-                        Peer="Analytics.PeerBreakdownFor(State.PeerReviews, _spotlightName)"
-                        Alerts="[]"
-                        OnClose="() => _spotlightName = null"
-                        OnOpenProfile='name => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}")' />
+                       Item="State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
+                       TeamRadar="Analytics.Radar(State.Performance)" TrendMonths="[]" TrendValues="[]"
+                       Peer="Analytics.PeerBreakdownFor(State.PeerReviews, _spotlightName)"
+                       Alerts="[]"
+                       OnClose="() => _spotlightName = null"
+                       OnOpenProfile='name => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}")' />
 }
 
 @code {
     private string? _spotlightName;
-    private string? _renderedSignature;
-    private bool _chartsPending;
-    private DotNetObjectReference<PeerInsights>? _selfRef;
-
-    /// <summary>
-    /// Called from charts.js when the network chart's node is clicked. Unlike an @onclick
-    /// handler, a JS-invoked JSInvokable method does not auto-render — needs this explicitly.
-    /// </summary>
-    [JSInvokable]
-    public void DrilldownTo(string name) { Spotlight(name); StateHasChanged(); }
 
     private Analytics.PeerSummary Summary => Analytics.Peers(State.PeerReviews);
     private Analytics.PeerStanding? LeastReviewed => Summary.Standings.Count == 0 ? null : Summary.Standings.OrderBy(x => x.ReviewsReceived).ThenBy(x => x.Name).First();
+
+    private string[] PeerNames => State.PeerReviews
+        .SelectMany(x => new[] { x.ReviewerName, x.SubjectName })
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    private string PeerMatrixStyle => $"grid-template-columns:160px repeat({Math.Max(1, PeerNames.Length)},34px)";
 
     private IReadOnlyList<(string Name, Analytics.PeerBreakdown Peer)> Breakdown => State.Performance
         .Select(x => x.EmployeeName)
@@ -127,6 +145,7 @@
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Select(name => (name, Analytics.PeerBreakdownFor(State.PeerReviews, name)))
         .OrderByDescending(x => x.Item2.AverageReceived)
+        .ThenByDescending(x => x.Item2.ReceivedCount)
         .ToArray();
 
     private IReadOnlyList<PeerReviewItem> AllComments => State.PeerReviews
@@ -134,51 +153,12 @@
         .OrderBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase)
         .ToArray();
 
+    private int PairCount(string reviewer, string subject) => State.PeerReviews.Count(x => PersonName.Matches(x.ReviewerName, reviewer) && PersonName.Matches(x.SubjectName, subject));
+    private static string PairIntensity(int count) => Math.Clamp(24 + count * 18, 24, 82) + "%";
+
     private void Spotlight(string name) => _spotlightName = PersonName.Normalize(name);
 
     protected override void OnInitialized() => State.Changed += OnStateChanged;
-
-    // Routed pages aren't re-rendered just because MainLayout (which owns the month picker) is —
-    // @Body doesn't cascade parameters the way an explicitly-declared child component would, so
-    // each page that reads AppState reactively has to ask for its own re-render on Changed.
-    private void OnStateChanged()
-    {
-        CheckChartsPending();
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void CheckChartsPending()
-    {
-        var signature = $"{State.PeerReviews.Count}|{State.SelectedMonth:yyyyMM}";
-        if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
-    }
-
-    protected override void OnParametersSet() => CheckChartsPending();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_chartsPending || Summary.TotalFeedback == 0) return;
-        _chartsPending = false;
-
-        _selfRef ??= DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("epaCharts.registerDrilldown", _selfRef);
-
-        var graph = Analytics.Network(State.PeerReviews);
-        await JS.InvokeVoidAsync("epaCharts.network", "pi-network",
-            graph.Nodes.Select(n => new { name = n.Name, received = n.Received, given = n.Given, tooltip = n.Tooltip, initials = Analytics.Initials(n.Name) }).ToArray(),
-            graph.Links.Select(l => new { source = l.Source, target = l.Target, value = l.Value, tooltip = l.Tooltip }).ToArray(),
-            graph.HubName);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        State.Changed -= OnStateChanged;
-        try { await JS.InvokeVoidAsync("epaCharts.dispose", "pi-network"); } catch (JSDisconnectedException) { }
-        _selfRef?.Dispose();
-    }
-
-    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi" title="@hint">
-        <span class="kpi-label">@label</span>
-        <span class="kpi-value"><strong>@value</strong></span>
-    </div>;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
 }
