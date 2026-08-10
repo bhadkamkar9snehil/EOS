@@ -5,11 +5,14 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<PageTitle>Engineering Performance Analyzer</PageTitle>
+<PageTitle>EOS — Engineering Performance</PageTitle>
 
 <div class="app-shell">
     <aside class="nav-rail">
-        <div class="brand"><img src="_content/EngineeringPerformance.UI/app-icon.png" alt="" /><span>Engineering<br />Performance</span></div>
+        <div class="brand atlas-brand">
+            <strong>EOS <i>✦</i></strong>
+            <small>Engineering performance analyzer</small>
+        </div>
         <nav>
             <span class="nav-group-label">Analyze</span>
             @NavButton("overview", "Overview", Icon.Overview)
@@ -18,21 +21,33 @@
             @NavButton("reports", "Reports", Icon.Reports)
 
             <span class="nav-group-label">Manage</span>
-            @NavButton("imports", "Data imports", Icon.Imports)
-            @NavButton("data", "Imported data", Icon.DataBrowser)
-            @NavButton("employees", "Employees", Icon.Employees)
-            @NavButton("templates", "Templates", Icon.Templates)
+            @NavButton("imports", "Data Imports", Icon.Imports)
+            @NavButton("data", "Imported Data", Icon.DataBrowser)
+            @NavButton("employees", "Employees & Teams", Icon.Employees)
+            @NavButton("templates", "Review Templates", Icon.Templates)
 
             <span class="nav-group-label">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
         </nav>
-        <div class="nav-footer"><button class="@(CurrentRoute == "settings" ? "selected" : null)" @onclick='() => Navigation.NavigateTo("/settings")'><b>@((MarkupString)Icon.Settings)</b><span>Settings</span></button><small>Local database</small></div>
+        <div class="nav-footer">
+            <button class="@(CurrentRoute == "settings" ? "selected" : null)" @onclick='() => Navigation.NavigateTo("/settings")'>
+                <b>@((MarkupString)Icon.Settings)</b><span>Settings</span>
+            </button>
+            <small>Local analysis · SQLite</small>
+        </div>
     </aside>
 
     <section class="workspace">
         <header class="topbar">
             <div class="page-heading"><h1>@PageTitleText</h1></div>
             <div class="topbar-actions">
+                <div class="month-control">
+                    <span>Reporting month</span>
+                    <button title="Previous month" aria-label="Previous month" @onclick="PreviousMonthAsync">‹</button>
+                    <strong>@State.SelectedMonth.ToString("MMMM yyyy")</strong>
+                    <button title="Next month" aria-label="Next month" @onclick="NextMonthAsync">›</button>
+                </div>
+
                 <div class="global-search">
                     <button type="button"
                             class="icon-button @(_searchOpen ? "selected" : null)"
@@ -78,22 +93,26 @@
                     }
                 </div>
 
-                <div class="month-control">
-                    <span>Reporting month</span><button title="Previous month" @onclick="PreviousMonthAsync">‹</button><strong>@State.SelectedMonth.ToString("MMMM yyyy")</strong><button title="Next month" @onclick="NextMonthAsync">›</button>
+                <div class="readiness" title="System and review inputs available for the selected month">
+                    <span>Readiness</span><strong>@State.ReadyCount / 4 inputs</strong>
                 </div>
-                <div class="readiness"><span>Readiness</span><strong>@State.ReadyCount / 4 inputs</strong></div>
             </div>
         </header>
 
         <div class="toast-slot">
             @if (!string.IsNullOrEmpty(State.Message))
-            { <div class="toast @(State.IsError ? "error" : "success")">@State.Message<button @onclick="State.ClearMessage">×</button></div> }
+            {
+                <div class="toast @(State.IsError ? "error" : "success")">@State.Message<button @onclick="State.ClearMessage">×</button></div>
+            }
         </div>
 
         <main class="@($"content route-{CurrentRoute}")">
             @Body
         </main>
-        <footer><span>Data stored locally in SQLite</span><span>Last refreshed @State.LastRefresh.ToString("h:mm tt")</span></footer>
+        <footer>
+            <span>DATA FRESHNESS · refreshed @State.LastRefresh.ToString("h:mm tt")</span>
+            <span>Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+        </footer>
     </section>
 </div>
 
@@ -158,11 +177,17 @@
 
     private string PageTitleText => CurrentRoute switch
     {
-        "imports" => "Data imports", "data" => "Imported data", "timesheets" => "Timesheets & approvals", "employees" => "Employees & teams",
-        "peer-insights" => "Peer Insights",
-        "templates" => "Review templates", "reports" => "Reports", "scoring" => "Scoring", "settings" => "Settings",
-        "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee",
-        _ => "Overview"
+        "imports" => "Data imports",
+        "data" => "Imported data",
+        "timesheets" => "Timesheets",
+        "employees" => "Employees & teams",
+        "peer-insights" => "Peer insights",
+        "templates" => "Review templates",
+        "reports" => "Reports",
+        "scoring" => "Scoring",
+        "settings" => "Settings",
+        "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee portrait",
+        _ => "Team performance"
     };
 
     private IReadOnlyList<SearchResult> SearchResults
@@ -223,7 +248,8 @@
         await State.NextMonthAsync();
     }
 
-    private RenderFragment NavButton(string route, string label, string icon) => @<button class="@(CurrentRoute == route ? "selected" : null)" @onclick="() => GoTo(route)"><b>@((MarkupString)icon)</b><span>@label</span></button>;
+    private RenderFragment NavButton(string route, string label, string icon) =>
+        @<button class="@(CurrentRoute == route ? "selected" : null)" @onclick="() => GoTo(route)"><b>@((MarkupString)icon)</b><span>@label</span></button>;
 
     private void GoTo(string route) => Navigation.NavigateTo($"/{route}");
 
