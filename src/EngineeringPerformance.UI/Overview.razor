@@ -44,10 +44,10 @@
                                 @onclick="() => Focus(item.EmployeeName)"></button>
                     }
                     <div class="score-bands">
-                        <span><em>0–49</em><b>@BandCount("critical")</b></span>
-                        <span><em>50–64</em><b>@(BandCount("serious") + BandCount("warning"))</b></span>
-                        <span><em>65–79</em><b>@State.Performance.Count(x => x.OperationalScore >= 65 && x.OperationalScore < 80)</b></span>
-                        <span><em>80–100</em><b>@State.Performance.Count(x => x.OperationalScore >= 80)</b></span>
+                        <span><em>0–49</em><b>@BinCount(0, 50)</b></span>
+                        <span><em>50–64</em><b>@BinCount(50, 65)</b></span>
+                        <span><em>65–79</em><b>@BinCount(65, 80)</b></span>
+                        <span><em>80–100</em><b>@BinCount(80, 101)</b></span>
                     </div>
                 </div>
             </div>
@@ -75,10 +75,7 @@
                 <h2 class="pulse-heading">Alert pressure</h2>
                 <strong>@AlertPressureLabel</strong>
                 <div class="pressure-bars" aria-label="@Alerts.Count open analytical alerts">
-                    @for (var i = 0; i < 12; i++)
-                    {
-                        <i class="@(i < AlertPressureBars ? "on" : null)"></i>
-                    }
+                    @for (var i = 0; i < 12; i++) { <i class="@(i < AlertPressureBars ? "on" : null)"></i> }
                 </div>
                 <small>@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</small>
             </div>
@@ -87,7 +84,7 @@
         <section class="atlas-primary">
             <div class="performance-field">
                 <div class="atlas-panel-head">
-                    <div><h2>Workforce performance field</h2><small>X: punch / accountable hours · Y: utilization</small></div>
+                    <div><h2>Workforce performance field</h2><small>X: accountable punch hours · Y: utilization</small></div>
                     @if (FocusItem is not null)
                     {
                         <span class="focus-chip"><b>@FocusItem.EmployeeName</b><button @onclick="OpenFocusedPortrait">Open portrait →</button><button title="Clear focus" @onclick="ClearFocus">×</button></span>
@@ -114,10 +111,7 @@
                                 @MiniFingerprint(row.Item.Utilization, row.Item.HasSummaryData)
                             </span>
                             <span class="rhythm-mini" title="Weekly attendance discipline">
-                                @foreach (var value in WeeklyRhythm(row.Name))
-                                {
-                                    <i style="--v:@CssPct(value)"></i>
-                                }
+                                @foreach (var value in WeeklyRhythm(row.Name)) { <i style="--v:@CssPct(value)"></i> }
                             </span>
                             <button class="attention-open" title="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">→</button>
                         </li>
@@ -138,7 +132,7 @@
                     <div class="fingerprint-legend"><span class="median"><i></i>Median</span><span class="quartile"><i></i>Middle 50%</span><span><i></i>@(FocusItem is null ? "Team" : FocusItem.EmployeeName)</span></div>
                 </div>
                 <div class="fingerprint-table">
-                    <div class="fingerprint-head"><span>Dimension</span><span>Percent / index</span><span>Target</span></div>
+                    <div class="fingerprint-head"><span>Dimension</span><span>Distribution / target</span><span>Current</span></div>
                     @foreach (var metric in FingerprintMetrics)
                     {
                         <div class="fingerprint-row">
@@ -146,9 +140,10 @@
                             <span class="fingerprint-track" title="@metric.Tooltip">
                                 <i class="fingerprint-quartile" style="--q1:@CssPct(metric.Q1);--qw:@CssPct(metric.Q3 - metric.Q1)"></i>
                                 <i class="fingerprint-median" style="--median:@CssPct(metric.Median)"></i>
+                                <i class="fingerprint-target" style="--target:@CssPct(metric.Target)"></i>
                                 <i class="fingerprint-value" style="--value:@CssPct(metric.Value)"></i>
                             </span>
-                            <strong>@metric.Display</strong>
+                            <strong title="Target: @metric.TargetLabel">@metric.Display</strong>
                         </div>
                     }
                 </div>
@@ -164,43 +159,22 @@
     }
 </div>
 
-@if (_spotlightName is not null)
-{
-    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="State.SelectedMonth"
-                       Item="State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
-                       TeamRadar="Analytics.Radar(State.Performance)"
-                       TrendMonths="HeatmapMonths" TrendValues="SpotlightTrend"
-                       Peer="Analytics.PeerBreakdownFor(State.PeerReviews, _spotlightName)"
-                       Alerts="Alerts.Where(x => PersonName.Matches(x.EmployeeName, _spotlightName)).ToArray()"
-                       OnClose="() => _spotlightName = null"
-                       OnOpenProfile="OpenPortrait" />
-}
-
 @code {
-    private static readonly string[] Bands = ["good", "warning", "serious", "critical"];
     private static readonly string[] AtlasChartIds = ["pulse-attendance", "pulse-completion", "pulse-utilization", "atlas-field", "atlas-river"];
-
     private string? _focusName;
-    private string? _spotlightName;
     private string? _renderedSignature;
     private bool _chartsPending;
     private DotNetObjectReference<Overview>? _selfRef;
     private OperationalScoringSettings _settings = OperationalScoringSettings.Default;
-
     private IReadOnlyList<Anomaly> _alerts = [];
     private Analytics.PeerSummary? _peers;
     private Dictionary<string, decimal> _previousScores = new(StringComparer.OrdinalIgnoreCase);
     private List<DateTime> _heatmapMonths = [];
     private decimal _teamScore;
     private IReadOnlyList<AttentionRow> _attentionRows = [];
-    private readonly Dictionary<string, int> _bandCounts = new(StringComparer.Ordinal);
 
     [JSInvokable]
-    public void DrilldownTo(string name)
-    {
-        Focus(name);
-        StateHasChanged();
-    }
+    public void DrilldownTo(string name) { Focus(name); StateHasChanged(); }
 
     protected override async Task OnInitializedAsync()
     {
@@ -217,52 +191,32 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected override void OnParametersSet()
-    {
-        RecomputeDerived();
-        CheckChartsPending();
-    }
+    protected override void OnParametersSet() { RecomputeDerived(); CheckChartsPending(); }
 
     private void RecomputeDerived()
     {
-        var previous = Previous;
         _previousScores = State.History
-            .Where(x => x.Year == previous.Year && x.Month == previous.Month)
+            .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
             .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
-
         _alerts = Analytics.Anomalies(State.Performance, _previousScores);
         _peers = Analytics.Peers(State.PeerReviews);
         _heatmapMonths = State.History.Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).TakeLast(6).ToList();
         _teamScore = State.Performance.Count == 0 ? 0 : decimal.Round(State.Performance.Average(x => x.OperationalScore), 1);
 
-        _bandCounts.Clear();
-        foreach (var band in Bands) _bandCounts[band] = 0;
-        foreach (var item in State.Performance)
+        _attentionRows = State.Performance.Select(item =>
         {
-            var band = Analytics.ScoreBand(item.OperationalScore);
-            _bandCounts[band] = _bandCounts.TryGetValue(band, out var c) ? c + 1 : 1;
-        }
-
-        _attentionRows = State.Performance
-            .Select(item =>
-            {
-                var delta = PreviousScores.TryGetValue(item.EmployeeName, out var prev) ? item.OperationalScore - prev : (decimal?)null;
-                var exceptions = ExceptionCount(item);
-                var employeeAlerts = Alerts.Where(x => PersonName.Matches(x.EmployeeName, item.EmployeeName)).ToArray();
-                var alertWeight = employeeAlerts.Sum(x => x.Level == AlertLevel.Critical ? 14m : x.Level == AlertLevel.Serious ? 7m : 3m);
-                var risk = (100m - item.OperationalScore) * .55m
-                           + (delta is < 0 ? Math.Abs(delta.Value) * 1.6m : 0)
-                           + exceptions * 2.2m
-                           + Math.Min(50m, Math.Abs(item.ReconciliationVariance)) * .32m
-                           + (!item.HasSummaryData ? 12m : 0)
-                           + alertWeight;
-                return new AttentionRow(item.EmployeeName, item.OperationalScore, delta, risk, item);
-            })
-            .OrderByDescending(x => x.Risk)
-            .ThenBy(x => x.Score)
-            .Take(5)
-            .ToArray();
+            var delta = PreviousScores.TryGetValue(item.EmployeeName, out var prev) ? item.OperationalScore - prev : (decimal?)null;
+            var employeeAlerts = Alerts.Where(x => PersonName.Matches(x.EmployeeName, item.EmployeeName)).ToArray();
+            var alertWeight = employeeAlerts.Sum(x => x.Level == AlertLevel.Critical ? 14m : x.Level == AlertLevel.Serious ? 7m : 3m);
+            var risk = (100m - item.OperationalScore) * .55m
+                     + (delta is < 0 ? Math.Abs(delta.Value) * 1.6m : 0)
+                     + ExceptionCount(item) * 2.2m
+                     + Math.Min(50m, Math.Abs(item.ReconciliationVariance)) * .32m
+                     + (!item.HasSummaryData ? 12m : 0)
+                     + alertWeight;
+            return new AttentionRow(item.EmployeeName, item.OperationalScore, delta, risk, item);
+        }).OrderByDescending(x => x.Risk).ThenBy(x => x.Score).Take(5).ToArray();
 
         if (_focusName is null || !State.Performance.Any(x => PersonName.Matches(x.EmployeeName, _focusName)))
             _focusName = _attentionRows.FirstOrDefault()?.Name ?? State.Performance.OrderBy(x => x.OperationalScore).FirstOrDefault()?.EmployeeName;
@@ -271,11 +225,7 @@
     private void CheckChartsPending()
     {
         var signature = $"{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}|{State.History.Count}|{State.WeeklyPerformance.Count}|{State.SelectedMonth:yyyyMM}|{_focusName}|{_settings.Total:0.###}";
-        if (signature != _renderedSignature)
-        {
-            _renderedSignature = signature;
-            _chartsPending = true;
-        }
+        if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -284,7 +234,6 @@
         _chartsPending = false;
         _selfRef ??= DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("epaAtlas.registerDrilldown", _selfRef);
-
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-attendance", MetricTrend(x => x.AttendanceDisciplineScore, false), "attendance");
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-completion", MetricTrend(x => x.TimesheetCompletionScore, true), "timesheet");
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-utilization", MetricTrend(x => x.Utilization, true), "operational");
@@ -298,26 +247,19 @@
             previousRows.TryGetValue(x.EmployeeName, out var prev);
             return new
             {
-                name = x.EmployeeName,
-                x = (double)x.PunchHours,
-                y = (double)x.Utilization,
+                name = x.EmployeeName, x = (double)x.PunchHours, y = (double)x.Utilization,
                 prevX = prev is null ? (double?)null : (double)prev.PunchHours,
                 prevY = prev is null ? (double?)null : (double)prev.Utilization,
-                score = (double)x.OperationalScore,
-                exceptions = ExceptionCount(x),
-                band = Analytics.ScoreBand(x.OperationalScore),
-                missing = !x.HasSummaryData
+                score = (double)x.OperationalScore, exceptions = ExceptionCount(x), band = Analytics.ScoreBand(x.OperationalScore), missing = !x.HasSummaryData
             };
         }).ToArray();
         var fieldMax = Math.Max(60m, State.Performance.Max(x => x.PunchHours) * 1.14m);
-        var fieldMedian = Median(State.Performance.Select(x => x.PunchHours));
-        await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)fieldMedian, _focusName);
+        await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)Median(State.Performance.Select(x => x.PunchHours)), _focusName);
 
         var attentionNames = AttentionRows.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var riverSeries = State.Performance.Select((item, index) => new
         {
-            name = item.EmployeeName,
-            attention = attentionNames.Contains(item.EmployeeName),
+            name = item.EmployeeName, attention = attentionNames.Contains(item.EmployeeName),
             role = index % 4 switch { 0 => "operational", 1 => "attendance", 2 => "timesheet", _ => "approval" },
             values = HeatmapMonths.Select(month => ScoreFor(item.EmployeeName, month)).ToArray()
         }).ToArray();
@@ -332,14 +274,9 @@
     private List<DateTime> HeatmapMonths => _heatmapMonths;
     private decimal TeamScore => _teamScore;
     private IReadOnlyList<AttentionRow> AttentionRows => _attentionRows;
-
     private decimal? PreviousTeamScore => PreviousScores.Count == 0 ? null : decimal.Round(PreviousScores.Values.Average(), 1);
     private MonthlyPerformanceItem? FocusItem => _focusName is null ? null : State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _focusName));
     private string FingerprintLabel => FocusItem is null ? "Team profile" : $"{FocusItem.EmployeeName} vs team distribution";
-
-    private IReadOnlyList<decimal> SpotlightTrend => _spotlightName is null
-        ? []
-        : HeatmapMonths.Select(m => ScoreFor(_spotlightName, m) ?? 0m).ToArray();
 
     private decimal Average(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly = false)
     {
@@ -347,24 +284,19 @@
         return scope.Length == 0 ? 0 : decimal.Round(scope.Average(selector), 1);
     }
 
-    private decimal?[] MetricTrend(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly)
+    private decimal?[] MetricTrend(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly) => HeatmapMonths.Select(month =>
     {
-        return HeatmapMonths.Select(month =>
-        {
-            var rows = State.History.Where(x => x.Year == month.Year && x.Month == month.Month && (!summaryOnly || x.HasSummaryData)).ToArray();
-            return rows.Length == 0 ? (decimal?)null : decimal.Round(rows.Average(selector), 1);
-        }).ToArray();
-    }
+        var rows = State.History.Where(x => x.Year == month.Year && x.Month == month.Month && (!summaryOnly || x.HasSummaryData)).ToArray();
+        return rows.Length == 0 ? (decimal?)null : decimal.Round(rows.Average(selector), 1);
+    }).ToArray();
 
     private decimal? ScoreFor(string name, DateTime month) => State.History
         .Where(x => x.Year == month.Year && x.Month == month.Month && PersonName.Matches(x.EmployeeName, name))
         .Select(x => (decimal?)x.OperationalScore).FirstOrDefault();
 
-    private decimal TimesheetFillRate => State.Performance.Sum(x => x.ExpectedTimesheetDays) == 0
-        ? 0 : decimal.Round(State.Performance.Sum(x => x.TimesheetFilledDays) * 100m / State.Performance.Sum(x => x.ExpectedTimesheetDays), 1);
-
-    private int BandCount(string band) => _bandCounts.TryGetValue(band, out var c) ? c : 0;
-    private string DistributionSummary => string.Join(", ", Bands.Select(b => $"{Analytics.ScoreBandLabel(b)}: {BandCount(b)}"));
+    private decimal TimesheetFillRate => State.Performance.Sum(x => x.ExpectedTimesheetDays) == 0 ? 0 : decimal.Round(State.Performance.Sum(x => x.TimesheetFilledDays) * 100m / State.Performance.Sum(x => x.ExpectedTimesheetDays), 1);
+    private int BinCount(decimal fromInclusive, decimal toExclusive) => State.Performance.Count(x => x.OperationalScore >= fromInclusive && x.OperationalScore < toExclusive);
+    private string DistributionSummary => $"0–49: {BinCount(0,50)}, 50–64: {BinCount(50,65)}, 65–79: {BinCount(65,80)}, 80–100: {BinCount(80,101)}";
     private static int ExceptionCount(MonthlyPerformanceItem item) => item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
 
     private string EmployeeContext(string name)
@@ -376,14 +308,10 @@
 
     private IReadOnlyList<decimal> WeeklyRhythm(string name)
     {
-        var values = State.WeeklyPerformance
-            .Where(x => x.ExpectedDays > 0 && PersonName.Matches(x.EmployeeName, name))
-            .OrderBy(x => x.WeekStart)
-            .Select(x => x.AttendanceDisciplineScore)
-            .ToArray();
+        var values = State.WeeklyPerformance.Where(x => x.ExpectedDays > 0 && PersonName.Matches(x.EmployeeName, name)).OrderBy(x => x.WeekStart).Select(x => x.AttendanceDisciplineScore).ToArray();
         if (values.Length > 0) return values;
         var item = State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, name));
-        return item is null ? [0m] : [item.AttendanceDisciplineScore];
+        return item is null ? new[] { 0m } : new[] { item.AttendanceDisciplineScore };
     }
 
     private bool IsReady(ReportType type) => State.Snapshot?.SourceSlots.Any(x => x.ReportType == type && x.Status == SourceStatus.Uploaded) == true;
@@ -396,30 +324,26 @@
         {
             var summary = State.Performance.Where(x => x.HasSummaryData).ToArray();
             var selected = FocusItem;
-            var completion = summary.Select(x => x.TimesheetCompletionScore).ToArray();
-            var approval = summary.Select(x => x.ApprovalScore).ToArray();
-            var attendance = State.Performance.Select(x => x.AttendanceDisciplineScore).ToArray();
-            var utilization = summary.Select(x => x.Utilization).ToArray();
-            var workload = State.Performance.Select(WorkloadIndex).ToArray();
+            var workloadHours = State.Performance.Select(x => x.Workload()).ToArray();
+            var workloadIndex = State.Performance.Select(WorkloadIndex).ToArray();
             return new[]
             {
-                Fingerprint("Completion", completion, selected is { HasSummaryData:true } ? selected.TimesheetCompletionScore : Average(x=>x.TimesheetCompletionScore,true), "95%"),
-                Fingerprint("Approval", approval, selected is { HasSummaryData:true } ? selected.ApprovalScore : Average(x=>x.ApprovalScore,true), "90%"),
-                Fingerprint("Attendance", attendance, selected?.AttendanceDisciplineScore ?? Average(x=>x.AttendanceDisciplineScore), "95%"),
-                Fingerprint("Utilization", utilization, selected is { HasSummaryData:true } ? selected.Utilization : Average(x=>x.Utilization,true), $"{Analytics.Format(Analytics.UtilizationTarget,"0")}%+"),
-                Fingerprint("Workload", workload, selected is null ? Median(workload) : WorkloadIndex(selected), selected is null ? $"≤ {Analytics.Format(Analytics.WorkloadCeiling,"0")} h/d" : $"{Analytics.Format(selected.Workload(),"0.0")} h/d", selected is null ? null : $"{Analytics.Format(selected.Workload(),"0.0")} accountable h/day")
+                BuildFingerprint("Completion", summary.Select(x=>x.TimesheetCompletionScore).ToArray(), selected is { HasSummaryData:true } ? selected.TimesheetCompletionScore : Average(x=>x.TimesheetCompletionScore,true), 95m, v=>$"{Analytics.Format(v,"0")}%", "95%"),
+                BuildFingerprint("Approval", summary.Select(x=>x.ApprovalScore).ToArray(), selected is { HasSummaryData:true } ? selected.ApprovalScore : Average(x=>x.ApprovalScore,true), 90m, v=>$"{Analytics.Format(v,"0")}%", "90%"),
+                BuildFingerprint("Attendance", State.Performance.Select(x=>x.AttendanceDisciplineScore).ToArray(), selected?.AttendanceDisciplineScore ?? Average(x=>x.AttendanceDisciplineScore), 95m, v=>$"{Analytics.Format(v,"0")}%", "95%"),
+                BuildFingerprint("Utilization", summary.Select(x=>x.Utilization).ToArray(), selected is { HasSummaryData:true } ? selected.Utilization : Average(x=>x.Utilization,true), Analytics.UtilizationTarget, v=>$"{Analytics.Format(v,"0")}%", $"{Analytics.Format(Analytics.UtilizationTarget,"0")}%"),
+                new FingerprintMetric("Workload", selected is null ? Median(workloadIndex) : WorkloadIndex(selected), Median(workloadIndex), Percentile(workloadIndex,.25m), Percentile(workloadIndex,.75m), selected is null ? $"{Analytics.Format(Median(workloadHours),"0.0")} h/d" : $"{Analytics.Format(selected.Workload(),"0.0")} h/d", 100m, $"≤ {Analytics.Format(Analytics.WorkloadCeiling,"0")} h/d", "Workload index is relative to the accountable-hours ceiling")
             };
         }
     }
 
-    private static decimal WorkloadIndex(MonthlyPerformanceItem item) => Analytics.WorkloadCeiling <= 0 ? 0 : Math.Clamp(item.Workload() * 100m / Analytics.WorkloadCeiling, 0, 100);
-
-    private static FingerprintMetric Fingerprint(string label, IReadOnlyCollection<decimal> values, decimal value, string target, string? tooltip = null)
+    private static FingerprintMetric BuildFingerprint(string label, IReadOnlyCollection<decimal> values, decimal value, decimal target, Func<decimal,string> display, string targetLabel)
     {
-        var safe = values.Count == 0 ? [0m] : values.ToArray();
-        return new FingerprintMetric(label, Math.Clamp(value, 0, 100), Percentile(safe, .5m), Percentile(safe, .25m), Percentile(safe, .75m), label == "Workload" ? target : $"{Analytics.Format(value,"0")}%", target, tooltip ?? $"{label}: {Analytics.Format(value,"0.0")}");
+        var safe = values.Count == 0 ? new[] { 0m } : values.ToArray();
+        return new FingerprintMetric(label, Math.Clamp(value,0,100), Percentile(safe,.5m), Percentile(safe,.25m), Percentile(safe,.75m), display(value), Math.Clamp(target,0,100), targetLabel, $"{label}: {display(value)} · target {targetLabel}");
     }
 
+    private static decimal WorkloadIndex(MonthlyPerformanceItem item) => Analytics.WorkloadCeiling <= 0 ? 0 : Math.Clamp(item.Workload() * 100m / Analytics.WorkloadCeiling, 0, 100);
     private static decimal Median(IEnumerable<decimal> source) => Percentile(source.ToArray(), .5m);
     private static decimal Percentile(IReadOnlyList<decimal> source, decimal percentile)
     {
@@ -427,40 +351,29 @@
         var ordered = source.OrderBy(x => x).ToArray();
         if (ordered.Length == 1) return ordered[0];
         var position = (ordered.Length - 1) * percentile;
-        var lower = (int)Math.Floor(position);
-        var upper = (int)Math.Ceiling(position);
+        var lower = (int)Math.Floor(position); var upper = (int)Math.Ceiling(position);
         if (lower == upper) return ordered[lower];
         var fraction = position - lower;
         return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction;
     }
 
-    private void Focus(string name)
-    {
-        _focusName = PersonName.Normalize(name);
-        _chartsPending = true;
-    }
+    private void Focus(string name) { _focusName = PersonName.Normalize(name); _chartsPending = true; }
     private bool IsFocused(string name) => _focusName is not null && PersonName.Matches(name, _focusName);
     private void ClearFocus() { _focusName = null; RecomputeDerived(); _chartsPending = true; }
     private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
     private void OpenFocusedPortrait() { if (FocusItem is not null) OpenPortrait(FocusItem.EmployeeName); }
-    private void OpenSpotlight(string name) => _spotlightName = PersonName.Normalize(name);
-
     private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
     private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
-
     private RenderFragment ReadinessLight(string label, bool ready, bool optional = false) => @<div class="readiness-light @(ready ? "ready" : optional ? "warn" : null)"><span>@label</span><i></i></div>;
     private RenderFragment MiniFingerprint(decimal value, bool available) => @<i class="@(!available || value < 65 ? "low" : null)" style="--v:@CssPct(available ? value : 0)" title="@(available ? Analytics.Format(value,"0") + "%" : "No source")"></i>;
 
     public async ValueTask DisposeAsync()
     {
         State.Changed -= OnStateChanged;
-        foreach (var id in AtlasChartIds)
-        {
-            try { await JS.InvokeVoidAsync("epaAtlas.dispose", id); } catch (JSDisconnectedException) { }
-        }
+        foreach (var id in AtlasChartIds) { try { await JS.InvokeVoidAsync("epaAtlas.dispose", id); } catch (JSDisconnectedException) { } }
         _selfRef?.Dispose();
     }
 
     private sealed record AttentionRow(string Name, decimal Score, decimal? Delta, decimal Risk, MonthlyPerformanceItem Item);
-    private sealed record FingerprintMetric(string Label, decimal Value, decimal Median, decimal Q1, decimal Q3, string Display, string Target, string Tooltip);
+    private sealed record FingerprintMetric(string Label, decimal Value, decimal Median, decimal Q1, decimal Q3, string Display, decimal Target, string TargetLabel, string Tooltip);
 }
