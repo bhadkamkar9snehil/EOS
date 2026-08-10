@@ -1,10 +1,12 @@
 (() => {
     const charts = () => window.epaCharts;
+    const defaultRoles = ['timesheet', 'approval', 'attendance'];
 
     function weightedStack(id, categories, series, totals, suffix) {
         const api = charts();
         const chart = api?.ensure(id);
         if (!chart) return;
+        const roleOf = (item, index) => item.role || defaultRoles[index] || `categorical-${index + 1}`;
 
         const optionFor = p => ({
             tooltip: {
@@ -15,7 +17,7 @@
             legend:{textStyle:{fontSize:11.5,color:p.inkSoft}},
             xAxis:{axisLabel:{fontSize:11,color:p.inkSoft},splitLine:{lineStyle:{color:p.grid}}},
             yAxis:{axisLabel:{fontSize:11.5,color:p.ink}},
-            series:series.map((item,index)=>({itemStyle:{color:api.roleColor(item.role,index,p)}}))
+            series:series.map((item,index)=>({itemStyle:{color:api.roleColor(roleOf(item,index),index,p)}}))
         });
 
         const p = api.palette();
@@ -40,7 +42,7 @@
             yAxis:{type:'category',inverse:true,data:categories,axisLine:{show:false},axisTick:{show:false},axisLabel:{fontSize:11.5,color:p.ink,width:154,overflow:'truncate'}},
             series:series.map((item,index)=>({
                 name:item.name,type:'bar',stack:'operational',barWidth:15,emphasis:{focus:'series'},
-                itemStyle:{color:api.roleColor(item.role,index,p),borderRadius:index===0?[3,0,0,3]:index===series.length-1?[0,3,3,0]:0},
+                itemStyle:{color:api.roleColor(roleOf(item,index),index,p),borderRadius:index===0?[3,0,0,3]:index===series.length-1?[0,3,3,0]:0},
                 label:index===series.length-1?{show:true,position:'right',distance:8,color:p.ink,fontSize:11.5,fontWeight:650,formatter:x=>Number(totals[x.dataIndex]||0).toFixed(1)}:{show:false},
                 data:item.values
             }))
