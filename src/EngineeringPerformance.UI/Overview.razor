@@ -87,7 +87,15 @@
                     <div><h2>Workforce performance field</h2><small>X: accountable punch hours · Y: utilization</small></div>
                     @if (FocusItem is not null)
                     {
-                        <span class="focus-chip"><b>@FocusItem.EmployeeName</b><button @onclick="OpenFocusedPortrait">Open portrait →</button><button title="Clear focus" @onclick="ClearFocus">×</button></span>
+                        <span class="focus-chip" aria-label="Focused engineer controls">
+                            <button type="button" class="focus-team" title="Return to the whole-team view" @onclick="ClearFocus">Team view</button>
+                            <b>@FocusItem.EmployeeName</b>
+                            <button type="button" class="focus-open" @onclick="OpenFocusedPortrait">Open portrait <span aria-hidden="true">↗</span></button>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="team-mode-chip"><b>Team view</b><small>Select a person to focus</small></span>
                     }
                 </div>
                 <div id="atlas-field" aria-label="Workforce performance field"></div>
@@ -95,6 +103,12 @@
 
             <aside class="attention-lens">
                 <div class="atlas-panel-head"><div><h2>Attention lens</h2><small>Ranked by intervention priority</small></div></div>
+                <div class="attention-columns" aria-hidden="true">
+                    <span class="attention-columns-id">Person</span>
+                    <span>Score</span>
+                    <span class="attention-columns-fingerprint"><i>Comp</i><i>App</i><i>Att</i><i>Util</i></span>
+                    <span>30-day rhythm</span>
+                </div>
                 <ol class="attention-list">
                     @for (var i = 0; i < AttentionRows.Count; i++)
                     {
@@ -113,7 +127,7 @@
                             <span class="rhythm-mini" title="Weekly attendance discipline">
                                 @foreach (var value in WeeklyRhythm(row.Name)) { <i style="--v:@CssPct(value)"></i> }
                             </span>
-                            <button class="attention-open" title="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">→</button>
+                            <button class="attention-open" title="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
                         </li>
                     }
                 </ol>
@@ -218,8 +232,8 @@
             return new AttentionRow(item.EmployeeName, item.OperationalScore, delta, risk, item);
         }).OrderByDescending(x => x.Risk).ThenBy(x => x.Score).Take(5).ToArray();
 
-        if (_focusName is null || !State.Performance.Any(x => PersonName.Matches(x.EmployeeName, _focusName)))
-            _focusName = _attentionRows.FirstOrDefault()?.Name ?? State.Performance.OrderBy(x => x.OperationalScore).FirstOrDefault()?.EmployeeName;
+        if (_focusName is not null && !State.Performance.Any(x => PersonName.Matches(x.EmployeeName, _focusName)))
+            _focusName = null;
     }
 
     private void CheckChartsPending()
@@ -357,9 +371,14 @@
         return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction;
     }
 
-    private void Focus(string name) { _focusName = PersonName.Normalize(name); _chartsPending = true; }
+    private void Focus(string name)
+    {
+        var normalized = PersonName.Normalize(name);
+        _focusName = _focusName is not null && PersonName.Matches(_focusName, normalized) ? null : normalized;
+        _chartsPending = true;
+    }
     private bool IsFocused(string name) => _focusName is not null && PersonName.Matches(name, _focusName);
-    private void ClearFocus() { _focusName = null; RecomputeDerived(); _chartsPending = true; }
+    private void ClearFocus() { _focusName = null; _chartsPending = true; }
     private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
     private void OpenFocusedPortrait() { if (FocusItem is not null) OpenPortrait(FocusItem.EmployeeName); }
     private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
