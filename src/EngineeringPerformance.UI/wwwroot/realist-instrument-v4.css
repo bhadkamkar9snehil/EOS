@@ -1,10 +1,10 @@
 /* Reference-benchmarked Realist instrument material pass. */
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) {
-    --real-paper:#eadcca;
-    --real-paper-hi:#f4ebe0;
-    --real-paper-lo:#c8b79f;
-    --real-paper-line:#837662;
+    --real-paper:#d6cec0;
+    --real-paper-hi:#eee9df;
+    --real-paper-lo:#b7ac9c;
+    --real-paper-line:#777064;
     --real-steel:#686861;
     --real-steel-hi:#beb8aa;
     --real-steel-lo:#343733;
@@ -16,10 +16,10 @@
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .operational-fingerprint,
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .plate {
     background:
-        radial-gradient(ellipse at 50% -16%,rgba(255,255,255,.72) 0 13%,transparent 39%),
-        linear-gradient(90deg,rgba(70,57,43,.035),transparent 11%,rgba(255,255,255,.12) 25%,transparent 47%,rgba(62,52,41,.03) 70%,rgba(255,255,255,.08) 85%,transparent),
-        repeating-linear-gradient(90deg,rgba(92,76,56,.022) 0 1px,rgba(255,255,255,.026) 1px 3px),
-        linear-gradient(180deg,#f3eadf 0%,#ede0cf 22%,#e3d4c0 74%,#c8b79f 100%) !important;
+        radial-gradient(ellipse at 50% -18%,rgba(255,255,255,.62) 0 14%,transparent 40%),
+        linear-gradient(90deg,rgba(55,52,45,.04),transparent 10%,rgba(255,255,255,.11) 25%,transparent 47%,rgba(52,49,43,.035) 69%,rgba(255,255,255,.075) 84%,transparent),
+        repeating-linear-gradient(90deg,rgba(72,68,59,.024) 0 1px,rgba(255,255,255,.024) 1px 3px),
+        linear-gradient(180deg,#ede8de 0%,#dcd5c9 22%,#cec6b9 76%,#b7ac9c 100%) !important;
     border:2px solid #0b0d0d !important;
     border-radius:12px !important;
     box-shadow:
@@ -34,9 +34,9 @@
     border:2px solid #0b0d0d !important;
     border-radius:18px !important;
     background:
-        radial-gradient(ellipse at 50% -18%,rgba(255,255,255,.67),transparent 38%),
-        repeating-linear-gradient(90deg,rgba(91,75,55,.021) 0 1px,rgba(255,255,255,.023) 1px 3px),
-        linear-gradient(180deg,#f4ebe0,#eadcca 74%,#c8b79f) !important;
+        radial-gradient(ellipse at 50% -20%,rgba(255,255,255,.55),transparent 38%),
+        repeating-linear-gradient(90deg,rgba(73,68,59,.024) 0 1px,rgba(255,255,255,.02) 1px 3px),
+        linear-gradient(180deg,#eee9df,#d5cec1 76%,#b8ad9c) !important;
     box-shadow:
         0 3px 5px rgba(0,0,0,.86),
         0 0 0 1px #74746c,
@@ -58,9 +58,9 @@
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .page-heading {
     background:
-        radial-gradient(ellipse at 50% -30%,rgba(255,255,255,.74),transparent 50%),
-        repeating-linear-gradient(90deg,rgba(80,67,51,.020) 0 1px,transparent 1px 4px),
-        linear-gradient(#f4ece2,#e6d8c5 72%,#c2b19a) !important;
+        linear-gradient(90deg,rgba(74,67,55,.05),rgba(255,255,255,.15) 32%,rgba(63,57,47,.04) 74%),
+        repeating-linear-gradient(90deg,rgba(69,64,55,.022) 0 1px,transparent 1px 4px),
+        linear-gradient(180deg,#eee9df,#d5cdc0 74%,#b6aa98) !important;
     border-color:#333631 !important;
     box-shadow:
         0 3px 7px rgba(0,0,0,.68),
@@ -69,9 +69,7 @@
         inset 0 -3px 4px rgba(62,55,46,.27) !important;
 }
 
-:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-primary {
-    gap:10px !important;
-}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-primary,
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-secondary {
     gap:10px !important;
 }
