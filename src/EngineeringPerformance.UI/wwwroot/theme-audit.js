@@ -8,6 +8,12 @@
         '--chart-1','--chart-2','--chart-3','--chart-4','--chart-5','--chart-6','--chart-7','--chart-8'
     ];
 
+    const cvdMatrices = {
+        protanopia:[[.152286,1.052583,-.204868],[.114503,.786281,.099216],[-.003882,-.048116,1.051998]],
+        deuteranopia:[[.367322,.860646,-.227968],[.280085,.672501,.047413],[-.011820,.042940,.968881]],
+        tritanopia:[[1.255528,-.076749,-.178779],[-.078411,.930809,.147602],[.004733,.691367,.303900]]
+    };
+
     const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const parseColor = value => {
         const probe = document.createElement('span');
@@ -18,7 +24,7 @@
         const computed = getComputedStyle(probe).color;
         probe.remove();
         const match = computed.match(/rgba?\((\d+(?:\.\d+)?)[,\s]+(\d+(?:\.\d+)?)[,\s]+(\d+(?:\.\d+)?)/);
-        return match ? [Number(match[1]), Number(match[2]), Number(match[3])].map(x => x / 255) : null;
+        return match ? [Number(match[1]),Number(match[2]),Number(match[3])].map(x=>x/255) : null;
     };
     const linear = value => value <= .04045 ? value / 12.92 : Math.pow((value + .055) / 1.055, 2.4);
     const luminance = value => {
@@ -28,19 +34,37 @@
         return .2126*r + .7152*g + .0722*b;
     };
     const contrast = (a,b) => {
-        const x = luminance(a), y = luminance(b);
-        if (x == null || y == null) return null;
+        const x=luminance(a),y=luminance(b);
+        if (x==null||y==null) return null;
         return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
     };
-
-    const pair = (foreground, background, minimum, label) => {
-        const ratio = contrast(css(foreground), css(background));
-        return { label, foreground, background, ratio: ratio == null ? null : Number(ratio.toFixed(2)), minimum, pass: ratio != null && ratio >= minimum };
+    const pair = (foreground,background,minimum,label) => {
+        const ratio=contrast(css(foreground),css(background));
+        return {label,foreground,background,ratio:ratio==null?null:Number(ratio.toFixed(2)),minimum,pass:ratio!=null&&ratio>=minimum};
     };
 
+    const multiply = (matrix,vector) => matrix.map(row=>Math.max(0,Math.min(1,row[0]*vector[0]+row[1]*vector[1]+row[2]*vector[2])));
+    const distance = (a,b) => Math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2);
+    function colourVisionCheck(colors) {
+        const source=colors.map(parseColor).map(rgb=>rgb?.map(linear));
+        const modes={normal:source};
+        for(const [name,matrix] of Object.entries(cvdMatrices)) modes[name]=source.map(rgb=>rgb?multiply(matrix,rgb):null);
+        const result={};
+        for(const [mode,values] of Object.entries(modes)) {
+            let minimum=Infinity,pairIndexes=null;
+            for(let i=0;i<values.length;i++) for(let j=i+1;j<values.length;j++) {
+                if(!values[i]||!values[j]) continue;
+                const d=distance(values[i],values[j]);
+                if(d<minimum){minimum=d;pairIndexes=[i+1,j+1];}
+            }
+            result[mode]={minimumDistance:Number((Number.isFinite(minimum)?minimum:0).toFixed(3)),closestSeries:pairIndexes,pass:Number.isFinite(minimum)&&minimum>=.075};
+        }
+        return result;
+    }
+
     function current() {
-        const missingTokens = requiredTokens.filter(name => !css(name));
-        const contrastChecks = [
+        const missingTokens=requiredTokens.filter(name=>!css(name));
+        const contrastChecks=[
             pair('--ink','--card-surface',4.5,'Body text on cards'),
             pair('--ink-soft','--card-surface',4.5,'Secondary analytical text on cards'),
             pair('--on-primary','--primary',4.5,'Primary control foreground'),
@@ -55,53 +79,47 @@
             pair('--focus-ring','--card-surface',3,'Focus ring on card'),
             pair('--focus-ring','--surface-raised',3,'Focus ring on raised surface')
         ];
-
-        const chartColors = Array.from({length:8},(_,i)=>css(`--chart-${i+1}`));
-        const duplicateChartColors = chartColors.filter((color,index) => chartColors.indexOf(color) !== index);
-        const diagnostics = window.epaTheme?.diagnostics?.(window.epaTheme?.get?.()) || null;
-
+        const chartColors=Array.from({length:8},(_,i)=>css(`--chart-${i+1}`));
+        const duplicateChartColors=chartColors.filter((color,index)=>chartColors.indexOf(color)!==index);
+        const colourVision=colourVisionCheck(chartColors);
+        const diagnostics=window.epaTheme?.diagnostics?.(window.epaTheme?.get?.())||null;
         return {
-            theme: window.epaTheme?.get?.() || document.documentElement.dataset.theme,
-            mode: window.epaTheme?.mode?.get?.(),
-            intensity: window.epaTheme?.intensity?.get?.(),
-            missingTokens,
-            contrastChecks,
-            chartColors,
+            theme:window.epaTheme?.get?.()||document.documentElement.dataset.theme,
+            mode:window.epaTheme?.mode?.get?.(),
+            intensity:window.epaTheme?.intensity?.get?.(),
+            missingTokens,contrastChecks,chartColors,
             duplicateChartColors:[...new Set(duplicateChartColors)],
-            diagnostics,
-            pass: missingTokens.length === 0 && duplicateChartColors.length === 0 && contrastChecks.every(x => x.pass)
+            colourVision,diagnostics,
+            pass:missingTokens.length===0&&duplicateChartColors.length===0&&contrastChecks.every(x=>x.pass)&&Object.values(colourVision).every(x=>x.pass)
         };
     }
 
-    function typography(root = document.body) {
-        const issues = [];
-        const ignoredTags = new Set(['SCRIPT','STYLE','SVG','PATH','OPTION']);
-        root.querySelectorAll('*').forEach(element => {
-            if (ignoredTags.has(element.tagName) || element.children.length > 0 || !element.textContent?.trim()) return;
-            const style = getComputedStyle(element);
-            if (style.display === 'none' || style.visibility === 'hidden') return;
-            const size = parseFloat(style.fontSize);
-            if (Number.isFinite(size) && size < 10.5) {
-                issues.push({ element: element.tagName.toLowerCase(), className: element.className || '', text: element.textContent.trim().slice(0,80), fontSize:size });
-            }
+    function typography(root=document.body) {
+        const issues=[];
+        const ignoredTags=new Set(['SCRIPT','STYLE','SVG','PATH','OPTION']);
+        root.querySelectorAll('*').forEach(element=>{
+            if(ignoredTags.has(element.tagName)||element.children.length>0||!element.textContent?.trim()) return;
+            const style=getComputedStyle(element);
+            if(style.display==='none'||style.visibility==='hidden') return;
+            const size=parseFloat(style.fontSize);
+            if(Number.isFinite(size)&&size<10.5) issues.push({element:element.tagName.toLowerCase(),className:element.className||'',text:element.textContent.trim().slice(0,80),fontSize:size});
         });
-        return { floor:10.5, issues, pass:issues.length===0 };
+        return {floor:10.5,issues,pass:issues.length===0};
     }
 
     function allPalettes() {
-        const themes = window.epaTheme?.palettes?.() || {};
-        return Object.keys(themes).map(key => ({ key, ...window.epaTheme.diagnostics(key) }));
+        const themes=window.epaTheme?.palettes?.()||{};
+        return Object.keys(themes).map(key=>({key,...window.epaTheme.diagnostics(key)}));
     }
 
-    window.epaThemeAudit = {
-        current,
-        typography,
-        allPalettes,
-        run:() => {
-            const result = { theme:current(), typography:typography() };
-            result.pass = result.theme.pass && result.typography.pass;
+    window.epaThemeAudit={
+        current,typography,allPalettes,colourVisionCheck,
+        run:()=>{
+            const result={theme:current(),typography:typography()};
+            result.pass=result.theme.pass&&result.typography.pass;
             console.table(result.theme.contrastChecks);
-            if (!result.typography.pass) console.table(result.typography.issues);
+            console.table(Object.entries(result.theme.colourVision).map(([mode,value])=>({mode,...value})));
+            if(!result.typography.pass) console.table(result.typography.issues);
             return result;
         }
     };
