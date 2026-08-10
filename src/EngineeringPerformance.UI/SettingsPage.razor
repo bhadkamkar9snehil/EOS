@@ -6,19 +6,29 @@
     <div class="section-title settings-title">
         <div>
             <h2>Appearance</h2>
-            <p>Choose the interface personality independently from colour intensity, density and motion. Semantic status meaning and readability remain stable across every palette.</p>
+            <p>EOS now uses one fixed product colour system with two physical renderings. Minimal is the precision editorial Atlas. Realist is the fully tactile skeuomorphic instrument console.</p>
         </div>
-        <span class="current-theme-label">@(_themeMode == "system" ? "Windows: " : "Current: ")<strong>@CurrentTheme.Name</strong></span>
+        <span class="current-theme-label">Interface <strong>@Title(_skin)</strong></span>
+    </div>
+
+    <div class="skin-choices" role="radiogroup" aria-label="Interface style">
+        <button type="button" class="skin-choice @(_skin == "minimal" ? "selected" : null)" aria-pressed="@(_skin == "minimal")" @onclick='() => ApplySkinAsync("minimal")'>
+            <span class="skin-choice-preview minimal" aria-hidden="true"></span>
+            <strong>Minimal</strong>
+            <small>The current Performance Atlas: flat editorial plates, calibrated rules, restrained depth and the same EOS orange / petrol / graphite semantics.</small>
+        </button>
+        <button type="button" class="skin-choice @(_skin == "realist" ? "selected" : null)" aria-pressed="@(_skin == "realist")" @onclick='() => ApplySkinAsync("realist")'>
+            <span class="skin-choice-preview realist" aria-hidden="true"></span>
+            <strong>Realist</strong>
+            <small>Full skeuomorphism: forged chassis, ivory instrument plates, screws, bevels, recessed controls, indicator lamps and physically tactile buttons.</small>
+        </button>
     </div>
 
     <div class="appearance-controls" aria-label="Appearance behaviour">
         <section class="appearance-control">
-            <span>Appearance source</span>
-            <div class="segmented">
-                <button type="button" class="@(_themeMode == "manual" ? "selected" : null)" @onclick='() => ApplyModeAsync("manual")'>Selected theme</button>
-                <button type="button" class="@(_themeMode == "system" ? "selected" : null)" @onclick='() => ApplyModeAsync("system")'>Follow Windows</button>
-            </div>
-            <small>System mode pairs Graphite with Forest Night automatically.</small>
+            <span>Colour system</span>
+            <div class="appearance-fixed-value"><b>EOS Instrument</b><small>Graphite · first-light orange · petrol blue · intervention red</small></div>
+            <small>One palette is shared by Minimal and Realist so meaning never changes with rendering style.</small>
         </section>
 
         <section class="appearance-control">
@@ -29,7 +39,7 @@
                     <button type="button" class="@(_intensity == value ? "selected" : null)" @onclick="() => ApplyIntensityAsync(value)">@Title(value)</button>
                 }
             </div>
-            <small>Changes categorical charts and selection accents, not status meaning or card backgrounds.</small>
+            <small>Only categorical chart chroma and selection emphasis change.</small>
         </section>
 
         <section class="appearance-control">
@@ -40,7 +50,7 @@
                     <button type="button" class="@(_density == value ? "selected" : null)" @onclick="() => ApplyDensityAsync(value)">@Title(value)</button>
                 }
             </div>
-            <small>Comfortable is the production default; compact preserves the same typography floor.</small>
+            <small>Comfortable is the normal production setting.</small>
         </section>
 
         <section class="appearance-control">
@@ -53,74 +63,6 @@
             </div>
             <small>System honours Windows reduced-motion preference.</small>
         </section>
-    </div>
-
-    <div class="theme-toolbar" aria-label="Theme categories">
-        @foreach (var group in ThemeGroups)
-        {
-            <button type="button" class="@(_filter == group.Key ? "selected" : null)" @onclick="() => _filter = group.Key">
-                @group.Label <span>@ThemeCount(group.Key)</span>
-            </button>
-        }
-    </div>
-
-    <div class="theme-grid" role="list" aria-label="Application themes">
-        @foreach (var theme in FilteredThemes)
-        {
-            var diagnostic = Diagnostic(theme.Key);
-            var aaPass = diagnostic is not null && diagnostic.BodyContrast >= 4.5 && diagnostic.MutedContrast >= 4.5;
-            var focusPass = diagnostic is not null && diagnostic.FocusContrast >= 3;
-            var seriesPass = diagnostic?.CategoricalDistinct == true;
-
-            <button type="button"
-                    data-theme-key="@theme.Key"
-                    class="theme-option @(_currentTheme == theme.Key ? "selected" : null)"
-                    aria-pressed="@(_currentTheme == theme.Key)"
-                    @onclick="() => ApplyThemeAsync(theme)">
-                <span class="theme-preview" style="@PreviewStyle(theme)" aria-hidden="true">
-                    <i class="preview-nav">
-                        <b class="preview-brand"></b>
-                        <b class="preview-nav-line"></b>
-                        <b class="preview-nav-line selected"></b>
-                        <b class="preview-nav-line"></b>
-                        <b class="preview-nav-line"></b>
-                    </i>
-                    <i class="preview-canvas">
-                        <b class="preview-topbar"><i class="preview-input"></i></b>
-                        <b class="preview-kpi-row">
-                            <i class="preview-kpi-card"><strong></strong><small></small></i>
-                            <i class="preview-kpi-card"><strong></strong><small></small></i>
-                        </b>
-                        <b class="preview-main">
-                            <i class="preview-chart"><em></em><em></em><em></em></i>
-                            <i class="preview-controls">
-                                <em class="preview-button"></em>
-                                <em class="preview-control-line"></em>
-                                <em class="preview-chips"><i></i><i></i><i></i></em>
-                            </i>
-                        </b>
-                        <b class="preview-table"><b></b><i></i><i></i></b>
-                    </i>
-                </span>
-
-                <span class="theme-option-copy">
-                    <span class="theme-name-row">
-                        <strong>@theme.Name</strong>
-                        <i class="theme-mode-badge">@(theme.Dark ? "Dark" : "Light")</i>
-                    </span>
-                    <small>@theme.Description</small>
-                    <span class="theme-diagnostics">
-                        <span class="@(aaPass ? "good" : null)">@(diagnostic is null ? "Contrast pending" : aaPass ? "AA text" : "Contrast review")</span>
-                        <span class="@(focusPass ? "good" : null)">@(diagnostic is null ? "Focus pending" : focusPass ? "Focus 3:1" : "Focus review")</span>
-                        <span class="@(seriesPass ? "good" : null)">@(diagnostic is null ? "Series pending" : seriesPass ? "8 distinct series" : "Series review")</span>
-                        <span>@theme.Usage</span>
-                        @if (theme.Recommended) { <span class="good">Recommended</span> }
-                    </span>
-                    <span class="theme-swatches" style="@PreviewStyle(theme)" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-                </span>
-                <span class="theme-check">@(_currentTheme == theme.Key ? (_themeMode == "system" ? "Active from Windows" : "Selected") : "Apply theme")</span>
-            </button>
-        }
     </div>
 
     <div class="settings-section-grid">
@@ -140,13 +82,13 @@
         <section class="settings-card">
             <div class="settings-card-head">
                 <span class="settings-card-icon">◎</span>
-                <div><h3>Theme contract</h3><p>One resolver owns surfaces, foregrounds, semantic states and chart roles. Theme switching patches chart presentation without recomputing data.</p></div>
+                <div><h3>Rendering contract</h3><p>Minimal and Realist share the same data hierarchy, semantic palette, chart roles, accessibility rules and interaction state.</p></div>
             </div>
             <div class="settings-facts">
-                <div><span>Available palettes</span><strong>@Themes.Length</strong></div>
-                <div><span>Semantic status palette</span><strong>Stable by light / dark mode</strong></div>
+                <div><span>Product palette</span><strong>EOS Instrument · fixed</strong></div>
+                <div><span>Interface renderings</span><strong>Minimal · Realist</strong></div>
+                <div><span>Semantic status palette</span><strong>Stable across both looks</strong></div>
                 <div><span>Generated categorical palette</span><strong>OKLCH · 8 series</strong></div>
-                <div><span>Colour-vision audit</span><strong>Protanopia · Deuteranopia · Tritanopia</strong></div>
                 <div><span>Focus contrast target</span><strong>3:1 minimum</strong></div>
                 <div><span>Operational text floor</span><strong>10.5 px</strong></div>
                 <div><span>Data or scoring impact</span><strong>None</strong></div>
@@ -156,90 +98,30 @@
 </section>
 
 @code {
-    private string _currentTheme = "graphite";
-    private string _themeMode = "manual";
+    private string _skin = "minimal";
     private string _intensity = "balanced";
     private string _density = "comfortable";
     private string _motion = "system";
-    private string _filter = "recommended";
-    private readonly Dictionary<string, ThemeDiagnostic> _diagnostics = new(StringComparer.OrdinalIgnoreCase);
-
-    private static readonly ThemeGroup[] ThemeGroups =
-    [
-        new("recommended", "Recommended"),
-        new("professional-light", "Professional light"),
-        new("warm-light", "Warm light"),
-        new("professional-dark", "Professional dark"),
-        new("high-contrast", "High contrast"),
-        new("editor-inspired", "Editor-inspired"),
-        new("all", "All themes")
-    ];
-
-    private static readonly ThemeOption[] Themes =
-    [
-        new("graphite", "Graphite", "Executive neutral with crisp blue analytical accents.", "professional-light", false, true, "Daylight", "#f4f7fb", "#f8fafc", "#ffffff", "#0f172a", "#0f172a", "#64748b", "#dbe2ea", "#2563eb", "#0f6e9e", "#16794a"),
-        new("ledger", "Ledger", "Calm finance-inspired neutral for long review sessions.", "professional-light", false, true, "Daylight", "#f7f8fa", "#f9fafb", "#ffffff", "#101828", "#101828", "#667085", "#d0d5dd", "#175cd3", "#0f6e9e", "#16794a"),
-        new("sterling", "Sterling", "Steel and teal for operations-focused workspaces.", "professional-light", false, true, "Daylight", "#f3f4f6", "#f8fafc", "#ffffff", "#1f2937", "#111827", "#6b7280", "#d1d5db", "#0f766e", "#4f46a5", "#16794a"),
-        new("canvas", "Canvas", "Soft neutral surfaces with intentionally quiet decoration.", "professional-light", false, false, "Daylight", "#f9fafb", "#f8fafc", "#ffffff", "#1f2937", "#111827", "#6b7280", "#e5e7eb", "#475569", "#0f6e9e", "#16794a"),
-        new("quartz", "Quartz", "High-discipline monochrome with minimal brand colour.", "professional-light", false, false, "Daylight", "#f5f5f5", "#fafafa", "#ffffff", "#171717", "#0a0a0a", "#737373", "#d4d4d4", "#262626", "#0f6e9e", "#16794a"),
-        new("sandstone", "Sandstone", "Warm engineering neutral for ERP-heavy workflows.", "warm-light", false, true, "Daylight", "#faf7f2", "#f7f2ea", "#fffdf9", "#292524", "#1f2937", "#6b7280", "#e4ded4", "#92400e", "#0f6e9e", "#16794a"),
-        new("contrast-light", "High Contrast Light", "Maximum daylight legibility and control separation.", "high-contrast", false, false, "Accessibility", "#eeeeee", "#f7f7f7", "#ffffff", "#050505", "#050505", "#4b4b4b", "#8a8a8a", "#0037a8", "#0f6e9e", "#16794a"),
-        new("dracula", "Amethyst Night", "Purple-led dark palette tuned for dense business data.", "professional-dark", true, true, "Low light", "#282a36", "#303341", "#3b3e50", "#1e1f29", "#f8f8f2", "#9a9cb5", "#50536a", "#bd93f9", "#65b9d4", "#67d391"),
-        new("everforest", "Forest Night", "Soft green dark palette with restrained surface separation.", "professional-dark", true, true, "Low light", "#2d353b", "#343e43", "#3c484d", "#232a2e", "#e0d4bc", "#90998d", "#566168", "#a7c080", "#82bce4", "#67d391"),
-        new("solarized-dark", "Solar Night", "Amber-led analytical dark palette with calm blue-green structure.", "professional-dark", true, false, "Low light", "#002b36", "#063440", "#0b414e", "#00212b", "#f2ecd9", "#7f949b", "#1a5561", "#c39a16", "#82bce4", "#67d391"),
-        new("gruvbox", "Copper Night", "Warm editor-inspired dark palette without borrowing editor semantics.", "editor-inspired", true, false, "Low light", "#282828", "#302e2d", "#393533", "#1d2021", "#f2e6c5", "#a39582", "#5b524c", "#fe8019", "#82bce4", "#67d391"),
-        new("monokai", "Magenta Night", "Expressive editor-inspired palette for users who want stronger personality.", "editor-inspired", true, false, "Low light", "#272822", "#303129", "#3a3b32", "#1e1f1a", "#f8f8f2", "#9b9c94", "#525249", "#f92672", "#82bce4", "#67d391"),
-        new("contrast-dark", "High Contrast Dark", "Maximum low-light legibility and explicit control boundaries.", "high-contrast", true, false, "Accessibility", "#000000", "#0c0c0c", "#181818", "#000000", "#ffffff", "#b8b8b8", "#777777", "#8ab4ff", "#82bce4", "#67d391")
-    ];
-
-    private IEnumerable<ThemeOption> FilteredThemes => _filter switch
-    {
-        "all" => Themes,
-        "recommended" => Themes.Where(x => x.Recommended),
-        _ => Themes.Where(x => x.Category == _filter)
-    };
-
-    private ThemeOption CurrentTheme => Themes.FirstOrDefault(x => x.Key == _currentTheme) ?? Themes[0];
-    private ThemeDiagnostic? Diagnostic(string key) => _diagnostics.TryGetValue(key, out var diagnostic) ? diagnostic : null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _currentTheme = await JS.InvokeAsync<string>("epaTheme.get");
-        _themeMode = await JS.InvokeAsync<string>("epaTheme.mode.get");
+        _skin = await JS.InvokeAsync<string>("epaSkin.get");
         _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.get");
         _density = await JS.InvokeAsync<string>("epaTheme.density.get");
         _motion = await JS.InvokeAsync<string>("epaTheme.motion.get");
-        foreach (var theme in Themes)
-        {
-            try
-            {
-                var diagnostic = await JS.InvokeAsync<ThemeDiagnostic>("epaTheme.diagnostics", theme.Key);
-                if (diagnostic is not null) _diagnostics[theme.Key] = diagnostic;
-            }
-            catch (JSException) { }
-        }
         StateHasChanged();
     }
 
-    private async Task ApplyThemeAsync(ThemeOption theme)
+    private async Task ApplySkinAsync(string value)
     {
-        _currentTheme = await JS.InvokeAsync<string>("epaTheme.apply", theme.Key);
-        _themeMode = "manual";
-        State.ShowMessage($"Theme changed to {theme.Name}.");
-    }
-
-    private async Task ApplyModeAsync(string value)
-    {
-        _themeMode = value;
-        _currentTheme = await JS.InvokeAsync<string>("epaTheme.mode.apply", value);
-        State.ShowMessage(value == "system" ? "Appearance now follows Windows." : "Using the selected application theme.");
+        _skin = await JS.InvokeAsync<string>("epaSkin.apply", value);
+        State.ShowMessage($"Interface style set to {Title(_skin)}.");
     }
 
     private async Task ApplyIntensityAsync(string value)
     {
         _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.apply", value);
-        _currentTheme = await JS.InvokeAsync<string>("epaTheme.get");
         State.ShowMessage($"Chart vibrancy set to {Title(value)}.");
     }
 
@@ -255,49 +137,9 @@
         State.ShowMessage($"Motion preference set to {Title(value)}.");
     }
 
-    private static string PreviewStyle(ThemeOption theme)
-    {
-        var success = theme.Dark ? "#67D391" : "#16794A";
-        var warning = theme.Dark ? "#F0C967" : "#946200";
-        var danger = theme.Dark ? "#FF8178" : "#B42318";
-        return $"--preview-bg:{theme.Background};--preview-soft:{theme.Soft};--preview-card:{theme.Surface};--preview-raised:{theme.Surface};" +
-               $"--preview-header:{theme.Header};--preview-on-header:#F8FAFC;--preview-ink:{theme.Ink};--preview-muted:{theme.Muted};--preview-line:{theme.Line};" +
-               $"--preview-accent:{theme.Accent};--preview-chart-1:{theme.Accent};--preview-chart-2:{theme.Chart2};--preview-chart-3:{theme.Chart3};" +
-               $"--preview-success:{success};--preview-warning:{warning};--preview-danger:{danger};";
-    }
-
-    private static int ThemeCount(string group) => group switch
-    {
-        "all" => Themes.Length,
-        "recommended" => Themes.Count(x => x.Recommended),
-        _ => Themes.Count(x => x.Category == group)
-    };
-
     private static string Title(string value) => value switch
     {
         "full" => "Full",
         _ => char.ToUpperInvariant(value[0]) + value[1..]
     };
-
-    private sealed record ThemeOption(
-        string Key,
-        string Name,
-        string Description,
-        string Category,
-        bool Dark,
-        bool Recommended,
-        string Usage,
-        string Background,
-        string Soft,
-        string Surface,
-        string Header,
-        string Ink,
-        string Muted,
-        string Line,
-        string Accent,
-        string Chart2,
-        string Chart3);
-
-    private sealed record ThemeDiagnostic(bool Dark, double BodyContrast, double MutedContrast, double FocusContrast, bool CategoricalDistinct);
-    private sealed record ThemeGroup(string Key, string Label);
 }
