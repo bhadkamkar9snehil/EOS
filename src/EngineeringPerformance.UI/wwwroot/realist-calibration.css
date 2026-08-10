@@ -1,12 +1,12 @@
 /* EOS Realist calibration — final geometry and hardware details. */
 html[data-skin="realist"] .topbar{position:relative;grid-template-columns:500px minmax(0,1fr)}
-html[data-skin="realist"] .realist-control-bank{position:relative;width:100%;min-width:0;grid-template-columns:220px 125px 125px minmax(210px,1fr) 58px}
+html[data-skin="realist"] .realist-control-bank{position:relative;width:100%;min-width:0;overflow:visible!important;grid-template-columns:220px 125px 125px minmax(210px,1fr) 58px}
 html[data-skin="realist"] .topbar-actions{display:none!important}
 
 /* Brand/star and lower console proportions follow the physical reference. */
 html[data-skin="realist"] .atlas-brand{position:relative}
 html[data-skin="realist"] .atlas-brand strong i{position:absolute;right:23px;top:22px;margin:0;vertical-align:0}
-html[data-skin="realist"] .realist-lower-console{grid-template-rows:1fr 48px!important}
+html[data-skin="realist"] .realist-lower-console{flex-basis:190px!important;grid-template-rows:1fr 48px!important}
 html[data-skin="realist"] .realist-dial{grid-row:1}
 html[data-skin="realist"] .realist-back{grid-row:2}
 
