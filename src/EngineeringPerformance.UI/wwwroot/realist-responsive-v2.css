@@ -22,6 +22,8 @@ html[data-skin="realist"] #atlas-river,
 html[data-skin="realist"] .atlas-spark { min-width:0; }
 
 @media (max-width: 1500px) {
+  html[data-skin="realist"] .atlas-page { height:auto!important; min-height:100%; overflow:visible!important; }
+  html[data-skin="realist"] .content.route-overview { overflow:auto!important; }
   html[data-skin="realist"] .app-shell { grid-template-columns:178px minmax(0,1fr); }
   html[data-skin="realist"] .atlas-brand { height:148px; min-height:148px; padding:22px 15px 15px; }
   html[data-skin="realist"] .atlas-brand strong::before { font-size:39px; }
@@ -41,11 +43,12 @@ html[data-skin="realist"] .atlas-spark { min-width:0; }
   html[data-skin="realist"] .topbar h1 { font-size:24px; }
   html[data-skin="realist"] .realist-control-bank {
     height:58px;
+    min-width:0;
     grid-template-columns:minmax(170px,190px) 86px 86px minmax(145px,1fr) 48px;
     padding:5px;
   }
   html[data-skin="realist"] :is(.rcb-month,.rcb-selector) { height:44px; }
-  html[data-skin="realist"] .rcb-search { height:39px; margin:2px 4px; }
+  html[data-skin="realist"] .rcb-search { height:39px; margin:2px 4px; min-width:0; }
   html[data-skin="realist"] .rcb-search input { font-size:11.5px; min-width:0; }
   html[data-skin="realist"] .rcb-rotary { width:44px; height:44px; }
 
@@ -99,6 +102,7 @@ html[data-skin="realist"] .atlas-spark { min-width:0; }
   html[data-skin="realist"] .workspace { grid-template-rows:auto auto minmax(0,1fr) 46px; }
   html[data-skin="realist"] .topbar {
     min-height:126px;
+    height:auto;
     grid-template-columns:1fr;
     grid-template-rows:52px 58px;
     gap:7px;
