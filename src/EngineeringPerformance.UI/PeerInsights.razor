@@ -21,9 +21,7 @@
                 <h2>Collaboration atlas</h2>
                 <p>Coverage is shown as a reviewer × colleague matrix. Dense relationships and blind spots are visible without untangling a network graph.</p>
             </div>
-            <div class="workbench-summary">
-                <div><span>Month</span><strong>@State.SelectedMonth.ToString("MMM yy")</strong></div>
-            </div>
+            <div class="workbench-summary"><div><span>Month</span><strong>@State.SelectedMonth.ToString("MMM yy")</strong></div></div>
         </header>
 
         <section class="collaboration-pulse" aria-label="Peer review pulse">
@@ -36,16 +34,10 @@
 
         <section class="collaboration-grid">
             <div class="peer-matrix-wrap">
-                <div class="atlas-panel-head">
-                    <div><h2>Review coverage matrix</h2><small>Rows review columns · darker cells contain more recorded feedback</small></div>
-                </div>
+                <div class="atlas-panel-head"><div><h2>Review coverage matrix</h2><small>Rows review columns · darker cells contain more recorded feedback</small></div></div>
                 <div class="peer-matrix" style="@PeerMatrixStyle">
                     <span class="pm-label">Reviewer ↓ / colleague →</span>
-                    @foreach (var subject in PeerNames)
-                    {
-                        <span class="pm-label" title="@subject">@Analytics.Initials(subject)</span>
-                    }
-
+                    @foreach (var subject in PeerNames) { <span class="pm-label" title="@subject">@Analytics.Initials(subject)</span> }
                     @foreach (var reviewer in PeerNames)
                     {
                         <strong class="pm-label" title="@reviewer">@reviewer</strong>
@@ -62,7 +54,7 @@
                             }
                             else
                             {
-                                <button type="button" class="pm-cell has" style="--v:@PairIntensity(count)" title="@reviewer → @subject: @count feedback entr@(count == 1 ? "y" : "ies")" @onclick="() => Spotlight(subject)">@count</button>
+                                <button type="button" class="pm-cell has" style="--v:@PairIntensity(count)" title="@reviewer → @subject: @count feedback entr@(count == 1 ? "y" : "ies")" @onclick="() => OpenPortrait(subject)">@count</button>
                             }
                         }
                     }
@@ -75,22 +67,15 @@
                     @for (var i = 0; i < Breakdown.Count; i++)
                     {
                         var row = Breakdown[i];
-                        <li @onclick="() => Spotlight(row.Name)" title="Open @row.Name">
+                        <li @onclick="() => OpenPortrait(row.Name)" title="Open @row.Name portrait">
                             <span>@(i + 1)</span>
                             <span class="roster-read stack"><strong>@row.Name</strong><small>@row.Peer.ReceivedCount received · @row.Peer.GivenCount given</small></span>
                             <b class="@(row.Peer.AverageReceived >= 4 ? "good" : row.Peer.AverageReceived >= 3 ? "warning" : row.Peer.ReceivedCount == 0 ? null : "serious")">@(row.Peer.ReceivedCount == 0 ? "—" : Analytics.Format(row.Peer.AverageReceived, "0.00"))</b>
                         </li>
                     }
                 </ol>
-
-                @if (Summary.MostActiveReviewer is not null)
-                {
-                    <div class="network-highlight"><small>Most active reviewer</small><strong>@Summary.MostActiveReviewer.Name</strong><span>@Summary.MostActiveReviewer.ReviewsGiven reviews given</span></div>
-                }
-                @if (LeastReviewed is not null)
-                {
-                    <div class="network-highlight"><small>Least visible</small><strong>@LeastReviewed.Name</strong><span>@LeastReviewed.ReviewsReceived received</span></div>
-                }
+                @if (Summary.MostActiveReviewer is not null) { <div class="network-highlight"><small>Most active reviewer</small><strong>@Summary.MostActiveReviewer.Name</strong><span>@Summary.MostActiveReviewer.ReviewsGiven reviews given</span></div> }
+                @if (LeastReviewed is not null) { <div class="network-highlight"><small>Least visible</small><strong>@LeastReviewed.Name</strong><span>@LeastReviewed.ReviewsReceived received</span></div> }
             </aside>
         </section>
 
@@ -103,60 +88,27 @@
             else
             {
                 <ul class="comment-list grid">
-                    @foreach (var c in AllComments)
-                    {
-                        <li><strong>@c.ReviewerName → @c.SubjectName</strong><p>@c.Comment</p></li>
-                    }
+                    @foreach (var c in AllComments) { <li><strong>@c.ReviewerName → @c.SubjectName</strong><p>@c.Comment</p></li> }
                 </ul>
             }
         </section>
     }
 </div>
 
-@if (_spotlightName is not null)
-{
-    <EmployeeSpotlight @key="_spotlightName" Name="@_spotlightName" Month="State.SelectedMonth"
-                       Item="State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _spotlightName))"
-                       TeamRadar="Analytics.Radar(State.Performance)" TrendMonths="[]" TrendValues="[]"
-                       Peer="Analytics.PeerBreakdownFor(State.PeerReviews, _spotlightName)"
-                       Alerts="[]"
-                       OnClose="() => _spotlightName = null"
-                       OnOpenProfile='name => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}")' />
-}
-
 @code {
-    private string? _spotlightName;
-
     private Analytics.PeerSummary Summary => Analytics.Peers(State.PeerReviews);
     private Analytics.PeerStanding? LeastReviewed => Summary.Standings.Count == 0 ? null : Summary.Standings.OrderBy(x => x.ReviewsReceived).ThenBy(x => x.Name).First();
-
-    private string[] PeerNames => State.PeerReviews
-        .SelectMany(x => new[] { x.ReviewerName, x.SubjectName })
-        .Where(x => !string.IsNullOrWhiteSpace(x))
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-        .ToArray();
-
+    private string[] PeerNames => State.PeerReviews.SelectMany(x => new[] { x.ReviewerName, x.SubjectName }).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
     private string PeerMatrixStyle => $"grid-template-columns:160px repeat({Math.Max(1, PeerNames.Length)},34px)";
 
     private IReadOnlyList<(string Name, Analytics.PeerBreakdown Peer)> Breakdown => State.Performance
-        .Select(x => x.EmployeeName)
-        .Union(Summary.Standings.Select(x => x.Name), StringComparer.OrdinalIgnoreCase)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .Select(name => (name, Analytics.PeerBreakdownFor(State.PeerReviews, name)))
-        .OrderByDescending(x => x.Item2.AverageReceived)
-        .ThenByDescending(x => x.Item2.ReceivedCount)
-        .ToArray();
+        .Select(x => x.EmployeeName).Union(Summary.Standings.Select(x => x.Name), StringComparer.OrdinalIgnoreCase).Distinct(StringComparer.OrdinalIgnoreCase)
+        .Select(name => (name, Analytics.PeerBreakdownFor(State.PeerReviews, name))).OrderByDescending(x => x.Item2.AverageReceived).ThenByDescending(x => x.Item2.ReceivedCount).ToArray();
 
-    private IReadOnlyList<PeerReviewItem> AllComments => State.PeerReviews
-        .Where(x => !string.IsNullOrWhiteSpace(x.Comment))
-        .OrderBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase)
-        .ToArray();
-
+    private IReadOnlyList<PeerReviewItem> AllComments => State.PeerReviews.Where(x => !string.IsNullOrWhiteSpace(x.Comment)).OrderBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase).ToArray();
     private int PairCount(string reviewer, string subject) => State.PeerReviews.Count(x => PersonName.Matches(x.ReviewerName, reviewer) && PersonName.Matches(x.SubjectName, subject));
     private static string PairIntensity(int count) => Math.Clamp(24 + count * 18, 24, 82) + "%";
-
-    private void Spotlight(string name) => _spotlightName = PersonName.Normalize(name);
+    private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
 
     protected override void OnInitialized() => State.Changed += OnStateChanged;
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
