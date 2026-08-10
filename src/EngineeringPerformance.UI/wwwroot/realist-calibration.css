@@ -1,12 +1,7 @@
 /* EOS Realist calibration — final geometry and hardware details. */
 html[data-skin="realist"] .topbar{position:relative;grid-template-columns:500px minmax(0,1fr)}
-html[data-skin="realist"] .realist-control-bank{width:100%;min-width:0;grid-template-columns:220px 125px 125px minmax(210px,1fr) 58px}
-html[data-skin="realist"] .topbar-actions{position:absolute!important;right:0;top:0;width:0!important;height:0!important;overflow:visible!important;display:block!important;z-index:50}
-html[data-skin="realist"] .topbar-actions>.month-control,
-html[data-skin="realist"] .topbar-actions>.readiness,
-html[data-skin="realist"] .global-search>.icon-button{position:absolute!important;width:1px!important;height:1px!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;overflow:hidden!important;white-space:nowrap!important}
-html[data-skin="realist"] .global-search{position:static!important}
-html[data-skin="realist"] .global-search-popover{display:block;position:absolute;right:12px;top:76px;width:390px;z-index:1000}
+html[data-skin="realist"] .realist-control-bank{position:relative;width:100%;min-width:0;grid-template-columns:220px 125px 125px minmax(210px,1fr) 58px}
+html[data-skin="realist"] .topbar-actions{display:none!important}
 
 /* Draw monochrome mechanical glyphs instead of emoji/font-dependent symbols. */
 html[data-skin="realist"] .rcb-icon{position:relative;font-size:0;height:100%}
@@ -15,36 +10,32 @@ html[data-skin="realist"] .rcb-icon::after{content:"";position:absolute;left:14p
 html[data-skin="realist"] .rcb-search>span{position:relative;font-size:0}
 html[data-skin="realist"] .rcb-search>span::before{content:"";position:absolute;width:12px;height:12px;border:2px solid #242823;border-radius:50%;left:9px;top:8px}
 html[data-skin="realist"] .rcb-search>span::after{content:"";position:absolute;width:8px;height:2px;background:#242823;transform:rotate(45deg);left:20px;top:21px;border-radius:2px}
+html[data-skin="realist"] .realist-search-popover{position:absolute;z-index:2000;right:4px;top:66px;width:390px;border:5px solid #252822;border-radius:10px;background:url("realist-grain.svg"),linear-gradient(#f0e6d6,#d6c9b5);background-blend-mode:soft-light,normal;box-shadow:0 20px 38px rgba(0,0,0,.5),inset 0 0 0 1px #928777;color:#1a1d1a;overflow:hidden}
+html[data-skin="realist"] .realist-search-popover .global-search-results button{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:#1d211d!important;text-shadow:none!important}
+html[data-skin="realist"] .realist-search-popover .global-search-results button:hover{background:rgba(237,107,22,.09)!important}
 
 /* Headings in the reference carry a small machined information marker. */
 html[data-skin="realist"] .atlas-panel-head h2::after{content:"i";display:inline-grid;place-items:center;width:15px;height:15px;margin-left:8px;border:1px solid #8e8475;border-radius:50%;color:#676159;font:700 9px/1 "Segoe UI",sans-serif;vertical-align:2px;box-shadow:inset 0 1px rgba(255,255,255,.8)}
 html[data-skin="realist"] .attention-lens .atlas-panel-head h2::after{margin-left:7px}
 
-/* Field legend as a mounted little plate. */
-html[data-skin="realist"] .realist-field-legend{position:absolute;right:26px;bottom:28px;z-index:6;min-width:155px;padding:8px 11px;border:3px solid #625b50;border-radius:6px;background:url("realist-grain.svg"),linear-gradient(#e8decd,#c9bba5);background-blend-mode:soft-light,normal;box-shadow:0 3px 5px rgba(0,0,0,.3),inset 0 1px #fff6e8,inset 0 -2px rgba(73,58,40,.22);color:#282a26;font-size:9px;text-transform:uppercase;letter-spacing:.03em}
-html[data-skin="realist"] .realist-field-legend span{display:flex;align-items:center;gap:7px;min-height:19px}
-html[data-skin="realist"] .realist-field-legend i{width:12px;height:12px;border:2px solid #363832;border-radius:50%;background:radial-gradient(circle at 35% 28%,#3b8098,#0b526e 48%,#073245 76%);box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.45)}
-html[data-skin="realist"] .realist-field-legend .previous i{background:#e9dfcd;border-color:#8b8172}
+/* Fasteners are CSS hardware, not injected DOM. */
+html[data-skin="realist"] :is(.atlas-pulse,.performance-field,.attention-lens,.movement-river,.operational-fingerprint,.workbench-header,.timesheet-pulse,.timesheet-ledger,.worksheet-intro,.people-command,.people-add-drawer,.people-roster,.collaboration-pulse,.peer-matrix-wrap,.peer-standings,.peer-comments,.primary-pane,.activity-pane,.export-lane,.template-lane,.template-contract,.operational-scoring-layout,.scoring-grid,.settings-card,.appearance-control,.skin-choice,.portrait-history,.portrait-evidence,.portrait-lower>section)::before{content:"";position:absolute;z-index:8;inset:4px;pointer-events:none;border-radius:8px;background:radial-gradient(circle at 6px 6px,#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px),radial-gradient(circle at calc(100% - 6px) 6px,#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px),radial-gradient(circle at 6px calc(100% - 6px),#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px),radial-gradient(circle at calc(100% - 6px) calc(100% - 6px),#b9b2a7 0 1.5px,#605d56 1.8px 3px,#272824 3.2px 4.2px,transparent 4.5px);box-shadow:inset 0 0 0 1px rgba(87,76,60,.32)}
+
+/* Field legend as a mounted little plate, without extra Blazor DOM. */
+html[data-skin="realist"] .performance-field::after{content:"●  CURRENT (SIZE = SCORE)\A○  PREVIOUS-MONTH POSITION";white-space:pre;position:absolute;right:26px;bottom:28px;z-index:6;min-width:165px;padding:8px 11px;border:3px solid #625b50;border-radius:6px;background:url("realist-grain.svg"),linear-gradient(#e8decd,#c9bba5);background-blend-mode:soft-light,normal;box-shadow:0 3px 5px rgba(0,0,0,.3),inset 0 1px #fff6e8,inset 0 -2px rgba(73,58,40,.22);color:#282a26;font-size:9px;line-height:1.9;text-transform:uppercase;letter-spacing:.03em}
 
 /* Physical column labels in Attention Lens. */
-html[data-skin="realist"] .realist-attention-columns{display:grid;grid-template-columns:1fr 128px minmax(75px,1fr);gap:12px;margin:0 21px 0 185px;padding:0 0 7px;color:#504c45;font-size:8px;font-weight:750;text-transform:uppercase;letter-spacing:.055em;border-bottom:1px solid #b8aa96}
-html[data-skin="realist"] .realist-attention-columns .fp{display:grid;grid-template-columns:repeat(4,1fr);text-align:center}
-html[data-skin="realist"] .attention-lens .atlas-panel-head::after{content:"RANKED BY RISK";right:4px;bottom:9px;font-size:8px;letter-spacing:.05em}
+html[data-skin="realist"] .attention-list{position:relative;padding-top:22px}
+html[data-skin="realist"] .attention-list::before{content:"COMP      APP      ATT      UTIL                     30-DAY RHYTHM";position:absolute;left:52%;right:4px;top:3px;color:#504c45;font-size:8px;font-weight:750;letter-spacing:.055em;white-space:pre;border-bottom:1px solid #b8aa96;padding-bottom:5px}
+html[data-skin="realist"] .attention-lens .atlas-panel-head::after{content:"RANKED BY RISK";position:absolute;right:4px;bottom:9px;font-size:8px;letter-spacing:.05em;color:#504c45}
 
 /* Movement River legend mounted into its title line. */
-html[data-skin="realist"] .realist-river-legend{position:absolute;right:15px;top:8px;z-index:5;display:flex;align-items:center;gap:11px;color:#4d4a43;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
-html[data-skin="realist"] .realist-river-legend span{display:flex;align-items:center;gap:4px}
-html[data-skin="realist"] .realist-river-legend i{width:8px;height:8px;background:#0b536f;border:1px solid #062f40;box-shadow:inset 0 1px rgba(255,255,255,.35)}
-html[data-skin="realist"] .realist-river-legend span:first-child i{background:#ed6b16;border-color:#9b3906}
-html[data-skin="realist"] .realist-river-legend .median i{width:22px;height:0;border:0;border-top:2px dashed #2d312f;background:none;box-shadow:none}
+html[data-skin="realist"] .movement-river .atlas-panel-head::before{content:"■ SELECTED     ■ ATTENTION     — — TEAM MEDIAN";position:absolute;right:12px;top:7px;color:#4d4a43;font-size:8.5px;font-weight:700;letter-spacing:.04em;white-space:pre}
 
 /* Give the chart wells actual recessed depth. */
 html[data-skin="realist"] #atlas-field,
 html[data-skin="realist"] #atlas-river,
 html[data-skin="realist"] #portrait-history{border:1px solid rgba(110,98,80,.28);border-radius:2px;box-shadow:inset 0 1px rgba(255,255,255,.25),inset 0 0 20px rgba(92,75,51,.035)}
-
-/* Stronger fasteners: slot line makes them read as screws rather than dots. */
-html[data-skin="realist"] .realist-fasteners::before{content:"";position:absolute;z-index:2;inset:0;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - .5px),#353631 calc(50% - .5px),#353631 calc(50% + .5px),transparent calc(50% + .5px)) 2px 2px/8px 8px no-repeat,linear-gradient(-18deg,transparent calc(50% - .5px),#353631 calc(50% - .5px),#353631 calc(50% + .5px),transparent calc(50% + .5px)) calc(100% - 2px) 2px/8px 8px no-repeat,linear-gradient(20deg,transparent calc(50% - .5px),#353631 calc(50% - .5px),#353631 calc(50% + .5px),transparent calc(50% + .5px)) 2px calc(100% - 2px)/8px 8px no-repeat,linear-gradient(48deg,transparent calc(50% - .5px),#353631 calc(50% - .5px),#353631 calc(50% + .5px),transparent calc(50% + .5px)) calc(100% - 2px) calc(100% - 2px)/8px 8px no-repeat}
 
 /* The Realist settings view should fill the console rather than ending as a floating strip. */
 html[data-skin="realist"] .settings-page{min-height:100%;padding-bottom:24px}
@@ -57,5 +48,5 @@ html[data-skin="realist"] :is(.workbench-page,.portrait-page,.collaboration-page
 @media(max-width:1550px){
  html[data-skin="realist"] .topbar{grid-template-columns:390px minmax(0,1fr)}
  html[data-skin="realist"] .realist-control-bank{grid-template-columns:190px 105px 105px minmax(180px,1fr) 52px}
- html[data-skin="realist"] .realist-attention-columns{margin-left:160px;grid-template-columns:1fr 108px 64px}
+ html[data-skin="realist"] .attention-list::before{left:49%;font-size:7.5px}
 }
