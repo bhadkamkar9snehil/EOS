@@ -1,0 +1,49 @@
+/* Small cross-route Atlas details kept separate from the structural layout file. */
+.fingerprint-target {
+    position:absolute; top:1px; bottom:1px; left:var(--target); width:0;
+    border-left:1px dashed var(--atlas-orange); opacity:.62;
+}
+.fingerprint-row > strong { font-variant-numeric:tabular-nums; }
+.fingerprint-row > strong::after { content:""; }
+
+/* Make the current selection travel across the composition without becoming a pill-heavy UI. */
+.focus-chip { border-radius:2px; }
+.focus-chip b { font-weight:650; }
+.focus-chip button:first-of-type { color:var(--atlas-orange); }
+
+/* Explicit missing-source affordance for the field and worksheet. */
+.atlas-missing-key { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:10.5px; }
+.atlas-missing-key::before { content:""; width:9px; height:9px; border:1px dashed var(--missing); border-radius:50%; background:var(--surface-raised); }
+
+/* Theme-derived foregrounds stay readable on score-distribution semantics. */
+.score-axis-dot:focus-visible { outline-offset:4px; }
+
+/* The app should use 10.5px only for tertiary metadata; primary operational text is larger. */
+.atlas-page,.workbench-page,.portrait-page,.collaboration-page,
+.route-imports .primary-pane,.route-imports .activity-pane,
+.route-settings .settings-page,.route-scoring .scoring-page { font-size:13px; }
+.atlas-caption,.pulse-score-meta,.attention-person small,.portrait-evidence-list small,
+.template-contract small,.export-lane > small { font-size:10.75px; }
+.atlas-panel-head h2 { font-size:14.5px; }
+.atlas-panel-head small { font-size:11px; }
+
+/* Tables are led by horizontal rhythm, not boxed cells. */
+.timesheet-ledger .epa-grid tbody tr:hover td,
+.route-data .epa-grid tbody tr:hover td { background:color-mix(in srgb,var(--atlas-orange) 3%,var(--table-row-hover)); }
+.route-data .imported-metrics-grid tbody td:first-child,
+.route-data .imported-metrics-grid thead th:first-child { position:sticky; left:0; z-index:4; }
+.route-data .imported-metrics-grid tbody td:first-child { background:var(--table-row); }
+.route-data .imported-metrics-grid tbody tr:nth-child(even) td:first-child { background:var(--table-row-alt); }
+
+/* Collaboration matrix controls are data cells, not buttons visually. */
+.peer-matrix button.pm-cell { padding:0; border-radius:0; color:var(--ink); cursor:pointer; }
+.peer-matrix button.pm-cell:hover { outline:2px solid var(--focus-ring); outline-offset:-2px; }
+
+/* Reports/templates retain generous empty space on large screens. */
+.export-workbench,.template-workbench { max-width:1500px; margin:0 auto; }
+
+/* High-density 1080p remains readable without reverting to utility-scale type. */
+@media (min-width:1400px) {
+    .nav-rail button { font-size:13.25px; }
+    .timesheet-ledger .epa-grid tbody td,.route-data .epa-grid tbody td { font-size:12.75px; }
+}
