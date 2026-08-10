@@ -10,6 +10,9 @@
 .focus-chip { border-radius:2px; }
 .focus-chip b { font-weight:650; }
 .focus-chip button:first-of-type { color:var(--atlas-orange); }
+/* Atlas opens with an intentional focus (the highest-priority person); the old clear
+   affordance implied a team/no-selection state that this composition does not use. */
+.focus-chip button[title="Clear focus"] { display:none; }
 
 /* Explicit missing-source affordance for the field and worksheet. */
 .atlas-missing-key { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:10.5px; }
@@ -38,6 +41,40 @@
 /* Collaboration matrix controls are data cells, not buttons visually. */
 .peer-matrix button.pm-cell { padding:0; border-radius:0; color:var(--ink); cursor:pointer; }
 .peer-matrix button.pm-cell:hover { outline:2px solid var(--focus-ring); outline-offset:-2px; }
+
+/* Settings previews must represent the palette that will actually be applied. The
+   ThemeOption records preserve compatibility metadata; these variables track the
+   independently-remediated dark resolver values exactly. */
+.theme-option[data-theme-key="dracula"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#242630!important; --preview-soft:#303341!important; --preview-card:#3A3D4D!important; --preview-raised:#414456!important;
+    --preview-header:#1b1d26!important; --preview-ink:#f8f8f2!important; --preview-muted:#a6a8c0!important; --preview-line:#5c6078!important;
+    --preview-accent:#bd93f9!important; --preview-chart-1:#bd93f9!important; --preview-chart-2:#65b9d4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="everforest"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#283137!important; --preview-soft:#344047!important; --preview-card:#3C484F!important; --preview-raised:#414e54!important;
+    --preview-header:#20272b!important; --preview-ink:#e8dcc5!important; --preview-muted:#adb6ab!important; --preview-line:#637077!important;
+    --preview-accent:#a7c080!important; --preview-chart-1:#a7c080!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="solarized-dark"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#00252e!important; --preview-soft:#063842!important; --preview-card:#09404C!important; --preview-raised:#0b4652!important;
+    --preview-header:#001c24!important; --preview-ink:#f5efdd!important; --preview-muted:#9badb2!important; --preview-line:#23616d!important;
+    --preview-accent:#d1a51a!important; --preview-chart-1:#d1a51a!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="gruvbox"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#242424!important; --preview-soft:#302e2d!important; --preview-card:#383432!important; --preview-raised:#3d3835!important;
+    --preview-header:#1b1d1e!important; --preview-ink:#f4e8c8!important; --preview-muted:#aea18d!important; --preview-line:#665c54!important;
+    --preview-accent:#fe8019!important; --preview-chart-1:#fe8019!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="monokai"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#24251f!important; --preview-soft:#303129!important; --preview-card:#383930!important; --preview-raised:#3d3e34!important;
+    --preview-header:#1b1c18!important; --preview-ink:#fafaf5!important; --preview-muted:#a7a89f!important; --preview-line:#5e5f55!important;
+    --preview-accent:#f92672!important; --preview-chart-1:#f92672!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="contrast-dark"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#000!important; --preview-soft:#0d0d0d!important; --preview-card:#161616!important; --preview-raised:#1c1c1c!important;
+    --preview-header:#000!important; --preview-ink:#fff!important; --preview-muted:#c4c4c4!important; --preview-line:#888!important;
+    --preview-accent:#8ab4ff!important; --preview-chart-1:#8ab4ff!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
 
 /* Reports/templates retain generous empty space on large screens. */
 .export-workbench,.template-workbench { max-width:1500px; margin:0 auto; }
