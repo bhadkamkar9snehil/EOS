@@ -1,0 +1,78 @@
+/* EPA Realist shared hardware language — app-wide. */
+html[data-skin="realist"] :is(
+ .workbench-header,.timesheet-pulse,.timesheet-ledger,.worksheet-intro,.wide-grid-scroll,
+ .people-command,.people-add-drawer,.people-roster,.collaboration-pulse,.peer-matrix-wrap,
+ .peer-standings,.peer-comments,.primary-pane,.activity-pane,.export-lane,.template-lane,
+ .template-contract,.operational-scoring-layout,.scoring-grid,.settings-card,.appearance-control,
+ .skin-choice,.portrait-identity,.portrait-fingerprint,.portrait-rhythm,.portrait-history,
+ .portrait-evidence,.portrait-lower>section,.validation-rail,.evidence-register,.import-method-note
+){
+ position:relative;
+ border:5px solid #252722!important;
+ border-radius:10px!important;
+ background:url("realist-brushed.svg"),radial-gradient(ellipse at 30% -12%,rgba(255,255,255,.58),transparent 38%),linear-gradient(180deg,#f6eddf,#e9dcc8 58%,#d8c8b0)!important;
+ background-blend-mode:multiply,screen,normal!important;
+ box-shadow:0 6px 10px rgba(0,0,0,.43),inset 0 0 0 1px #9a8c78,inset 0 2px 2px #fff8ec,inset 0 -5px 8px rgba(72,55,33,.18)!important;
+ color:#1e211d;
+}
+
+html[data-skin="realist"] :is(
+ .workbench-header,.timesheet-pulse,.worksheet-intro,.people-command,.collaboration-pulse,
+ .template-contract,.appearance-control
+)::after{
+ content:"";position:absolute;left:14px;right:14px;bottom:-8px;height:7px;border:2px solid #090b09;border-radius:3px;
+ background:url("realist-grain.svg"),linear-gradient(#3a3e38,#151916);background-blend-mode:soft-light,normal;
+ box-shadow:inset 0 1px rgba(255,255,255,.08);pointer-events:none;
+}
+
+html[data-skin="realist"] :is(.workbench-page,.portrait-page,.collaboration-page,.settings-page,.scoring-page){gap:10px!important}
+html[data-skin="realist"] :is(.workbench-page,.portrait-page,.collaboration-page,.settings-page,.scoring-page) h2,
+html[data-skin="realist"] :is(.workbench-page,.portrait-page,.collaboration-page,.settings-page,.scoring-page) h3{
+ color:#1c1f1b;text-shadow:0 1px #fff;font-family:"Bahnschrift SemiBold","Segoe UI",sans-serif;
+}
+
+/* Inputs are recessed console wells. */
+html[data-skin="realist"] :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+ border:3px solid #625b50!important;border-radius:5px!important;
+ background:url("realist-brushed.svg"),linear-gradient(#d0c2ad,#f0e6d6 44%,#ded0bb)!important;background-blend-mode:multiply,normal!important;
+ box-shadow:inset 0 4px 7px rgba(0,0,0,.2),inset 0 -1px #fff!important;color:#20231f!important;
+}
+html[data-skin="realist"] :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus{
+ border-color:#8b4a20!important;box-shadow:inset 0 4px 7px rgba(0,0,0,.2),0 0 0 2px rgba(239,108,22,.22)!important;
+}
+
+/* Tables become instrument registers rather than web grids. */
+html[data-skin="realist"] table{border-collapse:separate!important;border-spacing:0!important;background:#e8dcc8!important}
+html[data-skin="realist"] thead th{
+ border-top:2px solid #686257!important;border-bottom:3px solid #171a17!important;
+ background:url("realist-grain.svg"),linear-gradient(#444942,#20251f)!important;background-blend-mode:soft-light,normal!important;
+ color:#f2e7d3!important;text-shadow:0 1px #000!important;box-shadow:inset 0 1px rgba(255,255,255,.1)!important;
+}
+html[data-skin="realist"] tbody td{border-bottom:1px solid #b8aa95!important;border-right-color:rgba(94,81,64,.18)!important;background:rgba(255,255,255,.07)!important}
+html[data-skin="realist"] tbody tr:nth-child(even) td{background:rgba(97,76,48,.035)!important}
+html[data-skin="realist"] tbody tr:hover td{background:rgba(239,108,22,.055)!important}
+
+/* Status chips and calculated markers read as small mounted badges. */
+html[data-skin="realist"] :is(.status-chip,.pill,.roster-pill,.data-chip,.calculated-marker){
+ border-width:2px!important;border-color:#72695d!important;border-radius:3px!important;
+ background:url("realist-brushed.svg"),linear-gradient(#e5dac9,#c6b8a2)!important;background-blend-mode:multiply,normal!important;
+ box-shadow:0 1px 2px rgba(0,0,0,.22),inset 0 1px #fff!important;color:#292b27!important;text-shadow:0 1px #fff!important;
+}
+
+/* Primary actions use the same enamel-orange hardware as the reference console. */
+html[data-skin="realist"] :is(button.action,button.primary,.primary-action,.save-button){
+ border-color:#6e2d05!important;color:#fff3df!important;
+ background:linear-gradient(#ffa04f,#df600d 56%,#b84405)!important;
+ text-shadow:0 1px #6d2802!important;box-shadow:0 3px 5px rgba(0,0,0,.34),inset 0 2px rgba(255,255,255,.4),inset 0 -3px rgba(101,35,0,.26)!important;
+}
+
+/* Settings appearance choices should look like two actual console faceplates. */
+html[data-skin="realist"] .skin-choice{min-height:180px;padding:12px!important}
+html[data-skin="realist"] .skin-preview{border:4px solid #373a34!important;border-radius:6px!important;box-shadow:inset 0 4px 7px rgba(0,0,0,.23),0 2px #fff!important}
+html[data-skin="realist"] .skin-choice.selected{border-color:#7a3307!important;box-shadow:0 0 0 3px #ef6c16,0 6px 10px rgba(0,0,0,.43),inset 0 0 0 1px #9a8c78!important}
+
+/* Imported evidence scrollbars become dark mechanical tracks. */
+html[data-skin="realist"] *::-webkit-scrollbar{width:14px;height:14px}
+html[data-skin="realist"] *::-webkit-scrollbar-track{background:#121612;border:2px solid #080a08}
+html[data-skin="realist"] *::-webkit-scrollbar-thumb{border:3px solid #121612;border-radius:7px;background:linear-gradient(#8b877e,#555850)}
+html[data-skin="realist"] *::-webkit-scrollbar-thumb:hover{background:linear-gradient(#aaa397,#696b63)}
