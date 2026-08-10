@@ -54,7 +54,8 @@
   function syncHeaderBank() {
     const label = qs('.rcb-month-label');
     const month = qs('.month-control strong');
-    if (label && month) label.textContent = month.textContent.trim();
+    const next = month?.textContent?.trim();
+    if (label && next && label.textContent !== next) label.textContent = next;
   }
 
   function showHint(text) {
@@ -79,7 +80,8 @@
       <button class="realist-back" type="button" aria-label="Back to overview"><span>≪</span></button>
       <button class="realist-dial" type="button" aria-label="Switch to Minimal interface"><i></i></button>`;
     const footer = qs('.nav-footer', rail);
-    rail.insertBefore(panel, footer || null);
+    if (footer) footer.insertAdjacentElement('afterend', panel);
+    else rail.appendChild(panel);
     qs('.realist-back', panel)?.addEventListener('click', () => click('.nav-rail nav button'));
     qs('.realist-dial', panel)?.addEventListener('click', () => window.epaSkin?.apply?.('minimal'));
   }
@@ -88,7 +90,7 @@
     const score = qs('.pulse-score-main > strong');
     if (!score) return;
     const numeric = Math.max(0, Math.min(100, parseFloat(score.textContent) || 0));
-    score.style.setProperty('--gauge-score', `${numeric * 3.6}deg`);
+    score.style.setProperty('--gauge-score', `${numeric * 2.7}deg`);
     score.setAttribute('data-gauge', String(Math.round(numeric)));
   }
 
