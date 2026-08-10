@@ -67,7 +67,13 @@
     <div class="theme-grid" role="list" aria-label="Application themes">
         @foreach (var theme in FilteredThemes)
         {
+            var diagnostic = Diagnostic(theme.Key);
+            var aaPass = diagnostic is not null && diagnostic.BodyContrast >= 4.5 && diagnostic.MutedContrast >= 4.5;
+            var focusPass = diagnostic is not null && diagnostic.FocusContrast >= 3;
+            var seriesPass = diagnostic?.CategoricalDistinct == true;
+
             <button type="button"
+                    data-theme-key="@theme.Key"
                     class="theme-option @(_currentTheme == theme.Key ? "selected" : null)"
                     aria-pressed="@(_currentTheme == theme.Key)"
                     @onclick="() => ApplyThemeAsync(theme)">
@@ -104,8 +110,9 @@
                     </span>
                     <small>@theme.Description</small>
                     <span class="theme-diagnostics">
-                        <span class="good">AA</span>
-                        <span class="good">Chart-safe</span>
+                        <span class="@(aaPass ? "good" : null)">@(diagnostic is null ? "Contrast pending" : aaPass ? "AA text" : "Contrast review")</span>
+                        <span class="@(focusPass ? "good" : null)">@(diagnostic is null ? "Focus pending" : focusPass ? "Focus 3:1" : "Focus review")</span>
+                        <span class="@(seriesPass ? "good" : null)">@(diagnostic is null ? "Series pending" : seriesPass ? "8 distinct series" : "Series review")</span>
                         <span>@theme.Usage</span>
                         @if (theme.Recommended) { <span class="good">Recommended</span> }
                     </span>
@@ -139,6 +146,7 @@
                 <div><span>Available palettes</span><strong>@Themes.Length</strong></div>
                 <div><span>Semantic status palette</span><strong>Stable by light / dark mode</strong></div>
                 <div><span>Generated categorical palette</span><strong>OKLCH · 8 series</strong></div>
+                <div><span>Colour-vision audit</span><strong>Protanopia · Deuteranopia · Tritanopia</strong></div>
                 <div><span>Focus contrast target</span><strong>3:1 minimum</strong></div>
                 <div><span>Operational text floor</span><strong>10.5 px</strong></div>
                 <div><span>Data or scoring impact</span><strong>None</strong></div>
@@ -154,6 +162,7 @@
     private string _density = "comfortable";
     private string _motion = "system";
     private string _filter = "recommended";
+    private readonly Dictionary<string, ThemeDiagnostic> _diagnostics = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly ThemeGroup[] ThemeGroups =
     [
@@ -191,6 +200,7 @@
     };
 
     private ThemeOption CurrentTheme => Themes.FirstOrDefault(x => x.Key == _currentTheme) ?? Themes[0];
+    private ThemeDiagnostic? Diagnostic(string key) => _diagnostics.TryGetValue(key, out var diagnostic) ? diagnostic : null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -200,6 +210,15 @@
         _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.get");
         _density = await JS.InvokeAsync<string>("epaTheme.density.get");
         _motion = await JS.InvokeAsync<string>("epaTheme.motion.get");
+        foreach (var theme in Themes)
+        {
+            try
+            {
+                var diagnostic = await JS.InvokeAsync<ThemeDiagnostic>("epaTheme.diagnostics", theme.Key);
+                if (diagnostic is not null) _diagnostics[theme.Key] = diagnostic;
+            }
+            catch (JSException) { }
+        }
         StateHasChanged();
     }
 
@@ -279,5 +298,6 @@
         string Chart2,
         string Chart3);
 
+    private sealed record ThemeDiagnostic(bool Dark, double BodyContrast, double MutedContrast, double FocusContrast, bool CategoricalDistinct);
     private sealed record ThemeGroup(string Key, string Label);
 }
