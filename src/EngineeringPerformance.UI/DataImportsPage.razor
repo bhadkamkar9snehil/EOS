@@ -114,8 +114,8 @@
         <i>@(ready ? "✓" : number.ToString())</i><span><strong>@label</strong><small>@detail</small></span>
     </div>;
 
-    private RenderFragment ValidationSignal(string title, string detail, bool good, string code, bool optional = false) => @<div class="validation-signal @(good ? "good" : optional ? "optional" : "warn")">
-        <i>@code</i><span><strong>@title</strong><small>@detail</small></span><b>@(good ? "●" : optional ? "○" : "!")</b>
+    private RenderFragment ValidationSignal(string title, string detail, bool good, string badge, bool optional = false) => @<div class="validation-signal @(good ? "good" : optional ? "optional" : "warn")">
+        <i>@badge</i><span><strong>@title</strong><small>@detail</small></span><b>@(good ? "●" : optional ? "○" : "!")</b>
     </div>;
 
     private async Task UploadAsync(ReportType type)
