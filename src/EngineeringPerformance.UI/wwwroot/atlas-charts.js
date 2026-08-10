@@ -23,7 +23,9 @@
     const tip=p=>({backgroundColor:p.tooltip,borderWidth:0,padding:[8,10],textStyle:{color:p.tooltipText,fontSize:12.5,lineHeight:18},extraCssText:'box-shadow:0 8px 22px rgba(0,0,0,.22);border-radius:3px;'});
     const motion=()=>palette().reducedMotion?{animation:false,animationDuration:0,animationDurationUpdate:0}:{animation:true,animationDuration:620,animationEasing:'cubicOut',animationDurationUpdate:260};
     const initials=name=>String(name||'').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join('');
-    const bandColor=(band,p)=>{switch(String(band||'').toLowerCase()){case'good':return p.operational;case'warning':return p.warning;case'serious':return p.serious;case'critical':return p.critical;default:return p.operational;}};
+    // Score is encoded primarily through size. Colour is deliberately sparse: petrol is measured data,
+    // orange is intervention/watch, vermilion is critical. High scores are not painted green by default.
+    const bandColor=(band,p)=>{switch(String(band||'').toLowerCase()){case'critical':return p.critical;case'serious':return orange();default:return p.operational;}};
     const roleColor=(role,p,index=0)=>{switch(String(role||'').toLowerCase()){case'attendance':return p.attendance;case'timesheet':return p.timesheet;case'approval':return p.approval;case'warning':return p.warning;case'serious':return p.serious;case'critical':return p.critical;default:return p.series[index%p.series.length]||p.operational;}};
 
     function registerDrilldown(ref){drilldownRef=ref;}
@@ -40,8 +42,11 @@
         const source=(points||[]).map(x=>({...x,x:+x.x||0,y:+x.y||0,prevX:x.prevX==null?null:+x.prevX,prevY:x.prevY==null?null:+x.prevY,score:+x.score||0,exceptions:+x.exceptions||0,missing:!!x.missing}));
         const draw=(silent=false)=>{
             const p=palette(),selected=String(selectedName||'').toLowerCase();
-            const tails=source.filter(x=>x.prevX!=null&&x.prevY!=null&&!x.missing).map((pt,i)=>({name:`move-${i}`,type:'line',silent:true,symbol:['none','circle'],symbolSize:[0,6],data:[[pt.prevX,pt.prevY],[pt.x,pt.y]],lineStyle:{color:String(pt.name).toLowerCase()===selected?orange():p.axis,width:String(pt.name).toLowerCase()===selected?1.8:1,opacity:String(pt.name).toLowerCase()===selected?.95:.52},itemStyle:{color:p.surface,borderColor:String(pt.name).toLowerCase()===selected?orange():p.axis,borderWidth:1.2},z:1}));
-            const maxX=Math.max(1,+xMax||Math.max(...source.map(x=>x.x),1)*1.12),target=+utilizationTarget||75,med=+medianX||maxX/2;
+            // Historical rows with no meaningful X/Y evidence previously produced long spider-web lines from
+            // the origin. Only draw a movement tail when both historical dimensions are actual positive data.
+            const tails=source.filter(x=>x.prevX>0&&x.prevY>0&&!x.missing).map((pt,i)=>({name:`move-${i}`,type:'line',silent:true,symbol:['none','circle'],symbolSize:[0,5],data:[[pt.prevX,pt.prevY],[pt.x,pt.y]],lineStyle:{color:String(pt.name).toLowerCase()===selected?orange():p.axis,width:String(pt.name).toLowerCase()===selected?1.8:.9,opacity:String(pt.name).toLowerCase()===selected?.9:.34},itemStyle:{color:p.surface,borderColor:String(pt.name).toLowerCase()===selected?orange():p.axis,borderWidth:1.1},z:1}));
+            const rawMax=Math.max(1,+xMax||Math.max(...source.map(x=>x.x),1)*1.12);
+            const maxX=Math.max(20,Math.ceil(rawMax/20)*20),target=+utilizationTarget||75,med=+medianX||maxX/2;
             const scatterData=source.map(d=>{
                 const isSelected=String(d.name||'').toLowerCase()===selected;
                 return {...d,value:[d.x,d.y],itemStyle:{
@@ -54,21 +59,21 @@
                 }};
             });
             chart.setOption({
-                ...(silent?{animation:false}:motion()),grid:{left:52,right:22,top:32,bottom:52},
+                ...(silent?{animation:false}:motion()),grid:{left:56,right:24,top:34,bottom:56},
                 tooltip:{...tip(p),trigger:'item',formatter:x=>{if(x.seriesName!=='Engineers'||!x.data)return'';const d=x.data;return `<strong>${d.name}</strong><br/>Score <b>${(+d.score).toFixed(1)}</b><br/>Punch hours <b>${(+d.x).toFixed(1)} h</b><br/>Utilization <b>${d.missing?'no monthly source':(+d.y).toFixed(1)+'%'}</b><br/>Exceptions <b>${d.exceptions}</b><br/><span style="opacity:.72">Click to focus across the Atlas</span>`;}},
-                xAxis:{type:'value',min:0,max:maxX,name:'ACCOUNTABLE / PUNCH HOURS',nameLocation:'middle',nameGap:32,nameTextStyle:{color:p.inkSoft,fontSize:11,fontWeight:600},axisLine:{lineStyle:{color:p.axis}},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:11.5},splitLine:{show:false}},
-                yAxis:{type:'value',min:0,max:110,name:'UTILIZATION (%)',nameLocation:'end',nameGap:14,nameTextStyle:{color:p.inkSoft,fontSize:11,fontWeight:600,align:'left'},axisLine:{show:true,lineStyle:{color:p.axis}},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:11.5},splitLine:{lineStyle:{color:p.grid,type:'dashed'}}},
+                xAxis:{type:'value',min:0,max:maxX,splitNumber:6,name:'ACCOUNTABLE / PUNCH HOURS',nameLocation:'middle',nameGap:34,nameTextStyle:{color:p.inkSoft,fontSize:11.5,fontWeight:600},axisLine:{lineStyle:{color:p.axis}},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:12},splitLine:{show:false}},
+                yAxis:{type:'value',min:0,max:110,name:'UTILIZATION (%)',nameLocation:'end',nameGap:14,nameTextStyle:{color:p.inkSoft,fontSize:11.5,fontWeight:600,align:'left'},axisLine:{show:true,lineStyle:{color:p.axis}},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:12},splitLine:{lineStyle:{color:p.grid,type:'dashed'}}},
                 series:[
                     ...tails,
-                    {name:'zones',type:'line',silent:true,symbol:'none',data:[],markArea:{silent:true,label:{color:p.muted,fontSize:10.5},itemStyle:{borderWidth:0},data:[
-                        [{name:'UNDERUSED',xAxis:0,yAxis:target,itemStyle:{color:'rgba(15,95,122,.025)'}},{xAxis:med,yAxis:110}],
-                        [{name:'OVERLOADED',xAxis:med,yAxis:target,itemStyle:{color:'rgba(242,106,18,.025)'}},{xAxis:maxX,yAxis:110}],
-                        [{name:'INCONSISTENT',xAxis:0,yAxis:0,itemStyle:{color:'rgba(217,45,32,.018)'}},{xAxis:med,yAxis:target}],
-                        [{name:'BALANCED',xAxis:med,yAxis:0,itemStyle:{color:'rgba(22,121,74,.018)'}},{xAxis:maxX,yAxis:target}]
-                    ]},markLine:{silent:true,symbol:'none',label:{show:false},lineStyle:{color:p.axis,type:'dashed',opacity:.55},data:[{xAxis:med},{yAxis:target}]}},
-                    {name:'Engineers',type:'scatter',z:4,data:scatterData,symbol:'circle',symbolSize:(value,params)=>Math.max(22,Math.min(48,18+(+params.data.score||0)*.28)),cursor:'pointer',
-                        label:{show:true,formatter:x=>x.data.missing?`{missing|${initials(x.data.name)}}`:`{normal|${initials(x.data.name)}}`,fontWeight:700,fontSize:10.5,rich:{normal:{color:'#fff',fontWeight:700},missing:{color:p.inkSoft,fontWeight:700}}},
-                        emphasis:{scale:1.15,itemStyle:{borderWidth:3}}
+                    {name:'zones',type:'line',silent:true,symbol:'none',data:[],markArea:{silent:true,label:{color:p.muted,fontSize:11},itemStyle:{color:'transparent',borderWidth:0},data:[
+                        [{name:'UNDERUSED',xAxis:0,yAxis:target},{xAxis:med,yAxis:110}],
+                        [{name:'OVERLOADED',xAxis:med,yAxis:target},{xAxis:maxX,yAxis:110}],
+                        [{name:'INCONSISTENT',xAxis:0,yAxis:0},{xAxis:med,yAxis:target}],
+                        [{name:'BALANCED',xAxis:med,yAxis:0},{xAxis:maxX,yAxis:target}]
+                    ]},markLine:{silent:true,symbol:'none',label:{show:false},lineStyle:{color:p.axis,type:'dashed',opacity:.52},data:[{xAxis:med},{yAxis:target}]}},
+                    {name:'Engineers',type:'scatter',z:4,data:scatterData,symbol:'circle',symbolSize:(value,params)=>Math.max(24,Math.min(50,19+(+params.data.score||0)*.29)),cursor:'pointer',
+                        label:{show:true,formatter:x=>x.data.missing?`{missing|${initials(x.data.name)}}`:`{normal|${initials(x.data.name)}}`,fontWeight:700,fontSize:11,rich:{normal:{color:'#fff',fontWeight:700},missing:{color:p.inkSoft,fontWeight:700}}},
+                        emphasis:{scale:1.12,itemStyle:{borderWidth:3}}
                     }
                 ]
             },true);
@@ -79,7 +84,7 @@
 
     function movementRiver(id,categories,series,median,selectedName){
         const chart=ensure(id);if(!chart)return;const rows=series||[],selected=String(selectedName||'').toLowerCase();
-        const draw=(silent=false)=>{const p=palette();const rendered=rows.map((s,i)=>{const isSelected=String(s.name||'').toLowerCase()===selected,isAttention=!!s.attention,color=isSelected?orange():isAttention?roleColor(s.role||'operational',p,i):p.axis;return{name:s.name,type:'line',data:s.values||[],smooth:.24,connectNulls:true,showSymbol:false,symbol:'circle',lineStyle:{color,width:isSelected?2.6:isAttention?1.55:.9,opacity:isSelected?1:isAttention?.82:.25},itemStyle:{color},emphasis:{focus:'series',lineStyle:{width:2.4,opacity:1}},endLabel:{show:isSelected||isAttention,formatter:x=>x.value==null?'':`${initials(s.name)}  ${(+x.value).toFixed(0)}`,color,fontSize:11,fontWeight:isSelected?700:600,distance:5},labelLayout:{moveOverlap:'shiftY'},z:isSelected?5:isAttention?3:1};});rendered.push({name:'Team median',type:'line',data:median||[],smooth:.24,showSymbol:false,silent:true,lineStyle:{color:p.ink,width:1.5,type:'dashed',opacity:.78},z:2});chart.setOption({...(silent?{animation:false}:motion()),grid:{left:42,right:76,top:16,bottom:38},tooltip:{...tip(p),trigger:'axis',formatter:params=>`<strong>${params[0]?.axisValueLabel||''}</strong><br/>${params.filter(x=>x.value!=null).sort((a,b)=>b.value-a.value).slice(0,8).map(x=>`${x.marker}${x.seriesName}: <b>${(+x.value).toFixed(1)}</b>`).join('<br/>')}`},xAxis:{type:'category',boundaryGap:false,data:categories||[],axisLine:{lineStyle:{color:p.axis}},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:11,margin:10}},yAxis:{type:'value',min:0,max:100,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:11},splitLine:{lineStyle:{color:p.grid}}},series:rendered},true);};
+        const draw=(silent=false)=>{const p=palette();const rendered=rows.map((s,i)=>{const isSelected=String(s.name||'').toLowerCase()===selected,isAttention=!!s.attention,color=isSelected?orange():isAttention?p.operational:p.axis;return{name:s.name,type:'line',data:s.values||[],smooth:.24,connectNulls:true,showSymbol:false,symbol:'circle',lineStyle:{color,width:isSelected?2.7:isAttention?1.4:.8,opacity:isSelected?1:isAttention?.68:.18},itemStyle:{color},emphasis:{focus:'series',lineStyle:{width:2.4,opacity:1}},endLabel:{show:isSelected||isAttention,formatter:x=>x.value==null?'':`${initials(s.name)}  ${(+x.value).toFixed(0)}`,color,fontSize:11.5,fontWeight:isSelected?700:600,distance:6},labelLayout:{moveOverlap:'shiftY'},z:isSelected?5:isAttention?3:1};});rendered.push({name:'Team median',type:'line',data:median||[],smooth:.24,showSymbol:false,silent:true,lineStyle:{color:p.ink,width:1.5,type:'dashed',opacity:.74},z:2});chart.setOption({...(silent?{animation:false}:motion()),grid:{left:44,right:82,top:18,bottom:42},tooltip:{...tip(p),trigger:'axis',formatter:params=>`<strong>${params[0]?.axisValueLabel||''}</strong><br/>${params.filter(x=>x.value!=null).sort((a,b)=>b.value-a.value).slice(0,8).map(x=>`${x.marker}${x.seriesName}: <b>${(+x.value).toFixed(1)}</b>`).join('<br/>')}`},xAxis:{type:'category',boundaryGap:false,data:categories||[],axisLine:{lineStyle:{color:p.axis}},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:11.5,margin:10}},yAxis:{type:'value',min:0,max:100,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:p.inkSoft,fontSize:11.5},splitLine:{lineStyle:{color:p.grid}}},series:rendered},true);};
         draw();renderers.set(id,()=>draw(true));
     }
 
