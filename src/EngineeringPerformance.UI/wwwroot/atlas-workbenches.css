@@ -1,0 +1,137 @@
+/* EOS workbench finishing layer. Loaded after atlas.css so operational and
+   configuration routes share the Performance Atlas hierarchy without pretending
+   every task is a visualization. */
+
+/* Small missing primitives used by the rebuilt routes. */
+.score-axis-dot { padding:0; appearance:none; }
+.score-bands em { font-style:normal; }
+.ledger-person { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.ledger-person strong { font-size:13px; font-weight:620; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ledger-person small { color:var(--muted); font-size:10.5px; }
+.people-add-drawer { border:1px solid var(--atlas-rule); background:transparent; }
+.people-add-drawer > summary { min-height:42px; display:flex; align-items:center; padding:0 13px; cursor:pointer; list-style:none; color:var(--ink-soft); font-size:11.5px; font-weight:620; }
+.people-add-drawer > summary::-webkit-details-marker { display:none; }
+.people-add-drawer > summary::before { content:"+"; width:20px; color:var(--atlas-orange); font-size:17px; }
+.people-add-drawer[open] > summary { border-bottom:1px solid var(--atlas-rule); background:var(--surface-inset); }
+.people-add-drawer[open] > summary::before { content:"−"; }
+.team-drawer { margin-top:-1px; margin-bottom:14px; }
+.people-roster { margin-top:14px; }
+.edit-actions { display:flex; align-items:center; gap:5px; min-width:0; }
+.route-employees .row-actions { display:flex; gap:6px; }
+.route-employees .row-actions > * { width:auto; }
+.route-employees .row-actions .action.small,.route-employees .row-actions .danger { min-width:58px; }
+.route-employees .data-row.roster.full { min-height:58px; }
+.route-employees .data-row.roster.full .cell { padding:0 10px; }
+.route-employees .table-head.roster.full { min-height:40px; }
+.route-employees code { font-size:11.5px; }
+
+/* Export workbench. */
+.export-lanes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border-bottom:1px solid var(--atlas-rule); }
+.export-lane { min-height:440px; padding:32px 34px; border-right:1px solid var(--atlas-rule); display:flex; flex-direction:column; align-items:flex-start; }
+.export-lane:last-child { border-right:0; }
+.export-lane.primary { background:color-mix(in srgb,var(--atlas-orange) 3%,transparent); }
+.export-number { margin:28px 0 20px; font-size:72px; line-height:.85; font-weight:620; letter-spacing:-.05em; color:var(--ink); font-variant-numeric:tabular-nums; }
+.export-lane h2 { margin:0; font-size:22px; font-weight:660; letter-spacing:-.02em; }
+.export-lane p { max-width:58ch; margin:10px 0 22px; color:var(--ink-soft); font-size:12.5px; line-height:1.55; }
+.export-lane .action { margin-top:auto; min-height:38px; }
+.export-lane > small { display:block; margin-top:8px; color:var(--muted); }
+.export-facts { width:100%; margin:0 0 28px; border-top:1px solid var(--atlas-rule-soft); }
+.export-facts div { min-height:38px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--atlas-rule-soft); }
+.export-facts dt { color:var(--muted); font-size:10.5px; }
+.export-facts dd { margin:0; font-size:11.5px; font-weight:600; }
+.export-picker { width:100%; margin:7px 0 22px; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; }
+.export-picker select { display:block; width:100%; height:40px; margin-top:7px; border:1px solid var(--atlas-rule); border-radius:2px; background:var(--surface-raised); color:var(--ink); padding:0 10px; font-size:12.5px; text-transform:none; letter-spacing:0; }
+.export-footer-note { min-height:64px; display:flex; align-items:center; gap:28px; padding:0 24px; color:var(--muted); font-size:11px; }
+
+/* Template generation workflow. */
+.template-flow { min-height:430px; display:grid; grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr); align-items:stretch; border-bottom:1px solid var(--atlas-rule); }
+.template-lane { padding:30px 34px; display:flex; flex-direction:column; align-items:flex-start; }
+.template-lane.primary { background:color-mix(in srgb,var(--atlas-orange) 3%,transparent); }
+.template-flow-arrow { display:grid; place-items:center; border-left:1px solid var(--atlas-rule); border-right:1px solid var(--atlas-rule); color:var(--atlas-orange); font-size:24px; }
+.template-number { margin:28px 0 18px; font-size:62px; line-height:.9; font-weight:620; letter-spacing:-.05em; }
+.template-lane h2 { margin:0; font-size:20px; font-weight:660; }
+.template-lane p { max-width:56ch; margin:10px 0 18px; color:var(--ink-soft); font-size:12.5px; line-height:1.55; }
+.template-lane .action { margin-top:auto; min-height:38px; }
+.template-path { margin-bottom:22px; padding:9px 11px; width:100%; border:1px solid var(--atlas-rule-soft); background:var(--surface-inset); }
+.template-path code { font-size:11.5px; }
+.template-contract { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.template-contract > div { min-height:110px; padding:18px 22px; border-right:1px solid var(--atlas-rule); }
+.template-contract > div:last-child { border-right:0; }
+.template-contract strong { display:block; margin-top:9px; font-size:15px; }
+.template-contract small { display:block; margin-top:4px; color:var(--muted); font-size:10.5px; line-height:1.45; }
+
+/* Imports: pipeline / validation workbench. */
+.route-imports .page-grid { min-height:100%; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; background:transparent; }
+.route-imports .primary-pane { padding:20px 24px 28px; border-right:1px solid var(--atlas-rule); min-width:0; }
+.route-imports .activity-pane { padding:20px 18px; background:transparent; border:0; }
+.route-imports .section-title { margin:0 0 16px; padding:0 0 14px; border-bottom:1px solid var(--atlas-rule); }
+.route-imports .section-title h2 { font-size:21px; }
+.route-imports .section-title p { max-width:75ch; font-size:11.5px; line-height:1.5; }
+.route-imports .workflow { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:0; padding:0; margin:0 0 16px; border:1px solid var(--atlas-rule); border-radius:0; list-style:none; background:transparent; }
+.route-imports .workflow-step { min-height:58px; display:flex; align-items:center; gap:8px; padding:8px 10px; border-right:1px solid var(--atlas-rule-soft); font-size:10.5px; background:transparent; }
+.route-imports .workflow-step:last-child { border-right:0; }
+.route-imports .workflow-step i { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--atlas-rule); background:transparent; font-style:normal; font-size:10px; }
+.route-imports .workflow-step.done { color:var(--ink); background:color-mix(in srgb,var(--good) 4%,transparent); }
+.route-imports .workflow-step.done i { background:var(--good); border-color:var(--good); color:var(--on-good); }
+.route-imports .import-table { border-radius:0; border-color:var(--atlas-rule); }
+.route-imports .import-table .table-head.import-grid { min-height:40px; background:var(--surface-inset); color:var(--ink); border-bottom:1px solid var(--atlas-rule); }
+.route-imports .import-table .table-head.import-grid .cell { border-right:0; font-size:10.5px; }
+.route-imports .import-row.import-grid { min-height:66px; background:transparent; }
+.route-imports .import-table .import-grid .cell { border-right:0; border-bottom:1px solid var(--atlas-rule-soft); font-size:11.5px; }
+.route-imports .import-table .import-grid .cell:nth-child(2),.route-imports .import-table .import-grid .cell:nth-child(5) { border-right:1px solid var(--atlas-rule); }
+.route-imports .callout { border-radius:0; border:1px solid var(--atlas-rule); border-left:3px solid var(--atlas-orange); background:transparent; }
+.route-imports .activity-pane h2 { margin:0 0 12px; font-size:13px; text-transform:uppercase; }
+.route-imports .activity { padding:11px 0; border-bottom:1px solid var(--atlas-rule-soft); }
+.route-imports .activity i { border-radius:50%; }
+
+/* Scoring: configuration bench, stronger hierarchy and less card chrome. */
+.route-scoring .scoring-page { max-width:none; padding:20px 24px 30px; }
+.route-scoring .section-title { padding-bottom:14px; border-bottom:1px solid var(--atlas-rule); }
+.route-scoring .section-title h2 { font-size:21px; }
+.route-scoring .section-title p { font-size:11.5px; }
+.route-scoring .operational-scoring-layout { margin-top:16px; grid-template-columns:minmax(560px,1.2fr) minmax(360px,.8fr); gap:0; border:1px solid var(--atlas-rule); }
+.route-scoring .operational-scoring-layout > .card { border:0; border-radius:0; background:transparent; padding:20px; }
+.route-scoring .operational-scoring-layout > .card:first-child { border-right:1px solid var(--atlas-rule); }
+.route-scoring .operational-weight-list { border-radius:0; border-color:var(--atlas-rule); }
+.route-scoring .operational-weight-row { min-height:70px; background:transparent; }
+.route-scoring .scoring-grid { gap:0; border:1px solid var(--atlas-rule); }
+.route-scoring .scoring-grid .card { border:0; border-radius:0; background:transparent; }
+.route-scoring .scoring-col:first-child { border-right:1px solid var(--atlas-rule); }
+.route-scoring .weight-row { min-height:48px; }
+
+/* Settings: retain configuration clarity, but align with the editorial shell. */
+.route-settings .settings-title { padding-bottom:14px; border-bottom:1px solid var(--atlas-rule); }
+.route-settings .appearance-controls { gap:0; border:1px solid var(--atlas-rule); }
+.route-settings .appearance-control { border:0; border-right:1px solid var(--atlas-rule); border-radius:0; background:transparent; }
+.route-settings .appearance-control:last-child { border-right:0; }
+.route-settings .theme-toolbar { border-radius:0; border-color:var(--atlas-rule); background:transparent; }
+.route-settings .theme-grid { gap:12px; }
+.route-settings .theme-option { background:transparent; border-color:var(--atlas-rule); }
+.route-settings .theme-option.selected { border-color:var(--atlas-orange); box-shadow:inset 0 0 0 1px var(--atlas-orange); }
+.route-settings .theme-option.selected .theme-check { color:var(--atlas-orange); }
+.route-settings .settings-section-grid { gap:0; border:1px solid var(--atlas-rule); }
+.route-settings .settings-card { border:0; border-right:1px solid var(--atlas-rule); border-radius:0; background:transparent; }
+.route-settings .settings-card:last-child { border-right:0; }
+
+/* Reports/templates imported legacy selectors should not restore generic card spacing. */
+.route-reports .content,.route-templates .content { background:transparent; }
+
+/* Better comfortable density is a real mode, not a two-pixel difference. */
+html:not([data-density="compact"]) .epa-grid tbody td { padding-top:11px; padding-bottom:11px; }
+html:not([data-density="compact"]) .data-row { min-height:54px; }
+html:not([data-density="compact"]) input,
+html:not([data-density="compact"]) select,
+html:not([data-density="compact"]) button.action { min-height:34px; }
+
+@media (max-width:1200px) {
+    .export-lanes,.template-contract { grid-template-columns:1fr; }
+    .export-lane { min-height:330px; border-right:0; border-bottom:1px solid var(--atlas-rule); }
+    .template-flow { grid-template-columns:1fr; }
+    .template-flow-arrow { min-height:48px; border-left:0; border-right:0; border-top:1px solid var(--atlas-rule); border-bottom:1px solid var(--atlas-rule); transform:rotate(90deg); }
+    .template-contract > div { border-right:0; border-bottom:1px solid var(--atlas-rule); }
+    .route-imports .page-grid { grid-template-columns:1fr; }
+    .route-imports .primary-pane { border-right:0; border-bottom:1px solid var(--atlas-rule); }
+    .route-imports .workflow { grid-template-columns:repeat(3,1fr); }
+    .route-scoring .operational-scoring-layout { grid-template-columns:1fr; }
+    .route-scoring .operational-scoring-layout > .card:first-child { border-right:0; border-bottom:1px solid var(--atlas-rule); }
+}

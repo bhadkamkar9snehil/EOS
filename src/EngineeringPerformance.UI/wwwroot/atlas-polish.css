@@ -1,0 +1,164 @@
+/* Small cross-route Atlas details kept separate from the structural layout file. */
+.fingerprint-target {
+    position:absolute; top:1px; bottom:1px; left:var(--target); width:0;
+    border-left:1px dashed var(--atlas-orange); opacity:.62;
+}
+.fingerprint-row > strong { font-variant-numeric:tabular-nums; }
+.fingerprint-row > strong::after { content:""; }
+
+/* Make the current selection travel across the composition without becoming a pill-heavy UI. */
+.focus-chip { border-radius:2px; }
+.focus-chip b { font-weight:650; }
+.focus-chip button:first-of-type { color:var(--atlas-orange); }
+/* Atlas opens with an intentional focus (the highest-priority person); the old clear
+   affordance implied a team/no-selection state that this composition does not use. */
+.focus-chip button[title="Clear focus"] { display:none; }
+
+/* Explicit missing-source affordance for the field and worksheet. */
+.atlas-missing-key { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:10.5px; }
+.atlas-missing-key::before { content:""; width:9px; height:9px; border:1px dashed var(--missing); border-radius:50%; background:var(--surface-raised); }
+
+/* Theme-derived foregrounds stay readable on score-distribution semantics. */
+.score-axis-dot:focus-visible { outline-offset:4px; }
+
+/* The app should use 10.5px only for tertiary metadata; primary operational text is larger. */
+.atlas-page,.workbench-page,.portrait-page,.collaboration-page,
+.route-imports .primary-pane,.route-imports .activity-pane,
+.route-settings .settings-page,.route-scoring .scoring-page { font-size:13px; }
+.atlas-caption,.pulse-score-meta,.attention-person small,.portrait-evidence-list small,
+.template-contract small,.export-lane > small { font-size:10.75px; }
+.atlas-panel-head h2 { font-size:14.5px; }
+.atlas-panel-head small { font-size:11px; }
+
+/* Tables are led by horizontal rhythm, not boxed cells. */
+.timesheet-ledger .epa-grid tbody tr:hover td,
+.route-data .epa-grid tbody tr:hover td { background:color-mix(in srgb,var(--atlas-orange) 3%,var(--table-row-hover)); }
+.route-data .imported-metrics-grid tbody td:first-child,
+.route-data .imported-metrics-grid thead th:first-child { position:sticky; left:0; z-index:4; }
+.route-data .imported-metrics-grid tbody td:first-child { background:var(--table-row); }
+.route-data .imported-metrics-grid tbody tr:nth-child(even) td:first-child { background:var(--table-row-alt); }
+
+/* Collaboration matrix controls are data cells, not buttons visually. */
+.peer-matrix button.pm-cell { padding:0; border-radius:0; color:var(--ink); cursor:pointer; }
+.peer-matrix button.pm-cell:hover { outline:2px solid var(--focus-ring); outline-offset:-2px; }
+
+/* Settings previews must represent the palette that will actually be applied. The
+   ThemeOption records preserve compatibility metadata; these variables track the
+   independently-remediated dark resolver values exactly. */
+.theme-option[data-theme-key="dracula"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#242630!important; --preview-soft:#303341!important; --preview-card:#3A3D4D!important; --preview-raised:#414456!important;
+    --preview-header:#1b1d26!important; --preview-ink:#f8f8f2!important; --preview-muted:#a6a8c0!important; --preview-line:#5c6078!important;
+    --preview-accent:#bd93f9!important; --preview-chart-1:#bd93f9!important; --preview-chart-2:#65b9d4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="everforest"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#283137!important; --preview-soft:#344047!important; --preview-card:#3C484F!important; --preview-raised:#414e54!important;
+    --preview-header:#20272b!important; --preview-ink:#e8dcc5!important; --preview-muted:#adb6ab!important; --preview-line:#637077!important;
+    --preview-accent:#a7c080!important; --preview-chart-1:#a7c080!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="solarized-dark"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#00252e!important; --preview-soft:#063842!important; --preview-card:#09404C!important; --preview-raised:#0b4652!important;
+    --preview-header:#001c24!important; --preview-ink:#f5efdd!important; --preview-muted:#9badb2!important; --preview-line:#23616d!important;
+    --preview-accent:#d1a51a!important; --preview-chart-1:#d1a51a!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="gruvbox"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#242424!important; --preview-soft:#302e2d!important; --preview-card:#383432!important; --preview-raised:#3d3835!important;
+    --preview-header:#1b1d1e!important; --preview-ink:#f4e8c8!important; --preview-muted:#aea18d!important; --preview-line:#665c54!important;
+    --preview-accent:#fe8019!important; --preview-chart-1:#fe8019!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="monokai"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#24251f!important; --preview-soft:#303129!important; --preview-card:#383930!important; --preview-raised:#3d3e34!important;
+    --preview-header:#1b1c18!important; --preview-ink:#fafaf5!important; --preview-muted:#a7a89f!important; --preview-line:#5e5f55!important;
+    --preview-accent:#f92672!important; --preview-chart-1:#f92672!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+.theme-option[data-theme-key="contrast-dark"] :is(.theme-preview,.theme-swatches) {
+    --preview-bg:#000!important; --preview-soft:#0d0d0d!important; --preview-card:#161616!important; --preview-raised:#1c1c1c!important;
+    --preview-header:#000!important; --preview-ink:#fff!important; --preview-muted:#c4c4c4!important; --preview-line:#888!important;
+    --preview-accent:#8ab4ff!important; --preview-chart-1:#8ab4ff!important; --preview-chart-2:#82bce4!important; --preview-chart-3:#67d391!important;
+}
+
+/* Reports/templates retain generous empty space on large screens. */
+.export-workbench,.template-workbench { max-width:1500px; margin:0 auto; }
+
+/* High-density 1080p remains readable without reverting to utility-scale type. */
+@media (min-width:1400px) {
+    .nav-rail button { font-size:13.25px; }
+    .timesheet-ledger .epa-grid tbody td,.route-data .epa-grid tbody td { font-size:12.75px; }
+}
+
+/* --------------------------------------------------------------------------
+   1920×1080 Performance Atlas acceptance pass
+   The first real Windows/WebView capture showed three concrete composition issues:
+   a too-narrow Attention Lens forced horizontal overflow, the first viewport ended
+   early and left dead canvas, and the pulse/labels remained at utility-UI scale.
+   These rules correct those measured failures rather than adding decorative chrome.
+   -------------------------------------------------------------------------- */
+.content.route-overview { overflow-y:auto; overflow-x:hidden; }
+.atlas-page {
+    min-height:calc(100vh - 98px);
+    display:grid;
+    grid-template-rows:auto minmax(480px,1.45fr) minmax(330px,.95fr) auto;
+    align-content:stretch;
+}
+
+.atlas-pulse { min-height:184px; grid-template-columns:205px minmax(350px,1.5fr) minmax(310px,1.05fr) 225px 150px; padding-top:24px; padding-bottom:20px; }
+.pulse-score-main strong { font-size:66px; }
+.pulse-score-main span { font-size:38px; }
+.pulse-heading { font-size:11.5px; margin-bottom:16px; }
+.score-axis-dot { width:10px; height:10px; top:24px; }
+.score-bands { font-size:10.5px; }
+.score-bands b { font-size:14px; }
+.trend-mini label { font-size:10.5px; }
+.trend-mini strong { font-size:23px; }
+.atlas-spark { height:36px; }
+.readiness-light span { height:30px; font-size:10.25px; line-height:1.15; white-space:normal; overflow:visible; }
+.readiness-light i { width:24px; height:24px; }
+.pulse-pressure strong { font-size:15px; }
+.pressure-bars i { width:6px; }
+
+.atlas-primary { grid-template-columns:minmax(0,2fr) minmax(420px,1fr); min-height:480px; }
+.performance-field { display:flex; flex-direction:column; }
+#atlas-field { flex:1 1 auto; min-height:420px; height:auto; }
+.atlas-panel-head { margin-bottom:11px; }
+.atlas-panel-head h2 { font-size:15px; }
+.atlas-panel-head small { font-size:11.5px; }
+.focus-chip { font-size:11px; padding:5px 8px; background:transparent; }
+
+.attention-lens { padding-left:20px; padding-right:20px; }
+.attention-row {
+    grid-template-columns:24px 40px minmax(86px,1fr) 54px 112px 82px;
+    gap:8px;
+    min-height:72px;
+}
+.attention-avatar { width:38px; height:38px; font-size:12px; }
+.attention-rank { font-size:21px; }
+.attention-person strong { font-size:13.25px; }
+.attention-person small { font-size:10.75px; }
+.attention-score strong { font-size:23px; color:var(--atlas-petrol); }
+.attention-row:nth-child(1) .attention-score strong { color:var(--critical); }
+.attention-row:nth-child(2) .attention-score strong,
+.attention-row:nth-child(3) .attention-score strong { color:var(--atlas-orange); }
+.fingerprint-mini { gap:4px; }
+.fingerprint-mini i { height:24px; }
+.rhythm-mini { height:31px; gap:2px; }
+.rhythm-mini i { width:3px; }
+
+.atlas-secondary { min-height:330px; }
+#atlas-river { height:272px; }
+.fingerprint-legend { font-size:10.5px; gap:15px; }
+.fingerprint-head { font-size:10.5px; min-height:30px; }
+.fingerprint-row { min-height:46px; }
+.fingerprint-row label { font-size:12px; }
+.fingerprint-row strong { font-size:13px; }
+.atlas-evidence { min-height:78px; }
+.evidence-link strong { font-size:13px; }
+.evidence-link small { font-size:10.75px; }
+
+@media (max-width:1500px) {
+    .atlas-pulse { grid-template-columns:180px minmax(300px,1.4fr) minmax(270px,1fr) 200px 135px; padding-left:20px; padding-right:20px; }
+    .pulse-distribution,.pulse-trends,.pulse-readiness,.pulse-pressure { padding-left:15px; padding-right:15px; }
+    .atlas-primary { grid-template-columns:minmax(0,1.75fr) minmax(390px,1fr); }
+    .performance-field,.attention-lens { padding-left:20px; padding-right:20px; }
+    .attention-row { grid-template-columns:22px 36px minmax(78px,1fr) 50px 100px 68px; gap:6px; }
+    .attention-avatar { width:34px; height:34px; }
+    .rhythm-mini i { width:2px; }
+}

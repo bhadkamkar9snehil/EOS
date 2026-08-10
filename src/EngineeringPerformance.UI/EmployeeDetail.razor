@@ -6,167 +6,160 @@
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
 
-@* Comprehensive per-employee history: every available month, not a single-month snapshot.
-   Reached from the spotlight drawer's "Full history" link, or the Overview search box. *@
-
-<div class="overview">
+<div class="portrait-page">
     @if (Months.Count == 0)
     {
         <div class="empty-state">
             <h2>No history for @Name</h2>
             <p>No imported rows were found for this person across the months currently loaded.</p>
-            <button class="action" @onclick='() => Navigation.NavigateTo("/overview")'>Back to Overview</button>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/overview")'>Back to team performance</button>
         </div>
     }
     else
     {
-        <button class="link back-link" @onclick='() => Navigation.NavigateTo("/overview")'>← Back to Overview</button>
-
-        <header class="profile-header">
-            <span class="avatar big">@Analytics.Initials(Name)</span>
-            <div>
-                <h2>@Name</h2>
-                <small>@(Employee?.EmployeeCode ?? "No code on file")@(Employee is null ? "" : $" — Level {Employee.SeniorityLevel}")</small>
+        <section class="portrait-hero">
+            <div class="portrait-identity">
+                <button class="portrait-back" @onclick='() => Navigation.NavigateTo("/overview")'>← Team performance</button>
+                <div class="portrait-person">
+                    <span class="avatar big">@Analytics.Initials(Name)</span>
+                    <div>
+                        <h2>@Name</h2>
+                        <small>@EmployeeIdentity</small>
+                    </div>
+                </div>
+                <div class="portrait-score">
+                    <strong class="@Analytics.ScoreBand(Latest.OperationalScore)">@Analytics.Format(Latest.OperationalScore, "0")</strong>
+                    <span>Operational score<br />@LatestLabel</span>
+                </div>
+                <div class="pulse-score-meta">
+                    <span>@ScoreMovement</span>
+                    <span>@Months.Count month(s) loaded</span>
+                </div>
             </div>
-        </header>
 
-        <div class="kpi-row">
-            @Kpi("Latest score", Analytics.Format(Latest.OperationalScore), Latest.Month is var lm and > 0 ? $"{new DateTime(Latest.Year, lm, 1):MMMM yyyy}" : "")
-            @Kpi("Average score", Analytics.Format(Months.Average(x => x.OperationalScore)), $"across {Months.Count} month(s)")
-            @Kpi("Best month", Analytics.Format(Months.Max(x => x.OperationalScore)), BestMonthLabel)
-            @Kpi("Worst month", Analytics.Format(Months.Min(x => x.OperationalScore)), WorstMonthLabel)
-            @Kpi("Total billable", Analytics.Format(Months.Sum(x => x.BillableHours), "0"), "hours across loaded months")
-            @Kpi("Total entries", Months.Sum(x => x.DetailedEntries).ToString(), "detailed timesheet rows")
-        </div>
+            <div class="portrait-fingerprint">
+                <h3>Operational fingerprint</h3>
+                <div class="portrait-metrics">
+                    @PortraitMetric("Timesheet completion", Latest.HasSummaryData ? Latest.TimesheetCompletionScore : null)
+                    @PortraitMetric("Approval", Latest.HasSummaryData ? Latest.ApprovalScore : null)
+                    @PortraitMetric("Attendance discipline", Latest.AttendanceDisciplineScore)
+                    @PortraitMetric("Utilization", Latest.HasSummaryData ? Latest.Utilization : null)
+                    @PortraitMetric("Workload balance", WorkloadIndex(Latest))
+                    @PortraitMetric("Reconciliation", ReconciliationIndex(Latest))
+                </div>
+            </div>
 
-        <div class="overview-grid">
-            <section class="card span-8">
-                <div class="card-head"><h2>Score history</h2><small>@Months.Count month(s) loaded</small></div>
-                <div id="detail-trend" class="echart tall"></div>
-                <ul class="chart-legend">
-                    <li><i style="background:#0F6E9E"></i>Operational score</li>
-                    <li><i style="background:#C85A22"></i>Timesheet completion</li>
-                    <li><i style="background:#1E8C5A"></i>Attendance discipline</li>
-                    <li><i style="background:#7A4BB0"></i>Approval</li>
-                </ul>
-            </section>
-
-            <section class="card span-4">
-                <div class="card-head"><h2>Category performance</h2><small>@LatestLabel vs team average</small></div>
-                <div id="detail-radar" class="echart"></div>
-            </section>
-
-            <section class="card span-4">
-                <div class="card-head"><h2>Peer feedback</h2><small>@LatestLabel</small></div>
-                @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
-                {
-                    <div class="locked compact-empty">
-                        <strong>No peer feedback for @LatestLabel</strong>
-                        <p>Ratings appear here once completed review workbooks naming @Name are uploaded on Data imports.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="mini-tiles">
-                        <div><strong>@Peer.ReceivedCount</strong><span>Received</span></div>
-                        <div><strong>@Peer.GivenCount</strong><span>Given</span></div>
-                        <div><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received</span></div>
-                    </div>
-                    @if (Peer.Received.Any(x => !string.IsNullOrWhiteSpace(x.Comment)))
+            <div class="portrait-rhythm">
+                <h3>Attendance rhythm</h3>
+                <div class="portrait-rhythm-bars" aria-label="Weekly attendance discipline">
+                    @if (WeeklyRhythm.Count == 0)
                     {
-                        <ul class="comment-list">
-                            @foreach (var review in Peer.Received.Where(x => !string.IsNullOrWhiteSpace(x.Comment)))
-                            {
-                                <li><strong>@review.ReviewerName</strong><p>@review.Comment</p></li>
-                            }
-                        </ul>
+                        <span class="chart-note">No dated weekly attendance rows for this period.</span>
                     }
-                }
-            </section>
-
-            <section class="card span-8">
-                <div class="card-head"><h2>Monthly compliance</h2><small>Score, timesheet fill, approval and attendance — @Months.Count month(s)</small></div>
-                <div id="detail-compliance-bars" class="echart tall"></div>
-                <ul class="chart-legend">
-                    <li><i style="background:#0F6E9E"></i>Score</li>
-                    <li><i style="background:#C85A22"></i>Timesheet fill</li>
-                    <li><i style="background:#7A4BB0"></i>Approval</li>
-                    <li><i style="background:#1E8C5A"></i>Attendance</li>
-                </ul>
-            </section>
-
-            <section class="card span-6">
-                <div class="card-head"><h2>Billable hours</h2><small>Per month</small></div>
-                <div id="detail-billable-bars" class="echart short"></div>
-            </section>
-
-            <section class="card span-6">
-                <div class="card-head"><h2>Workload</h2><small>Average hours per accountable day</small></div>
-                <div id="detail-workload-bars" class="echart short"></div>
-            </section>
-
-            <section class="card wide">
-                <div class="card-head"><h2>Monthly detail</h2><small>Every loaded month, most recent first</small></div>
-                <div class="performance-table peer">
-                    <div class="performance-head">
-                        <span>Month</span><span>Score</span><span>Timesheet</span><span>Approval</span><span>Attendance</span><span>Workload</span><span>Billable</span><span>Entries</span>
-                    </div>
-                    @foreach (var m in Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month))
+                    else
                     {
-                        <div class="performance-row">
-                            <strong>@(new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"))</strong>
-                            <span class="score-cell"><b class="@Analytics.ScoreBand(m.OperationalScore)">@Analytics.Format(m.OperationalScore)</b></span>
-                            <span>@(m.HasSummaryData ? Analytics.Format(m.TimesheetCompletionScore, "0") + "%" : "—")</span>
-                            <span>@(m.HasSummaryData ? Analytics.Format(m.ApprovalScore, "0") + "%" : "—")</span>
-                            <span>@Analytics.Format(m.AttendanceDisciplineScore, "0")%</span>
-                            <span>@Analytics.Format(m.Workload(), "0.0") h/d</span>
-                            <span>@Analytics.Format(m.BillableHours, "0.0") h</span>
-                            <span>@m.DetailedEntries</span>
-                        </div>
+                        @foreach (var value in WeeklyRhythm)
+                        {
+                            <i style="--v:@CssPct(value)" title="@Analytics.Format(value, "0")% attendance discipline"></i>
+                        }
                     }
                 </div>
+                <div class="pulse-score-meta"><span>@ExceptionTotal exception day(s)</span><span>@Signed(Latest.ReconciliationVariance) h variance</span></div>
+            </div>
+        </section>
+
+        <section class="portrait-main">
+            <div class="portrait-history">
+                <div class="atlas-panel-head">
+                    <div><h2>Performance history</h2><small>Score and its operating inputs across loaded months</small></div>
+                </div>
+                <div id="portrait-history"></div>
+            </div>
+
+            <aside class="portrait-evidence">
+                <div class="atlas-panel-head"><div><h2>Intervention evidence</h2><small>@LatestLabel</small></div></div>
+                <ul class="portrait-evidence-list">
+                    @if (Alerts.Count == 0)
+                    {
+                        <li><strong>No active alert rule</strong><small>No anomaly rule fired for the current month.</small></li>
+                    }
+                    else
+                    {
+                        @foreach (var alert in Alerts.Take(6))
+                        {
+                            <li><strong class="@Level(alert.Level)">@alert.Headline</strong><small>@alert.Detail</small></li>
+                        }
+                    }
+                    @if (Latest.MissingPunchDays > 0) { <li><strong>Missing punch · @Latest.MissingPunchDays day(s)</strong><small>Attendance evidence is incomplete on those days.</small></li> }
+                    @if (Latest.LateDays > 0) { <li><strong>Late arrival · @Latest.LateDays day(s)</strong><small>Punctuality contributed to attendance discipline.</small></li> }
+                    @if (Latest.LessDurationDays > 0) { <li><strong>Short duration · @Latest.LessDurationDays day(s)</strong><small>Recorded office duration fell below the configured threshold.</small></li> }
+                </ul>
+            </aside>
+        </section>
+
+        <section class="portrait-lower">
+            <section>
+                <div class="atlas-panel-head"><div><h2>Work mix</h2><small>@LatestLabel</small></div></div>
+                <div class="portrait-metrics">
+                    @PortraitHours("Billable", Latest.BillableHours, Latest.EnteredHours)
+                    @PortraitHours("Non-billable", Latest.NonBillableHours, Latest.EnteredHours)
+                    @PortraitHours("Training", Latest.TrainingHours, Latest.EnteredHours)
+                    @PortraitHours("Detailed", Latest.DetailedHours, Latest.EnteredHours)
+                </div>
+                <div class="pulse-score-meta"><span>@Latest.UniqueProjects project(s)</span><span>@Latest.DetailedEntries detailed entries</span></div>
             </section>
 
-            <section class="card wide">
-                <div class="card-head"><h2>Alerts</h2><small>@LatestLabel</small></div>
-                @if (Alerts.Count == 0)
+            <section>
+                <div class="atlas-panel-head"><div><h2>Peer signal</h2><small>@LatestLabel</small></div></div>
+                @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
                 {
-                    <p class="chart-note">No rule fired against @Name's latest month.</p>
+                    <p class="chart-note">No peer review evidence is loaded for this employee in the selected month.</p>
                 }
                 else
                 {
-                    <div class="alert-list">
-                        @foreach (var alert in Alerts)
-                        {
-                            <div class="alert @Level(alert.Level)">
-                                <span class="alert-chip">@LevelIcon(alert.Level) @Level(alert.Level)</span>
-                                <span class="alert-body"><strong>@alert.Headline</strong><small>@alert.Detail</small></span>
-                            </div>
-                        }
+                    <div class="portrait-score"><strong>@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span>Average received<br />@Peer.ReceivedCount reviews</span></div>
+                    <div class="portrait-metrics">
+                        @PortraitMetric("Collaboration", ScalePeer(Peer.Collaboration))
+                        @PortraitMetric("Communication", ScalePeer(Peer.Communication))
+                        @PortraitMetric("Reliability", ScalePeer(Peer.Reliability))
+                        @PortraitMetric("Technical help", ScalePeer(Peer.TechnicalHelp))
                     </div>
                 }
             </section>
-        </div>
+
+            <section>
+                <div class="atlas-panel-head"><div><h2>Monthly ledger</h2><small>Most recent first</small></div></div>
+                <ul class="portrait-evidence-list">
+                    @foreach (var month in Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).Take(6))
+                    {
+                        <li>
+                            <strong>@(new DateTime(month.Year, month.Month, 1).ToString("MMM yyyy")) · <span class="@Analytics.ScoreBand(month.OperationalScore)">@Analytics.Format(month.OperationalScore)</span></strong>
+                            <small>@Analytics.Format(month.Workload(), "0.0") h/day · @Analytics.Format(month.BillableHours, "0.0") billable h · @month.TimesheetFilledDays/@month.ExpectedTimesheetDays filled</small>
+                        </li>
+                    }
+                </ul>
+            </section>
+        </section>
     }
 </div>
 
 @code {
     [Parameter] public string Name { get; set; } = string.Empty;
-
     private bool _rendered;
 
     protected override void OnInitialized() => State.Changed += OnStateChanged;
 
     protected override void OnParametersSet()
     {
-        // The route parameter can change without the component being torn down (navigating
-        // straight from one engineer's page to another), so the topbar heading is set here,
-        // not just once in OnInitialized.
         State.SpotlightName = Name;
         _rendered = false;
     }
 
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnStateChanged()
+    {
+        _rendered = false;
+        InvokeAsync(StateHasChanged);
+    }
 
     private IReadOnlyList<MonthlyPerformanceItem> Months => State.History
         .Where(x => PersonName.Matches(x.EmployeeName, Name))
@@ -175,19 +168,11 @@
 
     private MonthlyPerformanceItem Latest => Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).First();
     private string LatestLabel => new DateTime(Latest.Year, Latest.Month, 1).ToString("MMMM yyyy");
-
-    private string BestMonthLabel
-    {
-        get { var m = Months.OrderByDescending(x => x.OperationalScore).First(); return new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"); }
-    }
-    private string WorstMonthLabel
-    {
-        get { var m = Months.OrderBy(x => x.OperationalScore).First(); return new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy"); }
-    }
-
     private EmployeeListItem? Employee => State.Employees.FirstOrDefault(x => PersonName.Matches(x.Name, Name));
-
     private Analytics.PeerBreakdown Peer => Analytics.PeerBreakdownFor(State.PeerReviews, Name);
+    private string EmployeeIdentity => Employee is null
+        ? "No employee master record"
+        : $"{Employee.EmployeeCode} · Level {Employee.SeniorityLevel}{(string.IsNullOrWhiteSpace(Employee.TeamName) ? "" : $" · {Employee.TeamName}")}";
 
     private IReadOnlyList<Anomaly> Alerts
     {
@@ -201,66 +186,60 @@
         }
     }
 
+    private decimal? PreviousScore
+    {
+        get
+        {
+            if (Months.Count < 2) return null;
+            return Months[^2].OperationalScore;
+        }
+    }
+
+    private string ScoreMovement => PreviousScore is null ? "No prior month" : Latest.OperationalScore > PreviousScore ? $"↑ {Analytics.Format(Latest.OperationalScore - PreviousScore.Value)} vs prior" : Latest.OperationalScore < PreviousScore ? $"↓ {Analytics.Format(PreviousScore.Value - Latest.OperationalScore)} vs prior" : "No change vs prior";
+
+    private IReadOnlyList<decimal> WeeklyRhythm => State.WeeklyPerformance
+        .Where(x => x.ExpectedDays > 0 && PersonName.Matches(x.EmployeeName, Name))
+        .OrderBy(x => x.WeekStart)
+        .Select(x => x.AttendanceDisciplineScore)
+        .ToArray();
+
+    private int ExceptionTotal => Latest.MissingPunchDays + Latest.LateDays + Latest.EarlyDays + Latest.LessDurationDays;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_rendered || Months.Count == 0) return;
         _rendered = true;
-
         var labels = Months.Select(m => new DateTime(m.Year, m.Month, 1).ToString("MMM yy")).ToArray();
-        await JS.InvokeVoidAsync("epaCharts.multiline", "detail-trend", labels, new object[]
+        await JS.InvokeVoidAsync("epaAtlas.portraitHistory", "portrait-history", labels, new object[]
         {
-            new { name = "Operational score", color = "#0F6E9E", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
-            new { name = "Timesheet completion", color = "#C85A22", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Attendance discipline", color = "#1E8C5A", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
-            new { name = "Approval", color = "#7A4BB0", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
+            new { name = "Operational score", role = "operational", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet", role = "timesheet", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Attendance", role = "attendance", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
+            new { name = "Approval", role = "approval", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
         });
-
-        var axes = Analytics.Radar(State.Performance);
-        if (axes.Count > 0)
-        {
-            var mine = Analytics.RadarValues(Latest);
-            await JS.InvokeVoidAsync("epaCharts.radar", "detail-radar", axes.Select(a => a.Label).ToArray(), 100,
-                new object[]
-                {
-                    new { name = Name, color = "#C85A22", values = mine },
-                    new { name = "Team average", color = "#0F6E9E", values = axes.Select(a => a.TeamAverage).ToArray() }
-                });
-        }
-
-        await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-compliance-bars", labels, new object[]
-        {
-            new { name = "Score", color = "#0F6E9E", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
-            new { name = "Timesheet fill", color = "#C85A22", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Approval", color = "#7A4BB0", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() },
-            new { name = "Attendance", color = "#1E8C5A", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() }
-        }, 100, "%");
-
-        await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-billable-bars", labels, new object[]
-        {
-            new { name = "Billable hours", color = "#0F6E9E", values = Months.Select(m => (object)m.BillableHours).ToArray() }
-        }, null, " h");
-
-        await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-workload-bars", labels, new object[]
-        {
-            new { name = "Workload", color = "#1E8C5A", values = Months.Select(m => (object)m.Workload()).ToArray() }
-        }, null, " h/d");
     }
+
+    private static decimal WorkloadIndex(MonthlyPerformanceItem item) => Analytics.WorkloadCeiling <= 0 ? 0 : Math.Clamp(item.Workload() * 100m / Analytics.WorkloadCeiling, 0, 100);
+    private static decimal ReconciliationIndex(MonthlyPerformanceItem item) => Math.Clamp(100m - Math.Abs(item.ReconciliationVariance) * 2m, 0, 100);
+    private static decimal? ScalePeer(decimal value) => value <= 0 ? null : Math.Clamp(value * 20m, 0, 100);
+    private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
+    private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
+
+    private RenderFragment PortraitMetric(string label, decimal? value) => @<div class="portrait-metric">
+        <label><span>@label</span><b>@(value is null ? "—" : Analytics.Format(value.Value, "0") + "%")</b></label>
+        <span class="portrait-metric-track"><i style="--v:@CssPct(value ?? 0)"></i></span>
+    </div>;
+
+    private RenderFragment PortraitHours(string label, decimal value, decimal total) => @<div class="portrait-metric">
+        <label><span>@label</span><b>@Analytics.Format(value, "0.0") h</b></label>
+        <span class="portrait-metric-track"><i style="--v:@CssPct(total <= 0 ? 0 : value * 100m / total)"></i></span>
+    </div>;
 
     public async ValueTask DisposeAsync()
     {
         State.Changed -= OnStateChanged;
         if (State.SpotlightName == Name) State.SpotlightName = null;
-        foreach (var id in new[] { "detail-trend", "detail-radar", "detail-compliance-bars", "detail-billable-bars", "detail-workload-bars" })
-        {
-            try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { }
-        }
+        try { await JS.InvokeVoidAsync("epaAtlas.dispose", "portrait-history"); } catch (JSDisconnectedException) { }
     }
-
-    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi" title="@hint">
-        <span class="kpi-label">@label</span>
-        <span class="kpi-value"><strong>@value</strong></span>
-    </div>;
-
-    private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
-    private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
 }

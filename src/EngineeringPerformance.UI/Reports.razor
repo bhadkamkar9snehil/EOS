@@ -6,30 +6,39 @@
 @inject AppState State
 @implements IDisposable
 
-@* Exportable, print-ready performance reports — one engineer or the whole team.
-   Pure export surface: reads the same month's data as Overview and writes a
-   formatted workbook, no state of its own beyond the employee picker. *@
+<div class="workbench-page export-workbench">
+    <header class="workbench-header">
+        <div>
+            <h2>Report output</h2>
+            <p>Exports are generated from the same calculated evidence visible in EOS. Choose the reporting scope; no application theme styling is required by the workbook.</p>
+        </div>
+        <div class="workbench-summary">
+            <div><span>Reporting month</span><strong>@State.SelectedMonth.ToString("MMM yy")</strong></div>
+            <div><span>Engineers</span><strong>@State.Performance.Count</strong></div>
+        </div>
+    </header>
 
-<div class="overview">
-    <div class="report-cards">
-        <section class="card wide">
-            <div class="card-head"><h2>Team report</h2><small>@State.SelectedMonth.ToString("MMMM yyyy")</small></div>
-            <p class="chart-note">One workbook: team KPIs, score distribution and every engineer ranked.</p>
-            <div class="report-meta">
-                <div><strong>@State.Performance.Count</strong><span>Engineers</span></div>
-                <div><strong>@State.PeerReviews.Count</strong><span>Peer feedback entries</span></div>
-            </div>
-            <button class="action" @onclick="GenerateTeamAsync" disabled="@(State.Busy || State.Performance.Count == 0)">Generate team report</button>
-            @if (State.Performance.Count == 0)
-            {
-                <p class="chart-note">Import this month's ERP exports first — there is nothing to report yet.</p>
-            }
-        </section>
+    <section class="export-lanes">
+        <article class="export-lane primary">
+            <span class="atlas-section-label">Team output</span>
+            <div class="export-number">@State.Performance.Count</div>
+            <h2>Complete team report</h2>
+            <p>Team pulse, score distribution, ranked engineers, operational evidence, alerts and peer-review context in one workbook.</p>
+            <dl class="export-facts">
+                <div><dt>Peer feedback</dt><dd>@State.PeerReviews.Count entries</dd></div>
+                <div><dt>Open alert lines</dt><dd>@AlertLines.Count</dd></div>
+                <div><dt>Excluded people</dt><dd>@State.ExcludedNames.Count</dd></div>
+            </dl>
+            <button class="action" @onclick="GenerateTeamAsync" disabled="@(State.Busy || State.Performance.Count == 0)">Generate team workbook</button>
+            @if (State.Performance.Count == 0) { <small>Import this month's ERP evidence before generating a report.</small> }
+        </article>
 
-        <section class="card wide">
-            <div class="card-head"><h2>Employee report</h2><small>Pick one engineer</small></div>
-            <p class="chart-note">Score, category breakdown, score history, and peer feedback received and given.</p>
-            <div class="report-picker">
+        <article class="export-lane">
+            <span class="atlas-section-label">Individual output</span>
+            <div class="export-number">1</div>
+            <h2>Employee evidence report</h2>
+            <p>Current score, operating components, loaded history, peer feedback and intervention evidence for one engineer.</p>
+            <label class="export-picker">Engineer
                 <select @bind="_selectedEmployeeId">
                     <option value="">Select employee</option>
                     @foreach (var e in State.Employees.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
@@ -37,10 +46,15 @@
                         <option value="@e.Id">@e.Name (@e.EmployeeCode)</option>
                     }
                 </select>
-                <button class="action secondary" @onclick="GenerateEmployeeAsync" disabled="@State.Busy">Generate employee report</button>
-            </div>
-        </section>
-    </div>
+            </label>
+            <button class="action secondary" @onclick="GenerateEmployeeAsync" disabled="@State.Busy">Generate employee workbook</button>
+        </article>
+    </section>
+
+    <section class="export-footer-note">
+        <span class="atlas-section-label">Output contract</span>
+        <span>Excel · print-ready · calculated from local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+    </section>
 </div>
 
 @code {
@@ -102,6 +116,5 @@
         });
     }
 
-    private static string Sanitize(string value) =>
-        string.Concat(value.Trim().Select(c => Path.GetInvalidFileNameChars().Contains(c) || c == ' ' ? '_' : c));
+    private static string Sanitize(string value) => string.Concat(value.Trim().Select(c => Path.GetInvalidFileNameChars().Contains(c) || c == ' ' ? '_' : c));
 }

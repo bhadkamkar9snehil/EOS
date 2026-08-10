@@ -4,9 +4,7 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-@* Timesheet compliance: who has not filled, and what is filled but still awaiting approval. *@
-
-<div class="overview">
+<div class="workbench-page timesheet-workbench">
     @if (Rows.Count == 0)
     {
         <div class="empty-state">
@@ -17,80 +15,106 @@
     }
     else
     {
-        <div class="kpi-row">
-            @Kpi("Fill rate", Analytics.Format(FillRate) + "%", $"{TotalFilled} of {TotalExpected} accountable days")
-            @Kpi("Engineers with gaps", _withGaps.ToString(), _withGaps == 0 ? "Everyone up to date" : "Unfilled timesheet days")
-            @Kpi("Missing days", _missingDays.ToString(), "Total across the team")
-            @Kpi("Awaiting approval", Analytics.Format(_pendingHours, "0") + " h", $"{_awaitingApproval} engineer(s)")
-            @Kpi("Billable capacity used", Analytics.Format(CapacityUsed) + "%", $"vs {Analytics.Format(Analytics.MonthlyBillableCapacityHours, "0")} h per billable engineer")
-            @Kpi("Freshers on probation", Probationers.ToString(), "From the ERP roster")
-        </div>
+        <header class="workbench-header">
+            <div>
+                <h2>Timesheet control ledger</h2>
+                <p>Completion, missing accountable days, approval and capacity in one reviewable ledger. Exceptions are visually marked at the row and field where they occur.</p>
+            </div>
+            <div class="workbench-summary">
+                <div><span>Engineers</span><strong>@Rows.Count</strong></div>
+                <div><span>Accountable days</span><strong>@Analytics.Format(TotalExpected, "0.#")</strong></div>
+            </div>
+        </header>
 
-        <div class="overview-grid">
-            <section class="card wide">
-                <div class="card-head">
-                    <h2>Timesheet compliance</h2>
-                    <small>@FilteredRows.Count of @Rows.Count engineer(s) — click a header to sort</small>
+        <section class="timesheet-pulse" aria-label="Timesheet pulse">
+            <div>
+                <label>Team fill rate</label>
+                <strong>@Analytics.Format(FillRate)%</strong>
+                <small>@TotalFilled of @TotalExpected accountable days filled</small>
+            </div>
+            <div>
+                <label>Missing days</label>
+                <strong class="@(_missingDays > 0 ? "serious" : null)">@Analytics.Format(_missingDays, "0.#")</strong>
+                <small>@_withGaps engineer(s) with gaps</small>
+            </div>
+            <div>
+                <label>Awaiting approval</label>
+                <strong>@Analytics.Format(_pendingHours, "0") h</strong>
+                <small>@_awaitingApproval engineer(s)</small>
+            </div>
+            <div>
+                <label>Billable capacity used</label>
+                <strong>@Analytics.Format(CapacityUsed)%</strong>
+                <small>Across billable engineers</small>
+            </div>
+            <div>
+                <label>Probation context</label>
+                <strong>@Probationers</strong>
+                <small>Freshers on probation in ERP roster</small>
+            </div>
+        </section>
+
+        <section class="timesheet-ledger">
+            <div class="ledger-toolbar">
+                <div>
+                    <span class="atlas-section-label">Compliance ledger</span>
+                    <span class="atlas-caption">@FilteredRows.Count of @Rows.Count engineers · click any sortable header to rank</span>
                 </div>
-                <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter by name or team…" />
-                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid timesheet-compliance-grid" RowClass="@RowSeverityClass">
-                    <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
-                        @context.Name
-                    </TemplateColumn>
-                    <TemplateColumn Title="Status">
-                        @if (context.IsConsultant || context.IsOnProbation || context.IsNonBillable)
-                        {
-                            <span class="tag-row">
-                                @if (context.IsConsultant)
-                                {
-                                    <span class="tag consultant">Consultant</span>
-                                }
-                                @if (context.IsOnProbation)
-                                {
-                                    <span class="tag probation">Probation</span>
-                                }
-                                @if (context.IsNonBillable)
-                                {
-                                    <span class="tag muted">Non-billable</span>
-                                }
-                            </span>
-                        }
-                    </TemplateColumn>
-                    <PropertyColumn Title="Team" Property="@(x => x.TeamName)" Sortable="true" />
-                    <TemplateColumn Title="Filled (d)" Align="Align.Right" Sortable="true" SortBy="@_sortByFilled">
-                        <span class="num">@context.FilledDays / @context.ExpectedDays</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Missing (d)" Align="Align.Right" Sortable="true" SortBy="@_sortByMissing">
-                        <span class="num @MissingSeverityClass(context.MissingDays)">@context.MissingDays</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Fill rate (%)" Align="Align.Right" Sortable="true" SortBy="@_sortByFillRate">
-                        <span class="score-cell">
-                            <b class="@Analytics.ScoreBand(context.FillRate)">@Analytics.Format(context.FillRate)%</b>
-                            <i class="score-bar @Analytics.ScoreBand(context.FillRate)" style="width:@Analytics.Svg((double)context.FillRate * 0.42)px"></i>
-                        </span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Entered (h)" Align="Align.Right" Sortable="true" SortBy="@_sortByEntered">
-                        <span class="num">@Hours(context.EnteredHours)</span>
-                    </TemplateColumn>
-                    @if (AnyPendingApproval)
+                <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or team…" aria-label="Filter engineer or team" />
+            </div>
+
+            <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid timesheet-compliance-grid" RowClass="@RowSeverityClass">
+                <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
+                    <span class="ledger-person"><strong>@context.Name</strong>@if (!string.IsNullOrWhiteSpace(context.TeamName)){<small>@context.TeamName</small>}</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Status">
+                    @if (context.IsConsultant || context.IsOnProbation || context.IsNonBillable)
                     {
-                        <TemplateColumn Title="Awaiting (h)" Align="Align.Right" Sortable="true" SortBy="@_sortByPending">
-                            <span class="num @(context.HasPendingApproval ? "flag-warning" : null)">@Hours(context.PendingApprovalHours)</span>
-                        </TemplateColumn>
+                        <span class="tag-row">
+                            @if (context.IsConsultant) { <span class="tag consultant">Consultant</span> }
+                            @if (context.IsOnProbation) { <span class="tag probation">Probation</span> }
+                            @if (context.IsNonBillable) { <span class="tag muted">Non-billable</span> }
+                        </span>
                     }
-                    <TemplateColumn Title="Billable (h)" Align="Align.Right" Sortable="true" SortBy="@_sortByBillable">
-                        <span class="num">@Hours(context.BillableHours)</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Capacity (%)" Align="Align.Right" Sortable="true" SortBy="@_sortByCapacity">
-                        <span class="num">@(context.IsNonBillable ? "n/a" : context.CapacityUtilization <= 0 ? "—" : Analytics.Format(context.CapacityUtilization) + "%")</span>
-                    </TemplateColumn>
-                </QuickGrid>
-                @if (FilteredRows.Count == 0)
+                    else
+                    {
+                        <span class="atlas-caption">Standard</span>
+                    }
+                </TemplateColumn>
+                <TemplateColumn Title="Filled days" Align="Align.Right" Sortable="true" SortBy="@_sortByFilled">
+                    <span class="num">@context.FilledDays / @context.ExpectedDays</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Missing days" Align="Align.Right" Sortable="true" SortBy="@_sortByMissing">
+                    <span class="num @MissingSeverityClass(context.MissingDays)">@context.MissingDays</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Fill rate" Align="Align.Right" Sortable="true" SortBy="@_sortByFillRate">
+                    <span class="score-cell">
+                        <b class="@Analytics.ScoreBand(context.FillRate)">@Analytics.Format(context.FillRate)%</b>
+                        <i class="score-bar @Analytics.ScoreBand(context.FillRate)" style="width:@Analytics.Svg((double)context.FillRate * 0.42)px"></i>
+                    </span>
+                </TemplateColumn>
+                <TemplateColumn Title="Entered" Align="Align.Right" Sortable="true" SortBy="@_sortByEntered">
+                    <span class="num">@Hours(context.EnteredHours)</span>
+                </TemplateColumn>
+                @if (AnyPendingApproval)
                 {
-                    <p class="chart-note">No engineer matches “@_filter”.</p>
+                    <TemplateColumn Title="Awaiting" Align="Align.Right" Sortable="true" SortBy="@_sortByPending">
+                        <span class="num @(context.HasPendingApproval ? "flag-warning" : null)">@Hours(context.PendingApprovalHours)</span>
+                    </TemplateColumn>
                 }
-            </section>
-        </div>
+                <TemplateColumn Title="Billable" Align="Align.Right" Sortable="true" SortBy="@_sortByBillable">
+                    <span class="num">@Hours(context.BillableHours)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Capacity" Align="Align.Right" Sortable="true" SortBy="@_sortByCapacity">
+                    <span class="num">@(context.IsNonBillable ? "n/a" : context.CapacityUtilization <= 0 ? "—" : Analytics.Format(context.CapacityUtilization) + "%")</span>
+                </TemplateColumn>
+            </QuickGrid>
+
+            @if (FilteredRows.Count == 0)
+            {
+                <p class="chart-note">No engineer matches “@_filter”.</p>
+            }
+        </section>
     }
 </div>
 
@@ -104,10 +128,6 @@
     private void OnStateChanged() => InvokeAsync(() => { Recompute(); StateHasChanged(); });
     public void Dispose() => State.Changed -= OnStateChanged;
 
-    // Analytics.Compliance is an O(rows x employees) join with a name normalisation per pair.
-    // It used to hang off an expression-bodied property that the markup touched thirteen times
-    // per render, so every keystroke in the filter box re-ran the whole join thirteen times.
-    // It is now computed once per state change, along with the aggregates derived from it.
     private void Recompute()
     {
         _rows = Analytics.Compliance(State.Performance, State.Employees);
@@ -127,9 +147,6 @@
         _filterCache = null;
     }
 
-    // QuickGrid's SortBy attribute can't parse an inline generic-method call in Razor markup
-    // (the compiler treats "<Analytics.ComplianceRow>" as a markup tag), so each sort order is
-    // a plain field the column can reference by name instead.
     private static readonly GridSort<Analytics.ComplianceRow> _sortByName = GridSort<Analytics.ComplianceRow>.ByAscending(x => x.Name);
     private static readonly GridSort<Analytics.ComplianceRow> _sortByFilled = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.FilledDays);
     private static readonly GridSort<Analytics.ComplianceRow> _sortByMissing = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.MissingDays);
@@ -140,7 +157,6 @@
     private static readonly GridSort<Analytics.ComplianceRow> _sortByCapacity = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.CapacityUtilization);
 
     private string _filter = string.Empty;
-
     private IReadOnlyList<Analytics.ComplianceRow> _rows = [];
     private IReadOnlyList<Analytics.ComplianceRow>? _filterCache;
     private string? _filterCacheKey;
@@ -150,7 +166,6 @@
 
     private IReadOnlyList<Analytics.ComplianceRow> Rows => _rows;
 
-    /// <summary>Filtered view, rebuilt only when the filter text actually changes.</summary>
     private IReadOnlyList<Analytics.ComplianceRow> FilteredRows
     {
         get
@@ -167,8 +182,6 @@
 
     private bool AnyPendingApproval => _awaitingApproval > 0;
 
-    // Graduated severity instead of a flat on/off flag: a couple of missed days reads very
-    // differently from a full no-show, and the color should say so at a glance.
     private static string? MissingSeverityClass(decimal missingDays) => missingDays switch
     {
         <= 0 => null,
@@ -176,17 +189,11 @@
         _ => "flag-critical"
     };
 
-    // Row fill is reserved for a genuinely critical state — nothing logged at all for the
-    // whole month. Any other gap is carried by an amber marker on the row plus the Missing
-    // and Fill rate cells; painting most of the table red made every engineer look equally
-    // delinquent and drowned out the handful who actually are.
     private static string? RowSeverityClass(Analytics.ComplianceRow row) =>
         row.ExpectedDays > 0 && row.FilledDays == 0 ? "row-flag-critical"
         : row.MissingDays > 0 ? "row-flag"
         : null;
 
-    // A literal zero hours reads as "nothing here" — an em dash is faster to scan across a
-    // column than a wall of repeated "0.0"s, and doesn't compete visually with real values.
     private static string Hours(decimal value) => value <= 0 ? "—" : Analytics.Format(value) + " h";
 
     private decimal TotalExpected => _totalExpected;
@@ -194,9 +201,4 @@
     private decimal FillRate => _totalExpected == 0 ? 0 : decimal.Round(_totalFilled * 100m / _totalExpected, 1);
     private decimal CapacityUsed => _capacityUsed;
     private int Probationers => _probationers;
-
-    private RenderFragment Kpi(string label, string value, string hint) => @<div class="kpi" title="@hint">
-        <span class="kpi-label">@label</span>
-        <span class="kpi-value"><strong>@value</strong></span>
-    </div>;
 }

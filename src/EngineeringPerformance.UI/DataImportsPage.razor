@@ -7,79 +7,93 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<div class="page-grid">
-    <section class="primary-pane">
-        <div class="section-title">
-            <div><h2>Data inputs</h2><p>The ERP exports keep their system-generated names. Match each row using the expected export below — detection uses workbook columns, so a renamed file still lands in the right slot.</p></div>
-            <button class="action" @onclick="UploadZipAsync" disabled="@State.Busy">Upload ZIP</button>
+<div class="workbench-page imports-workbench">
+    <header class="workbench-header">
+        <div>
+            <h2>Evidence pipeline</h2>
+            <p>Load source evidence for @State.SelectedMonth.ToString("MMMM yyyy"). EOS detects workbook structure, validates the reporting period and recalculates the analytical layer from accepted inputs.</p>
         </div>
-        <ol class="workflow">
-            @WorkflowStep(1, "Select reporting month", true)
-            @WorkflowStep(2, "Upload the three ERP exports", State.SystemReadyCount >= 3)
-            @WorkflowStep(3, "Validate imported rows", State.Performance.Count > 0)
-            @WorkflowStep(4, "Generate review templates", State.ReviewsUploaded)
-            @WorkflowStep(5, "Upload completed reviews", State.ReviewsUploaded)
-            @WorkflowStep(6, "Review calculated scores", State.Performance.Count > 0 && State.ReviewsUploaded)
-        </ol>
+        <div class="workbench-summary">
+            <div><span>ERP inputs</span><strong>@State.SystemReadyCount / 3</strong></div>
+            <div><span>Review input</span><strong>@(State.ReviewsUploaded ? "Ready" : "Open")</strong></div>
+            <button class="action" @onclick="UploadZipAsync" disabled="@State.Busy">Import package</button>
+        </div>
+    </header>
 
-        <div class="import-table">
-            <div class="table-head import-grid">
-                <span class="cell">Input</span><span class="cell">Expected ERP export</span><span class="cell">Loaded file</span><span class="cell">Reporting period</span><span class="cell">Imported at</span><span class="cell">Status</span><span class="cell">Action</span>
+    <section class="import-pipeline" aria-label="Import workflow">
+        @PipelineNode(1, "Period", true, State.SelectedMonth.ToString("MMM yy"))
+        @PipelineNode(2, "ERP evidence", State.SystemReadyCount >= 3, $"{State.SystemReadyCount}/3")
+        @PipelineNode(3, "Normalize", State.Performance.Count > 0, State.Performance.Count == 0 ? "waiting" : $"{State.Performance.Count} people")
+        @PipelineNode(4, "Review evidence", State.ReviewsUploaded, State.ReviewsUploaded ? "loaded" : "optional")
+        @PipelineNode(5, "Atlas", State.Performance.Count > 0, State.Performance.Count > 0 ? "ready" : "waiting")
+    </section>
+
+    <div class="page-grid imports-grid">
+        <section class="primary-pane">
+            <div class="atlas-panel-head">
+                <div><h2>Source register</h2><small>Expected export → detected workbook → accepted reporting period</small></div>
+                <span class="atlas-caption">Replace an input to recalculate the month from the new evidence.</span>
             </div>
-            @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
+
+            <div class="import-table evidence-register">
+                <div class="table-head import-grid">
+                    <span class="cell">Source</span>
+                    <span class="cell">Expected export</span>
+                    <span class="cell">Loaded evidence</span>
+                    <span class="cell">Period</span>
+                    <span class="cell">Imported</span>
+                    <span class="cell">State</span>
+                    <span class="cell">Action</span>
+                </div>
+                @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
+                {
+                    var ready = slot.Status == SourceStatus.Uploaded;
+                    <div class="import-row import-grid @(ready ? "source-ready" : "source-open")">
+                        <div class="cell">
+                            <div class="input-name">
+                                <i>@Initial(slot.ReportType)</i>
+                                <span><strong>@Label(slot.ReportType)</strong><small>@Description(slot.ReportType)</small></span>
+                            </div>
+                        </div>
+                        <div class="cell">
+                            <span class="expected"><code title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span>
+                        </div>
+                        <div class="cell"><span class="filename" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
+                        <div class="cell"><span class="filename">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
+                        <div class="cell"><span class="filename">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
+                        <div class="cell"><span class="source-state @(ready ? "ready" : null)"><i></i>@(ready ? "Accepted" : "Open")</span></div>
+                        <div class="cell"><button class="source-action" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button></div>
+                    </div>
+                }
+            </div>
+
+            <details class="import-method-note">
+                <summary>Reporting-period rules</summary>
+                <div>
+                    <p>Attendance and detailed-timesheet rows carry their own dates, so EOS files each row into its actual reporting month.</p>
+                    <p>The monthly utilization summary contains one aggregate per employee for the requested ERP period. A file spanning multiple calendar months is rejected rather than estimated. Export one summary per calendar month.</p>
+                </div>
+            </details>
+        </section>
+
+        <aside class="activity-pane validation-rail">
+            <div class="atlas-panel-head"><div><h2>Pipeline status</h2><small>Evidence checks for this month</small></div></div>
+            @ValidationSignal("Local database", "SQLite available", true, "DB")
+            @ValidationSignal("Roster", State.Employees.Count == 0 ? "No employees configured" : $"{State.Employees.Count} employees", State.Employees.Count > 0, "ID")
+            @ValidationSignal("ERP evidence", $"{State.SystemReadyCount} of 3 required exports", State.SystemReadyCount >= 3, "ERP")
+            @ValidationSignal("Review evidence", State.ReviewsUploaded ? "Review workbooks loaded" : "Not yet collected", State.ReviewsUploaded, "REV", true)
+            @ValidationSignal("Calculated layer", State.Performance.Count == 0 ? "Waiting for valid source rows" : $"{State.Performance.Count} employee rows ready", State.Performance.Count > 0, "FX")
+
+            @if (State.Performance.Count > 0)
             {
-                <div class="import-row import-grid">
-                    <div class="cell">
-                        <div class="input-name"><i>@Initial(slot.ReportType)</i><span><strong>@Label(slot.ReportType)</strong><small>@Description(slot.ReportType)</small></span></div>
-                    </div>
-                    <div class="cell">
-                        <span class="expected"><code title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span>
-                    </div>
-                    <div class="cell">
-                        <span class="filename" title="@slot.FileName">@(slot.FileName ?? "—")</span>
-                    </div>
-                    <div class="cell">
-                        <span class="filename">@State.SelectedMonth.ToString("MMMM yyyy")</span>
-                    </div>
-                    <div class="cell">
-                        <span class="filename">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM, HH:mm") : "—")</span>
-                    </div>
-                    <div class="cell">
-                        <span class="status @(slot.Status == SourceStatus.Uploaded ? "ok" : null)">@(slot.Status == SourceStatus.Uploaded ? "Ready" : "Not uploaded")</span>
-                    </div>
-                    <div class="cell">
-                        <button @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(slot.Status == SourceStatus.Uploaded ? "Replace" : "Upload")</button>
-                    </div>
+                <div class="validation-next">
+                    <span class="atlas-section-label">Next</span>
+                    <strong>Performance Atlas is ready</strong>
+                    <button class="action secondary" @onclick='() => Navigation.NavigateTo("/overview")'>Open team performance →</button>
                 </div>
             }
-        </div>
-        <div class="callout">
-            <strong>Which month does an export belong to?</strong>
-            <p>
-                The attendance and detailed-timesheet exports carry a date on every row, so they can span
-                several months and each row is filed under its own month automatically.
-            </p>
-            <p>
-                The utilization summary is different: it is a single total per employee for whatever period
-                the ERP was asked for. A summary covering more than one calendar month is rejected rather
-                than split, because nothing in the file says how much of each total belongs to which month —
-                any division would be an estimate presented as a reported figure. Export it once per
-                calendar month (<code>01-Aug-2026 to 31-Aug-2026</code>) and it will import.
-            </p>
-        </div>
-    </section>
-    <aside class="activity-pane">
-        <h2>Validation</h2>
-        @Activity("Database", "SQLite is available and writable.", true)
-        @Activity("Employees", State.Employees.Count == 0 ? "No employees configured." : $"{State.Employees.Count} employees in scope.", State.Employees.Count > 0)
-        @Activity("System inputs", $"{State.SystemReadyCount} of 3 ERP exports uploaded.", State.SystemReadyCount >= 3)
-        @Activity("Engineer reviews", State.ReviewsUploaded ? "Review workbook loaded." : "Review workbook not uploaded.", State.ReviewsUploaded)
-        @Activity("Calculated scores", State.Performance.Count == 0 ? "No scores for this month yet." : $"{State.Performance.Count} engineers scored.", State.Performance.Count > 0)
-        @if (State.Performance.Count > 0)
-        {
-            <button class="link wide-link" @onclick='() => Navigation.NavigateTo("/overview")'>View overview →</button>
-        }
-    </aside>
+        </aside>
+    </div>
 </div>
 
 @code {
@@ -93,20 +107,19 @@
 
     private void OnStateChanged() => InvokeAsync(async () => { await ReloadHistoryAsync(); StateHasChanged(); });
     public void Dispose() => State.Changed -= OnStateChanged;
+    private async Task ReloadHistoryAsync() => _history = await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
+    private DateTime? ImportedAt(ReportType type) => _history.Where(x => x.ReportType == type).Select(x => (DateTime?)x.ImportedLocal).FirstOrDefault();
 
-    private async Task ReloadHistoryAsync() =>
-        _history = await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
+    private RenderFragment PipelineNode(int number, string label, bool ready, string detail) => @<div class="pipeline-node @(ready ? "ready" : null)">
+        <i>@(ready ? "✓" : number.ToString())</i><span><strong>@label</strong><small>@detail</small></span>
+    </div>;
 
-    /// <summary>Most recent recorded import for a slot, or null when it predates the audit log.</summary>
-    private DateTime? ImportedAt(ReportType type) =>
-        _history.Where(x => x.ReportType == type).Select(x => (DateTime?)x.ImportedLocal).FirstOrDefault();
-
-    private RenderFragment WorkflowStep(int number, string label, bool done) =>
-        @<li class="workflow-step @(done ? "done" : null)"><i>@(done ? "✓" : number.ToString())</i>@label</li>;
+    private RenderFragment ValidationSignal(string title, string detail, bool good, string badge, bool optional = false) => @<div class="validation-signal @(good ? "good" : optional ? "optional" : "warn")">
+        <i>@badge</i><span><strong>@title</strong><small>@detail</small></span><b>@(good ? "●" : optional ? "○" : "!")</b>
+    </div>;
 
     private async Task UploadAsync(ReportType type)
     {
-        // Engineer reviews arrive as one workbook per engineer, so that slot also takes a ZIP.
         var path = type == ReportType.EngineerReviewWorkbook ? Dialogs.PickWorkbookOrZip() : Dialogs.PickWorkbook();
         if (path is null) return;
         await State.RunAsync(async () =>
@@ -128,8 +141,13 @@
 
     private async Task UploadZipAsync()
     {
-        var path = Dialogs.PickWorkbookOrZip(); if (path is null) return;
-        if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { State.ShowMessage("Select a ZIP package for combined import.", true); return; }
+        var path = Dialogs.PickWorkbookOrZip();
+        if (path is null) return;
+        if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            State.ShowMessage("Select a ZIP package for combined import.", true);
+            return;
+        }
         await State.RunAsync(async () =>
         {
             var count = await Database.ImportPackageAsync(State.SelectedMonth.Year, State.SelectedMonth.Month, path);
@@ -137,8 +155,6 @@
             State.ShowMessage(count == 0 ? "No recognizable workbooks were found in the ZIP." : $"{count} workbook(s) imported from the package.", count == 0);
         });
     }
-
-    private RenderFragment Activity(string title, string detail, bool good) => @<div class="activity"><i class="@(good ? "good" : "warn")">@(good ? "✓" : "!")</i><span><strong>@title</strong><small>@detail</small></span></div>;
 
     private static string Initial(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "MS", ReportType.DetailedTimesheetTransactions => "DT", ReportType.AttendanceLeaveUaaTimesheet => "AT", _ => "ER" };
     private static string Label(ReportType type) => type switch { ReportType.MonthlyTimesheetSummary => "Monthly utilization summary", ReportType.DetailedTimesheetTransactions => "Detailed timesheet", ReportType.AttendanceLeaveUaaTimesheet => "Attendance and leave", _ => "Engineer reviews" };
@@ -155,6 +171,6 @@
         ReportType.MonthlyTimesheetSummary => "ERP → RP-wise Timesheet Utilization Report",
         ReportType.DetailedTimesheetTransactions => "ERP → Timesheet Manager/Head Report",
         ReportType.AttendanceLeaveUaaTimesheet => "ERP → Leave Summary for RP",
-        _ => "Produced on the Templates screen, returned by engineers"
+        _ => "Generated by EOS, returned by engineers"
     };
 }

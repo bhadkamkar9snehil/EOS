@@ -6,55 +6,63 @@
     <div class="section-title settings-title">
         <div>
             <h2>Appearance</h2>
-            <p>Choose a complete visual system. The selected palette updates navigation, analytical surfaces, tables, controls, charts and status signals together.</p>
+            <p>EOS now uses one fixed product colour system with two physical renderings. Minimal is the precision editorial Atlas. Realist is the fully tactile skeuomorphic instrument console.</p>
         </div>
-        <span class="current-theme-label">Current: <strong>@CurrentTheme.Name</strong></span>
+        <span class="current-theme-label">Interface <strong>@Title(_skin)</strong></span>
     </div>
 
-    <div class="theme-toolbar">
-        @foreach (var group in ThemeGroups)
-        {
-            <button type="button"
-                    class="@(_filter == group.Key ? "selected" : null)"
-                    @onclick="() => _filter = group.Key">
-                @group.Label
-                <span>@ThemeCount(group.Key)</span>
-            </button>
-        }
+    <div class="skin-choices" role="radiogroup" aria-label="Interface style">
+        <button type="button" class="skin-choice @(_skin == "minimal" ? "selected" : null)" aria-pressed="@(_skin == "minimal")" @onclick='() => ApplySkinAsync("minimal")'>
+            <span class="skin-choice-preview minimal" aria-hidden="true"></span>
+            <strong>Minimal</strong>
+            <small>The current Performance Atlas: flat editorial plates, calibrated rules, restrained depth and the same EOS orange / petrol / graphite semantics.</small>
+        </button>
+        <button type="button" class="skin-choice @(_skin == "realist" ? "selected" : null)" aria-pressed="@(_skin == "realist")" @onclick='() => ApplySkinAsync("realist")'>
+            <span class="skin-choice-preview realist" aria-hidden="true"></span>
+            <strong>Realist</strong>
+            <small>Full skeuomorphism: forged chassis, ivory instrument plates, screws, bevels, recessed controls, indicator lamps and physically tactile buttons.</small>
+        </button>
     </div>
 
-    <div class="theme-grid" role="list" aria-label="Application themes">
-        @foreach (var theme in FilteredThemes)
-        {
-            <button type="button"
-                    class="theme-option @(_currentTheme == theme.Key ? "selected" : null)"
-                    aria-pressed="@(_currentTheme == theme.Key)"
-                    @onclick="() => ApplyThemeAsync(theme)">
-                <span class="theme-preview" style="@PreviewStyle(theme)" aria-hidden="true">
-                    <i class="preview-nav">
-                        <b></b><b></b><b></b><b></b>
-                    </i>
-                    <i class="preview-canvas">
-                        <b class="preview-kpi"></b>
-                        <b class="preview-kpi"></b>
-                        <b class="preview-chart">
-                            <em></em><em></em><em></em><em></em><em></em>
-                        </b>
-                    </i>
-                </span>
-                <span class="theme-option-copy">
-                    <span class="theme-name-row">
-                        <strong>@theme.Name</strong>
-                        <i>@GroupLabel(theme.Group)</i>
-                    </span>
-                    <small>@theme.Description</small>
-                    <span class="theme-swatches" style="@PreviewStyle(theme)" aria-hidden="true">
-                        <i></i><i></i><i></i><i></i><i></i>
-                    </span>
-                </span>
-                <span class="theme-check">@(_currentTheme == theme.Key ? "Selected" : "Apply theme")</span>
-            </button>
-        }
+    <div class="appearance-controls" aria-label="Appearance behaviour">
+        <section class="appearance-control">
+            <span>Colour system</span>
+            <div class="appearance-fixed-value"><b>EOS Instrument</b><small>Graphite · first-light orange · petrol blue · intervention red</small></div>
+            <small>One palette is shared by Minimal and Realist so meaning never changes with rendering style.</small>
+        </section>
+
+        <section class="appearance-control">
+            <span>Chart vibrancy</span>
+            <div class="segmented">
+                @foreach (var value in new[] { "restrained", "balanced", "vivid" })
+                {
+                    <button type="button" class="@(_intensity == value ? "selected" : null)" @onclick="() => ApplyIntensityAsync(value)">@Title(value)</button>
+                }
+            </div>
+            <small>Only categorical chart chroma and selection emphasis change.</small>
+        </section>
+
+        <section class="appearance-control">
+            <span>Interface density</span>
+            <div class="segmented">
+                @foreach (var value in new[] { "comfortable", "compact" })
+                {
+                    <button type="button" class="@(_density == value ? "selected" : null)" @onclick="() => ApplyDensityAsync(value)">@Title(value)</button>
+                }
+            </div>
+            <small>Comfortable is the normal production setting.</small>
+        </section>
+
+        <section class="appearance-control">
+            <span>Motion</span>
+            <div class="segmented">
+                @foreach (var value in new[] { "system", "reduced", "full" })
+                {
+                    <button type="button" class="@(_motion == value ? "selected" : null)" @onclick="() => ApplyMotionAsync(value)">@Title(value)</button>
+                }
+            </div>
+            <small>System honours Windows reduced-motion preference.</small>
+        </section>
     </div>
 
     <div class="settings-section-grid">
@@ -74,84 +82,64 @@
         <section class="settings-card">
             <div class="settings-card-head">
                 <span class="settings-card-icon">◎</span>
-                <div><h3>Theme behaviour</h3><p>The palette is stored locally, restored before the interface is drawn, and used by every ECharts renderer.</p></div>
+                <div><h3>Rendering contract</h3><p>Minimal and Realist share the same data hierarchy, semantic palette, chart roles, accessibility rules and interaction state.</p></div>
             </div>
             <div class="settings-facts">
-                <div><span>Available palettes</span><strong>@Themes.Length</strong></div>
-                <div><span>Chart recolouring</span><strong>Automatic</strong></div>
+                <div><span>Product palette</span><strong>EOS Instrument · fixed</strong></div>
+                <div><span>Interface renderings</span><strong>Minimal · Realist</strong></div>
+                <div><span>Semantic status palette</span><strong>Stable across both looks</strong></div>
+                <div><span>Generated categorical palette</span><strong>OKLCH · 8 series</strong></div>
+                <div><span>Focus contrast target</span><strong>3:1 minimum</strong></div>
+                <div><span>Operational text floor</span><strong>10.5 px</strong></div>
                 <div><span>Data or scoring impact</span><strong>None</strong></div>
-                <div><span>Restart required</span><strong>No</strong></div>
             </div>
         </section>
     </div>
 </section>
 
 @code {
-    private string _currentTheme = "graphite";
-    private string _filter = "all";
-
-    private static readonly ThemeGroup[] ThemeGroups =
-    [
-        new("all", "All"),
-        new("neutral", "Neutral (light)"),
-        new("dark", "Dark")
-    ];
-
-    private static readonly ThemeOption[] Themes =
-    [
-        new("graphite", "Graphite", "Executive neutral", "neutral", "#f4f7fb", "#ffffff", "#0f172a", "#2563eb", "#15803d", "#b45309", "#b91c1c"),
-        new("ledger", "Ledger", "Fintech calm", "neutral", "#f7f8fa", "#ffffff", "#101828", "#175cd3", "#067647", "#b54708", "#b42318"),
-        new("sterling", "Sterling", "Steel neutral", "neutral", "#f3f4f6", "#ffffff", "#1f2937", "#0f766e", "#0f766e", "#c2410c", "#b91c1c"),
-        new("canvas", "Canvas", "Soft neutral", "neutral", "#f9fafb", "#ffffff", "#1f2937", "#475569", "#15803d", "#b45309", "#b91c1c"),
-        new("quartz", "Quartz", "Monochrome crisp", "neutral", "#f5f5f5", "#ffffff", "#171717", "#262626", "#15803d", "#b45309", "#b91c1c"),
-        new("sandstone", "Sandstone", "ERP warm neutral", "neutral", "#faf7f2", "#fffdf9", "#292524", "#92400e", "#15803d", "#b45309", "#b91c1c"),
-        new("dracula", "Dracula", "Purple & pink classic", "dark", "#282a36", "#343746", "#1e1f29", "#bd93f9", "#50fa7b", "#f1fa8c", "#ff5555"),
-        new("gruvbox", "Gruvbox", "Retro warm contrast", "dark", "#282828", "#32302f", "#1d2021", "#fe8019", "#8ec07c", "#fabd2f", "#fb4934"),
-        new("monokai", "Monokai", "Editor pink & lime", "dark", "#272822", "#33342c", "#1e1f1a", "#f92672", "#a6e22e", "#e6db74", "#fd5c63"),
-        new("everforest", "Everforest", "Soft forest green", "dark", "#2d353b", "#343f44", "#232a2e", "#a7c080", "#83c092", "#dbbc7f", "#e67e80"),
-        new("solarized-dark", "Solarized Dark", "Yellow accent, no blue", "dark", "#002b36", "#073642", "#00212b", "#b58900", "#859900", "#cb4b16", "#dc322f")
-    ];
-
-    private IEnumerable<ThemeOption> FilteredThemes =>
-        _filter == "all" ? Themes : Themes.Where(x => x.Group == _filter);
-
-    private ThemeOption CurrentTheme => Themes.FirstOrDefault(x => x.Key == _currentTheme) ?? Themes[0];
+    private string _skin = "minimal";
+    private string _intensity = "balanced";
+    private string _density = "comfortable";
+    private string _motion = "system";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _currentTheme = await JS.InvokeAsync<string>("epaTheme.get");
+        _skin = await JS.InvokeAsync<string>("epaSkin.get");
+        _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.get");
+        _density = await JS.InvokeAsync<string>("epaTheme.density.get");
+        _motion = await JS.InvokeAsync<string>("epaTheme.motion.get");
         StateHasChanged();
     }
 
-    private async Task ApplyThemeAsync(ThemeOption theme)
+    private async Task ApplySkinAsync(string value)
     {
-        _currentTheme = await JS.InvokeAsync<string>("epaTheme.apply", theme.Key);
-        State.ShowMessage($"Theme changed to {theme.Name}.");
+        _skin = await JS.InvokeAsync<string>("epaSkin.apply", value);
+        State.ShowMessage($"Interface style set to {Title(_skin)}.");
     }
 
-    private static string PreviewStyle(ThemeOption theme) =>
-        $"--preview-bg:{theme.Background};--preview-surface:{theme.Surface};--preview-header:{theme.Header};" +
-        $"--preview-accent:{theme.Accent};--preview-success:{theme.Success};--preview-warning:{theme.Warning};--preview-danger:{theme.Danger};";
+    private async Task ApplyIntensityAsync(string value)
+    {
+        _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.apply", value);
+        State.ShowMessage($"Chart vibrancy set to {Title(value)}.");
+    }
 
-    private static string GroupLabel(string group) =>
-        ThemeGroups.First(x => x.Key == group).Label;
+    private async Task ApplyDensityAsync(string value)
+    {
+        _density = await JS.InvokeAsync<string>("epaTheme.density.apply", value);
+        State.ShowMessage($"Interface density set to {Title(value)}.");
+    }
 
-    private static int ThemeCount(string group) =>
-        group == "all" ? Themes.Length : Themes.Count(x => x.Group == group);
+    private async Task ApplyMotionAsync(string value)
+    {
+        _motion = await JS.InvokeAsync<string>("epaTheme.motion.apply", value);
+        State.ShowMessage($"Motion preference set to {Title(value)}.");
+    }
 
-    private sealed record ThemeOption(
-        string Key,
-        string Name,
-        string Description,
-        string Group,
-        string Background,
-        string Surface,
-        string Header,
-        string Accent,
-        string Success,
-        string Warning,
-        string Danger);
-
-    private sealed record ThemeGroup(string Key, string Label);
+    private static string Title(string value) => value switch
+    {
+        "full" => "Full",
+        _ => char.ToUpperInvariant(value[0]) + value[1..]
+    };
 }
