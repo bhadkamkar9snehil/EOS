@@ -110,16 +110,16 @@
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "spotlight-hours", new[] { "Current" }, new object[]
         {
-            new { name = "Billable", color = "#0F6E9E", values = new object[] { Item.BillableHours } },
-            new { name = "Non-billable", color = "#C85A22", values = new object[] { Item.NonBillableHours } },
-            new { name = "Training", color = "#7A4BB0", values = new object[] { Item.TrainingHours } },
-            new { name = "Office", color = "#1E8C5A", values = new object[] { Item.OfficeHours } }
+            new { name = "Billable", role = "billable", values = new object[] { Item.BillableHours } },
+            new { name = "Non-billable", role = "nonbillable", values = new object[] { Item.NonBillableHours } },
+            new { name = "Training", role = "training", values = new object[] { Item.TrainingHours } },
+            new { name = "Office", role = "office", values = new object[] { Item.OfficeHours } }
         }, null, " h");
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "spotlight-attendance", new[] { "Hours", "Days" }, new object[]
         {
-            new { name = "Punch / attendance", color = "#0F6E9E", values = new object[] { Item.PunchHours, Item.AttendanceDays } },
-            new { name = "Timesheet / leave", color = "#1E8C5A", values = new object[] { Item.AttendanceTimesheetHours, Item.LeaveDays } }
+            new { name = "Punch / attendance", role = "punch", values = new object[] { Item.PunchHours, Item.AttendanceDays } },
+            new { name = "Timesheet / leave", role = "timesheet", values = new object[] { Item.AttendanceTimesheetHours, Item.LeaveDays } }
         }, null, string.Empty);
 
         if (TrendValues.Count >= 2)
@@ -129,8 +129,8 @@
         await JS.InvokeVoidAsync("epaCharts.radar", "spotlight-radar", TeamRadar.Select(a => a.Label).ToArray(), 100,
             new object[]
             {
-                new { name = Name, color = "#C85A22", values = mine },
-                new { name = "Team average", color = "#0F6E9E", values = TeamRadar.Select(a => a.TeamAverage).ToArray() }
+                new { name = Name, role = "categorical-2", values = mine },
+                new { name = "Team average", role = "categorical-1", values = TeamRadar.Select(a => a.TeamAverage).ToArray() }
             });
     }
 
