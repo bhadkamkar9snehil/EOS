@@ -4,6 +4,7 @@
 
   const isRealist = () => root.dataset.skin === 'realist';
   const qs = (s, p = document) => p.querySelector(s);
+  const qsa = (s, p = document) => [...p.querySelectorAll(s)];
 
   function click(sel) {
     const el = qs(sel);
@@ -104,7 +105,7 @@
   }
 
   function decoratePanels() {
-    document.querySelectorAll('.performance-field,.attention-lens,.movement-river,.operational-fingerprint,.atlas-pulse,.workbench-header,.timesheet-pulse,.timesheet-ledger,.people-command,.people-roster,.peer-matrix-wrap,.settings-card,.appearance-control,.export-lane,.template-lane,.primary-pane,.activity-pane').forEach(el => {
+    qsa('.performance-field,.attention-lens,.movement-river,.operational-fingerprint,.atlas-pulse,.workbench-header,.timesheet-pulse,.timesheet-ledger,.people-command,.people-roster,.peer-matrix-wrap,.settings-card,.appearance-control,.export-lane,.template-lane,.primary-pane,.activity-pane').forEach(el => {
       if (!el.querySelector(':scope > .realist-fasteners')) {
         const f = document.createElement('i');
         f.className = 'realist-fasteners';
@@ -114,12 +115,41 @@
     });
   }
 
+  function decorateAtlas() {
+    const field = qs('.performance-field');
+    if (field && !qs('.realist-field-legend', field)) {
+      const legend = document.createElement('div');
+      legend.className = 'realist-field-legend';
+      legend.innerHTML = '<span><i></i>Current (size = score)</span><span class="previous"><i></i>Previous-month position</span>';
+      field.appendChild(legend);
+    }
+
+    const lens = qs('.attention-lens');
+    if (lens && !qs('.realist-attention-columns', lens)) {
+      const columns = document.createElement('div');
+      columns.className = 'realist-attention-columns';
+      columns.innerHTML = '<span></span><span class="fp"><b>Comp</b><b>App</b><b>Att</b><b>Util</b></span><span>30-day rhythm</span>';
+      const list = qs('.attention-list', lens);
+      lens.insertBefore(columns, list || null);
+    }
+
+    const river = qs('.movement-river');
+    if (river && !qs('.realist-river-legend', river)) {
+      const initials = qsa('.attention-avatar').slice(0, 5).map(x => x.textContent.trim()).filter(Boolean);
+      const legend = document.createElement('div');
+      legend.className = 'realist-river-legend';
+      legend.innerHTML = initials.map((x, i) => `<span class="${i === 0 ? 'focus' : ''}"><i></i>${x}</span>`).join('') + '<span class="median"><i></i>Team median</span>';
+      river.appendChild(legend);
+    }
+  }
+
   function sync() {
     ensureHeaderBank();
     ensureLowerConsole();
     instrumentScore();
     decorateFooter();
     decoratePanels();
+    decorateAtlas();
     syncHeaderBank();
   }
 
