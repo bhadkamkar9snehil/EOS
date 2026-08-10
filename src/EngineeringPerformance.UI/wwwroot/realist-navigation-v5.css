@@ -13,7 +13,7 @@
     display:flex !important;
     flex-direction:column !important;
     gap:2px !important;
-    padding:0 4px !important;
+    padding:0 6px 0 5px !important;
     overflow:visible !important;
 }
 
@@ -33,17 +33,19 @@
     border:1px solid #050708 !important;
     border-radius:5px !important;
     background:
-        linear-gradient(180deg,rgba(255,255,255,.105) 0 1px,transparent 2px),
+        radial-gradient(ellipse at 34% -8%,rgba(255,255,255,.055) 0 9%,transparent 55%),
+        repeating-linear-gradient(0deg,rgba(255,255,255,.007) 0 1px,rgba(0,0,0,.010) 1px 3px),
+        linear-gradient(180deg,rgba(255,255,255,.11) 0 1px,transparent 2px),
         linear-gradient(90deg,rgba(255,255,255,.025),transparent 18%,transparent 84%,rgba(0,0,0,.17)),
         linear-gradient(180deg,#252e31 0%,#1a2326 43%,#0d1619 100%) !important;
     box-shadow:
-        0 2px 2px rgba(0,0,0,.92),
-        inset 0 1px 0 rgba(232,232,222,.21),
-        inset 0 -2px 1px rgba(0,0,0,.74),
-        inset 1px 0 0 rgba(135,137,128,.34),
-        inset -1px 0 0 rgba(0,0,0,.56),
-        inset 0 0 0 1px rgba(111,114,107,.22),
-        0 0 0 1px rgba(45,48,45,.72) !important;
+        0 2px 2px rgba(0,0,0,.94),
+        inset 0 1px 0 rgba(235,233,222,.24),
+        inset 0 -2px 2px rgba(0,0,0,.76),
+        inset 1px 0 0 rgba(140,141,132,.35),
+        inset -1px 0 0 rgba(0,0,0,.58),
+        inset 0 0 0 1px rgba(116,119,111,.25),
+        0 0 0 1px rgba(42,45,42,.78) !important;
     text-shadow:0 1px 1px #000 !important;
     overflow:hidden !important;
 }
@@ -56,6 +58,8 @@
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button.selected {
     color:#fff1d5 !important;
     background:
+        radial-gradient(ellipse at 34% -8%,rgba(255,255,255,.06) 0 10%,transparent 56%),
+        repeating-linear-gradient(0deg,rgba(255,255,255,.006) 0 1px,rgba(0,0,0,.009) 1px 3px),
         linear-gradient(180deg,rgba(255,255,255,.14) 0 1px,transparent 2px),
         linear-gradient(90deg,rgba(151,106,50,.065),transparent 20%,transparent 84%,rgba(0,0,0,.18)),
         linear-gradient(180deg,#393936 0%,#282a29 42%,#171c1d 100%) !important;
@@ -70,7 +74,7 @@
     height:calc(100% - 10px) !important;
     border-radius:1px !important;
     background:linear-gradient(180deg,#ffc15f 0%,#ff8a10 24%,#ef6300 66%,#c53f00 100%) !important;
-    box-shadow:0 0 9px rgba(255,110,0,.9),1px 0 2px rgba(255,164,65,.65),inset 1px 0 rgba(255,255,255,.62) !important;
+    box-shadow:-1px 0 0 #2a1100,0 0 10px rgba(255,110,0,.95),1px 0 2px rgba(255,174,82,.72),inset 1px 0 rgba(255,255,255,.66) !important;
 }
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button b,
@@ -92,8 +96,8 @@
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button b::before,
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-footer > button b::before {
     content:"" !important;
-    width:27px !important;
-    height:27px !important;
+    width:28px !important;
+    height:28px !important;
     display:block !important;
     background:currentColor !important;
     -webkit-mask-repeat:no-repeat !important;
@@ -108,19 +112,19 @@
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-footer > button span {
     display:block !important;
     min-width:0 !important;
-    width:128% !important;
+    width:133.4% !important;
     margin:0 !important;
     color:inherit !important;
     white-space:nowrap !important;
     overflow:visible !important;
     text-align:left !important;
     font-family:"Bahnschrift Condensed","Arial Narrow","DejaVu Sans Condensed",sans-serif !important;
-    font-size:13.4px !important;
+    font-size:14px !important;
     line-height:1 !important;
     font-weight:700 !important;
     letter-spacing:.16px !important;
     text-transform:uppercase !important;
-    transform:translateX(-3px) scaleX(.78) !important;
+    transform:translateX(1px) scaleX(.75) !important;
     transform-origin:left center !important;
 }
 
@@ -135,7 +139,7 @@
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(9) { order:9; }
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-footer {
-    margin:2px 4px 0 !important;
+    margin:2px 6px 0 5px !important;
     padding:0 !important;
     border:0 !important;
 }
@@ -149,7 +153,7 @@
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(4) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.8%22%20width%3D%2213%22%20height%3D%2212.7%22%20rx%3D%221.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M6.4%2013.5V10M10%2013.5V7M13.6%2013.5V5.5%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.8%22%20width%3D%2213%22%20height%3D%2212.7%22%20rx%3D%221.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M6.4%2013.5V10M10%2013.5V7M13.6%2013.5V5.5%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(5) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M5.5%2014.5H5a3%203%200%200%201-.4-6%205.2%205.2%200%200%201%2010-1.1%203.5%203.5%200%200%201%20.4%207.1h-.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M10%2016V9.2M7.4%2011.8%2010%209.2l2.6%202.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M5.5%2014.5H5a3%203%200%200%201-.4-6%205.2%205.2%200%200%201%2010-1.1%203.5%203.5%200%200%201%20.4%207.1h-.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M10%2016V9.2M7.4%2011.8%2010%209.2l2.6%202.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(6) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M5%203.4h7l3%203v10.2H5z%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M12%203.4v3h3M7.4%209.2h5.2M7.4%2011.8h5.2M7.4%2014.4h4%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M5%203.4h7l3%203v10.2H5z%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M12%203.4v3h3M7.4%209.2h5.2M7.4%2011.8h5.2M7.4%2014.4h4%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
-:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(7) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%227%22%20cy%3D%226.2%22%20r%3D%222.1%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%2213.7%22%20cy%3D%227%22%20r%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M2.8%2015.8c.4-3.1%201.8-4.8%204.2-4.8s3.8%201.7%204.2%204.8M11.2%2012.2c.7-.7%201.5-1%202.5-1%202%200%203.2%201.5%203.6%204.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%227%22%20cy%3D%226.2%22%20r%3D%222.1%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%2213.7%22%20cy%3D%227%22%20r%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M2.8%2015.8c.4-3.1%201.8-4.8%204.2-4.8s3.8%201.7%204.2%204.8M11.2%2012.2c.7-.7%201.5-1%202.5-1%202%200%203.2%201.5%203.6%204.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
-:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(8) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Crect%20x%3D%224.2%22%20y%3D%224.6%22%20width%3D%2211.6%22%20height%3D%2212%22%20rx%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M7.3%204.6V3.7h5.4v.9M7%208.2h6M7%2011h6M7%2013.8h4.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Crect%20x%3D%224.2%22%20y%3D%224.6%22%20width%3D%2211.6%22%20height%3D%2212%22%20rx%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M7.3%204.6V3.7h5.4v.9M7%208.2h6M7%2011h6M7%2013.8h4.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(7) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%225.7%22%20r%3D%222%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%224.8%22%20cy%3D%227.4%22%20r%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%2215.2%22%20cy%3D%227.4%22%20r%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M6.4%2016c.25-3.1%201.55-4.8%203.6-4.8s3.35%201.7%203.6%204.8M2%2015.8c.2-2.35%201.2-3.7%202.8-3.7%201%200%201.8.4%202.35%201.2M18%2015.8c-.2-2.35-1.2-3.7-2.8-3.7-1%200-1.8.4-2.35%201.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%225.7%22%20r%3D%222%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%224.8%22%20cy%3D%227.4%22%20r%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%2215.2%22%20cy%3D%227.4%22%20r%3D%221.7%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M6.4%2016c.25-3.1%201.55-4.8%203.6-4.8s3.35%201.7%203.6%204.8M2%2015.8c.2-2.35%201.2-3.7%202.8-3.7%201%200%201.8.4%202.35%201.2M18%2015.8c-.2-2.35-1.2-3.7-2.8-3.7-1%200-1.8.4-2.35%201.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(8) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Crect%20x%3D%224%22%20y%3D%224.7%22%20width%3D%2212%22%20height%3D%2212%22%20rx%3D%221.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%222.8%22%20width%3D%226%22%20height%3D%223.4%22%20rx%3D%221.1%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M7%209h6M7%2011.8h6M7%2014.5h4%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Crect%20x%3D%224%22%20y%3D%224.7%22%20width%3D%2212%22%20height%3D%2212%22%20rx%3D%221.6%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%222.8%22%20width%3D%226%22%20height%3D%223.4%22%20rx%3D%221.1%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M7%209h6M7%2011.8h6M7%2014.5h4%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail nav > button:nth-of-type(9) b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%225.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%221.8%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M10%201.8v3M10%2015.2v3M1.8%2010h3M15.2%2010h3%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%225.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%221.8%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3Cpath%20d%3D%22M10%201.8v3M10%2015.2v3M1.8%2010h3M15.2%2010h3%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-footer > button b::before { -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M8.1%203.2h3.8l.5%201.9%201.6.7%201.7-1%201.9%203.3-1.5%201.3.1%201.7%201.4%201.2-1.9%203.3-1.8-1-1.5.7-.5%201.9H8.1l-.5-1.9-1.5-.7-1.8%201-1.9-3.3%201.4-1.2.1-1.7-1.5-1.3%201.9-3.3%201.7%201%201.6-.7z%22%20stroke%3D%22black%22%20stroke-width%3D%221.45%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210.2%22%20r%3D%222.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M8.1%203.2h3.8l.5%201.9%201.6.7%201.7-1%201.9%203.3-1.5%201.3.1%201.7%201.4%201.2-1.9%203.3-1.8-1-1.5.7-.5%201.9H8.1l-.5-1.9-1.5-.7-1.8%201-1.9-3.3%201.4-1.2.1-1.7-1.5-1.3%201.9-3.3%201.7%201%201.6-.7z%22%20stroke%3D%22black%22%20stroke-width%3D%221.45%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210.2%22%20r%3D%222.2%22%20stroke%3D%22black%22%20stroke-width%3D%221.65%22%2F%3E%3C%2Fsvg%3E"); }
