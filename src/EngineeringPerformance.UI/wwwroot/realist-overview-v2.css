@@ -1,0 +1,216 @@
+/* ========================================================================== 
+   EPA Realist — structural correction pass
+   The reference is treated as hardware: bezel -> cavity -> faceplate -> control.
+   This file intentionally loads last so it can replace the first Realist pass
+   without disturbing Minimal.
+   ========================================================================== */
+
+/* Product mark: the application is Engineering Performance Analyzer. */
+.atlas-brand strong{font-size:0!important;letter-spacing:0!important}
+.atlas-brand strong::before{content:"EPA";font-size:30px;line-height:1;letter-spacing:-.045em;font-weight:760}
+html[data-skin="realist"] .atlas-brand strong::before{font-family:"Bahnschrift SemiBold","Arial Narrow",sans-serif;font-size:45px;color:#f5ead5;text-shadow:0 3px 1px #000,0 0 8px rgba(255,255,255,.08)}
+html[data-skin="realist"] .atlas-brand strong i{font-size:31px!important}
+html[data-skin="realist"] .realist-footer-mark{font-size:0!important}
+html[data-skin="realist"] .realist-footer-mark::before{content:"EPA · v2.7";font-size:9.5px}
+
+html[data-skin="realist"]{
+  --rv2-ivory:#eee3d1;
+  --rv2-paper:#f5ecdc;
+  --rv2-paper-deep:#d4c5ad;
+  --rv2-frame:#252722;
+  --rv2-frame-hi:#626158;
+  --rv2-trough:#b9aa93;
+  --rv2-engrave:#403d37;
+  --rv2-hairline:rgba(70,61,50,.32);
+  --rv2-blue:#0a536f;
+  --rv2-orange:#ef6c16;
+  --rv2-red:#aa2117;
+  --rv2-green:#48a63b;
+}
+
+/* ---------- shell proportions ---------- */
+html[data-skin="realist"] .app-shell{grid-template-columns:205px minmax(0,1fr)}
+html[data-skin="realist"] .atlas-brand{height:166px;min-height:166px;margin:8px 9px 7px;padding:27px 19px 18px}
+html[data-skin="realist"] .atlas-brand small{width:145px;font-size:11px;line-height:1.52;letter-spacing:.15em}
+html[data-skin="realist"] .nav-rail nav{padding:0 9px;gap:4px}
+html[data-skin="realist"] .nav-rail button{height:56px;font-size:14.5px;border-radius:8px}
+html[data-skin="realist"] .nav-rail button b{width:24px;height:24px}
+html[data-skin="realist"] .realist-lower-console{margin:0 9px 9px;flex-basis:168px}
+html[data-skin="realist"] .realist-dial{width:94px!important;height:94px!important;min-height:94px!important}
+
+html[data-skin="realist"] .topbar{grid-template-columns:560px minmax(0,1fr);padding:9px 13px;gap:16px}
+html[data-skin="realist"] .page-heading{height:64px;border-width:5px;border-radius:11px;padding:0 34px;background:url("realist-brushed.svg"),linear-gradient(180deg,#fff6e8,#dacbb3);background-blend-mode:multiply,normal;box-shadow:0 7px 12px rgba(0,0,0,.48),inset 0 0 0 1px #9f907c,inset 0 2px 2px #fff,inset 0 -5px 7px rgba(85,65,39,.2)}
+html[data-skin="realist"] .page-heading::before,html[data-skin="realist"] .page-heading::after{width:10px;height:10px;top:22px}
+html[data-skin="realist"] .topbar h1{font-size:28px;letter-spacing:-.02em}
+html[data-skin="realist"] .realist-control-bank{height:64px;grid-template-columns:230px 132px 132px minmax(220px,1fr) 62px;border-width:5px;border-radius:12px;padding:6px;background:url("realist-grain.svg"),linear-gradient(#242a25,#0a0d0b);background-blend-mode:soft-light,normal;box-shadow:0 7px 12px rgba(0,0,0,.45),inset 0 0 0 1px #55584f,inset 0 2px rgba(255,255,255,.07)}
+html[data-skin="realist"] :is(.rcb-month,.rcb-selector){height:50px}
+html[data-skin="realist"] .rcb-search{height:44px;margin:3px 6px;border-radius:21px;border:4px solid #090b09;background:url("realist-brushed.svg"),linear-gradient(#eee4d5,#cdbfa9);background-blend-mode:multiply,normal;box-shadow:inset 0 4px 7px rgba(0,0,0,.28),0 1px rgba(255,255,255,.15)}
+html[data-skin="realist"] .rcb-search input{font-size:13px;font-weight:570}
+html[data-skin="realist"] .rcb-rotary{width:50px;height:50px;margin:0 1px}
+
+/* ---------- physical Overview stack ---------- */
+html[data-skin="realist"] .content.route-overview{padding:8px 9px 9px;background:linear-gradient(180deg,#171b17,#0d100d)}
+html[data-skin="realist"] .atlas-page{display:flex;flex-direction:column;gap:8px;min-height:100%;background:transparent}
+html[data-skin="realist"] .atlas-pulse,
+html[data-skin="realist"] .performance-field,
+html[data-skin="realist"] .attention-lens,
+html[data-skin="realist"] .movement-river,
+html[data-skin="realist"] .operational-fingerprint{
+  background:
+    url("realist-brushed.svg"),
+    radial-gradient(ellipse at 28% -15%,rgba(255,255,255,.65),transparent 38%),
+    linear-gradient(180deg,#f8eedf 0,#eee2cf 54%,#e0d2bb 100%)!important;
+  background-blend-mode:multiply,screen,normal!important;
+  border:5px solid var(--rv2-frame)!important;
+  box-shadow:0 6px 9px rgba(0,0,0,.48),inset 0 0 0 1px #9b8d78,inset 0 2px 2px #fff8ec,inset 0 -5px 8px rgba(72,55,33,.19)!important;
+}
+
+/* ---------- Team Pulse: six hardware modules ---------- */
+html[data-skin="realist"] .atlas-pulse{
+  min-height:190px;
+  padding:12px 14px 10px;
+  grid-template-columns:280px minmax(420px,1.58fr) minmax(365px,1.08fr) 270px 172px;
+  gap:0;
+  border-radius:15px!important;
+  overflow:visible;
+}
+html[data-skin="realist"] .pulse-score,
+html[data-skin="realist"] :is(.pulse-distribution,.pulse-trends,.pulse-readiness,.pulse-pressure){position:relative;min-width:0;border-right:1px solid #b7a991;padding:12px 18px 8px}
+html[data-skin="realist"] .pulse-score{padding-left:14px}
+html[data-skin="realist"] .pulse-pressure{border-right:0;padding-right:10px}
+html[data-skin="realist"] .pulse-score .atlas-section-label{
+  position:absolute;z-index:9;left:29px;top:-26px;padding:2px 16px 3px;
+  border:2px solid #70685c;border-bottom:0;border-radius:5px 5px 0 0;
+  background:url("realist-brushed.svg"),linear-gradient(#f5ebdc,#d1c3ac);background-blend-mode:multiply,normal;
+  box-shadow:inset 0 1px #fff;color:#232520;font-size:11px;letter-spacing:.05em;
+}
+html[data-skin="realist"] .pulse-score-main{height:120px;display:grid;grid-template-columns:112px 88px;gap:15px;align-items:center;justify-content:start}
+html[data-skin="realist"] .pulse-score-main>strong{
+  position:relative;width:112px;height:112px;display:grid;place-items:center;padding-top:2px;
+  border:8px solid #292c28;border-radius:50%;font-size:46px;line-height:1;color:#f4e9d4!important;
+  background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,.18) 0 8%,transparent 9%),
+    conic-gradient(from -135deg,var(--rv2-green) 0 var(--gauge-score,180deg),#273129 var(--gauge-score,180deg) 270deg,transparent 270deg),
+    radial-gradient(circle,#21313a 0 55%,#0b1418 56% 66%,#a29a8c 67% 72%,#2a2c28 73% 100%);
+  box-shadow:0 7px 11px rgba(0,0,0,.52),0 0 0 3px #827b70,0 0 0 5px #292c28,inset 0 3px 4px rgba(255,255,255,.15),inset 0 -5px 7px rgba(0,0,0,.55);text-shadow:0 2px #000;
+}
+html[data-skin="realist"] .pulse-score-main>strong::after{content:"OVERALL SCORE";position:absolute;bottom:13px;font-size:8px;letter-spacing:.06em;color:#e9dcc4;text-shadow:0 1px #000}
+html[data-skin="realist"] .pulse-score-main>span{
+  position:relative;width:88px;height:92px;display:grid;place-items:center;padding-top:6px;
+  border:4px solid #625b50;border-radius:6px;color:#20231f!important;font-size:36px!important;background:url("realist-brushed.svg"),linear-gradient(#eee4d4,#cdbfa9);background-blend-mode:multiply,normal;
+  box-shadow:0 5px 8px rgba(0,0,0,.38),inset 0 2px #fff,inset 0 -4px 5px rgba(65,49,31,.21);text-shadow:0 1px #fff;
+}
+html[data-skin="realist"] .pulse-score-main>span::before{content:"PREV. MONTH";position:absolute;top:8px;font-size:7.5px;font-weight:720;letter-spacing:.06em;color:#504a42}
+html[data-skin="realist"] .pulse-score-meta{position:absolute!important;inset:0;pointer-events:none;margin:0!important}
+html[data-skin="realist"] .pulse-score-meta span:first-child{display:none!important}
+html[data-skin="realist"] .pulse-score-meta span:last-child{left:141px!important;bottom:7px!important;width:88px!important;font-size:8px!important;font-weight:680;color:#514c44;text-align:center}
+
+html[data-skin="realist"] .pulse-heading{margin:0 0 8px;font-size:10.5px;font-weight:760;letter-spacing:.055em;color:#252722;text-shadow:0 1px #fff}
+html[data-skin="realist"] .score-axis{height:124px;padding:0;margin-top:1px}
+html[data-skin="realist"] .score-axis::before{content:"";position:absolute;left:2px;right:2px;top:46px;height:18px;border:2px solid #756b5d;border-radius:10px;background:linear-gradient(#a99b86,#efe4d2 35%,#d0c1aa);box-shadow:inset 0 4px 5px rgba(0,0,0,.2),inset 0 -1px #fff}
+html[data-skin="realist"] .score-axis-line{left:8px;right:8px;top:54px;height:2px;background:#4c4b46;opacity:.95;box-shadow:0 1px rgba(255,255,255,.45)}
+html[data-skin="realist"] .score-axis-dot{top:46px;width:16px;height:16px;margin-left:-8px;border:3px solid #292b27;z-index:3;box-shadow:0 3px 4px rgba(0,0,0,.4),inset 0 2px 2px rgba(255,255,255,.65),inset 0 -3px 3px rgba(0,0,0,.4)}
+html[data-skin="realist"] .score-axis-dot.focused{transform:scale(1.25);box-shadow:0 0 0 4px rgba(239,108,22,.19),0 4px 6px rgba(0,0,0,.45),inset 0 2px rgba(255,255,255,.65)}
+html[data-skin="realist"] .score-bands{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:0;color:#3f3d38;pointer-events:none}
+html[data-skin="realist"] .score-bands span{height:117px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 8px 1px;border-right:1px solid rgba(89,78,64,.16)}
+html[data-skin="realist"] .score-bands span:last-child{border-right:0}
+html[data-skin="realist"] .score-bands em{font-size:10px;font-style:normal;font-weight:700;text-align:center}
+html[data-skin="realist"] .score-bands b{font-size:17px;text-align:center;color:#161916;text-shadow:0 1px #fff}
+
+html[data-skin="realist"] .trend-triplet{height:124px;gap:10px}
+html[data-skin="realist"] .trend-mini{position:relative;padding:8px 9px 6px;border:2px solid #b2a58f;border-radius:5px;background:linear-gradient(rgba(255,255,255,.18),rgba(131,108,74,.035));box-shadow:inset 0 1px rgba(255,255,255,.75),inset 0 -2px rgba(76,60,39,.08)}
+html[data-skin="realist"] .trend-mini label{font-size:9px;font-weight:720;letter-spacing:.04em;color:#555047}
+html[data-skin="realist"] .trend-mini strong{font-size:25px;line-height:1;margin:6px 0 3px;color:#191c18;text-shadow:0 1px #fff}
+html[data-skin="realist"] .atlas-spark{height:60px;border-top:1px solid rgba(84,74,61,.2);background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(82,68,50,.025))}
+
+html[data-skin="realist"] .readiness-lights{height:125px;align-items:center;gap:10px}
+html[data-skin="realist"] .readiness-light span{height:34px;font-size:8.5px;font-weight:720;color:#403d37;overflow:visible;text-overflow:clip}
+html[data-skin="realist"] .readiness-light i{width:34px;height:34px;border:6px solid #252822;background:radial-gradient(circle at 35% 27%,#a7a79d 0 10%,#62645d 35%,#282d28 72%);box-shadow:0 4px 7px rgba(0,0,0,.45),inset 0 2px 2px rgba(255,255,255,.38),0 0 0 2px #7d776c}
+html[data-skin="realist"] .readiness-light.ready i{background:radial-gradient(circle at 35% 27%,#d9ffbf 0 10%,#68d050 32%,#278024 60%,#123d13 80%);box-shadow:0 4px 7px rgba(0,0,0,.45),0 0 12px rgba(72,166,59,.48),inset 0 2px 2px rgba(255,255,255,.52),0 0 0 2px #7d776c}
+html[data-skin="realist"] .readiness-light.warn i{background:radial-gradient(circle at 35% 27%,#fff1ad 0 10%,#f1b52e 34%,#bd7410 64%,#603c07 82%);box-shadow:0 4px 7px rgba(0,0,0,.45),0 0 11px rgba(209,139,18,.4),inset 0 2px rgba(255,255,255,.52),0 0 0 2px #7d776c}
+html[data-skin="realist"] .pulse-pressure strong{font-size:16px;margin-top:9px}
+html[data-skin="realist"] .pressure-bars{height:40px;gap:3px;align-items:center;padding:4px 5px;border:2px solid #b3a58e;border-radius:4px;background:linear-gradient(#d3c5ae,#f0e5d3);box-shadow:inset 0 3px 5px rgba(0,0,0,.18)}
+html[data-skin="realist"] .pressure-bars i{width:7px;height:24px;border-radius:1px;background:#c9bdaa;box-shadow:inset 0 1px #fff}
+html[data-skin="realist"] .pressure-bars i.on{background:linear-gradient(#de4d3b,#a82016);box-shadow:inset 0 1px rgba(255,255,255,.45),0 0 2px rgba(168,32,22,.3)}
+html[data-skin="realist"] .pulse-pressure small{font-size:9px;color:#544f47}
+
+/* ---------- main field and mounted focus control ---------- */
+html[data-skin="realist"] .atlas-primary{grid-template-columns:minmax(0,1.5fr) minmax(520px,.9fr);min-height:500px;gap:8px;border:0;background:transparent}
+html[data-skin="realist"] :is(.performance-field,.attention-lens){border-radius:12px!important;padding:18px 20px 14px}
+html[data-skin="realist"] .performance-field{border-right:5px solid var(--rv2-frame)!important}
+html[data-skin="realist"] .atlas-panel-head{min-height:47px;margin-bottom:5px;align-items:flex-start}
+html[data-skin="realist"] .atlas-panel-head h2{font-size:16px;letter-spacing:.025em;color:#1b1e1a;text-shadow:0 1px #fff}
+html[data-skin="realist"] .atlas-panel-head small{font-size:9.5px;font-weight:660;color:#5b554c}
+html[data-skin="realist"] #atlas-field{height:430px;background:linear-gradient(rgba(255,255,255,.13),rgba(88,70,45,.025));border:1px solid rgba(92,80,64,.25);box-shadow:inset 0 3px 8px rgba(85,66,40,.05)}
+html[data-skin="realist"] .team-mode-chip{display:flex;align-items:center;gap:8px;height:34px;padding:0 11px;border:2px solid #817668;border-radius:5px;background:linear-gradient(#e7dccb,#c9bba5);box-shadow:0 2px 4px rgba(0,0,0,.22),inset 0 1px #fff;color:#2c2e29;text-transform:uppercase;font-size:9px;letter-spacing:.04em}
+html[data-skin="realist"] .team-mode-chip small{font-size:8px!important;color:#655f56!important}
+html[data-skin="realist"] .focus-chip{height:40px;padding:4px;border:3px solid #3a3b36;border-radius:7px;background:url("realist-brushed.svg"),linear-gradient(#dbcfbd,#b8aa94);background-blend-mode:multiply,normal;box-shadow:0 4px 7px rgba(0,0,0,.32),inset 0 1px #fff;gap:5px}
+html[data-skin="realist"] .focus-chip>b{max-width:170px;padding:0 10px;color:#242622;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-skin="realist"] .focus-chip button{height:28px!important;padding:0 9px!important;border:2px solid #383a35!important;border-radius:4px!important;background:linear-gradient(#f3eadc,#c9bba5)!important;box-shadow:0 2px 3px rgba(0,0,0,.28),inset 0 1px #fff!important;text-transform:uppercase;font-size:8.5px!important;letter-spacing:.035em!important;text-shadow:0 1px #fff!important}
+html[data-skin="realist"] .focus-chip .focus-open{color:#fff3e3!important;border-color:#6f2b04!important;background:linear-gradient(#ff9f50,#d95b0c)!important;text-shadow:0 1px #762d03!important}
+html[data-skin="realist"] .focus-chip button:active{transform:translateY(2px);box-shadow:inset 0 3px 5px rgba(0,0,0,.36)!important}
+
+/* ---------- Attention Lens: use the whole panel ---------- */
+html[data-skin="realist"] .attention-lens{display:flex;flex-direction:column;min-height:0}
+html[data-skin="realist"] .attention-columns{display:grid;grid-template-columns:34px 46px minmax(150px,1.15fr) 72px 172px minmax(128px,.9fr) 34px;gap:8px;align-items:end;padding:0 8px 7px;margin-top:-4px;border-bottom:1px solid #b5a791;color:#4d4942;font-size:8px;font-weight:760;text-transform:uppercase;letter-spacing:.055em}
+html[data-skin="realist"] .attention-columns-id{grid-column:1/4}
+html[data-skin="realist"] .attention-columns>span:nth-child(2){grid-column:4}
+html[data-skin="realist"] .attention-columns-fingerprint{grid-column:5;display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:5px}
+html[data-skin="realist"] .attention-columns>span:nth-child(4){grid-column:6;text-align:center}
+html[data-skin="realist"] .attention-list{flex:1;min-height:0;margin:0;padding:0!important;display:grid;grid-template-rows:repeat(5,minmax(72px,1fr))}
+html[data-skin="realist"] .attention-list::before{display:none!important}
+html[data-skin="realist"] .attention-row{grid-template-columns:34px 46px minmax(150px,1.15fr) 72px 172px minmax(128px,.9fr) 34px;gap:8px;min-height:0;padding:0 8px;border-top:1px solid #c2b5a2;background:transparent}
+html[data-skin="realist"] .attention-row:first-child{border-top:0}
+html[data-skin="realist"] .attention-row:hover,html[data-skin="realist"] .attention-row.selected{background:linear-gradient(90deg,rgba(239,108,22,.07),rgba(239,108,22,.015))}
+html[data-skin="realist"] .attention-rank{width:30px;height:46px;display:grid;place-items:center;border:3px solid #4c4439;border-radius:3px;background:linear-gradient(#dc4937,#991c14);box-shadow:0 3px 4px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.35);color:#fff0dd;font-size:18px;text-shadow:0 1px #5d0c08}
+html[data-skin="realist"] .attention-row:nth-child(2) .attention-rank,html[data-skin="realist"] .attention-row:nth-child(3) .attention-rank{background:linear-gradient(#f59b35,#d55c0d)}
+html[data-skin="realist"] .attention-row:nth-child(n+4) .attention-rank{background:linear-gradient(#287994,#09465e)}
+html[data-skin="realist"] .attention-avatar{width:42px;height:42px;border:4px solid #3b3d37;box-shadow:0 3px 5px rgba(0,0,0,.4),inset 0 2px rgba(255,255,255,.35),0 0 0 1px #8c8274}
+html[data-skin="realist"] .attention-person strong{font-size:12.5px;color:#1d201c;text-shadow:0 1px #fff}
+html[data-skin="realist"] .attention-person small{font-size:9px;color:#615b52}
+html[data-skin="realist"] .attention-score{justify-content:center}
+html[data-skin="realist"] .attention-score strong{font-size:25px;color:#1b1e1a;text-shadow:0 1px #fff}
+html[data-skin="realist"] .attention-row:nth-child(-n+3) .attention-score strong{color:var(--rv2-orange)}
+html[data-skin="realist"] .fingerprint-mini{height:34px;gap:6px}
+html[data-skin="realist"] .fingerprint-mini i{height:30px;border:2px solid #776d60;border-radius:2px;background:linear-gradient(#a99c88,#eee2d0 38%,#c8baa4);box-shadow:inset 0 4px 5px rgba(0,0,0,.18),0 1px #fff;overflow:hidden}
+html[data-skin="realist"] .fingerprint-mini i::after{left:3px;right:3px;bottom:3px;max-height:20px;border-top:1px solid rgba(255,255,255,.45);background:linear-gradient(#2b7e99,#084a64);box-shadow:0 -1px #062f40}
+html[data-skin="realist"] .fingerprint-mini i.low{border:2px dashed #aa4b13}
+html[data-skin="realist"] .fingerprint-mini i.low::after{background:linear-gradient(#f39a37,#d45a0b)}
+html[data-skin="realist"] .rhythm-mini{height:36px;gap:2px;padding:3px 2px;border:1px solid #b1a38f;border-bottom:2px solid #6c655b;background:linear-gradient(rgba(255,255,255,.16),rgba(108,86,58,.04));align-items:flex-end}
+html[data-skin="realist"] .rhythm-mini i{flex:1;width:auto;min-width:3px;background:linear-gradient(#2b7e99,#084a64);box-shadow:0 -1px #06384c}
+html[data-skin="realist"] .attention-row:nth-child(-n+3) .rhythm-mini i{background:linear-gradient(#f38c2f,#d85109)}
+html[data-skin="realist"] .attention-open{position:static;width:30px;height:30px;opacity:1;border:2px solid #5d574e;border-radius:4px;background:linear-gradient(#eee4d5,#c5b7a2);box-shadow:0 2px 3px rgba(0,0,0,.25),inset 0 1px #fff;color:#252723;font-size:15px}
+html[data-skin="realist"] .attention-open:active{transform:translateY(2px);box-shadow:inset 0 3px 5px rgba(0,0,0,.3)}
+
+/* ---------- lower instruments ---------- */
+html[data-skin="realist"] .atlas-secondary{grid-template-columns:minmax(0,1.08fr) minmax(560px,.92fr);min-height:330px;gap:8px;border:0;background:transparent}
+html[data-skin="realist"] :is(.movement-river,.operational-fingerprint){border-radius:12px!important;padding:16px 20px 14px}
+html[data-skin="realist"] .movement-river{border-right:5px solid var(--rv2-frame)!important}
+html[data-skin="realist"] #atlas-river{height:255px;border:1px solid rgba(92,80,64,.24);background:linear-gradient(rgba(255,255,255,.1),rgba(86,68,45,.025));box-shadow:inset 0 3px 8px rgba(85,66,40,.045)}
+html[data-skin="realist"] .fingerprint-table{border:2px solid #9c8e7a;border-radius:4px;background:rgba(255,255,255,.08);box-shadow:inset 0 2px 4px rgba(73,58,39,.08)}
+html[data-skin="realist"] .fingerprint-head{height:30px;padding:0 10px;border-bottom:1px solid #a99a84;color:#514c44;font-size:8.5px;font-weight:730}
+html[data-skin="realist"] .fingerprint-row{min-height:43px;padding:4px 10px;border-bottom:1px solid #c3b6a2}
+html[data-skin="realist"] .fingerprint-row:last-child{border-bottom:0}
+html[data-skin="realist"] .fingerprint-row label{font-size:10.5px;font-weight:700;color:#242622}
+html[data-skin="realist"] .fingerprint-track{height:20px;border:2px solid #786f63;border-radius:2px;background:linear-gradient(#a99c89,#eee3d2 35%,#c8baa4);box-shadow:inset 0 4px 5px rgba(0,0,0,.17),inset 0 -1px #fff}
+html[data-skin="realist"] .fingerprint-value{width:11px;height:11px;margin:-5px 0 0 -5px;border:2px solid #8d3505;border-radius:50%;background:radial-gradient(circle at 35% 28%,#ffc27d,#f47719 45%,#b53e05 78%);box-shadow:0 2px 3px rgba(0,0,0,.4),inset 0 1px #fff}
+
+/* Evidence bar should read as a metal console, not four web links. */
+html[data-skin="realist"] .atlas-evidence{height:54px;min-height:54px;gap:5px;padding:5px;border:4px solid #090b09;border-radius:8px;background:url("realist-grain.svg"),linear-gradient(#313631,#151916);background-blend-mode:soft-light,normal;box-shadow:0 4px 7px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.08)}
+html[data-skin="realist"] .evidence-link{height:40px;border:2px solid #5d574e!important;border-radius:4px!important;background:url("realist-brushed.svg"),linear-gradient(#eee4d5,#c3b49d)!important;background-blend-mode:multiply,normal!important;box-shadow:0 2px 3px rgba(0,0,0,.28),inset 0 1px #fff!important;color:#252723!important}
+html[data-skin="realist"] .evidence-link:active{transform:translateY(2px);box-shadow:inset 0 3px 5px rgba(0,0,0,.28)!important}
+html[data-skin="realist"] .evidence-link small{color:#5e584f!important}
+
+/* Shared Realist controls: media-dashboard-style tactile travel. */
+html[data-skin="realist"] :is(.action,.secondary,.primary-action,.drawer-toggle,.edit-button,.save-button,.cancel-button,.employee-action,.workbench-action){border-width:3px!important;border-color:#4a463f!important;background:url("realist-brushed.svg"),linear-gradient(#eee5d7,#c7b9a3)!important;background-blend-mode:multiply,normal!important;box-shadow:0 3px 5px rgba(0,0,0,.3),inset 0 2px #fff,inset 0 -3px 4px rgba(70,54,34,.18)!important;color:#272925!important;text-shadow:0 1px #fff!important}
+html[data-skin="realist"] :is(.action,.secondary,.primary-action,.drawer-toggle,.edit-button,.save-button,.cancel-button,.employee-action,.workbench-action):active{transform:translateY(2px)!important;box-shadow:inset 0 4px 6px rgba(0,0,0,.32)!important}
+
+@media(max-width:1600px){
+  html[data-skin="realist"] .app-shell{grid-template-columns:190px minmax(0,1fr)}
+  html[data-skin="realist"] .topbar{grid-template-columns:470px minmax(0,1fr)}
+  html[data-skin="realist"] .realist-control-bank{grid-template-columns:200px 108px 108px minmax(180px,1fr) 56px}
+  html[data-skin="realist"] .atlas-pulse{grid-template-columns:250px minmax(350px,1.45fr) minmax(300px,1fr) 230px 155px}
+  html[data-skin="realist"] .atlas-primary{grid-template-columns:minmax(0,1.45fr) minmax(470px,.95fr)}
+  html[data-skin="realist"] .attention-columns,html[data-skin="realist"] .attention-row{grid-template-columns:31px 42px minmax(125px,1fr) 63px 146px minmax(108px,.8fr) 30px;gap:6px}
+  html[data-skin="realist"] .atlas-secondary{grid-template-columns:minmax(0,1.05fr) minmax(500px,.95fr)}
+}
