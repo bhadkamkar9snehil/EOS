@@ -42,7 +42,17 @@
             const p=palette(),selected=String(selectedName||'').toLowerCase();
             const tails=source.filter(x=>x.prevX!=null&&x.prevY!=null&&!x.missing).map((pt,i)=>({name:`move-${i}`,type:'line',silent:true,symbol:['none','circle'],symbolSize:[0,6],data:[[pt.prevX,pt.prevY],[pt.x,pt.y]],lineStyle:{color:String(pt.name).toLowerCase()===selected?orange():p.axis,width:String(pt.name).toLowerCase()===selected?1.8:1,opacity:String(pt.name).toLowerCase()===selected?.95:.52},itemStyle:{color:p.surface,borderColor:String(pt.name).toLowerCase()===selected?orange():p.axis,borderWidth:1.2},z:1}));
             const maxX=Math.max(1,+xMax||Math.max(...source.map(x=>x.x),1)*1.12),target=+utilizationTarget||75,med=+medianX||maxX/2;
-            const scatterData=source.map(d=>({...d,value:[d.x,d.y]}));
+            const scatterData=source.map(d=>{
+                const isSelected=String(d.name||'').toLowerCase()===selected;
+                return {...d,value:[d.x,d.y],itemStyle:{
+                    color:d.missing?p.surface:isSelected?orange():bandColor(d.band,p),
+                    borderColor:d.missing?p.missing:p.surface,
+                    borderType:d.missing?'dashed':'solid',
+                    borderWidth:isSelected?4:2,
+                    shadowBlur:isSelected?14:0,
+                    shadowColor:'rgba(242,106,18,.28)'
+                }};
+            });
             chart.setOption({
                 ...(silent?{animation:false}:motion()),grid:{left:52,right:22,top:32,bottom:52},
                 tooltip:{...tip(p),trigger:'item',formatter:x=>{if(x.seriesName!=='Engineers'||!x.data)return'';const d=x.data;return `<strong>${d.name}</strong><br/>Score <b>${(+d.score).toFixed(1)}</b><br/>Punch hours <b>${(+d.x).toFixed(1)} h</b><br/>Utilization <b>${d.missing?'no monthly source':(+d.y).toFixed(1)+'%'}</b><br/>Exceptions <b>${d.exceptions}</b><br/><span style="opacity:.72">Click to focus across the Atlas</span>`;}},
@@ -58,7 +68,6 @@
                     ]},markLine:{silent:true,symbol:'none',label:{show:false},lineStyle:{color:p.axis,type:'dashed',opacity:.55},data:[{xAxis:med},{yAxis:target}]}},
                     {name:'Engineers',type:'scatter',z:4,data:scatterData,symbol:'circle',symbolSize:(value,params)=>Math.max(22,Math.min(48,18+(+params.data.score||0)*.28)),cursor:'pointer',
                         label:{show:true,formatter:x=>x.data.missing?`{missing|${initials(x.data.name)}}`:`{normal|${initials(x.data.name)}}`,fontWeight:700,fontSize:10.5,rich:{normal:{color:'#fff',fontWeight:700},missing:{color:p.inkSoft,fontWeight:700}}},
-                        itemStyle:{color:d=>d.data.missing?p.surface:String(d.data.name).toLowerCase()===selected?orange():bandColor(d.data.band,p),borderColor:d=>d.data.missing?p.missing:String(d.data.name).toLowerCase()===selected?p.surface:p.surface,borderType:d=>d.data.missing?'dashed':'solid',borderWidth:d=>String(d.data.name).toLowerCase()===selected?4:2,shadowBlur:d=>String(d.data.name).toLowerCase()===selected?14:0,shadowColor:'rgba(242,106,18,.28)'},
                         emphasis:{scale:1.15,itemStyle:{borderWidth:3}}
                     }
                 ]
