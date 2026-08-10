@@ -260,7 +260,7 @@
         var riverSeries = State.Performance.Select((item, index) => new
         {
             name = item.EmployeeName, attention = attentionNames.Contains(item.EmployeeName),
-            role = index % 4 switch { 0 => "operational", 1 => "attendance", 2 => "timesheet", _ => "approval" },
+            role = (index % 4) switch { 0 => "operational", 1 => "attendance", 2 => "timesheet", _ => "approval" },
             values = HeatmapMonths.Select(month => ScoreFor(item.EmployeeName, month)).ToArray()
         }).ToArray();
         var riverMedian = HeatmapMonths.Select(month => Median(State.History.Where(x => x.Year == month.Year && x.Month == month.Month).Select(x => x.OperationalScore))).ToArray();
