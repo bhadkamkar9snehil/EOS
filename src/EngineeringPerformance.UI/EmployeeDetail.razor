@@ -44,10 +44,10 @@
                 <div class="card-head"><h2>Score history</h2><small>@Months.Count month(s) loaded</small></div>
                 <div id="detail-trend" class="echart tall"></div>
                 <ul class="chart-legend">
-                    <li><i style="background:#0F6E9E"></i>Operational score</li>
-                    <li><i style="background:#C85A22"></i>Timesheet completion</li>
-                    <li><i style="background:#1E8C5A"></i>Attendance discipline</li>
-                    <li><i style="background:#7A4BB0"></i>Approval</li>
+                    <li><i></i>Operational score</li>
+                    <li><i></i>Timesheet completion</li>
+                    <li><i></i>Attendance discipline</li>
+                    <li><i></i>Approval</li>
                 </ul>
             </section>
 
@@ -88,10 +88,10 @@
                 <div class="card-head"><h2>Monthly compliance</h2><small>Score, timesheet fill, approval and attendance — @Months.Count month(s)</small></div>
                 <div id="detail-compliance-bars" class="echart tall"></div>
                 <ul class="chart-legend">
-                    <li><i style="background:#0F6E9E"></i>Score</li>
-                    <li><i style="background:#C85A22"></i>Timesheet fill</li>
-                    <li><i style="background:#7A4BB0"></i>Approval</li>
-                    <li><i style="background:#1E8C5A"></i>Attendance</li>
+                    <li><i></i>Score</li>
+                    <li><i></i>Timesheet fill</li>
+                    <li><i></i>Approval</li>
+                    <li><i></i>Attendance</li>
                 </ul>
             </section>
 
@@ -159,9 +159,6 @@
 
     protected override void OnParametersSet()
     {
-        // The route parameter can change without the component being torn down (navigating
-        // straight from one engineer's page to another), so the topbar heading is set here,
-        // not just once in OnInitialized.
         State.SpotlightName = Name;
         _rendered = false;
     }
@@ -209,10 +206,10 @@
         var labels = Months.Select(m => new DateTime(m.Year, m.Month, 1).ToString("MMM yy")).ToArray();
         await JS.InvokeVoidAsync("epaCharts.multiline", "detail-trend", labels, new object[]
         {
-            new { name = "Operational score", color = "#0F6E9E", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
-            new { name = "Timesheet completion", color = "#C85A22", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Attendance discipline", color = "#1E8C5A", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
-            new { name = "Approval", color = "#7A4BB0", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
+            new { name = "Operational score", role = "operational", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet completion", role = "timesheet", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Attendance discipline", role = "attendance", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() },
+            new { name = "Approval", role = "approval", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() }
         });
 
         var axes = Analytics.Radar(State.Performance);
@@ -222,27 +219,27 @@
             await JS.InvokeVoidAsync("epaCharts.radar", "detail-radar", axes.Select(a => a.Label).ToArray(), 100,
                 new object[]
                 {
-                    new { name = Name, color = "#C85A22", values = mine },
-                    new { name = "Team average", color = "#0F6E9E", values = axes.Select(a => a.TeamAverage).ToArray() }
+                    new { name = Name, role = "categorical-2", values = mine },
+                    new { name = "Team average", role = "categorical-1", values = axes.Select(a => a.TeamAverage).ToArray() }
                 });
         }
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-compliance-bars", labels, new object[]
         {
-            new { name = "Score", color = "#0F6E9E", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
-            new { name = "Timesheet fill", color = "#C85A22", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
-            new { name = "Approval", color = "#7A4BB0", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() },
-            new { name = "Attendance", color = "#1E8C5A", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() }
+            new { name = "Score", role = "operational", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
+            new { name = "Timesheet fill", role = "timesheet", values = Months.Select(m => m.HasSummaryData ? (object)m.TimesheetCompletionScore : null).ToArray() },
+            new { name = "Approval", role = "approval", values = Months.Select(m => m.HasSummaryData ? (object)m.ApprovalScore : null).ToArray() },
+            new { name = "Attendance", role = "attendance", values = Months.Select(m => (object)m.AttendanceDisciplineScore).ToArray() }
         }, 100, "%");
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-billable-bars", labels, new object[]
         {
-            new { name = "Billable hours", color = "#0F6E9E", values = Months.Select(m => (object)m.BillableHours).ToArray() }
+            new { name = "Billable hours", role = "billable", values = Months.Select(m => (object)m.BillableHours).ToArray() }
         }, null, " h");
 
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "detail-workload-bars", labels, new object[]
         {
-            new { name = "Workload", color = "#1E8C5A", values = Months.Select(m => (object)m.Workload()).ToArray() }
+            new { name = "Workload", role = "categorical-3", values = Months.Select(m => (object)m.Workload()).ToArray() }
         }, null, " h/d");
     }
 
