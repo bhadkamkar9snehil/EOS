@@ -6,13 +6,21 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<section class="single-pane wide">
+<section class="single-pane wide engineering-worksheet">
+    <div class="worksheet-intro">
+        <div>
+            <h2>Evidence worksheet</h2>
+            <p>Normalized ERP evidence and EOS-derived measures for @State.SelectedMonth.ToString("MMMM yyyy"). Source fields remain visually separate from calculated fields.</p>
+        </div>
+        <span class="atlas-caption">@FilteredRows.Count engineer rows · horizontal worksheet</span>
+    </div>
+
     <div class="tab-bar">
         <button class="tab @(_tab == Tab.Rows ? "selected" : null)" @onclick="() => _tab = Tab.Rows">
-            Imported rows <span class="tab-count">@FilteredRows.Count</span>
+            Evidence rows <span class="tab-count">@FilteredRows.Count</span>
         </button>
         <button class="tab @(_tab == Tab.History ? "selected" : null)" @onclick="() => _tab = Tab.History">
-            Upload history <span class="tab-count">@_history.Count</span>
+            Import ledger <span class="tab-count">@_history.Count</span>
         </button>
         <label class="tab-scope">
             <input type="checkbox" @bind="_allMonths" @bind:after="ReloadHistoryAsync" />
@@ -23,8 +31,8 @@
     @if (_tab == Tab.Rows)
     {
         <div class="imported-data-toolbar">
-            <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter by engineer or code…" />
-            <span>All imported and calculated numerical fields for @State.SelectedMonth.ToString("MMMM yyyy"). Scroll horizontally for the complete row.</span>
+            <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or code…" />
+            <span>Calculated groups are marked separately; source gaps remain em dashes rather than zeros.</span>
         </div>
         @if (FilteredRows.Count == 0)
         {
@@ -36,7 +44,17 @@
         }
         else
         {
-            <div class="wide-grid-scroll">
+            <div class="wide-grid-scroll worksheet-scroll">
+                <div class="worksheet-bands" aria-hidden="true">
+                    <span>Identity</span>
+                    <span>Code</span>
+                    <span>Calculated performance</span>
+                    <span>Capacity & allocation</span>
+                    <span>Activity evidence</span>
+                    <span>Attendance & reconciliation</span>
+                    <span>Exceptions</span>
+                    <span>Source coverage</span>
+                </div>
                 <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid imported-metrics-grid">
                     <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_byName"><span class="roster-name"><strong>@context.EmployeeName</strong></span></TemplateColumn>
                     <PropertyColumn Title="Code" Property="@(x => x.EmployeeCode)" Sortable="true" />
@@ -66,7 +84,7 @@
                     <TemplateColumn Title="Less duration" Align="Align.Right"><span class="num">@Count(context.LessDurationDays)</span></TemplateColumn>
                     <TemplateColumn Title="Utilization" Align="Align.Right"><span class="num">@(context.HasSummaryData ? $"{Analytics.Format(context.Utilization)}%" : "—")</span></TemplateColumn>
                     <TemplateColumn Title="Sources">
-                        <span class="tag-row">
+                        <span class="tag-row source-tags">
                             @if (context.ComplianceHours > 0) { <span class="tag muted" title="Monthly utilization summary">MS</span> }
                             @if (context.DetailedEntries > 0) { <span class="tag muted" title="Detailed timesheet">DT</span> }
                             @if (context.AttendanceDays > 0 || context.PunchHours > 0) { <span class="tag muted" title="Attendance and leave">AT</span> }
@@ -78,21 +96,23 @@
     }
     else
     {
-        @if (_history.Count == 0)
-        {
-            <div class="table-empty">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
-        }
-        else
-        {
-            <QuickGrid Items="@_history.AsQueryable()" Class="epa-grid">
-                <TemplateColumn Title="Uploaded"><span class="num-left">@context.ImportedLocal.ToString("dd MMM yyyy, HH:mm")</span></TemplateColumn>
-                <TemplateColumn Title="Input"><span class="tag-row"><span class="tag muted">@Initial(context.ReportType)</span> @Label(context.ReportType)</span></TemplateColumn>
-                <TemplateColumn Title="Reporting month">@(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))</TemplateColumn>
-                <TemplateColumn Title="File"><span class="filename" title="@context.OriginalFileName">@context.OriginalFileName</span></TemplateColumn>
-                <TemplateColumn Title="Rows" Align="Align.Right"><span class="num">@(context.RowCount == 0 ? "—" : context.RowCount.ToString())</span></TemplateColumn>
-                <TemplateColumn Title="Effect"><span class="@(context.ReplacedExisting ? "flag-warning" : null)">@(context.ReplacedExisting ? "Replaced earlier file" : "First upload")</span></TemplateColumn>
-            </QuickGrid>
-        }
+        <div class="workbench-body import-ledger">
+            @if (_history.Count == 0)
+            {
+                <div class="table-empty">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
+            }
+            else
+            {
+                <QuickGrid Items="@_history.AsQueryable()" Class="epa-grid">
+                    <TemplateColumn Title="Uploaded"><span class="num-left">@context.ImportedLocal.ToString("dd MMM yyyy, HH:mm")</span></TemplateColumn>
+                    <TemplateColumn Title="Input"><span class="tag-row"><span class="tag muted">@Initial(context.ReportType)</span> @Label(context.ReportType)</span></TemplateColumn>
+                    <TemplateColumn Title="Reporting month">@(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))</TemplateColumn>
+                    <TemplateColumn Title="File"><span class="filename" title="@context.OriginalFileName">@context.OriginalFileName</span></TemplateColumn>
+                    <TemplateColumn Title="Rows" Align="Align.Right"><span class="num">@(context.RowCount == 0 ? "—" : context.RowCount.ToString())</span></TemplateColumn>
+                    <TemplateColumn Title="Effect"><span class="@(context.ReplacedExisting ? "flag-warning" : null)">@(context.ReplacedExisting ? "Replaced earlier file" : "First upload")</span></TemplateColumn>
+                </QuickGrid>
+            }
+        </div>
     }
 </section>
 
