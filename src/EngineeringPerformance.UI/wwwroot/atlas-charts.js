@@ -90,7 +90,16 @@
     }
 
     function dispose(id){const c=instances.get(id);if(c&&!c.isDisposed())c.dispose();if(c?.__atlasResizeObserver)c.__atlasResizeObserver.disconnect();instances.delete(id);renderers.delete(id);}
-    function refresh(){for(const [id,render] of [...renderers]){const c=instances.get(id);if(!c||c.isDisposed()){renderers.delete(id);continue;}try{render();}catch{}}}
+    function refresh(){for(const [id,render] of [...renderers]){const c=instances.get(id);if(!c||c.isDisposed()){renderers.delete(id);continue;}try{render();}catch(error){console.error(`[EOS Atlas] refresh failed for ${id}`,error);}}}
+    const guard=(name,fn)=>(...args)=>{try{return fn(...args);}catch(error){const id=args[0];console.error(`[EOS Atlas] ${name} failed`,error);const el=typeof id==='string'?document.getElementById(id):null;if(el){el.dataset.chartError='true';el.title=`Chart rendering failed: ${error?.message||error}`;}return null;}};
     window.addEventListener('epa-theme-changed',refresh);window.addEventListener('epa-motion-changed',refresh);
-    window.epaAtlas={registerDrilldown,sparkline,performanceField,movementRiver,portraitHistory,dispose,refreshTheme:refresh};
+    window.epaAtlas={
+        registerDrilldown,
+        sparkline:guard('sparkline',sparkline),
+        performanceField:guard('performanceField',performanceField),
+        movementRiver:guard('movementRiver',movementRiver),
+        portraitHistory:guard('portraitHistory',portraitHistory),
+        dispose,
+        refreshTheme:refresh
+    };
 })();
