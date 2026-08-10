@@ -1,0 +1,114 @@
+/* Reference-benchmarked Realist instrument material pass. */
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) {
+    --real-paper:#eadcca;
+    --real-paper-hi:#f4ebe0;
+    --real-paper-lo:#c8b79f;
+    --real-paper-line:#837662;
+    --real-steel:#686861;
+    --real-steel-hi:#beb8aa;
+    --real-steel-lo:#343733;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-lens,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .movement-river,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .operational-fingerprint,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .plate {
+    background:
+        radial-gradient(ellipse at 50% -16%,rgba(255,255,255,.72) 0 13%,transparent 39%),
+        linear-gradient(90deg,rgba(70,57,43,.035),transparent 11%,rgba(255,255,255,.12) 25%,transparent 47%,rgba(62,52,41,.03) 70%,rgba(255,255,255,.08) 85%,transparent),
+        repeating-linear-gradient(90deg,rgba(92,76,56,.022) 0 1px,rgba(255,255,255,.026) 1px 3px),
+        linear-gradient(180deg,#f3eadf 0%,#ede0cf 22%,#e3d4c0 74%,#c8b79f 100%) !important;
+    border:2px solid #0b0d0d !important;
+    border-radius:12px !important;
+    box-shadow:
+        0 3px 5px rgba(0,0,0,.84),
+        0 0 0 1px #74736c,
+        inset 0 1px 0 rgba(255,255,255,.94),
+        inset 0 0 0 2px rgba(162,153,139,.50),
+        inset 0 -3px 4px rgba(61,52,42,.29) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse {
+    border:2px solid #0b0d0d !important;
+    border-radius:18px !important;
+    background:
+        radial-gradient(ellipse at 50% -18%,rgba(255,255,255,.67),transparent 38%),
+        repeating-linear-gradient(90deg,rgba(91,75,55,.021) 0 1px,rgba(255,255,255,.023) 1px 3px),
+        linear-gradient(180deg,#f4ebe0,#eadcca 74%,#c8b79f) !important;
+    box-shadow:
+        0 3px 5px rgba(0,0,0,.86),
+        0 0 0 1px #74746c,
+        inset 0 0 0 2px #aaa497,
+        inset 0 1px 0 rgba(255,255,255,.92),
+        inset 0 -3px 4px rgba(55,50,42,.30) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse > * {
+    background:transparent !important;
+    border-radius:0 !important;
+    border-right:1px solid rgba(72,68,60,.27) !important;
+    box-shadow:1px 0 rgba(255,255,255,.38) !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse > *:last-child {
+    border-right:0 !important;
+    box-shadow:none !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .page-heading {
+    background:
+        radial-gradient(ellipse at 50% -30%,rgba(255,255,255,.74),transparent 50%),
+        repeating-linear-gradient(90deg,rgba(80,67,51,.020) 0 1px,transparent 1px 4px),
+        linear-gradient(#f4ece2,#e6d8c5 72%,#c2b19a) !important;
+    border-color:#333631 !important;
+    box-shadow:
+        0 3px 7px rgba(0,0,0,.68),
+        inset 0 1px #fff,
+        inset 0 0 0 2px rgba(154,147,134,.46),
+        inset 0 -3px 4px rgba(62,55,46,.27) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-primary {
+    gap:10px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-secondary {
+    gap:10px !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-row {
+    min-height:67px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-person strong {
+    font-size:13px !important;
+    line-height:1.05 !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-person small {
+    font-size:9px !important;
+    line-height:1.05 !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-score strong {
+    font-size:22px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .fingerprint-mini {
+    gap:5px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .fingerprint-mini i {
+    height:20px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .rhythm-mini {
+    gap:2px !important;
+    overflow:hidden !important;
+}
+
+@media (min-width:1400px) {
+    html[data-skin="realist"] .workspace {
+        grid-template-rows:72px auto minmax(0,1fr) 52px;
+    }
+    html[data-skin="realist"] .atlas-primary {
+        grid-template-columns:minmax(0,57%) minmax(0,43%);
+    }
+    html[data-skin="realist"] .atlas-secondary {
+        grid-template-columns:minmax(0,46%) minmax(0,54%);
+    }
+}
