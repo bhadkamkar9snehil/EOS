@@ -1,0 +1,61 @@
+name: EPA CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate launcher PowerShell
+        shell: powershell
+        run: |
+          $failed = $false
+          foreach ($file in @(
+            'tools/EPA-Launcher/EPA-Launcher.ps1',
+            'tools/EPA-Launcher/EPA-Launcher.Worker.ps1'
+          )) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$file : $($_.Message) at $($_.Extent.Text)" }
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Validate JavaScript
+        shell: powershell
+        run: |
+          node --check src/EngineeringPerformance.UI/wwwroot/theme.js
+          node --check src/EngineeringPerformance.UI/wwwroot/skin.js
+          node --check src/EngineeringPerformance.UI/wwwroot/atlas-charts.js
+          node --check src/EngineeringPerformance.UI/wwwroot/realist-runtime.js
+
+      - name: Restore
+        run: dotnet restore EngineeringPerformance.slnx
+
+      - name: Build Release
+        run: dotnet build EngineeringPerformance.slnx -c Release --no-restore
+
+      - name: Test Release
+        run: dotnet test EngineeringPerformance.slnx -c Release --no-build
