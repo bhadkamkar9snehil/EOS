@@ -35,11 +35,57 @@
             </button>
             <small>Local analysis · SQLite</small>
         </div>
+        <div class="realist-lower-console" aria-label="Console controls">
+            <button class="realist-back" type="button" title="Back to Overview" @onclick='() => Navigation.NavigateTo("/overview")'><span>≪</span></button>
+            <button class="realist-dial" type="button" title="Appearance controls" aria-label="Appearance controls" @onclick='() => Navigation.NavigateTo("/settings")'><i></i></button>
+        </div>
     </aside>
 
     <section class="workspace">
         <header class="topbar">
             <div class="page-heading"><h1>@PageTitleText</h1></div>
+
+            <div class="realist-control-bank" aria-label="Performance Atlas controls">
+                <div class="rcb-month" aria-label="Reporting month">
+                    <span class="rcb-icon" aria-hidden="true"></span>
+                    <button type="button" class="rcb-month-prev" title="Previous month" aria-label="Previous month" @onclick="PreviousMonthAsync">‹</button>
+                    <strong class="rcb-month-label">@State.SelectedMonth.ToString("MMMM yyyy")</strong>
+                    <button type="button" class="rcb-month-next" title="Next month" aria-label="Next month" @onclick="NextMonthAsync">›</button>
+                </div>
+                <button type="button" class="rcb-selector" title="Team scope" @onclick='() => State.ShowMessage("Team scope: All")'><span>Team:</span><strong>All</strong><i>⌄</i></button>
+                <button type="button" class="rcb-selector" title="Group scope" @onclick='() => State.ShowMessage("Group scope: All")'><span>Group:</span><strong>All</strong><i>⌄</i></button>
+                <label class="rcb-search">
+                    <span aria-hidden="true"></span>
+                    <input value="@_searchQuery" @oninput="OnRealistSearchInput" @onkeydown="OnSearchKeyDown" placeholder="Search employees..." aria-label="Search employees" />
+                </label>
+                <button type="button" class="rcb-rotary" title="Appearance controls" aria-label="Appearance controls" @onclick='() => Navigation.NavigateTo("/settings")'><i></i></button>
+                @if (_searchOpen && !string.IsNullOrWhiteSpace(_searchQuery))
+                {
+                    <div class="realist-search-popover">
+                        <div class="global-search-results">
+                            @if (SearchResults.Count == 0)
+                            {
+                                <p>No matching engineer.</p>
+                            }
+                            else
+                            {
+                                @foreach (var result in SearchResults)
+                                {
+                                    <button type="button" @onclick="() => OpenEmployee(result.Name)">
+                                        <span class="search-avatar">@Analytics.Initials(result.Name)</span>
+                                        <span class="search-person"><strong>@result.Name</strong><small>@result.EmployeeCode</small></span>
+                                        @if (result.Score is not null)
+                                        {
+                                            <b class="@Analytics.ScoreBand(result.Score.Value)">@Analytics.Format(result.Score.Value)</b>
+                                        }
+                                    </button>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
             <div class="topbar-actions">
                 <div class="month-control">
                     <span>Reporting month</span>
@@ -112,6 +158,7 @@
         <footer>
             <span>DATA FRESHNESS · refreshed @State.LastRefresh.ToString("h:mm tt")</span>
             <span>Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+            <span class="realist-footer-mark">EOS · v2.6.1</span>
         </footer>
     </section>
 </div>
@@ -223,6 +270,12 @@
     }
 
     private void OnSearchInput(ChangeEventArgs args) => _searchQuery = args.Value?.ToString() ?? string.Empty;
+
+    private void OnRealistSearchInput(ChangeEventArgs args)
+    {
+        _searchQuery = args.Value?.ToString() ?? string.Empty;
+        _searchOpen = !string.IsNullOrWhiteSpace(_searchQuery);
+    }
 
     private void OnSearchKeyDown(KeyboardEventArgs args)
     {
