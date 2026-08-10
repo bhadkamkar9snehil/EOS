@@ -1,0 +1,690 @@
+/* ========================================================================== 
+   EOS REALIST SKIN
+   Full skeuomorphic instrument-panel rendering. The Minimal skin remains the
+   default Atlas presentation. This file is intentionally isolated behind
+   html[data-skin="realist"] so the two looks share data, semantics and layout.
+   ========================================================================== */
+
+html[data-skin="realist"] {
+    color-scheme: light;
+    --real-ink:#121a20;
+    --real-ink-soft:#4b4d4c;
+    --real-muted:#6d6a64;
+    --real-orange:#ef6c16;
+    --real-red:#b92718;
+    --real-blue:#0b536f;
+    --real-green:#488d38;
+    --real-amber:#c47b12;
+    --real-paper:#efe6d5;
+    --real-paper-hi:#f8f1e5;
+    --real-paper-lo:#d9cebb;
+    --real-paper-line:#b7aa96;
+    --real-steel:#6f6b62;
+    --real-steel-hi:#c8c0af;
+    --real-steel-lo:#494844;
+    --real-chassis:#202522;
+    --real-chassis-hi:#373c37;
+    --real-chassis-lo:#101310;
+    --real-navy:#13212b;
+    --real-navy-hi:#1d2d38;
+    --real-navy-lo:#091016;
+    --real-screw:#77756d;
+    --real-shadow:0 13px 28px rgba(0,0,0,.34),0 2px 4px rgba(0,0,0,.35);
+    --real-inset:inset 0 2px 1px rgba(255,255,255,.72),inset 0 -3px 4px rgba(73,59,39,.28);
+    --real-bevel:inset 0 0 0 1px rgba(255,255,255,.52),inset 0 0 0 3px rgba(70,61,49,.18);
+}
+
+html[data-skin="realist"] body {
+    background:
+        radial-gradient(circle at 25% 0%,rgba(255,255,255,.08),transparent 33%),
+        repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0 1px,transparent 1px 4px),
+        linear-gradient(180deg,#2c302c,#131613 65%,#0a0c0a);
+    color:var(--real-ink);
+    overflow:hidden;
+}
+
+/* ---------- Outer forged chassis ---------- */
+html[data-skin="realist"] .app-shell {
+    box-sizing:border-box;
+    height:calc(100vh - 12px);
+    width:calc(100vw - 12px);
+    margin:6px;
+    grid-template-columns:198px minmax(0,1fr);
+    overflow:hidden;
+    border:6px solid #1b1f1c;
+    border-radius:18px;
+    background:
+        radial-gradient(circle at 10px 10px,#a39d8f 0 2px,#383a36 2.5px 4px,transparent 4.5px),
+        radial-gradient(circle at calc(100% - 10px) 10px,#a39d8f 0 2px,#383a36 2.5px 4px,transparent 4.5px),
+        radial-gradient(circle at 10px calc(100% - 10px),#a39d8f 0 2px,#383a36 2.5px 4px,transparent 4.5px),
+        radial-gradient(circle at calc(100% - 10px) calc(100% - 10px),#a39d8f 0 2px,#383a36 2.5px 4px,transparent 4.5px),
+        repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px),
+        linear-gradient(160deg,#383c37 0,#1f2420 30%,#111411 100%);
+    box-shadow:
+        0 18px 45px rgba(0,0,0,.5),
+        inset 0 0 0 1px #575a53,
+        inset 0 0 0 3px #0a0c0a,
+        inset 0 0 26px rgba(255,255,255,.05);
+}
+
+html[data-skin="realist"] .workspace {
+    min-width:0;
+    background:var(--real-chassis);
+    grid-template-rows:72px auto minmax(0,1fr) 52px;
+    border-left:2px solid #0b0d0b;
+    box-shadow:inset 1px 0 rgba(255,255,255,.08);
+}
+
+/* ---------- Left console / nav ---------- */
+html[data-skin="realist"] .nav-rail {
+    position:relative;
+    color:#f7ead2;
+    border:0;
+    background:
+        repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px),
+        radial-gradient(circle at 25% 10%,rgba(80,112,130,.18),transparent 42%),
+        linear-gradient(180deg,var(--real-navy-hi),var(--real-navy) 36%,var(--real-navy-lo));
+    box-shadow:inset -3px 0 5px rgba(0,0,0,.55),inset 1px 0 rgba(255,255,255,.07);
+}
+html[data-skin="realist"] .atlas-brand {
+    min-height:148px;
+    margin:8px 8px 6px;
+    padding:24px 20px 18px;
+    color:#f5ead7;
+    border:3px solid #0b0f12;
+    border-radius:10px;
+    background:
+        radial-gradient(circle at 8px 8px,#8b887e 0 1.8px,#181b1b 2px 3.5px,transparent 4px),
+        radial-gradient(circle at calc(100% - 8px) 8px,#8b887e 0 1.8px,#181b1b 2px 3.5px,transparent 4px),
+        radial-gradient(circle at 8px calc(100% - 8px),#8b887e 0 1.8px,#181b1b 2px 3.5px,transparent 4px),
+        radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),#8b887e 0 1.8px,#181b1b 2px 3.5px,transparent 4px),
+        repeating-linear-gradient(90deg,rgba(255,255,255,.014) 0 1px,transparent 1px 4px),
+        linear-gradient(155deg,#1c3040,#0d1821 70%);
+    box-shadow:0 5px 10px rgba(0,0,0,.42),inset 0 0 0 1px #344754,inset 0 0 18px rgba(0,0,0,.42);
+}
+html[data-skin="realist"] .atlas-brand strong {
+    font-size:38px;
+    letter-spacing:-.06em;
+    text-shadow:0 2px 1px #000,0 0 7px rgba(255,255,255,.08);
+}
+html[data-skin="realist"] .atlas-brand strong i {
+    color:var(--real-orange);
+    font-size:30px;
+    filter:drop-shadow(0 2px 1px #000) drop-shadow(0 0 5px rgba(239,108,22,.35));
+}
+html[data-skin="realist"] .atlas-brand small { color:#eadfc9; letter-spacing:.15em; font-size:10px; text-shadow:0 1px #000; }
+html[data-skin="realist"] .nav-rail nav { padding:0 8px 10px; }
+html[data-skin="realist"] .nav-group-label {
+    padding:12px 10px 6px;
+    color:#b8b29f;
+    text-shadow:0 1px #000;
+}
+html[data-skin="realist"] .nav-rail button {
+    position:relative;
+    height:54px;
+    margin:3px 0;
+    padding:0 14px;
+    color:#eee5d1;
+    border:2px solid #080b0c;
+    border-radius:7px;
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.08),transparent 22%),
+        linear-gradient(180deg,#25323a,#111a20 55%,#0c1216);
+    box-shadow:
+        0 3px 5px rgba(0,0,0,.48),
+        inset 0 1px rgba(255,255,255,.12),
+        inset 0 -2px rgba(0,0,0,.55),
+        inset 0 0 0 1px #35444c;
+    text-shadow:0 1px #000;
+    transition:transform .08s ease,filter .12s ease,box-shadow .08s ease;
+}
+html[data-skin="realist"] .nav-rail button:hover { filter:brightness(1.12); background:linear-gradient(180deg,#2d3b44,#142028 58%,#0b1115); }
+html[data-skin="realist"] .nav-rail button:active {
+    transform:translateY(1px);
+    box-shadow:inset 0 3px 6px rgba(0,0,0,.65),inset 0 0 0 1px #35444c;
+}
+html[data-skin="realist"] .nav-rail button.selected {
+    color:#fff3dc;
+    background:linear-gradient(180deg,#323b3c,#1b2427 55%,#101719);
+    box-shadow:0 3px 5px rgba(0,0,0,.52),inset 0 1px rgba(255,255,255,.13),inset 0 0 0 1px #4c5350;
+}
+html[data-skin="realist"] .nav-rail button.selected::before {
+    left:-4px; top:6px; width:4px; height:calc(100% - 12px);
+    background:linear-gradient(#ff9a35,var(--real-orange),#c34b06);
+    box-shadow:0 0 8px rgba(239,108,22,.75),inset 1px 0 rgba(255,255,255,.5);
+}
+html[data-skin="realist"] .nav-rail button b { color:#e8dcc8; filter:drop-shadow(0 1px #000); }
+html[data-skin="realist"] .nav-footer { margin:0 8px 8px; border:0; }
+html[data-skin="realist"] .nav-footer small { color:#aaa796; text-shadow:0 1px #000; }
+
+/* ---------- Header: ivory plaque + dark control bank ---------- */
+html[data-skin="realist"] .topbar {
+    height:72px;
+    padding:8px 14px 8px 10px;
+    gap:12px;
+    background:
+        repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px),
+        linear-gradient(180deg,#2f342f,#171b18);
+    border:0;
+    box-shadow:inset 0 -2px #0a0c0a,inset 0 1px rgba(255,255,255,.1);
+}
+html[data-skin="realist"] .page-heading {
+    position:relative;
+    min-width:380px;
+    height:54px;
+    display:flex;
+    align-items:center;
+    padding:0 46px;
+    border:3px solid #34332f;
+    border-radius:9px;
+    background:
+        radial-gradient(circle at 12px 12px,#9b9385 0 2px,#4e4a42 2.4px 4px,transparent 4.5px),
+        radial-gradient(circle at calc(100% - 12px) 12px,#9b9385 0 2px,#4e4a42 2.4px 4px,transparent 4.5px),
+        radial-gradient(circle at 12px calc(100% - 12px),#9b9385 0 2px,#4e4a42 2.4px 4px,transparent 4.5px),
+        radial-gradient(circle at calc(100% - 12px) calc(100% - 12px),#9b9385 0 2px,#4e4a42 2.4px 4px,transparent 4.5px),
+        repeating-linear-gradient(90deg,rgba(87,73,47,.028) 0 1px,transparent 1px 4px),
+        linear-gradient(180deg,#fbf4e7,#e3d7c4);
+    box-shadow:0 3px 8px rgba(0,0,0,.48),inset 0 1px #fffaf0,inset 0 -3px 5px rgba(77,61,41,.23),inset 0 0 0 1px #bdb09c;
+}
+html[data-skin="realist"] .topbar h1 { color:#12171b; font-size:26px; font-weight:760; text-shadow:0 1px rgba(255,255,255,.75); }
+html[data-skin="realist"] .topbar-actions { height:54px; gap:7px; }
+html[data-skin="realist"] .month-control {
+    height:54px;
+    border:2px solid #090b0a;
+    border-radius:8px;
+    grid-template-columns:auto 34px 150px 34px;
+    background:linear-gradient(180deg,#2c302d,#111411);
+    box-shadow:0 3px 7px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.1),inset 0 0 0 1px #454841;
+    overflow:hidden;
+}
+html[data-skin="realist"] .month-control span,
+html[data-skin="realist"] .month-control strong,
+html[data-skin="realist"] .month-control button { color:#f3e7d1; border-color:#090b0a; text-shadow:0 1px #000; }
+html[data-skin="realist"] .month-control button {
+    border:0;
+    border-left:1px solid #454841;
+    border-right:1px solid #090b0a;
+    border-radius:0;
+    background:linear-gradient(#353a35,#161a17);
+    box-shadow:inset 0 1px rgba(255,255,255,.09);
+}
+html[data-skin="realist"] .month-control button:hover { filter:brightness(1.18); }
+html[data-skin="realist"] .month-control button:active { box-shadow:inset 0 3px 5px #070807; transform:translateY(1px); }
+html[data-skin="realist"] .global-search .icon-button {
+    width:54px; height:54px; border-radius:50%;
+    border:3px solid #171815;
+    color:#101410;
+    background:
+        radial-gradient(circle at 35% 30%,#d9d3c7 0 12%,#958f84 28%,#53524e 54%,#232522 70%,#78736a 72%,#2f302d 100%);
+    box-shadow:0 3px 7px rgba(0,0,0,.55),inset 0 2px 2px rgba(255,255,255,.5),inset 0 -4px 5px rgba(0,0,0,.55);
+}
+html[data-skin="realist"] .global-search .icon-button svg { filter:drop-shadow(0 1px rgba(255,255,255,.35)); }
+html[data-skin="realist"] .global-search .icon-button:active { transform:translateY(1px) rotate(2deg); box-shadow:inset 0 4px 7px rgba(0,0,0,.6); }
+html[data-skin="realist"] .readiness {
+    min-width:115px;
+    height:54px;
+    align-self:center;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:0 12px;
+    border:2px solid #090b0a;
+    border-radius:6px;
+    background:linear-gradient(180deg,#242a25,#121612);
+    box-shadow:inset 0 1px rgba(255,255,255,.08),0 2px 5px rgba(0,0,0,.35);
+}
+html[data-skin="realist"] .readiness span { color:#aaa995; text-shadow:0 1px #000; }
+html[data-skin="realist"] .readiness strong { color:#d8e99a; text-shadow:0 0 5px rgba(173,205,77,.28),0 1px #000; }
+
+/* ---------- Content well ---------- */
+html[data-skin="realist"] .content {
+    background:
+        repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px),
+        linear-gradient(180deg,#242923,#181c18);
+    padding:0;
+}
+html[data-skin="realist"] .toast-slot { background:var(--real-chassis); }
+html[data-skin="realist"] .atlas-page {
+    height:100%;
+    min-height:0;
+    padding:10px;
+    display:grid;
+    grid-template-rows:156px minmax(330px,1fr) 238px;
+    gap:10px;
+    background:transparent;
+    overflow:hidden;
+}
+html[data-skin="realist"] .atlas-evidence { display:none; }
+
+/* Shared realistic plate helper through grouped selectors. */
+html[data-skin="realist"] :is(
+    .atlas-pulse,.performance-field,.attention-lens,.movement-river,.operational-fingerprint,
+    .workbench-header,.timesheet-pulse,.timesheet-ledger,.worksheet-intro,
+    .people-command,.people-add-drawer,.people-roster,.collaboration-pulse,.peer-matrix-wrap,
+    .primary-pane,.activity-pane,.export-lane,.template-lane,.template-contract,
+    .operational-scoring-layout,.scoring-grid,.settings-card,.appearance-control,.skin-choice
+) {
+    position:relative;
+    color:var(--real-ink);
+    border:3px solid #3e3b35;
+    border-radius:11px;
+    background:
+        radial-gradient(circle at 9px 9px,#9f9688 0 1.4px,#4a443b 1.8px 3px,transparent 3.5px),
+        radial-gradient(circle at calc(100% - 9px) 9px,#9f9688 0 1.4px,#4a443b 1.8px 3px,transparent 3.5px),
+        radial-gradient(circle at 9px calc(100% - 9px),#9f9688 0 1.4px,#4a443b 1.8px 3px,transparent 3.5px),
+        radial-gradient(circle at calc(100% - 9px) calc(100% - 9px),#9f9688 0 1.4px,#4a443b 1.8px 3px,transparent 3.5px),
+        repeating-linear-gradient(90deg,rgba(73,57,36,.022) 0 1px,transparent 1px 4px),
+        linear-gradient(180deg,var(--real-paper-hi),var(--real-paper) 47%,#e8dece);
+    box-shadow:var(--real-shadow),var(--real-bevel),var(--real-inset);
+}
+
+html[data-skin="realist"] :is(.atlas-pulse,.performance-field,.attention-lens,.movement-river,.operational-fingerprint)::after,
+html[data-skin="realist"] :is(.workbench-header,.timesheet-pulse,.timesheet-ledger,.people-command,.people-roster,.primary-pane,.activity-pane,.settings-card)::after {
+    content:"";
+    pointer-events:none;
+    position:absolute;
+    inset:5px;
+    border:1px solid rgba(74,63,49,.34);
+    border-radius:7px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.34);
+}
+
+/* ---------- Team pulse mechanical instrument ---------- */
+html[data-skin="realist"] .atlas-pulse {
+    min-height:0;
+    margin:0;
+    padding:8px 12px 8px 14px;
+    grid-template-columns:245px minmax(310px,1.15fr) minmax(260px,.9fr) 228px 150px;
+    align-items:stretch;
+    border-bottom:3px solid #3e3b35;
+}
+html[data-skin="realist"] .pulse-score,
+html[data-skin="realist"] .pulse-distribution,
+html[data-skin="realist"] .pulse-trends,
+html[data-skin="realist"] .pulse-readiness,
+html[data-skin="realist"] .pulse-pressure {
+    position:relative;
+    z-index:1;
+    padding:9px 14px;
+    border-right:1px solid #bbae98;
+}
+html[data-skin="realist"] .pulse-pressure { border-right:0; }
+html[data-skin="realist"] .atlas-section-label,
+html[data-skin="realist"] .pulse-heading,
+html[data-skin="realist"] .atlas-panel-head h2 {
+    color:#151918;
+    font-weight:800;
+    letter-spacing:.015em;
+    text-shadow:0 1px rgba(255,255,255,.8);
+}
+html[data-skin="realist"] .pulse-score-main { align-items:center; gap:12px; }
+html[data-skin="realist"] .pulse-score-main strong {
+    width:92px; height:92px;
+    flex:0 0 92px;
+    display:grid; place-items:center;
+    border-radius:50%;
+    font-size:49px;
+    color:#f8ecd5;
+    border:5px solid #171a17;
+    background:
+        radial-gradient(circle at 38% 28%,rgba(255,255,255,.13),transparent 24%),
+        radial-gradient(circle at center,#243139 0 56%,#0c1215 57% 62%,#8a867d 63% 68%,#242722 69% 74%,#0a0b0a 75%);
+    box-shadow:0 5px 9px rgba(0,0,0,.48),inset 0 2px 4px rgba(255,255,255,.12),inset 0 -5px 9px rgba(0,0,0,.55),0 0 0 2px #b2aa9d;
+    text-shadow:0 2px 2px #000;
+}
+html[data-skin="realist"] .pulse-score-main span {
+    min-width:82px;
+    height:82px;
+    display:grid; place-items:center;
+    padding:0 10px;
+    border:3px solid #59534a;
+    border-radius:7px;
+    font-size:31px;
+    color:#2b2925;
+    background:linear-gradient(#e8decc,#cfc2ad);
+    box-shadow:inset 0 1px #fff7e8,inset 0 -3px 4px rgba(80,65,45,.25),0 2px 4px rgba(0,0,0,.32);
+    text-shadow:0 1px rgba(255,255,255,.75);
+}
+html[data-skin="realist"] .pulse-score-meta { color:#373a37; font-weight:650; }
+html[data-skin="realist"] .score-axis-line {
+    height:4px; top:30px;
+    border-radius:4px;
+    background:linear-gradient(#655f56,#242723 48%,#a99f90 52%,#635f57);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 1px rgba(255,255,255,.65);
+}
+html[data-skin="realist"] .score-axis-dot {
+    top:23px;
+    width:14px; height:14px; margin-left:-7px;
+    border:2px solid #262821;
+    box-shadow:0 2px 3px rgba(0,0,0,.45),inset 0 2px 2px rgba(255,255,255,.48),inset 0 -2px 3px rgba(0,0,0,.35);
+}
+html[data-skin="realist"] .score-axis-dot.good { background:radial-gradient(circle at 35% 28%,#4e95b0 0 18%,#0e617d 38%,#07384c 74%); }
+html[data-skin="realist"] .score-axis-dot.warning { background:radial-gradient(circle at 35% 28%,#ffe19d 0 18%,#d69a1e 40%,#8d5b08 76%); }
+html[data-skin="realist"] .score-axis-dot.serious { background:radial-gradient(circle at 35% 28%,#ffb86b 0 18%,#ef6c16 40%,#a23d05 76%); }
+html[data-skin="realist"] .score-axis-dot.critical { background:radial-gradient(circle at 35% 28%,#ff8b79 0 18%,#c93422 40%,#7a140d 76%); }
+html[data-skin="realist"] .score-bands { color:#534e46; font-weight:650; }
+html[data-skin="realist"] .trend-mini label { color:#413f3a; font-weight:700; }
+html[data-skin="realist"] .trend-mini strong { color:#171b1e; text-shadow:0 1px rgba(255,255,255,.8); }
+html[data-skin="realist"] .readiness-light span { color:#343631; font-weight:700; }
+html[data-skin="realist"] .readiness-light i {
+    width:26px; height:26px;
+    border:4px solid #3b3b35;
+    background:radial-gradient(circle at 38% 30%,#cfd3c2 0 14%,#777c6d 34%,#3d413b 70%);
+    box-shadow:0 2px 4px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.48),0 0 0 1px #9c9587;
+}
+html[data-skin="realist"] .readiness-light.ready i { background:radial-gradient(circle at 38% 30%,#baf594 0 14%,#59b34a 36%,#1e5a1d 75%); box-shadow:0 2px 4px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.55),0 0 8px rgba(77,181,68,.45),0 0 0 1px #9c9587; }
+html[data-skin="realist"] .readiness-light.warn i { background:radial-gradient(circle at 38% 30%,#ffe59c 0 14%,#e2a421 36%,#8a5808 75%); box-shadow:0 2px 4px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.55),0 0 8px rgba(226,164,33,.42),0 0 0 1px #9c9587; }
+html[data-skin="realist"] .pulse-pressure strong { color:#b72a1c; text-shadow:0 1px #fff3df; }
+html[data-skin="realist"] .pressure-bars i {
+    width:7px;
+    border:1px solid #8e786d;
+    background:linear-gradient(#decfc2,#b9aa9b);
+    box-shadow:inset 0 1px rgba(255,255,255,.5);
+}
+html[data-skin="realist"] .pressure-bars i.on { background:linear-gradient(#ed5d47,#a9170c); border-color:#74130d; box-shadow:inset 0 1px rgba(255,255,255,.5),0 0 3px rgba(183,42,28,.28); }
+html[data-skin="realist"] .pulse-pressure small { color:#625d55; }
+
+/* ---------- Main atlas plates ---------- */
+html[data-skin="realist"] .atlas-primary,
+html[data-skin="realist"] .atlas-secondary {
+    min-height:0;
+    display:grid;
+    gap:10px;
+    border:0;
+    background:transparent;
+}
+html[data-skin="realist"] .atlas-primary { grid-template-columns:minmax(0,1.28fr) minmax(430px,.82fr); }
+html[data-skin="realist"] .atlas-secondary { grid-template-columns:minmax(0,1.08fr) minmax(500px,.92fr); }
+html[data-skin="realist"] .performance-field,
+html[data-skin="realist"] .attention-lens,
+html[data-skin="realist"] .movement-river,
+html[data-skin="realist"] .operational-fingerprint {
+    min-height:0;
+    border-right:3px solid #3e3b35;
+    padding:16px 22px 14px;
+    overflow:hidden;
+}
+html[data-skin="realist"] .atlas-panel-head { position:relative; z-index:2; }
+html[data-skin="realist"] .atlas-panel-head small { color:#59544c; font-weight:650; }
+html[data-skin="realist"] #atlas-field { height:calc(100% - 42px); min-height:270px; }
+html[data-skin="realist"] #atlas-river { height:calc(100% - 42px); min-height:160px; }
+html[data-skin="realist"] .focus-chip {
+    border:2px solid #514c43;
+    border-radius:5px;
+    background:linear-gradient(#e6dccb,#cfc2ae);
+    box-shadow:inset 0 1px #fff5e5,0 2px 3px rgba(0,0,0,.22);
+    color:#24221f;
+}
+html[data-skin="realist"] .focus-chip button { color:#7d2c00; text-shadow:0 1px rgba(255,255,255,.7); }
+
+/* Attention Lens as physical diagnostics. */
+html[data-skin="realist"] .attention-row {
+    min-height:66px;
+    padding:0 4px;
+    border-top:1px solid #c4b7a5;
+    background:transparent;
+}
+html[data-skin="realist"] .attention-row:hover,
+html[data-skin="realist"] .attention-row.selected { background:linear-gradient(90deg,rgba(239,108,22,.07),rgba(255,255,255,.08)); }
+html[data-skin="realist"] .attention-rank {
+    width:27px; height:44px;
+    display:grid; place-items:center;
+    color:#fff3e0;
+    border:2px solid #6e160e;
+    border-radius:3px;
+    background:linear-gradient(#d84831,#9c170e);
+    box-shadow:0 2px 3px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.38),inset 0 -2px rgba(0,0,0,.3);
+    text-shadow:0 1px #5c0b06;
+}
+html[data-skin="realist"] .attention-row:nth-child(2) .attention-rank,
+html[data-skin="realist"] .attention-row:nth-child(3) .attention-rank { border-color:#8c4a07; background:linear-gradient(#f49a31,#c56106); }
+html[data-skin="realist"] .attention-row:nth-child(n+4) .attention-rank { border-color:#07384d; background:linear-gradient(#1d7491,#08465f); }
+html[data-skin="realist"] .attention-avatar {
+    border:3px solid #3f3b34;
+    box-shadow:0 3px 4px rgba(0,0,0,.35),inset 0 2px 2px rgba(255,255,255,.38),inset 0 -3px 4px rgba(0,0,0,.35);
+    text-shadow:0 1px #000;
+}
+html[data-skin="realist"] .attention-person strong { color:#171916; font-weight:760; }
+html[data-skin="realist"] .attention-person small { color:#666057; }
+html[data-skin="realist"] .attention-score strong { color:#141716; font-weight:680; }
+html[data-skin="realist"] .attention-score small { font-weight:700; }
+html[data-skin="realist"] .fingerprint-mini i {
+    height:25px;
+    border:2px solid #565149;
+    border-radius:2px;
+    background:linear-gradient(#e7dcc8,#c8baa4);
+    box-shadow:inset 0 2px 3px rgba(0,0,0,.22),0 1px rgba(255,255,255,.8);
+}
+html[data-skin="realist"] .fingerprint-mini i::after { background:linear-gradient(#2a7d98,#073d55); box-shadow:inset 0 1px rgba(255,255,255,.35); }
+html[data-skin="realist"] .fingerprint-mini i.low { border:2px dashed #b2460b; background:#eee4d2; }
+html[data-skin="realist"] .fingerprint-mini i.low::after { background:linear-gradient(#f49435,#c84f08); }
+html[data-skin="realist"] .rhythm-mini { border-bottom:1px solid #776f64; }
+html[data-skin="realist"] .rhythm-mini i { width:3px; background:linear-gradient(#247c9a,#063d54); box-shadow:0 0 1px rgba(0,0,0,.35); }
+html[data-skin="realist"] .attention-row:nth-child(-n+3) .rhythm-mini i { background:linear-gradient(#f49331,#c84b06); }
+
+/* Operational fingerprint = calibrated rail. */
+html[data-skin="realist"] .fingerprint-head { color:#5e594f; border-color:#b9ad9b; }
+html[data-skin="realist"] .fingerprint-row { border-color:#c1b5a4; }
+html[data-skin="realist"] .fingerprint-row label { color:#1e211e; font-weight:700; }
+html[data-skin="realist"] .fingerprint-track {
+    border:1px solid #8e8578;
+    background:
+        repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),rgba(95,82,62,.27) calc(25% - 1px),rgba(95,82,62,.27) 25%),
+        linear-gradient(#e1d7c7,#cdbfa9);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.18),0 1px rgba(255,255,255,.8);
+}
+html[data-skin="realist"] .fingerprint-quartile { background:linear-gradient(180deg,#b9c6c8,#869da2); box-shadow:inset 0 1px rgba(255,255,255,.6); }
+html[data-skin="realist"] .fingerprint-value { height:2px; background:linear-gradient(90deg,#d95e12,#f17a25); }
+html[data-skin="realist"] .fingerprint-value::after { width:10px; height:10px; top:-4px; border:2px solid #88410d; background:radial-gradient(circle at 35% 30%,#ffd092 0 16%,#f27a1a 40%,#b24b08 76%); box-shadow:0 2px 3px rgba(0,0,0,.32); }
+html[data-skin="realist"] .fingerprint-target { border-left:2px dashed #be5310; }
+html[data-skin="realist"] .fingerprint-row strong { color:#191b19; }
+
+/* ---------- Generic tactile controls ---------- */
+html[data-skin="realist"] :where(button,.action,.source-action,.secondary-action,.danger):not(.score-axis-dot):not(.attention-open):not(.pm-cell) {
+    border:2px solid #4b4740;
+    border-radius:5px;
+    color:#1d211f;
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.65),transparent 22%),
+        linear-gradient(180deg,#eee4d3,#c9baa4);
+    box-shadow:0 2px 4px rgba(0,0,0,.28),inset 0 1px #fff9ed,inset 0 -2px 3px rgba(69,56,40,.28);
+    text-shadow:0 1px rgba(255,255,255,.72);
+    transition:transform .07s ease,box-shadow .07s ease,filter .1s ease;
+}
+html[data-skin="realist"] :where(button,.action,.source-action,.secondary-action,.danger):not(.score-axis-dot):not(.attention-open):not(.pm-cell):hover { filter:brightness(1.055) saturate(1.02); }
+html[data-skin="realist"] :where(button,.action,.source-action,.secondary-action,.danger):not(.score-axis-dot):not(.attention-open):not(.pm-cell):active {
+    transform:translateY(1px);
+    box-shadow:inset 0 3px 6px rgba(70,57,42,.42),0 1px 1px rgba(255,255,255,.5);
+}
+html[data-skin="realist"] :where(button,.action)[disabled] { filter:grayscale(.45) opacity(.58); box-shadow:inset 0 1px 2px rgba(0,0,0,.16); }
+html[data-skin="realist"] .action:not(.secondary) {
+    color:#fff4e6;
+    border-color:#823506;
+    background:linear-gradient(#ff9b48,#e56512 55%,#b74605);
+    text-shadow:0 1px #7b2c00;
+}
+html[data-skin="realist"] .danger { color:#fff0e7; border-color:#70140e; background:linear-gradient(#d84b38,#a51d13); text-shadow:0 1px #5c0d08; }
+html[data-skin="realist"] input,
+html[data-skin="realist"] select,
+html[data-skin="realist"] textarea {
+    color:#1b1d1b;
+    border:2px solid #6d665b;
+    border-radius:5px;
+    background:linear-gradient(#d7cbbb,#eee5d6 30%,#f5eddf);
+    box-shadow:inset 0 3px 6px rgba(67,55,39,.22),0 1px rgba(255,255,255,.72);
+}
+html[data-skin="realist"] input:focus,
+html[data-skin="realist"] select:focus,
+html[data-skin="realist"] textarea:focus { outline:2px solid #ef7a28; outline-offset:1px; }
+
+/* ---------- Workbench pages: steel bench + ivory instruments ---------- */
+html[data-skin="realist"] :is(.workbench-page,.portrait-page,.collaboration-page,.route-data .single-pane.wide,.route-employees .single-pane.wide,.settings-page,.scoring-page) {
+    min-height:100%;
+    padding:10px;
+    color:var(--real-ink);
+    background:
+        repeating-linear-gradient(90deg,rgba(255,255,255,.014) 0 1px,transparent 1px 4px),
+        linear-gradient(180deg,#262b26,#181c18);
+}
+html[data-skin="realist"] .workbench-header,
+html[data-skin="realist"] .people-command,
+html[data-skin="realist"] .worksheet-intro { padding:18px 24px; margin-bottom:10px; }
+html[data-skin="realist"] .workbench-header h2,
+html[data-skin="realist"] .people-command h2,
+html[data-skin="realist"] .worksheet-intro h2 { color:#171a18; text-shadow:0 1px rgba(255,255,255,.8); }
+html[data-skin="realist"] .workbench-header p,
+html[data-skin="realist"] .people-command p,
+html[data-skin="realist"] .worksheet-intro p { color:#5f5a51; }
+html[data-skin="realist"] .timesheet-pulse,
+html[data-skin="realist"] .collaboration-pulse { margin-bottom:10px; border-bottom:3px solid #3e3b35; }
+html[data-skin="realist"] .timesheet-pulse > div,
+html[data-skin="realist"] .collaboration-pulse > div { border-color:#b8ab99; }
+html[data-skin="realist"] .timesheet-ledger,
+html[data-skin="realist"] .people-roster,
+html[data-skin="realist"] .peer-matrix-wrap { overflow:hidden; }
+
+/* Data tables become engraved worksheets. */
+html[data-skin="realist"] :is(.epa-grid,.data-table,.import-table) {
+    border-collapse:separate;
+    border-spacing:0;
+    color:#171a18;
+    background:#eee5d5;
+}
+html[data-skin="realist"] .epa-grid thead th,
+html[data-skin="realist"] .table-head {
+    color:#f7ead2!important;
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.08),transparent 20%),
+        linear-gradient(#2c3333,#151a1a)!important;
+    border-color:#080b0b!important;
+    text-shadow:0 1px #000;
+    box-shadow:inset 0 1px rgba(255,255,255,.08),inset 0 -2px rgba(0,0,0,.55);
+}
+html[data-skin="realist"] .epa-grid tbody td,
+html[data-skin="realist"] .data-row .cell,
+html[data-skin="realist"] .import-row .cell {
+    color:#242522;
+    background:rgba(245,238,225,.72);
+    border-color:#c3b6a4!important;
+}
+html[data-skin="realist"] .epa-grid tbody tr:nth-child(even) td { background:rgba(231,221,205,.78); }
+html[data-skin="realist"] .epa-grid tbody tr:hover td { background:#f7ecda!important; box-shadow:inset 0 1px rgba(255,255,255,.65); }
+
+/* Reports / templates / scoring. */
+html[data-skin="realist"] .export-lanes,
+html[data-skin="realist"] .template-flow,
+html[data-skin="realist"] .template-contract,
+html[data-skin="realist"] .operational-scoring-layout,
+html[data-skin="realist"] .scoring-grid { gap:10px; border:0; background:transparent; }
+html[data-skin="realist"] .export-lane,
+html[data-skin="realist"] .template-lane,
+html[data-skin="realist"] .route-scoring .operational-scoring-layout > .card,
+html[data-skin="realist"] .route-scoring .scoring-grid .card { border:3px solid #3e3b35!important; border-radius:11px!important; background:linear-gradient(#f8f1e4,#ebe1d0)!important; box-shadow:var(--real-shadow),var(--real-inset)!important; }
+html[data-skin="realist"] .template-flow-arrow {
+    border:3px solid #3e3b35;
+    border-radius:9px;
+    color:#f5e7d0;
+    background:linear-gradient(#343a35,#171b18);
+    box-shadow:inset 0 1px rgba(255,255,255,.09),0 3px 5px rgba(0,0,0,.35);
+    text-shadow:0 1px #000;
+}
+html[data-skin="realist"] .export-number,
+html[data-skin="realist"] .template-number { color:#172028; text-shadow:0 1px #fff; }
+
+/* ---------- Settings: two physical renderings, one colour system ---------- */
+html[data-skin="realist"] .settings-page { overflow:auto; }
+html[data-skin="realist"] .settings-title {
+    margin-bottom:10px;
+    padding:18px 24px;
+    border:3px solid #3e3b35;
+    border-radius:11px;
+    background:linear-gradient(#f8f1e4,#e8decd);
+    box-shadow:var(--real-shadow),var(--real-inset);
+}
+html[data-skin="realist"] .appearance-controls { gap:10px; border:0; background:transparent; }
+html[data-skin="realist"] .appearance-control { padding:16px; border-right:3px solid #3e3b35; }
+html[data-skin="realist"] .skin-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:10px 0; }
+html[data-skin="realist"] .skin-choice { min-height:220px; padding:16px; cursor:pointer; text-align:left; }
+html[data-skin="realist"] .skin-choice.selected { outline:3px solid #e96c18; outline-offset:-7px; }
+html[data-skin="realist"] .skin-choice-preview { height:126px; margin-bottom:12px; border-radius:7px; overflow:hidden; border:2px solid #45413a; }
+html[data-skin="realist"] .skin-choice-preview.minimal { background:linear-gradient(90deg,#12212a 0 18%,#f3f5f6 18%); box-shadow:inset 0 0 0 1px rgba(255,255,255,.4); }
+html[data-skin="realist"] .skin-choice-preview.realist { background:linear-gradient(90deg,#11222d 0 18%,#2b2f2b 18% 20%,#efe5d3 20% 96%,#242824 96%); box-shadow:inset 0 0 0 5px #242824,inset 0 0 0 7px #77736a; }
+html[data-skin="realist"] .skin-choice strong { color:#191b19; font-size:17px; }
+html[data-skin="realist"] .skin-choice small { display:block; margin-top:4px; color:#5f5a52; line-height:1.45; }
+
+/* ---------- Footer control strip ---------- */
+html[data-skin="realist"] footer {
+    height:52px;
+    padding:7px 10px;
+    color:#e8ddc7;
+    border:0;
+    gap:10px;
+    background:
+        repeating-linear-gradient(90deg,rgba(255,255,255,.016) 0 1px,transparent 1px 4px),
+        linear-gradient(#2a2f2a,#121512);
+    box-shadow:inset 0 2px #080a08,inset 0 1px rgba(255,255,255,.08);
+}
+html[data-skin="realist"] footer span {
+    min-height:36px;
+    display:flex;
+    align-items:center;
+    padding:0 18px;
+    border:2px solid #0c0e0c;
+    border-radius:6px;
+    color:#292a26;
+    background:linear-gradient(#ded4c3,#bfb3a0);
+    box-shadow:inset 0 1px #f7edde,inset 0 -2px 3px rgba(69,55,40,.28),0 2px 4px rgba(0,0,0,.3);
+    text-shadow:0 1px rgba(255,255,255,.65);
+}
+html[data-skin="realist"] footer span:first-child::before {
+    content:"";
+    width:13px; height:13px;
+    margin-right:10px;
+    border:3px solid #2b3028;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#c7f9a0 0 12%,#55b643 36%,#1c591b 74%);
+    box-shadow:0 0 7px rgba(71,178,59,.5),inset 0 1px rgba(255,255,255,.6);
+}
+
+/* ---------- Search popover as a raised service panel ---------- */
+html[data-skin="realist"] .global-search-popover {
+    border:4px solid #242823;
+    border-radius:10px;
+    background:linear-gradient(#eee5d5,#d9cdbb);
+    box-shadow:0 18px 36px rgba(0,0,0,.48),inset 0 0 0 1px #928878;
+    color:#1a1c1a;
+}
+html[data-skin="realist"] .global-search-results button {
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:#1e211e!important;
+    text-shadow:none!important;
+}
+html[data-skin="realist"] .global-search-results button:hover { background:rgba(239,108,22,.08)!important; }
+
+/* ---------- Responsive realism ---------- */
+@media (max-width:1500px) {
+    html[data-skin="realist"] .app-shell { grid-template-columns:184px minmax(0,1fr); }
+    html[data-skin="realist"] .atlas-pulse { grid-template-columns:220px minmax(260px,1.1fr) minmax(230px,.9fr) 190px 130px; }
+    html[data-skin="realist"] .atlas-primary { grid-template-columns:minmax(0,1.2fr) minmax(380px,.8fr); }
+    html[data-skin="realist"] .atlas-secondary { grid-template-columns:minmax(0,1fr) minmax(430px,.92fr); }
+    html[data-skin="realist"] .page-heading { min-width:300px; }
+}
+@media (max-width:1220px) {
+    html[data-skin="realist"] body { overflow:auto; }
+    html[data-skin="realist"] .app-shell { height:auto; min-height:100vh; width:100%; margin:0; border-radius:0; }
+    html[data-skin="realist"] .workspace { grid-template-rows:68px auto auto 52px; }
+    html[data-skin="realist"] .atlas-page { height:auto; overflow:visible; grid-template-rows:auto auto auto; }
+    html[data-skin="realist"] .atlas-pulse { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    html[data-skin="realist"] .pulse-score { grid-column:1 / -1; }
+    html[data-skin="realist"] .atlas-primary,
+    html[data-skin="realist"] .atlas-secondary { grid-template-columns:1fr; }
+    html[data-skin="realist"] #atlas-field { min-height:390px; }
+    html[data-skin="realist"] #atlas-river { min-height:250px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-skin="realist"] * { transition-duration:0.001ms!important; animation-duration:0.001ms!important; }
+}
