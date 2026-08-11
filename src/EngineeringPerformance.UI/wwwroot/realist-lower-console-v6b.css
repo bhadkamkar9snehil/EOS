@@ -1,0 +1,55 @@
+/* Second reference pass for the settings rotary control. */
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-dial {
+    background:
+        radial-gradient(circle at 11px 11px,#aaa69a 0 1px,#5d5a53 1.5px 2.5px,#151716 2.8px 4.6px,transparent 5px),
+        radial-gradient(circle at calc(100% - 11px) 11px,#aaa69a 0 1px,#5d5a53 1.5px 2.5px,#151716 2.8px 4.6px,transparent 5px),
+        radial-gradient(circle at 11px calc(100% - 11px),#aaa69a 0 1px,#5d5a53 1.5px 2.5px,#151716 2.8px 4.6px,transparent 5px),
+        radial-gradient(circle at calc(100% - 11px) calc(100% - 11px),#aaa69a 0 1px,#5d5a53 1.5px 2.5px,#151716 2.8px 4.6px,transparent 5px),
+        radial-gradient(ellipse at 48% 20%,rgba(255,255,255,.045),transparent 45%),
+        linear-gradient(160deg,#252a27,#181c1a 54%,#0c100e) !important;
+    box-shadow:
+        inset 0 0 0 1px #565a53,
+        inset 0 0 0 4px #101311,
+        inset 0 0 18px rgba(0,0,0,.60),
+        0 2px 4px rgba(0,0,0,.94) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-dial > i {
+    width:94px !important;
+    height:94px !important;
+    border:1px solid #070808 !important;
+    background:
+        radial-gradient(circle at 50% 50%,transparent 0 54%,rgba(255,255,255,.12) 55% 56%,transparent 57%),
+        repeating-conic-gradient(from 0deg,#121414 0 2deg,#5b5a54 2deg 3.1deg,#171918 3.1deg 5deg,#77736b 5deg 6deg,#101212 6deg 8deg) !important;
+    box-shadow:
+        0 5px 8px #000,
+        0 0 0 3px #090b0a,
+        0 0 0 5px #6d6d65,
+        inset 0 0 0 7px #111313,
+        inset 0 0 9px #000 !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-dial > i::before {
+    inset:14px !important;
+    border:1px solid #393832 !important;
+    background:
+        radial-gradient(circle at 36% 28%,rgba(255,255,255,.40) 0 3%,rgba(255,255,255,.10) 4% 13%,transparent 24%),
+        repeating-conic-gradient(from 8deg,rgba(255,255,255,.040) 0 .55deg,rgba(0,0,0,.028) .55deg 1.1deg),
+        conic-gradient(from 18deg,#aaa69e,#77746e,#c5c1b8,#7f7c75,#cfcbc1,#74716b,#bbb7ae,#88847c,#aaa69e) !important;
+    box-shadow:
+        inset 0 1px 1px rgba(255,255,255,.60),
+        inset 0 -3px 4px rgba(0,0,0,.38),
+        0 0 0 2px #9b978f,
+        0 0 0 5px #2b2c29,
+        0 3px 5px rgba(0,0,0,.84) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-dial > i::after {
+    left:45px !important;
+    top:23px !important;
+    width:3px !important;
+    height:18px !important;
+    background:#111 !important;
+    box-shadow:-1px 0 rgba(255,255,255,.18) !important;
+}
