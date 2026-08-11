@@ -1,0 +1,201 @@
+/* Reference-calibrated Realist console. Loaded last. */
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) {
+    --ref-chassis:#171b1b;
+    --ref-chassis-hi:#313431;
+    --ref-chassis-lo:#080a0a;
+    --ref-plate-hi:#f0e7db;
+    --ref-plate:#e7dbca;
+    --ref-plate-lo:#d8c8b3;
+    --ref-ink:#171918;
+    --ref-blue:#0b5270;
+    --ref-orange:#ef6c00;
+    --ref-red:#b42117;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) body {
+    background:
+        radial-gradient(circle at 18% 12%,rgba(255,255,255,.055),transparent 28%),
+        repeating-linear-gradient(90deg,rgba(255,255,255,.016) 0 1px,rgba(0,0,0,.03) 1px 3px),
+        linear-gradient(150deg,#313431 0%,#1b1f1d 40%,#0b0e0d 100%) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .app-shell {
+    width:calc(100vw - 8px) !important;
+    height:calc(100vh - 8px) !important;
+    margin:4px !important;
+    padding:3px !important;
+    gap:7px !important;
+    grid-template-columns:184px minmax(0,1fr) !important;
+    border:4px solid #070909 !important;
+    border-radius:14px !important;
+    background:
+        repeating-linear-gradient(90deg,rgba(255,255,255,.014) 0 1px,transparent 1px 4px),
+        linear-gradient(145deg,#343734 0%,#1a1e1c 37%,#090b0a 100%) !important;
+    box-shadow:
+        0 16px 40px rgba(0,0,0,.60),
+        inset 0 0 0 1px #5a5c56,
+        inset 0 0 0 3px #090b0a,
+        inset 0 0 22px rgba(255,255,255,.035) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .workspace {
+    min-width:0 !important;
+    grid-template-rows:76px auto minmax(0,1fr) 54px !important;
+    gap:7px !important;
+    background:transparent !important;
+    border-left:0 !important;
+    box-shadow:none !important;
+}
+
+/* Brand plate */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-brand {
+    min-height:174px !important;
+    margin:4px 4px 8px !important;
+    padding:47px 15px 14px !important;
+    border:2px solid #020709 !important;
+    border-radius:10px !important;
+    background:
+        radial-gradient(circle at 50% -12%,rgba(36,87,111,.33),transparent 55%),
+        linear-gradient(180deg,#102936,#081923 75%) !important;
+    box-shadow:inset 0 0 0 2px #4b5559,inset 0 0 16px #000c,0 3px 4px #000a !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-brand strong {
+    position:relative !important;
+    display:block !important;
+    font-size:46px !important;
+    line-height:1 !important;
+    letter-spacing:-.04em !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-brand strong i {
+    position:absolute !important;
+    left:50% !important;
+    top:-38px !important;
+    transform:translateX(-50%) !important;
+    font-size:34px !important;
+    line-height:1 !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-brand small {
+    display:block !important;
+    margin-top:13px !important;
+    font-size:10px !important;
+    line-height:1.55 !important;
+    letter-spacing:.18em !important;
+}
+
+/* Header assembly */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .topbar {
+    height:76px !important;
+    padding:5px 7px !important;
+    gap:12px !important;
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .page-heading {
+    min-width:452px !important;
+    max-width:452px !important;
+    height:64px !important;
+    padding:0 44px !important;
+    border:2px solid #0b0d0c !important;
+    border-radius:10px !important;
+    background:
+        radial-gradient(ellipse at 50% -24%,rgba(255,255,255,.55) 0 12%,transparent 45%),
+        repeating-linear-gradient(90deg,rgba(75,62,46,.018) 0 1px,rgba(255,255,255,.02) 1px 3px),
+        linear-gradient(180deg,var(--ref-plate-hi),var(--ref-plate) 48%,var(--ref-plate-lo)) !important;
+    box-shadow:0 4px 7px #000b,0 0 0 1px #666861,inset 0 1px #fff,inset 0 0 0 2px rgba(150,139,122,.36),inset 0 -3px 4px #7b684d55 !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .page-heading h1 {
+    color:var(--ref-ink) !important;
+    font-size:30px !important;
+    font-weight:800 !important;
+    letter-spacing:-.025em !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-control-bank {
+    height:64px !important;
+    border:2px solid #040606 !important;
+    border-radius:11px !important;
+    background:linear-gradient(#242a28,#0d1110) !important;
+    box-shadow:inset 0 0 0 2px #454844,0 3px 5px #000c !important;
+    overflow:hidden !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .rcb-search {
+    border-radius:20px !important;
+    background:linear-gradient(#eee6d9,#d2c4af) !important;
+    box-shadow:inset 0 2px 4px #6c604d,0 1px #8d8b7d !important;
+}
+
+/* Physical warm-alloy instrument plates */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-lens,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .movement-river,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .operational-fingerprint {
+    border:3px solid #0b0d0c !important;
+    border-radius:13px !important;
+    background:
+        radial-gradient(ellipse at 50% -24%,rgba(255,255,255,.55) 0 12%,transparent 45%),
+        repeating-linear-gradient(90deg,rgba(75,62,46,.018) 0 1px,rgba(255,255,255,.02) 1px 3px),
+        linear-gradient(180deg,var(--ref-plate-hi),var(--ref-plate) 48%,var(--ref-plate-lo)) !important;
+    box-shadow:
+        0 4px 6px #000d,
+        0 0 0 1px #686a63,
+        inset 0 1px #fff,
+        inset 0 0 0 2px rgba(150,139,122,.36),
+        inset 0 -3px 4px #7b684d55 !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse {
+    border-radius:18px !important;
+    margin:0 7px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse > * {
+    background:transparent !important;
+    border-right:1px solid rgba(117,104,84,.35) !important;
+    box-shadow:1px 0 rgba(255,255,255,.38) !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-pulse > *:last-child { border-right:0 !important; box-shadow:none !important; }
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-primary {
+    grid-template-columns:minmax(0,56%) minmax(0,44%) !important;
+    gap:8px !important;
+    margin:0 7px !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-secondary {
+    grid-template-columns:minmax(0,46.7%) minmax(0,53.3%) !important;
+    gap:8px !important;
+    margin:0 7px !important;
+}
+
+/* Attention Lens spacing matches the physical reference. */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-lens { padding-left:10px !important; padding-right:10px !important; }
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-row { min-height:68px !important; }
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-person strong { font-size:13px !important; line-height:1.05 !important; }
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-person small { font-size:9px !important; line-height:1.05 !important; }
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .attention-score strong { font-size:22px !important; }
+
+/* Footer is a row of mounted physical status plates. */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) footer {
+    height:54px !important;
+    padding:5px 7px !important;
+    gap:8px !important;
+    border:0 !important;
+    background:transparent !important;
+}
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) footer > span {
+    height:42px !important;
+    display:flex !important;
+    align-items:center !important;
+    padding:0 14px !important;
+    border:2px solid #0b0d0c !important;
+    border-radius:9px !important;
+    background:linear-gradient(180deg,#e8e1d6,#d0c7ba 72%,#aea291) !important;
+    box-shadow:0 3px 5px #000a,0 0 0 1px #555750,inset 0 1px #fff,inset 0 -2px #42382e40 !important;
+    color:#222421 !important;
+}
+
+/* Navigation face treatment remains physical and tactile. */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-rail button span {
+    font-family:"Arial Narrow","Roboto Condensed",Arial,sans-serif !important;
+    text-transform:uppercase !important;
+    letter-spacing:.045em !important;
+}
