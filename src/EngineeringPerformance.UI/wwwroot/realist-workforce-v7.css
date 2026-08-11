@@ -1,0 +1,110 @@
+/* Reference-calibrated Workforce Performance Field. */
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field {
+    position:relative !important;
+    display:flex !important;
+    flex-direction:column !important;
+    min-width:0 !important;
+    padding:10px 14px 9px !important;
+    overflow:hidden !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head {
+    position:relative !important;
+    flex:0 0 36px !important;
+    height:36px !important;
+    min-height:36px !important;
+    margin:0 !important;
+    padding:0 2px !important;
+    display:block !important;
+    overflow:visible !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head > div {
+    display:block !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head h2 {
+    position:absolute !important;
+    left:0 !important;
+    top:1px !important;
+    margin:0 !important;
+    color:#1e1c18 !important;
+    font-family:"Bahnschrift Condensed","Arial Narrow","DejaVu Sans Condensed",sans-serif !important;
+    font-size:16px !important;
+    line-height:1 !important;
+    font-weight:750 !important;
+    letter-spacing:.14px !important;
+    text-transform:uppercase !important;
+    text-shadow:0 1px rgba(255,255,255,.48) !important;
+    white-space:nowrap !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head h2::after {
+    content:"i" !important;
+    display:inline-grid !important;
+    place-items:center !important;
+    width:14px !important;
+    height:14px !important;
+    margin-left:7px !important;
+    transform:translateY(-1px) !important;
+    border:1px solid #686055 !important;
+    border-radius:50% !important;
+    color:#514a40 !important;
+    font-family:Georgia,serif !important;
+    font-size:9px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    text-transform:none !important;
+    box-shadow:inset 0 1px rgba(255,255,255,.55) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head small {
+    position:absolute !important;
+    right:3px !important;
+    top:0 !important;
+    width:196px !important;
+    margin:0 !important;
+    color:transparent !important;
+    font-size:0 !important;
+    line-height:0 !important;
+    text-shadow:none !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head small::after {
+    content:"X: ACCOUNTABLE HOURS (30 DAYS)\A Y: UTILIZATION (%)" !important;
+    white-space:pre !important;
+    display:block !important;
+    color:#292620 !important;
+    font-family:"Bahnschrift Condensed","Arial Narrow","DejaVu Sans Condensed",sans-serif !important;
+    font-size:9.5px !important;
+    line-height:1.23 !important;
+    font-weight:600 !important;
+    letter-spacing:.10px !important;
+    text-transform:uppercase !important;
+    text-align:left !important;
+    text-shadow:0 1px rgba(255,255,255,.42) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .team-mode-chip,
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .focus-chip {
+    display:none !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) #atlas-field {
+    flex:1 1 auto !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    margin:0 !important;
+    overflow:hidden !important;
+}
+
+/* Reduce the old web-chart whitespace and let the physical plate itself be the plot surface. */
+@media (min-width:1400px) {
+    :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-primary {
+        min-height:438px !important;
+    }
+    :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field {
+        min-height:438px !important;
+    }
+}
