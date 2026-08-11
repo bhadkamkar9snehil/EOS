@@ -14,15 +14,15 @@
 
     const faceGradient = (kind) => {
         const sets = {
-            navy: ['#3c7286', '#17495d', '#092d3d'],
-            orange: ['#f5a04f', '#df6d10', '#9b3904'],
-            red: ['#e26458', '#b62c21', '#78150f'],
-            missing: ['#f1e9dc', '#d8cdbb', '#b8aa95']
+            navy: ['#365f6f', '#17485a', '#082b39'],
+            orange: ['#f6aa59', '#e57614', '#9c3904'],
+            red: ['#df6458', '#b52f24', '#76150f'],
+            missing: ['#f0e8dc', '#d7ccba', '#b7aa95']
         };
         const s = sets[kind] || sets.navy;
         return new echarts.graphic.RadialGradient(.34, .28, .88, [
             { offset: 0, color: s[0] },
-            { offset: .42, color: s[1] },
+            { offset: .43, color: s[1] },
             { offset: 1, color: s[2] }
         ]);
     };
@@ -56,7 +56,6 @@
         const inkSoft = '#504b43';
         const rule = '#8f8779';
         const cream = '#e8dece';
-        const orange = css('--atlas-orange', '#ed7415');
 
         const baseSize = d => Math.max(25, Math.min(31, 20 + d.score * .115));
         const selectedSize = d => baseSize(d) + 11;
@@ -72,8 +71,8 @@
                     symbol: ['circle', 'none'],
                     symbolSize: [chosen ? 10 : 9, 0],
                     data: [[d.prevX, d.prevY], [d.x, d.y]],
-                    lineStyle: { color: chosen ? '#bc5a15' : '#8c8273', width: chosen ? 1.55 : 1.05, opacity: chosen ? .94 : .78 },
-                    itemStyle: { color: cream, borderColor: chosen ? '#b95612' : '#8d8374', borderWidth: 1.15 },
+                    lineStyle: { color: chosen ? '#b95612' : '#8a8071', width: chosen ? 1.5 : 1.05, opacity: chosen ? .94 : .80 },
+                    itemStyle: { color: cream, borderColor: chosen ? '#b95612' : '#8a8071', borderWidth: 1.1 },
                     z: 1
                 };
             });
@@ -82,11 +81,11 @@
             value: [d.x, d.y],
             symbolSize: selectedSize(d) + 18,
             itemStyle: {
-                color: 'rgba(236,116,20,.10)',
-                borderColor: 'rgba(236,116,20,.34)',
-                borderWidth: 1.2,
-                shadowBlur: 22,
-                shadowColor: 'rgba(222,104,18,.52)'
+                color: 'rgba(235,116,20,.08)',
+                borderColor: 'rgba(235,116,20,.28)',
+                borderWidth: 1.1,
+                shadowBlur: 17,
+                shadowColor: 'rgba(222,104,18,.42)'
             }
         }));
 
@@ -97,12 +96,12 @@
                 value: [d.x, d.y],
                 symbolSize: size + 6,
                 itemStyle: {
-                    color: chosen ? '#a85a24' : '#353934',
-                    borderColor: chosen ? '#f0c593' : '#bfb5a3',
-                    borderWidth: chosen ? 1.6 : 1.15,
-                    shadowBlur: chosen ? 10 : 5,
-                    shadowOffsetY: chosen ? 4 : 3,
-                    shadowColor: 'rgba(0,0,0,.58)'
+                    color: chosen ? '#a65b27' : '#30332f',
+                    borderColor: chosen ? '#edc18f' : '#c6baa7',
+                    borderWidth: chosen ? 1.5 : 1.2,
+                    shadowBlur: chosen ? 8 : 3.5,
+                    shadowOffsetY: chosen ? 3 : 2.5,
+                    shadowColor: 'rgba(0,0,0,.48)'
                 }
             };
         });
@@ -116,12 +115,12 @@
                 symbolSize: size,
                 itemStyle: {
                     color: faceGradient(chosen ? 'orange' : tone(d)),
-                    borderColor: d.missing ? '#70695f' : chosen ? '#fff1d7' : '#111716',
+                    borderColor: d.missing ? '#70695f' : chosen ? '#fff0d5' : '#101716',
                     borderType: d.missing ? 'dashed' : 'solid',
-                    borderWidth: chosen ? 2.2 : 1.35,
-                    shadowBlur: chosen ? 10 : 3,
-                    shadowOffsetY: 2,
-                    shadowColor: chosen ? 'rgba(177,74,4,.42)' : 'rgba(0,0,0,.36)',
+                    borderWidth: chosen ? 1.9 : 1.15,
+                    shadowBlur: chosen ? 7 : 1.8,
+                    shadowOffsetY: chosen ? 2 : 1.5,
+                    shadowColor: chosen ? 'rgba(158,61,3,.36)' : 'rgba(0,0,0,.30)',
                     opacity: 1
                 },
                 label: {
@@ -131,8 +130,8 @@
                     fontFamily: font,
                     fontWeight: 700,
                     fontSize: chosen ? 16 : 11.5,
-                    textShadowColor: 'rgba(0,0,0,.72)',
-                    textShadowBlur: 2,
+                    textShadowColor: 'rgba(0,0,0,.62)',
+                    textShadowBlur: 1.6,
                     textShadowOffsetY: 1
                 }
             };
@@ -207,7 +206,7 @@
                 },
                 {
                     name: 'quadrant-labels', type: 'scatter', silent: true, symbolSize: 0, data: quadrantLabels,
-                    label: { show: true, color: '#5b554d', fontFamily: font, fontSize: 10, fontWeight: 500, distance: 0 },
+                    label: { show: true, color: '#5b554d', fontFamily: font, fontSize: 9.8, fontWeight: 500, distance: 0 },
                     z: 2
                 },
                 { name: 'selected-halo', type: 'scatter', silent: true, symbol: 'circle', data: haloData, z: 2 },
