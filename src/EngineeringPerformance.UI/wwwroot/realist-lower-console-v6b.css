@@ -1,6 +1,13 @@
 /* Second reference pass for the settings rotary control. */
 
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-lower-console {
+    bottom:10px !important;
+    height:249px !important;
+}
+
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-dial {
+    height:176px !important;
+    min-height:176px !important;
     background:
         radial-gradient(circle at 11px 11px,#aaa69a 0 1px,#5d5a53 1.5px 2.5px,#151716 2.8px 4.6px,transparent 5px),
         radial-gradient(circle at calc(100% - 11px) 11px,#aaa69a 0 1px,#5d5a53 1.5px 2.5px,#151716 2.8px 4.6px,transparent 5px),
@@ -20,12 +27,12 @@
     height:94px !important;
     border:1px solid #070808 !important;
     background:
-        radial-gradient(circle at 50% 50%,transparent 0 54%,rgba(255,255,255,.12) 55% 56%,transparent 57%),
+        radial-gradient(circle at 50% 50%,transparent 0 54%,rgba(255,255,255,.11) 55% 56%,transparent 57%),
         repeating-conic-gradient(from 0deg,#121414 0 2deg,#5b5a54 2deg 3.1deg,#171918 3.1deg 5deg,#77736b 5deg 6deg,#101212 6deg 8deg) !important;
     box-shadow:
         0 5px 8px #000,
         0 0 0 3px #090b0a,
-        0 0 0 5px #6d6d65,
+        0 0 0 5px #74736b,
         inset 0 0 0 7px #111313,
         inset 0 0 9px #000 !important;
 }
@@ -34,13 +41,13 @@
     inset:14px !important;
     border:1px solid #393832 !important;
     background:
-        radial-gradient(circle at 36% 28%,rgba(255,255,255,.40) 0 3%,rgba(255,255,255,.10) 4% 13%,transparent 24%),
-        repeating-conic-gradient(from 8deg,rgba(255,255,255,.040) 0 .55deg,rgba(0,0,0,.028) .55deg 1.1deg),
-        conic-gradient(from 18deg,#aaa69e,#77746e,#c5c1b8,#7f7c75,#cfcbc1,#74716b,#bbb7ae,#88847c,#aaa69e) !important;
+        radial-gradient(circle at 34% 27%,rgba(255,255,255,.27) 0 3%,rgba(255,255,255,.07) 4% 12%,transparent 23%),
+        repeating-conic-gradient(from 8deg,rgba(255,255,255,.035) 0 .55deg,rgba(0,0,0,.032) .55deg 1.1deg),
+        conic-gradient(from 18deg,#9d9a93,#716f69,#b7b3aa,#77746e,#c1bdb4,#6c6a64,#aaa69e,#7e7b74,#9d9a93) !important;
     box-shadow:
-        inset 0 1px 1px rgba(255,255,255,.60),
-        inset 0 -3px 4px rgba(0,0,0,.38),
-        0 0 0 2px #9b978f,
+        inset 0 1px 1px rgba(255,255,255,.48),
+        inset 0 -3px 4px rgba(0,0,0,.40),
+        0 0 0 2px #96928a,
         0 0 0 5px #2b2c29,
         0 3px 5px rgba(0,0,0,.84) !important;
 }
@@ -51,5 +58,19 @@
     width:3px !important;
     height:18px !important;
     background:#111 !important;
-    box-shadow:-1px 0 rgba(255,255,255,.18) !important;
+    box-shadow:-1px 0 rgba(255,255,255,.15) !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .realist-back {
+    height:56px !important;
+    min-height:56px !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-footer {
+    bottom:262px !important;
+}
+
+:is(html[data-skin="realist"],html[data-epa-skin="realist"]) .nav-footer > button {
+    height:56px !important;
+    min-height:56px !important;
 }
