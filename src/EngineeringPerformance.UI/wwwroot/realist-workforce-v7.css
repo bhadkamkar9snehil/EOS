@@ -42,6 +42,7 @@
     text-transform:uppercase !important;
     text-shadow:0 1px rgba(255,255,255,.52) !important;
     white-space:nowrap !important;
+    transform:scaleX(.82) !important;
     transform-origin:left top !important;
 }
 
@@ -52,7 +53,7 @@
     width:14px !important;
     height:14px !important;
     margin-left:7px !important;
-    transform:translateY(-1px) !important;
+    transform:translateY(-1px) scaleX(1.22) !important;
     border:1px solid #686055 !important;
     border-radius:50% !important;
     color:#514a40 !important;
