@@ -6,6 +6,11 @@
     min-width:0 !important;
     padding:10px 14px 9px !important;
     overflow:hidden !important;
+    background:
+        radial-gradient(ellipse at 48% -12%,rgba(255,255,255,.25),transparent 43%),
+        linear-gradient(90deg,rgba(69,60,47,.018),transparent 13%,rgba(255,255,255,.035) 35%,transparent 62%,rgba(64,55,45,.012) 84%,transparent),
+        repeating-linear-gradient(90deg,rgba(72,62,49,.012) 0 1px,rgba(255,255,255,.012) 1px 4px),
+        linear-gradient(180deg,#efe8dc 0%,#e5dac9 48%,#d8cbb8 82%,#c3b5a0 100%) !important;
 }
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head {
@@ -25,18 +30,19 @@
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head h2 {
     position:absolute !important;
-    left:0 !important;
+    left:12px !important;
     top:1px !important;
     margin:0 !important;
-    color:#1e1c18 !important;
+    color:#1e1b17 !important;
     font-family:"Bahnschrift Condensed","Arial Narrow","DejaVu Sans Condensed",sans-serif !important;
-    font-size:16px !important;
+    font-size:15.5px !important;
     line-height:1 !important;
     font-weight:750 !important;
-    letter-spacing:.14px !important;
+    letter-spacing:.08px !important;
     text-transform:uppercase !important;
-    text-shadow:0 1px rgba(255,255,255,.48) !important;
+    text-shadow:0 1px rgba(255,255,255,.52) !important;
     white-space:nowrap !important;
+    transform-origin:left top !important;
 }
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head h2::after {
@@ -60,9 +66,9 @@
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .atlas-panel-head small {
     position:absolute !important;
-    right:3px !important;
+    right:2px !important;
     top:0 !important;
-    width:196px !important;
+    width:178px !important;
     margin:0 !important;
     color:transparent !important;
     font-size:0 !important;
@@ -74,15 +80,15 @@
     content:"X: ACCOUNTABLE HOURS (30 DAYS)\A Y: UTILIZATION (%)" !important;
     white-space:pre !important;
     display:block !important;
-    color:#292620 !important;
+    color:#29251f !important;
     font-family:"Bahnschrift Condensed","Arial Narrow","DejaVu Sans Condensed",sans-serif !important;
-    font-size:9.5px !important;
-    line-height:1.23 !important;
+    font-size:9.2px !important;
+    line-height:1.22 !important;
     font-weight:600 !important;
-    letter-spacing:.10px !important;
+    letter-spacing:.06px !important;
     text-transform:uppercase !important;
     text-align:left !important;
-    text-shadow:0 1px rgba(255,255,255,.42) !important;
+    text-shadow:0 1px rgba(255,255,255,.44) !important;
 }
 
 :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .performance-field .team-mode-chip,
@@ -99,7 +105,6 @@
     overflow:hidden !important;
 }
 
-/* Reduce the old web-chart whitespace and let the physical plate itself be the plot surface. */
 @media (min-width:1400px) {
     :is(html[data-skin="realist"],html[data-epa-skin="realist"]) .atlas-primary {
         min-height:438px !important;
