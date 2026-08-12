@@ -18,6 +18,7 @@ public partial class App : System.Windows.Application
     private readonly IHost _host;
     private readonly string _dataDirectory;
     private readonly ILogger _log;
+    private readonly VisualCaptureOptions? _visualCapture;
 
     static App()
     {
@@ -31,7 +32,12 @@ public partial class App : System.Windows.Application
     public App()
     {
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        _dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
+        _visualCapture = VisualCaptureOptions.FromEnvironment();
+
+        var dataDirectoryOverride = Environment.GetEnvironmentVariable("EOS_DATA_DIRECTORY");
+        _dataDirectory = string.IsNullOrWhiteSpace(dataDirectoryOverride)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance")
+            : Path.GetFullPath(dataDirectoryOverride);
         Directory.CreateDirectory(_dataDirectory);
 
         var logDirectory = Path.Combine(_dataDirectory, "logs");
@@ -74,10 +80,43 @@ public partial class App : System.Windows.Application
         try
         {
             await _host.StartAsync();
-            await _host.Services.GetRequiredService<IApplicationDatabase>().InitializeAsync();
-            MainWindow = _host.Services.GetRequiredService<MainWindow>();
+            var database = _host.Services.GetRequiredService<IApplicationDatabase>();
+            await database.InitializeAsync();
+
+            if (_visualCapture?.FixtureDirectory is { } fixtureDirectory)
+            {
+                await VisualCaptureSeeder.SeedAsync(database, _dataDirectory, fixtureDirectory, _log);
+                await _host.Services.GetRequiredService<AppState>().SetMonthAsync(new DateTime(2026, 7, 1));
+            }
+
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            if (_visualCapture is not null) mainWindow.ConfigureVisualCapture(_visualCapture);
+
+            MainWindow = mainWindow;
             MainWindow.Show();
             ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+            if (_visualCapture is not null)
+            {
+                try
+                {
+                    using var captureTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+                    _log.Information(
+                        "Visual QA capture started. Route={Route}; Theme={Theme}; Output={Output}",
+                        _visualCapture.Route,
+                        _visualCapture.Theme,
+                        _visualCapture.OutputFile);
+                    await mainWindow.CaptureVisualAsync(_visualCapture, captureTimeout.Token);
+                    _log.Information("Visual QA capture completed: {Output}", _visualCapture.OutputFile);
+                    Shutdown(0);
+                }
+                catch (Exception exception)
+                {
+                    _log.Error(exception, "Visual QA capture failed.");
+                    Shutdown(-2);
+                }
+                return;
+            }
 
             // Fire-and-forget: never delay app launch waiting on a network/file-share round trip.
             _ = CheckForUpdatesAsync();
@@ -87,7 +126,13 @@ public partial class App : System.Windows.Application
             _log.Fatal(exception, "The application failed to start.");
             Log.CloseAndFlush();
             var logDirectory = Path.Combine(_dataDirectory, "logs");
-            MessageBox.Show($"The application could not start.\n\nDetails were saved to:\n{logDirectory}", "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            // Visual capture is deliberately non-interactive: a CI failure must become a process
+            // exit + log, never a modal MessageBox waiting forever in an unattended session.
+            if (_visualCapture is null)
+            {
+                MessageBox.Show($"The application could not start.\n\nDetails were saved to:\n{logDirectory}", "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
             Shutdown(-1);
         }
     }
@@ -104,10 +149,13 @@ public partial class App : System.Windows.Application
         try
         {
             _log.Error(e.Exception, "Unhandled exception on the UI dispatcher.");
-            var logDirectory = Path.Combine(_dataDirectory, "logs");
-            MessageBox.Show(
-                $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logDirectory}\n\nYou can keep using the app — try a different page or reload.",
-                "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (_visualCapture is null)
+            {
+                var logDirectory = Path.Combine(_dataDirectory, "logs");
+                MessageBox.Show(
+                    $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logDirectory}\n\nYou can keep using the app — try a different page or reload.",
+                    "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         catch
         {
