@@ -22,25 +22,25 @@
     {
         <section class="flex flex-wrap divide-y divide-line rounded-xl border border-line bg-surface lg:flex-nowrap lg:divide-x lg:divide-y-0" aria-label="Team pulse">
             <div class="w-full shrink-0 p-4 lg:w-36">
-                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">Team pulse</span>
+                <span class="text-3xs font-semibold uppercase tracking-wider text-muted">Team pulse</span>
                 <div class="mt-2 flex items-baseline gap-2">
                     <strong class="text-3xl font-bold tabular-nums text-ink">@Analytics.Format(TeamScore, "0")</strong>
                     <span class="text-lg font-medium tabular-nums text-muted" title="Previous month team average">@(PreviousTeamScore is null ? "—" : Analytics.Format(PreviousTeamScore.Value, "0"))</span>
                 </div>
-                <div class="mt-1 flex justify-between text-[10px] text-muted"><span>Overall score</span><span>@Previous.ToString("MMM yyyy")</span></div>
+                <div class="mt-1 flex justify-between text-3xs text-muted"><span>Overall score</span><span>@Previous.ToString("MMM yyyy")</span></div>
             </div>
 
             <div class="w-full p-4 lg:flex-[2]">
-                <h2 class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Score distribution · people</h2>
+                <h2 class="text-2xs font-semibold uppercase tracking-wide text-ink-soft">Score distribution · people</h2>
                 <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4" role="img" aria-label="@DistributionSummary">
                     @foreach (var band in ScoreBands)
                     {
                         var members = BandMembers(band);
                         <section>
                             <div class="@($"flex items-baseline gap-1 {Analytics.BandTextClass(band.CssClass)}")">
-                                <span class="text-[11px] font-medium">@band.Label</span>
+                                <span class="text-2xs font-medium">@band.Label</span>
                                 <strong class="text-sm font-bold">@members.Count</strong>
-                                <small class="text-[10px] font-normal text-muted">@BandShare(members.Count)% of team</small>
+                                <small class="text-3xs font-normal text-muted">@BandShare(members.Count)% of team</small>
                             </div>
                             <div class="@($"relative mt-1.5 h-7 rounded {Analytics.BandSoftClass(band.CssClass).Split(' ')[0]}")" aria-label="@members.Count people scoring @band.Label">
                                 @for (var i = 0; i < members.Count; i++)
@@ -60,20 +60,20 @@
             </div>
 
             <div class="w-full p-4 lg:flex-[2]">
-                <h2 class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Key trends · 30 days</h2>
+                <h2 class="text-2xs font-semibold uppercase tracking-wide text-ink-soft">Key trends · 30 days</h2>
                 <div class="mt-2 grid grid-cols-3 gap-2.5">
                     <div class="rounded-lg bg-surface-inset p-2.5">
-                        <div class="flex items-center justify-between text-[10px] text-muted"><label>Attendance</label><span>@TrendCoverage(AttendanceTrend, "weeks")</span></div>
+                        <div class="flex items-center justify-between text-3xs text-muted"><label>Attendance</label><span>@TrendCoverage(AttendanceTrend, "weeks")</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="text-base font-bold text-ink">@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong>@TrendChange(AttendanceTrend)</div>
                         <div id="pulse-attendance" class="h-8"></div>
                     </div>
                     <div class="rounded-lg bg-surface-inset p-2.5">
-                        <div class="flex items-center justify-between text-[10px] text-muted"><label>Completion</label><span>@TrendCoverage(CompletionTrend, "weeks")</span></div>
+                        <div class="flex items-center justify-between text-3xs text-muted"><label>Completion</label><span>@TrendCoverage(CompletionTrend, "weeks")</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="text-base font-bold text-ink">@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong>@TrendChange(CompletionTrend)</div>
                         <div id="pulse-completion" class="h-8"></div>
                     </div>
                     <div class="rounded-lg bg-surface-inset p-2.5">
-                        <div class="flex items-center justify-between text-[10px] text-muted"><label>Utilization</label><span>Monthly source</span></div>
+                        <div class="flex items-center justify-between text-3xs text-muted"><label>Utilization</label><span>Monthly source</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="text-base font-bold text-ink">@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><small class="text-muted">Current period</small></div>
                         <div id="pulse-utilization" class="h-8"></div>
                     </div>
@@ -81,7 +81,7 @@
             </div>
 
             <div class="w-full shrink-0 p-4 lg:w-32">
-                <h2 class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Data readiness</h2>
+                <h2 class="text-2xs font-semibold uppercase tracking-wide text-ink-soft">Data readiness</h2>
                 <div class="mt-2 flex flex-col gap-1.5">
                     @ReadinessLight("Timesheets", IsReady(ReportType.MonthlyTimesheetSummary))
                     @ReadinessLight("Imports", IsReady(ReportType.DetailedTimesheetTransactions))
@@ -91,13 +91,13 @@
             </div>
 
             <div class="w-full shrink-0 p-4 lg:w-40">
-                <h2 class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Alert pressure</h2>
+                <h2 class="text-2xs font-semibold uppercase tracking-wide text-ink-soft">Alert pressure</h2>
                 <div title="Alert pressure increases with the number of open analytical alerts; critical alerts carry additional weight.">
                     <strong class="@($"mt-1 block text-sm font-bold {(AlertPressureLabel == "High" ? "text-critical" : AlertPressureLabel == "Elevated" ? "text-serious" : AlertPressureLabel == "Watch" ? "text-warning" : "text-good")}")">@AlertPressureLabel</strong>
                     <div class="mt-1.5 flex gap-0.5" aria-label="@Alerts.Count open analytical alerts">
                         @for (var i = 0; i < 12; i++) { <i class="@($"h-4 w-1.5 rounded-sm {(i < AlertPressureBars ? "bg-critical" : "bg-line")}")"></i> }
                     </div>
-                    <small class="mt-1 block text-[10px] text-muted">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</small>
+                    <small class="mt-1 block text-3xs text-muted">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</small>
                 </div>
             </div>
         </section>
@@ -107,13 +107,13 @@
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h2 class="text-sm font-bold text-ink">Workforce performance field</h2>
-                        <small class="block text-[11px] leading-relaxed text-muted">X: accountable hours (30 days)<br />Y: utilization (%)</small>
+                        <small class="block text-2xs leading-relaxed text-muted">X: accountable hours (30 days)<br />Y: utilization (%)</small>
                     </div>
                     <div class="flex items-center gap-2">
                         @if (FocusedMovement is not null)
                         {
                             <span class="flex items-center gap-2 rounded-full border border-line bg-surface-inset px-3 py-1.5 text-xs" title="@FocusedMovement.Tooltip">
-                                <span class="flex flex-col leading-tight"><small class="text-[10px] text-muted">Movement</small><b class="text-ink">@Previous.ToString("MMM") → @State.SelectedMonth.ToString("MMM")</b></span>
+                                <span class="flex flex-col leading-tight"><small class="text-3xs text-muted">Movement</small><b class="text-ink">@Previous.ToString("MMM") → @State.SelectedMonth.ToString("MMM")</b></span>
                                 <strong class="@(FocusedMovement.DirectionClass == "movement-up" ? "text-good" : FocusedMovement.DirectionClass == "movement-down" ? "text-critical" : "text-muted")">@FocusedMovement.DeltaLabel</strong>
                             </span>
                         }
@@ -135,8 +135,8 @@
             </div>
 
             <aside class="rounded-xl border border-line bg-surface p-4">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Attention lens</h2><small class="text-[11px] text-muted">Ranked by intervention priority</small></div>
-                <div class="mt-3 grid grid-cols-[1.25rem_1.75rem_1fr_2.5rem_5.5rem_3.5rem_1.25rem] items-center gap-2 border-b border-line pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Attention lens</h2><small class="text-2xs text-muted">Ranked by intervention priority</small></div>
+                <div class="mt-3 grid grid-cols-[1.25rem_1.75rem_1fr_2.5rem_5.5rem_3.5rem_1.25rem] items-center gap-2 border-b border-line pb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted">
                     <span></span>
                     <span></span>
                     <span>Person</span>
@@ -154,12 +154,12 @@
                     @for (var i = 0; i < AttentionRows.Count; i++)
                     {
                         var row = AttentionRows[i];
-                        <li class="@($"grid grid-cols-[1.25rem_1.75rem_1fr_2.5rem_5.5rem_3.5rem_1.25rem] items-center gap-2 py-2 cursor-pointer rounded-lg px-1 hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : "")}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
+                        <li class="@($"group grid grid-cols-[1.25rem_1.75rem_1fr_2.5rem_5.5rem_3.5rem_1.25rem] items-center gap-2 py-2 cursor-pointer rounded-lg px-1 hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : "")}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
                             <span class="text-xs font-semibold text-muted">@(i + 1)</span>
-                            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-inset text-[10px] font-semibold text-ink-soft">@Initials(row.Name)</span>
+                            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-inset text-3xs font-semibold text-ink-soft">@Initials(row.Name)</span>
                             <span class="flex min-w-0 flex-col">
                                 <strong class="truncate text-sm font-medium text-ink">@row.Name</strong>
-                                <small class="truncate text-[11px] text-muted">@EmployeeContext(row.Name)</small>
+                                <small class="truncate text-2xs text-muted">@EmployeeContext(row.Name)</small>
                             </span>
                             <span class="flex flex-col items-end" title="Operational score; arrow shows change from the previous loaded month">
                                 <strong class="text-sm font-bold text-ink">@Analytics.Format(row.Score, "0")</strong>
@@ -180,7 +180,7 @@
                                     <i class="@($"block w-1 rounded-sm {(value < 65 ? "bg-critical" : "bg-petrol")}")" style="@($"height:{CssPct(value)}")"></i>
                                 }
                             </span>
-                            <button type="button" class="text-sm text-muted hover:text-primary" title="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
+                            <button type="button" class="text-sm text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:text-primary" title="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
                         </li>
                     }
                 </ol>
@@ -190,8 +190,8 @@
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div class="rounded-xl border border-line bg-surface p-4">
                 <div class="panel-head">
-                    <h2 class="text-sm font-bold text-ink">Movement river</h2><small class="text-[11px] text-muted">Operational score · recent loaded months</small>
-                    <div class="ml-auto flex items-center gap-3 text-[11px] text-ink-soft" aria-label="Movement river legend">
+                    <h2 class="text-sm font-bold text-ink">Movement river</h2><small class="text-2xs text-muted">Operational score · recent loaded months</small>
+                    <div class="ml-auto flex items-center gap-3 text-2xs text-ink-soft" aria-label="Movement river legend">
                         <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-info"></i>Every engineer</span>
                         <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-primary"></i>Attention lens</span>
                         <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-muted"></i>Team median</span>
@@ -202,15 +202,15 @@
 
             <div class="rounded-xl border border-line bg-surface p-4">
                 <div class="panel-head">
-                    <h2 class="text-sm font-bold text-ink">Operational fingerprint</h2><small class="text-[11px] text-muted">@FingerprintLabel</small>
-                    <div class="ml-auto flex items-center gap-3 text-[11px] text-ink-soft">
+                    <h2 class="text-sm font-bold text-ink">Operational fingerprint</h2><small class="text-2xs text-muted">@FingerprintLabel</small>
+                    <div class="ml-auto flex items-center gap-3 text-2xs text-ink-soft">
                         <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-ink-soft"></i>Median</span>
                         <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-line"></i>Middle 50%</span>
                         <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-primary"></i>@(FocusItem is null ? "Team" : FocusItem.EmployeeName)</span>
                     </div>
                 </div>
                 <div class="mt-3 flex flex-col gap-3">
-                    <div class="grid grid-cols-[6rem_1fr_4rem] gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted"><span>Dimension</span><span>Distribution / target</span><span class="text-right">Current</span></div>
+                    <div class="grid grid-cols-[6rem_1fr_4rem] gap-2 text-3xs font-semibold uppercase tracking-wide text-muted"><span>Dimension</span><span>Distribution / target</span><span class="text-right">Current</span></div>
                     @foreach (var metric in FingerprintMetrics)
                     {
                         <div class="grid grid-cols-[6rem_1fr_4rem] items-center gap-2">
@@ -246,13 +246,13 @@
         {
             <section class="rounded-xl border border-line bg-surface p-4" aria-label="Trend alerts">
                 <div class="panel-head">
-                    <h2 class="text-sm font-bold text-ink">Trend alerts</h2><small class="text-[11px] text-muted">Score drops and missing evidence vs. last month</small>
-                    <span class="ml-auto text-[11px] text-muted">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</span>
+                    <h2 class="text-sm font-bold text-ink">Trend alerts</h2><small class="text-2xs text-muted">Score drops and missing evidence vs. last month</small>
+                    <span class="ml-auto text-2xs text-muted">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</span>
                 </div>
                 <ul class="mt-3 flex flex-col divide-y divide-line">
                     @foreach (var alert in Alerts.Take(20))
                     {
-                        <li class="py-1.5"><strong class="@($"text-sm font-semibold {Level(alert.Level)}")">@alert.EmployeeName — @alert.Headline</strong><small class="block text-[11px] text-muted">@alert.Detail</small></li>
+                        <li class="py-1.5"><strong class="@($"text-sm font-semibold {Level(alert.Level)}")">@alert.EmployeeName — @alert.Headline</strong><small class="block text-2xs text-muted">@alert.Detail</small></li>
                     }
                 </ul>
             </section>

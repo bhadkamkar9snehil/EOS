@@ -1,14 +1,28 @@
 @page "/settings"
 @inject AppState State
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
 
 <section class="flex flex-col gap-6">
     <div>
         <h2 class="text-xl font-bold text-ink">Settings</h2>
-        <p class="mt-1 text-sm text-ink-soft">EOS uses one fixed Performance Atlas interface — there is no theme picker.</p>
+        <p class="mt-1 text-sm text-ink-soft">EOS uses one fixed Performance Atlas interface.</p>
     </div>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section class="card">
+            <div class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◐</span>
+                <div><h3 class="text-sm font-bold text-ink">Appearance</h3><p class="text-xs text-ink-soft">"System" follows your Windows light/dark setting.</p></div>
+            </div>
+            <div class="mt-3 inline-flex rounded-lg border border-line bg-surface-inset p-1" role="radiogroup" aria-label="Theme">
+                @ThemeOption("light", "Light")
+                @ThemeOption("dark", "Dark")
+                @ThemeOption("system", "System")
+            </div>
+        </section>
+
         <section class="card">
             <div class="flex items-start gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◫</span>
@@ -31,3 +45,16 @@
         </section>
     </div>
 </section>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private RenderFragment ThemeOption(string mode, string label) =>
+        @<button type="button" role="radio" aria-checked="@(State.ThemeMode == mode)"
+                 class="@($"rounded-md px-3 py-1.5 text-xs font-medium {(State.ThemeMode == mode ? "bg-surface text-primary shadow-sm" : "text-ink-soft hover:text-ink")}")"
+                 @onclick="() => State.SetThemeAsync(JS, mode)">
+            @label
+        </button>;
+}

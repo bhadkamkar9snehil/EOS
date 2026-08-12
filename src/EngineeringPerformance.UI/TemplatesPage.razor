@@ -15,14 +15,14 @@
             <p class="mt-1 max-w-lg text-sm text-ink-soft">Create the controlled review inputs for @State.SelectedMonth.ToString("MMMM yyyy"). Employee identity and level are pre-filled from the local roster.</p>
         </div>
         <div class="flex gap-6">
-            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Roster</span><strong class="text-lg font-bold text-ink">@State.Employees.Count</strong></div>
-            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Month</span><strong class="text-lg font-bold text-ink">@State.SelectedMonth.ToString("MMM yy")</strong></div>
+            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Roster</span><strong class="text-lg font-bold text-ink">@State.Employees.Count</strong></div>
+            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Month</span><strong class="text-lg font-bold text-ink">@State.SelectedMonth.ToString("MMM yy")</strong></div>
         </div>
     </header>
 
     <section class="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_auto_1fr]">
         <article class="card">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-primary">01 · Team round</span>
+            <span class="text-3xs font-semibold uppercase tracking-wide text-primary">01 · Team round</span>
             <div class="mt-1 text-4xl font-bold text-ink">@State.Employees.Count</div>
             <h2 class="mt-2 text-base font-bold text-ink">Generate the complete review set</h2>
             <p class="mt-1 text-sm text-ink-soft">One personalized workbook per employee, written into a dated folder. This is the normal monthly review workflow.</p>
@@ -33,7 +33,7 @@
         <div class="hidden text-2xl text-muted lg:block" aria-hidden="true">→</div>
 
         <article class="card">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted">02 · Exception / reissue</span>
+            <span class="text-3xs font-semibold uppercase tracking-wide text-muted">02 · Exception / reissue</span>
             <div class="mt-1 text-4xl font-bold text-ink">1</div>
             <h2 class="mt-2 text-base font-bold text-ink">Generate one workbook</h2>
             <p class="mt-1 text-sm text-ink-soft">Use this when a single employee needs a fresh copy without regenerating the complete team set.</p>
@@ -51,9 +51,9 @@
     </section>
 
     <section class="grid grid-cols-1 gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-3">
-        <div><span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Workbook contract</span><strong class="mt-1 block text-sm font-semibold text-ink">Self review + peer review</strong><small class="text-[11px] text-muted">Returned files are recognized by their workbook structure, not by filename alone.</small></div>
-        <div><span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Identity source</span><strong class="mt-1 block text-sm font-semibold text-ink">ERP roster</strong><small class="text-[11px] text-muted">Employee code, name and seniority remain aligned with imported identity.</small></div>
-        <div><span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Return path</span><strong class="mt-1 block text-sm font-semibold text-ink">Data imports</strong><small class="text-[11px] text-muted">Upload completed workbooks individually or as a ZIP package.</small></div>
+        <div><span class="block text-3xs font-semibold uppercase tracking-wide text-muted">Workbook contract</span><strong class="mt-1 block text-sm font-semibold text-ink">Self review + peer review</strong><small class="text-2xs text-muted">Returned files are recognized by their workbook structure, not by filename alone.</small></div>
+        <div><span class="block text-3xs font-semibold uppercase tracking-wide text-muted">Identity source</span><strong class="mt-1 block text-sm font-semibold text-ink">ERP roster</strong><small class="text-2xs text-muted">Employee code, name and seniority remain aligned with imported identity.</small></div>
+        <div><span class="block text-3xs font-semibold uppercase tracking-wide text-muted">Return path</span><strong class="mt-1 block text-sm font-semibold text-ink">Data imports</strong><small class="text-2xs text-muted">Upload completed workbooks individually or as a ZIP package.</small></div>
     </section>
 </div>
 

@@ -22,19 +22,19 @@
             <div class="relative">
                 <button type="button" class="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface-inset" aria-haspopup="listbox" aria-expanded="@_personPickerOpen" @onclick="TogglePersonPicker">
                     <span class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">@Analytics.Initials(Name)</span>
-                    <span class="flex flex-col text-left"><strong class="text-sm font-semibold text-ink">@Name</strong><small class="text-[11px] text-muted">@EmployeeIdentity</small></span>
+                    <span class="flex flex-col text-left"><strong class="text-sm font-semibold text-ink">@Name</strong><small class="text-2xs text-muted">@EmployeeIdentity</small></span>
                     <span class="text-muted" aria-hidden="true">⌄</span>
                 </button>
                 @if (_personPickerOpen)
                 {
                     <div class="absolute left-0 top-14 z-20 max-h-96 w-72 overflow-y-auto rounded-xl border border-line bg-surface p-2 shadow-lg" role="listbox" aria-label="Select team member">
-                        <strong class="block px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Select team member</strong>
+                        <strong class="block px-2 py-1 text-3xs font-semibold uppercase tracking-wide text-muted">Select team member</strong>
                         <div class="flex flex-col">
                             @foreach (var personName in SelectableNames)
                             {
                                 <button type="button" class="@($"flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface-inset {(PersonName.Matches(personName, Name) ? "bg-primary-soft" : "")}")" role="option" aria-selected="@PersonName.Matches(personName, Name)" @onclick="() => SelectPerson(personName)">
-                                    <span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-inset text-[10px] font-semibold text-ink-soft">@Analytics.Initials(personName)</span>
-                                    <span class="flex flex-col"><b class="text-sm font-medium text-ink">@personName</b><small class="text-[10px] text-muted">@EmployeeIdentityFor(personName)</small></span>
+                                    <span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-inset text-3xs font-semibold text-ink-soft">@Analytics.Initials(personName)</span>
+                                    <span class="flex flex-col"><b class="text-sm font-medium text-ink">@personName</b><small class="text-3xs text-muted">@EmployeeIdentityFor(personName)</small></span>
                                 </button>
                             }
                         </div>
@@ -43,7 +43,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <strong class="@($"text-3xl font-bold {Analytics.BandTextClass(Analytics.ScoreBand(Latest.OperationalScore))}")">@Analytics.Format(Latest.OperationalScore, "0")</strong>
-                <span class="flex flex-col text-xs text-ink-soft">Operational score<small class="text-[11px] text-muted">@LatestLabel · @ScoreMovement</small></span>
+                <span class="flex flex-col text-xs text-ink-soft">Operational score<small class="text-2xs text-muted">@LatestLabel · @ScoreMovement</small></span>
             </div>
             <div class="ml-auto flex flex-wrap gap-4 text-xs text-ink-soft">
                 <span><b class="text-ink">@Analytics.Format(Latest.Workload(), "0.0")</b> h/day</span>
@@ -55,7 +55,7 @@
 
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
             <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Operational score decomposition</h2><small class="text-[11px] text-muted">Current source measures · peer ratings remain separate</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Operational score decomposition</h2><small class="text-2xs text-muted">Current source measures · peer ratings remain separate</small></div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     @PortraitMetric("Timesheet completion", Latest.HasSummaryData ? Latest.TimesheetCompletionScore : null)
                     @PortraitMetric("Approval completion", Latest.HasSummaryData ? Latest.ApprovalScore : null)
@@ -74,31 +74,31 @@
                 </div>
             </div>
             <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Weekly operating rhythm</h2><small class="text-[11px] text-muted">Hours, timesheet coverage and attendance discipline</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Weekly operating rhythm</h2><small class="text-2xs text-muted">Hours, timesheet coverage and attendance discipline</small></div>
                 <div id="portrait-weekly" class="h-[260px]"></div>
             </div>
         </section>
 
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
             <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Six-month performance history</h2><small class="text-[11px] text-muted">Operational score and its three weighted inputs</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Six-month performance history</h2><small class="text-2xs text-muted">Operational score and its three weighted inputs</small></div>
                 <div id="portrait-history" class="h-[260px]"></div>
             </div>
             <aside class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Intervention evidence</h2><small class="text-[11px] text-muted">@LatestLabel</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Intervention evidence</h2><small class="text-2xs text-muted">@LatestLabel</small></div>
                 <ul class="flex flex-col divide-y divide-line">
                     @if (Alerts.Count == 0)
                     {
-                        <li class="py-1.5"><strong class="text-sm font-semibold text-ink">No active alert rule</strong><small class="block text-[11px] text-muted">No anomaly rule fired for the current month.</small></li>
+                        <li class="py-1.5"><strong class="text-sm font-semibold text-ink">No active alert rule</strong><small class="block text-2xs text-muted">No anomaly rule fired for the current month.</small></li>
                     }
                     else
                     {
-                        @foreach (var alert in Alerts.Take(6)) { <li class="py-1.5"><strong class="@($"text-sm font-semibold {Level(alert.Level)}")">@alert.Headline</strong><small class="block text-[11px] text-muted">@alert.Detail</small></li> }
+                        @foreach (var alert in Alerts.Take(6)) { <li class="py-1.5"><strong class="@($"text-sm font-semibold {Level(alert.Level)}")">@alert.Headline</strong><small class="block text-2xs text-muted">@alert.Detail</small></li> }
                     }
-                    @if (Latest.MissingPunchDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Missing punch · @Latest.MissingPunchDays day(s)</strong><small class="block text-[11px] text-muted">Attendance evidence is incomplete on those days.</small></li> }
-                    @if (Latest.LateDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Late arrival · @Latest.LateDays day(s)</strong><small class="block text-[11px] text-muted">Punctuality contributed to attendance discipline.</small></li> }
-                    @if (Latest.EarlyDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Early departure · @Latest.EarlyDays day(s)</strong><small class="block text-[11px] text-muted">Early departures contributed to attendance discipline.</small></li> }
-                    @if (Latest.LessDurationDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Short duration · @Latest.LessDurationDays day(s)</strong><small class="block text-[11px] text-muted">Office duration fell below the configured threshold.</small></li> }
+                    @if (Latest.MissingPunchDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Missing punch · @Latest.MissingPunchDays day(s)</strong><small class="block text-2xs text-muted">Attendance evidence is incomplete on those days.</small></li> }
+                    @if (Latest.LateDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Late arrival · @Latest.LateDays day(s)</strong><small class="block text-2xs text-muted">Punctuality contributed to attendance discipline.</small></li> }
+                    @if (Latest.EarlyDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Early departure · @Latest.EarlyDays day(s)</strong><small class="block text-2xs text-muted">Early departures contributed to attendance discipline.</small></li> }
+                    @if (Latest.LessDurationDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Short duration · @Latest.LessDurationDays day(s)</strong><small class="block text-2xs text-muted">Office duration fell below the configured threshold.</small></li> }
                 </ul>
             </aside>
         </section>
@@ -106,8 +106,8 @@
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
             <div class="card">
                 <div class="panel-head">
-                    <h2 class="text-sm font-bold text-ink">Peer evidence</h2><small class="text-[11px] text-muted">How colleagues experience @Name across four aspects</small>
-                    <div class="ml-auto flex items-baseline gap-2"><b class="text-xl font-bold text-ink">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</b><span class="flex flex-col text-[10px] text-muted">raw average<small>@Peer.ReceivedCount received · @Peer.GivenCount given · @PeerSignalStatus · reliable floor @ReliablePeerRating</small></span></div>
+                    <h2 class="text-sm font-bold text-ink">Peer evidence</h2><small class="text-2xs text-muted">How colleagues experience @Name across four aspects</small>
+                    <div class="ml-auto flex items-baseline gap-2"><b class="text-xl font-bold text-ink">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</b><span class="flex flex-col text-3xs text-muted">raw average<small>@Peer.ReceivedCount received · @Peer.GivenCount given · @PeerSignalStatus · reliable floor @ReliablePeerRating</small></span></div>
                 </div>
                 @if (Peer.ReceivedCount == 0)
                 {
@@ -125,11 +125,11 @@
                         </div>
                     </div>
                     <div class="mt-4 overflow-x-auto">
-                        <div class="grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] gap-2 border-b border-line pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted"><span>Reviewer</span><span>Collab</span><span>Comms</span><span>Reliable</span><span>Tech</span><span>Overall</span></div>
+                        <div class="grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] gap-2 border-b border-line pb-1 text-3xs font-semibold uppercase tracking-wide text-muted"><span>Reviewer</span><span>Collab</span><span>Comms</span><span>Reliable</span><span>Tech</span><span>Overall</span></div>
                         @foreach (var review in Peer.Received.OrderByDescending(x => x.Average).ThenBy(x => x.ReviewerName))
                         {
                             <div class="grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] items-center gap-2 border-b border-line py-1.5 text-xs">
-                                <span class="flex flex-col"><strong class="font-medium text-ink">@review.ReviewerName</strong>@if (!string.IsNullOrWhiteSpace(review.Comment)) { <small class="text-[10px] text-muted">@review.Comment</small> }</span>
+                                <span class="flex flex-col"><strong class="font-medium text-ink">@review.ReviewerName</strong>@if (!string.IsNullOrWhiteSpace(review.Comment)) { <small class="text-3xs text-muted">@review.Comment</small> }</span>
                                 <b class="tabular-nums text-ink-soft">@Analytics.Format(review.Collaboration, "0.0")</b><b class="tabular-nums text-ink-soft">@Analytics.Format(review.Communication, "0.0")</b><b class="tabular-nums text-ink-soft">@Analytics.Format(review.Reliability, "0.0")</b><b class="tabular-nums text-ink-soft">@Analytics.Format(review.TechnicalHelp, "0.0")</b><strong class="tabular-nums font-semibold text-ink">@Analytics.Format(review.Average, "0.00")</strong>
                             </div>
                         }
@@ -138,7 +138,7 @@
             </div>
 
             <aside class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Work and evidence ledger</h2><small class="text-[11px] text-muted">Most recent month first</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Work and evidence ledger</h2><small class="text-2xs text-muted">Most recent month first</small></div>
                 <div class="flex flex-col gap-2.5">
                     @PortraitHours("Billable", Latest.BillableHours, Latest.EnteredHours)
                     @PortraitHours("Detailed", Latest.DetailedHours, Latest.EnteredHours)
@@ -153,7 +153,7 @@
                     {
                         <li class="py-1.5">
                             <strong class="flex items-center gap-2 text-sm font-semibold text-ink">@(new DateTime(month.Year, month.Month, 1).ToString("MMM yyyy")) <span class="@Analytics.BandTextClass(Analytics.ScoreBand(month.OperationalScore))">@Analytics.Format(month.OperationalScore)</span></strong>
-                            <small class="block text-[11px] text-muted">@Analytics.Format(month.Workload(), "0.0") h/day · @Analytics.Format(month.BillableHours, "0.0") billable h · @month.TimesheetFilledDays/@month.ExpectedTimesheetDays days filled</small>
+                            <small class="block text-2xs text-muted">@Analytics.Format(month.Workload(), "0.0") h/day · @Analytics.Format(month.BillableHours, "0.0") billable h · @month.TimesheetFilledDays/@month.ExpectedTimesheetDays days filled</small>
                         </li>
                     }
                 </ul>
@@ -245,10 +245,10 @@
             <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@Analytics.Format(value, "0.0") h</b></label>
             <span class="mt-1 block h-1.5 rounded-full bg-line"><i class="block h-full rounded-full bg-primary" style="@($"width:{CssPct(total <= 0 ? 0 : value * 100m / total)}")"></i></span>
         </div>;
-    private RenderFragment SourceFact(string label, string value) => @<span class="flex flex-col"><small class="text-[10px] text-muted">@label</small><b class="text-sm font-semibold text-ink">@value</b></span>;
+    private RenderFragment SourceFact(string label, string value) => @<span class="flex flex-col"><small class="text-3xs text-muted">@label</small><b class="text-sm font-semibold text-ink">@value</b></span>;
     private RenderFragment PeerAspect(string label, decimal value, decimal team) =>
         @<div>
-            <span class="flex items-baseline justify-between"><strong class="text-xs font-medium text-ink-soft">@label</strong><small class="text-[10px] text-muted">@Analytics.Format(value, "0.00") employee · @Analytics.Format(team, "0.00") team</small></span>
+            <span class="flex items-baseline justify-between"><strong class="text-xs font-medium text-ink-soft">@label</strong><small class="text-3xs text-muted">@Analytics.Format(value, "0.00") employee · @Analytics.Format(team, "0.00") team</small></span>
             <span class="relative mt-1 block h-1.5 rounded-full bg-line">
                 <i class="absolute top-1/2 h-2 w-0.5 -translate-y-1/2 bg-ink-soft" style="@($"left:{CssPct(team * 20m)}")"></i>
                 <i class="absolute inset-y-0 left-0 rounded-full bg-primary" style="@($"width:{CssPct(value * 20m)}")"></i>

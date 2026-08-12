@@ -13,7 +13,7 @@
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Operational weights</h2><small class="text-[11px] text-muted">Persisted locally</small></div>
+            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Operational weights</h2><small class="text-2xs text-muted">Persisted locally</small></div>
 
             <div class="flex flex-col divide-y divide-line">
                 @OperationalWeight("Timesheet completion", "Entered hours against compliance hours", () => _timesheet, v => _timesheet = v)
@@ -25,7 +25,7 @@
                 <div class="@($"flex flex-1 items-center gap-2 rounded-lg px-3 py-2 {(IsOperationalValid ? "bg-good-soft" : "bg-critical-soft")}")">
                     <span class="text-xs text-ink-soft">Total</span>
                     <strong class="@($"text-base font-bold {(IsOperationalValid ? "text-good" : "text-critical")}")">@Analytics.Format(OperationalTotal, "0.#")%</strong>
-                    <small class="text-[11px] text-ink-soft">@OperationalValidationText</small>
+                    <small class="text-2xs text-ink-soft">@OperationalValidationText</small>
                 </div>
                 <button class="btn btn-secondary" @onclick="ResetOperational" disabled="@State.Busy">Reset 55 / 15 / 30</button>
                 <button class="btn btn-primary" @onclick="SaveAndRecalculateAsync" disabled="@(State.Busy || !IsOperationalValid)">Save &amp; recalculate</button>
@@ -33,7 +33,7 @@
         </div>
 
         <div class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Current weighting</h2><small class="text-[11px] text-muted">Applied proportionally when a source is unavailable</small></div>
+            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Current weighting</h2><small class="text-2xs text-muted">Applied proportionally when a source is unavailable</small></div>
             <div class="flex h-3 overflow-hidden rounded-full bg-line" role="img" aria-label="@OperationalStackDescription">
                 @if (_timesheet > 0) { <i class="bg-chart-1" style="@($"flex:{Analytics.Svg((double)_timesheet)}")"></i> }
                 @if (_approval > 0) { <i class="bg-chart-2" style="@($"flex:{Analytics.Svg((double)_approval)}")"></i> }
@@ -63,7 +63,7 @@
                 <div class="flex items-center justify-between gap-3 py-2.5">
                     <span>
                         <strong class="block text-sm font-medium text-ink">@preset.Name</strong>
-                        <small class="text-[11px] text-muted">@Analytics.Format(preset.Settings.TimesheetCompletionWeight, "0.#")% timesheet · @Analytics.Format(preset.Settings.ApprovalCompletionWeight, "0.#")% approval · @Analytics.Format(preset.Settings.AttendanceDisciplineWeight, "0.#")% attendance</small>
+                        <small class="text-2xs text-muted">@Analytics.Format(preset.Settings.TimesheetCompletionWeight, "0.#")% timesheet · @Analytics.Format(preset.Settings.ApprovalCompletionWeight, "0.#")% approval · @Analytics.Format(preset.Settings.AttendanceDisciplineWeight, "0.#")% attendance</small>
                     </span>
                     <span class="flex gap-2">
                         <button class="btn btn-secondary" @onclick="() => ApplyPresetAsync(preset)" disabled="@State.Busy">Apply</button>
@@ -88,7 +88,7 @@
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Review category weights</h2><small class="text-[11px] text-muted">Preview only</small></div>
+            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Review category weights</h2><small class="text-2xs text-muted">Preview only</small></div>
             <div class="flex flex-col divide-y divide-line">
                 @Weight("Assignment execution", () => _execution, v => _execution = v)
                 @Weight("Ownership &amp; accountability", () => _ownership, v => _ownership = v)
@@ -102,14 +102,14 @@
 
         <div class="flex flex-col gap-4">
             <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Review-weight validation</h2><small class="text-[11px] text-muted">Must total 100%</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Review-weight validation</h2><small class="text-2xs text-muted">Must total 100%</small></div>
                 <div class="flex items-center gap-3">
                     <span class="@($"rounded-lg px-3 py-1.5 text-base font-bold {(IsReviewValid ? "bg-good-soft text-good" : "bg-critical-soft text-critical")}")">@Analytics.Format(ReviewTotal, "0.#")%</span>
                     <span class="@($"text-xs font-medium {(IsReviewValid ? "text-good" : "text-critical")}")">@(IsReviewValid ? "Valid preview" : ReviewTotal > 100 ? $"Over by {Analytics.Format(ReviewTotal - 100, "0.#")}" : $"Under by {Analytics.Format(100 - ReviewTotal, "0.#")}")</span>
                 </div>
             </div>
             <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Score bands</h2><small class="text-[11px] text-muted">Applied across the application</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Score bands</h2><small class="text-2xs text-muted">Applied across the application</small></div>
                 <ul class="flex flex-col gap-1.5">
                     @foreach (var (band, label, range) in Bands)
                     {
@@ -214,7 +214,7 @@
 
     private RenderFragment OperationalWeight(string label, string detail, Func<decimal> get, Action<decimal> set) =>
         @<label class="flex items-center justify-between gap-3 py-2.5">
-            <span class="flex-1"><strong class="block text-sm font-medium text-ink">@label</strong><small class="text-[11px] text-muted">@detail</small></span>
+            <span class="flex-1"><strong class="block text-sm font-medium text-ink">@label</strong><small class="text-2xs text-muted">@detail</small></span>
             <span class="flex items-center gap-1 rounded-lg border border-line bg-surface-inset px-2 py-1">
                 <input type="number" min="0" max="100" step="1" class="w-12 bg-transparent text-right text-sm text-ink outline-none" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b class="text-xs text-muted">%</b>
             </span>

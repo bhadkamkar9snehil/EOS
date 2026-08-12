@@ -13,14 +13,14 @@
             <p class="mt-1 text-sm text-ink-soft">Generated from the same evidence visible in EOS.</p>
         </div>
         <div class="flex gap-6">
-            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Reporting month</span><strong class="text-lg font-bold text-ink">@State.SelectedMonth.ToString("MMM yy")</strong></div>
-            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Engineers</span><strong class="text-lg font-bold text-ink">@State.Performance.Count</strong></div>
+            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Reporting month</span><strong class="text-lg font-bold text-ink">@State.SelectedMonth.ToString("MMM yy")</strong></div>
+            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Engineers</span><strong class="text-lg font-bold text-ink">@State.Performance.Count</strong></div>
         </div>
     </header>
 
     <section class="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <article class="card">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted">Team output</span>
+            <span class="text-3xs font-semibold uppercase tracking-wide text-muted">Team output</span>
             <div class="mt-1 text-4xl font-bold text-ink">@State.Performance.Count</div>
             <h2 class="mt-2 text-base font-bold text-ink">Complete team report</h2>
             <p class="mt-1 text-sm text-ink-soft">Team pulse, score distribution, ranked engineers, operational evidence, alerts and peer-review context in one workbook.</p>
@@ -30,11 +30,11 @@
                 <div class="flex justify-between py-2 text-xs"><dt class="text-ink-soft">Excluded people</dt><dd class="font-semibold text-ink">@State.ExcludedNames.Count</dd></div>
             </dl>
             <button class="btn btn-primary mt-4" @onclick="GenerateTeamAsync" disabled="@(State.Busy || State.Performance.Count == 0)">Generate team workbook</button>
-            @if (State.Performance.Count == 0) { <small class="mt-2 block text-[11px] text-muted">Import this month's ERP evidence before generating a report.</small> }
+            @if (State.Performance.Count == 0) { <small class="mt-2 block text-2xs text-muted">Import this month's ERP evidence before generating a report.</small> }
         </article>
 
         <article class="card">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted">Individual output</span>
+            <span class="text-3xs font-semibold uppercase tracking-wide text-muted">Individual output</span>
             <div class="mt-1 text-4xl font-bold text-ink">1</div>
             <h2 class="mt-2 text-base font-bold text-ink">Employee evidence report</h2>
             <p class="mt-1 text-sm text-ink-soft">Current score, operating components, loaded history, peer feedback and intervention evidence for one engineer.</p>

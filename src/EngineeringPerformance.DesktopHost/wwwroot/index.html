@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Engineering Performance</title>
     <base href="/" />
-    <link rel="stylesheet" href="_content/EngineeringPerformance.UI/tailwind.css?v=1" />
+    <!-- Synchronous and ordered before the stylesheet so the [data-theme] attribute (if the user
+         picked light/dark explicitly) is set before tailwind.css's dark palette rules are even
+         parsed, avoiding a flash of the wrong theme on launch. -->
+    <script>(function(){try{var m=localStorage.getItem('epa-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m;}catch(e){}})();</script>
+    <link rel="stylesheet" href="_content/EngineeringPerformance.UI/tailwind.css?v=2" />
     <!-- echarts.min.js (1.1MB) is lazy-loaded via echarts-loader.js only on chart-rendering routes.
          Confirmed atlas-charts.js's chart set only touches the `echarts` global lazily inside draw
          functions, never at parse time, so this still holds. -->
+    <script src="_content/EngineeringPerformance.UI/theme.js?v=1" defer></script>
     <script src="_content/EngineeringPerformance.UI/echarts-loader.js?v=1" defer></script>
     <script src="_content/EngineeringPerformance.UI/charts.js?v=6" defer></script>
     <script src="_content/EngineeringPerformance.UI/analytics-charts.js?v=4" defer></script>

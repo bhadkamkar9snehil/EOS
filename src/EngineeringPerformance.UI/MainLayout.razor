@@ -3,6 +3,7 @@
 @inherits LayoutComponentBase
 @inject AppState State
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>EOS — Engineering Performance</PageTitle>
@@ -13,23 +14,23 @@
             <strong class="flex items-center gap-2 text-lg font-bold text-primary">
                 <i aria-hidden="true" class="not-italic">✦</i><span>EOS</span>
             </strong>
-            <small class="text-[10px] font-semibold uppercase tracking-wider text-muted">Engineering performance analyzer</small>
+            <small class="text-3xs font-semibold uppercase tracking-wider text-muted">Engineering performance analyzer</small>
         </div>
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
-            <span class="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Analyze</span>
+            <span class="mb-1 mt-3 px-2 text-3xs font-semibold uppercase tracking-wider text-muted">Analyze</span>
             @NavButton("overview", "Overview", Icon.Overview)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
 
-            <span class="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Manage</span>
+            <span class="mb-1 mt-3 px-2 text-3xs font-semibold uppercase tracking-wider text-muted">Manage</span>
             @NavButton("imports", "Data Imports", Icon.Imports)
             @NavButton("data", "Imported Data", Icon.DataBrowser)
             @NavButton("employees", "Employees & Teams", Icon.Employees)
             @NavButton("templates", "Review Templates", Icon.Templates)
 
-            <span class="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Configure</span>
+            <span class="mb-1 mt-3 px-2 text-3xs font-semibold uppercase tracking-wider text-muted">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
             @NavButton("diagnostics", "Diagnostics", Icon.Settings)
             @NavButton("backup", "Backup & Restore", Icon.Settings)
@@ -38,7 +39,7 @@
             <button class="@NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
                 <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)Icon.Settings)</b><span>Settings</span>
             </button>
-            <small class="mt-2 block px-2 text-[10px] text-muted">Local analysis · SQLite</small>
+            <small class="mt-2 block px-2 text-3xs text-muted">Local analysis · SQLite</small>
         </div>
     </aside>
 
@@ -53,6 +54,14 @@
                     <strong class="font-semibold text-ink">@State.SelectedMonth.ToString("MMMM yyyy")</strong>
                     <button class="rounded px-1 text-ink-soft hover:bg-line-soft disabled:opacity-30" title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
                 </div>
+
+                <button type="button"
+                        class="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-surface-inset"
+                        title="@ThemeTooltip"
+                        aria-label="@ThemeTooltip"
+                        @onclick="CycleThemeAsync">
+                    @((MarkupString)ThemeIcon)
+                </button>
 
                 <div class="relative">
                     <button type="button"
@@ -119,7 +128,7 @@
         <main class="@($"route-{CurrentRoute} min-w-0 flex-1 overflow-y-auto p-6")">
             @Body
         </main>
-        <footer class="flex justify-between border-t border-line bg-surface px-6 py-2 text-[10px] text-muted">
+        <footer class="flex justify-between border-t border-line bg-surface px-6 py-2 text-3xs text-muted">
             <span>DATA FRESHNESS · refreshed @State.LastRefresh.ToString("h:mm tt")</span>
             <span>Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
             <span>v2.6.1</span>
@@ -139,16 +148,37 @@
         await State.RefreshAsync();
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
             Directory.CreateDirectory(p);
             File.WriteAllText(Path.Combine(p, "ui-ready.marker"), DateTime.UtcNow.ToString("O"));
+            await State.LoadThemeAsync(JS);
         }
-        return Task.CompletedTask;
     }
+
+    private Task CycleThemeAsync() => State.SetThemeAsync(JS, State.ThemeMode switch
+    {
+        "light" => "dark",
+        "dark" => "system",
+        _ => "light"
+    });
+
+    private string ThemeTooltip => State.ThemeMode switch
+    {
+        "light" => "Theme: Light — click for Dark",
+        "dark" => "Theme: Dark — click for System",
+        _ => "Theme: System — click for Light"
+    };
+
+    private string ThemeIcon => State.ThemeMode switch
+    {
+        "light" => Icon.Sun,
+        "dark" => Icon.Moon,
+        _ => Icon.System
+    };
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
@@ -320,5 +350,8 @@
         public static readonly string Reports = Svg($"<path d=\"M4.5 16V9.5M10 16V4M15.5 16v-6\" {Stroke}/>");
         public static readonly string Scoring = Svg($"<circle cx=\"10\" cy=\"10\" r=\"6.2\" {Stroke}/><circle cx=\"10\" cy=\"10\" r=\"2.6\" {Stroke}/>");
         public static readonly string Settings = Svg($"<circle cx=\"10\" cy=\"10\" r=\"2.6\" {Stroke}/><path d=\"M10 3.6v1.8M10 14.6v1.8M16.4 10h-1.8M5.4 10H3.6M14.6 5.4l-1.3 1.3M6.7 13.3l-1.3 1.3M14.6 14.6l-1.3-1.3M6.7 6.7 5.4 5.4\" {Stroke}/>");
+        public static readonly string Sun = Svg($"<circle cx=\"10\" cy=\"10\" r=\"3.3\" {Stroke}/><path d=\"M10 2.8v1.7M10 15.5v1.7M17.2 10h-1.7M4.5 10H2.8M15.1 4.9l-1.2 1.2M6.1 13.9l-1.2 1.2M15.1 15.1l-1.2-1.2M6.1 6.1l-1.2-1.2\" {Stroke}/>");
+        public static readonly string Moon = Svg($"<path d=\"M16.2 12.6A6.4 6.4 0 1 1 7.4 3.8a7.2 7.2 0 0 0 8.8 8.8Z\" {Stroke}/>");
+        public static readonly string System = Svg($"<rect x=\"3.4\" y=\"4.4\" width=\"13.2\" height=\"9.2\" rx=\"1.5\" {Stroke}/><path d=\"M7.3 16.4h5.4M10 13.6v2.8\" {Stroke}/>");
     }
 }

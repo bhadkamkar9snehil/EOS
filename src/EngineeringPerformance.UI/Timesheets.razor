@@ -21,41 +21,41 @@
                 <p class="mt-1 text-sm text-ink-soft">Exceptions are marked inline, at the row and field.</p>
             </div>
             <div class="flex gap-6">
-                <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Engineers</span><strong class="text-lg font-bold text-ink">@Rows.Count</strong></div>
-                <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Accountable days</span><strong class="text-lg font-bold text-ink">@Analytics.Format(TotalExpected, "0.#")</strong></div>
+                <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Engineers</span><strong class="text-lg font-bold text-ink">@Rows.Count</strong></div>
+                <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Accountable days</span><strong class="text-lg font-bold text-ink">@Analytics.Format(TotalExpected, "0.#")</strong></div>
             </div>
         </header>
 
         <section class="grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-3 lg:grid-cols-6" aria-label="Timesheet pulse">
             <div>
-                <label class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Team fill rate</label>
+                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Team fill rate</label>
                 <strong class="mt-1 block text-xl font-bold text-ink">@Analytics.Format(FillRate)%</strong>
-                <small class="text-[11px] text-muted">@TotalFilled of @TotalExpected accountable days filled</small>
+                <small class="text-2xs text-muted">@TotalFilled of @TotalExpected accountable days filled</small>
             </div>
             <div>
-                <label class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Missing days</label>
+                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Missing days</label>
                 <strong class="@($"mt-1 block text-xl font-bold {(_missingDays > 0 ? "text-serious" : "text-ink")}")">@Analytics.Format(_missingDays, "0.#")</strong>
-                <small class="text-[11px] text-muted">@_withGaps engineer(s) with gaps</small>
+                <small class="text-2xs text-muted">@_withGaps engineer(s) with gaps</small>
             </div>
             <div>
-                <label class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Awaiting approval</label>
+                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Awaiting approval</label>
                 <strong class="mt-1 block text-xl font-bold text-ink">@Analytics.Format(_pendingHours, "0") h</strong>
-                <small class="text-[11px] text-muted">@_awaitingApproval engineer(s)</small>
+                <small class="text-2xs text-muted">@_awaitingApproval engineer(s)</small>
             </div>
             <div>
-                <label class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Billable capacity used</label>
+                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Billable capacity used</label>
                 <strong class="mt-1 block text-xl font-bold text-ink">@Analytics.Format(CapacityUsed)%</strong>
-                <small class="text-[11px] text-muted">Across billable engineers</small>
+                <small class="text-2xs text-muted">Across billable engineers</small>
             </div>
             <div>
-                <label class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Probation context</label>
+                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Probation context</label>
                 <strong class="mt-1 block text-xl font-bold text-ink">@Probationers</strong>
-                <small class="text-[11px] text-muted">Freshers on probation in ERP roster</small>
+                <small class="text-2xs text-muted">Freshers on probation in ERP roster</small>
             </div>
             <div>
-                <label class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Avg filing delay</label>
+                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Avg filing delay</label>
                 <strong class="@($"mt-1 block text-xl font-bold {(AvgFilingDelay > 1 ? "text-serious" : "text-ink")}")">@Analytics.Format(AvgFilingDelay, "0.0") d</strong>
-                <small class="text-[11px] text-muted">@FilingDays day(s) filed this month</small>
+                <small class="text-2xs text-muted">@FilingDays day(s) filed this month</small>
             </div>
         </section>
 
@@ -63,7 +63,7 @@
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <span class="text-sm font-bold text-ink">Compliance ledger</span>
-                    <span class="ml-2 text-[11px] text-muted">@FilteredRows.Count of @Rows.Count engineers · click any sortable header to rank</span>
+                    <span class="ml-2 text-2xs text-muted">@FilteredRows.Count of @Rows.Count engineers · click any sortable header to rank</span>
                 </div>
                 <input class="w-64 rounded-lg border border-line bg-surface-inset px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted focus:border-primary" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or team…" aria-label="Filter engineer or team" />
             </div>
@@ -71,20 +71,20 @@
             <div class="overflow-x-auto">
                 <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid" RowClass="@RowSeverityClass">
                     <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
-                        <span class="flex flex-col"><strong class="font-medium text-ink">@context.Name</strong>@if (!string.IsNullOrWhiteSpace(context.TeamName)){<small class="text-[11px] text-muted">@context.TeamName</small>}</span>
+                        <span class="flex flex-col"><strong class="font-medium text-ink">@context.Name</strong>@if (!string.IsNullOrWhiteSpace(context.TeamName)){<small class="text-2xs text-muted">@context.TeamName</small>}</span>
                     </TemplateColumn>
                     <TemplateColumn Title="Status">
                         @if (context.IsConsultant || context.IsOnProbation || context.IsNonBillable)
                         {
                             <span class="flex flex-wrap gap-1">
-                                @if (context.IsConsultant) { <span class="rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-semibold text-info">Consultant</span> }
-                                @if (context.IsOnProbation) { <span class="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-semibold text-warning">Probation</span> }
-                                @if (context.IsNonBillable) { <span class="rounded-full bg-surface-inset px-2 py-0.5 text-[10px] font-semibold text-muted">Non-billable</span> }
+                                @if (context.IsConsultant) { <span class="rounded-full bg-info-soft px-2 py-0.5 text-3xs font-semibold text-info">Consultant</span> }
+                                @if (context.IsOnProbation) { <span class="rounded-full bg-warning-soft px-2 py-0.5 text-3xs font-semibold text-warning">Probation</span> }
+                                @if (context.IsNonBillable) { <span class="rounded-full bg-surface-inset px-2 py-0.5 text-3xs font-semibold text-muted">Non-billable</span> }
                             </span>
                         }
                         else
                         {
-                            <span class="text-[11px] text-muted">Standard</span>
+                            <span class="text-2xs text-muted">Standard</span>
                         }
                     </TemplateColumn>
                     <TemplateColumn Title="Filled days" Align="Align.Right" Sortable="true" SortBy="@_sortByFilled">
@@ -127,15 +127,15 @@
         {
             <section class="rounded-xl border border-line bg-surface p-4" aria-label="Timesheet filing delay">
                 <div class="panel-head">
-                    <div><h2 class="text-sm font-bold text-ink">Timesheet filing</h2><small class="text-[11px] text-muted">How late each entry was filed after its work date, worst first</small></div>
-                    <span class="ml-auto text-[11px] text-muted">@FilingRows.Count of @Rows.Count engineers with filed entries</span>
+                    <div><h2 class="text-sm font-bold text-ink">Timesheet filing</h2><small class="text-2xs text-muted">How late each entry was filed after its work date, worst first</small></div>
+                    <span class="ml-auto text-2xs text-muted">@FilingRows.Count of @Rows.Count engineers with filed entries</span>
                 </div>
                 <ul class="flex flex-col divide-y divide-line">
                     @foreach (var row in FilingRows.Take(15))
                     {
                         <li class="py-1.5">
                             <strong class="@($"text-sm font-semibold {(row.AverageDelayDays > 1 ? "text-serious" : "text-ink")}")">@row.EmployeeName — @Analytics.Format(row.AverageDelayDays, "0.0") day(s) avg delay</strong>
-                            <small class="block text-[11px] text-muted">Worst @Analytics.Format(row.MaxDelayDays, "0.#") day(s) late, for @row.WorstDay.ToString("dd MMM") · @row.FiledDays entr@(row.FiledDays == 1 ? "y" : "ies") filed</small>
+                            <small class="block text-2xs text-muted">Worst @Analytics.Format(row.MaxDelayDays, "0.#") day(s) late, for @row.WorstDay.ToString("dd MMM") · @row.FiledDays entr@(row.FiledDays == 1 ? "y" : "ies") filed</small>
                         </li>
                     }
                 </ul>

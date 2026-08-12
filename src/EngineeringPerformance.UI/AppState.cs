@@ -2,6 +2,7 @@ using EngineeringPerformance.Application;
 using EngineeringPerformance.Domain;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.JSInterop;
 
 namespace EngineeringPerformance.UI;
 
@@ -44,6 +45,24 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
     public bool Busy { get; private set; }
 
     public string? SpotlightName { get; set; }
+
+    /// <summary>"light", "dark", or "system" — mirrors the [data-theme] attribute wwwroot/theme.js
+    /// manages, kept here purely so every component showing the current choice (header toggle,
+    /// Settings picker) re-renders together via <see cref="Changed"/>.</summary>
+    public string ThemeMode { get; private set; } = "system";
+
+    public async Task SetThemeAsync(IJSRuntime js, string mode)
+    {
+        await js.InvokeVoidAsync("epaTheme.set", mode);
+        ThemeMode = mode;
+        Changed?.Invoke();
+    }
+
+    public async Task LoadThemeAsync(IJSRuntime js)
+    {
+        ThemeMode = await js.InvokeAsync<string>("epaTheme.get");
+        Changed?.Invoke();
+    }
 
     public int ReadyCount => Snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded) ?? 0;
     public int SystemReadyCount => Snapshot?.SourceSlots.Count(x => x.Status == SourceStatus.Uploaded && x.ReportType != ReportType.EngineerReviewWorkbook) ?? 0;

@@ -15,8 +15,8 @@
             <p class="mt-1 text-sm text-ink-soft">Source evidence for @State.SelectedMonth.ToString("MMMM yyyy").</p>
         </div>
         <div class="flex items-center gap-4">
-            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">ERP inputs</span><strong class="text-lg font-bold text-ink">@State.SystemReadyCount / 3</strong></div>
-            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Review input</span><strong class="text-lg font-bold text-ink">@(ReviewReviewerCount == 0 ? "Open" : $"{ReviewReviewerCount} reviewer{(ReviewReviewerCount == 1 ? "" : "s")}")</strong></div>
+            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">ERP inputs</span><strong class="text-lg font-bold text-ink">@State.SystemReadyCount / 3</strong></div>
+            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Review input</span><strong class="text-lg font-bold text-ink">@(ReviewReviewerCount == 0 ? "Open" : $"{ReviewReviewerCount} reviewer{(ReviewReviewerCount == 1 ? "" : "s")}")</strong></div>
             <button class="btn btn-primary" @onclick="UploadZipAsync" disabled="@State.Busy">Import package</button>
         </div>
     </header>
@@ -34,9 +34,9 @@
             <section class="card">
                 <header class="flex flex-wrap items-start justify-between gap-3">
                     <div class="flex items-start gap-3">
-                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-[11px] font-bold text-primary">REV</span>
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-2xs font-bold text-primary">REV</span>
                         <div>
-                            <span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Peer review intake · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+                            <span class="block text-3xs font-semibold uppercase tracking-wide text-muted">Peer review intake · @State.SelectedMonth.ToString("MMMM yyyy")</span>
                             <h2 class="text-sm font-bold text-ink">Add returned employee reviews</h2>
                             <p class="mt-1 max-w-md text-xs text-ink-soft">Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
                         </div>
@@ -48,10 +48,10 @@
                 </header>
 
                 <div class="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-surface-inset p-3 sm:grid-cols-4" aria-label="Loaded review evidence">
-                    <div><span class="block text-[10px] text-muted">Reviewers loaded</span><strong class="text-base font-bold text-ink">@ReviewReviewerCount</strong></div>
-                    <div><span class="block text-[10px] text-muted">Feedback entries</span><strong class="text-base font-bold text-ink">@State.PeerReviews.Count</strong></div>
-                    <div><span class="block text-[10px] text-muted">People reviewed</span><strong class="text-base font-bold text-ink">@ReviewSubjectCount</strong></div>
-                    <div><span class="block text-[10px] text-muted">Last review upload</span><strong class="text-sm font-bold text-ink">@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</strong></div>
+                    <div><span class="block text-3xs text-muted">Reviewers loaded</span><strong class="text-base font-bold text-ink">@ReviewReviewerCount</strong></div>
+                    <div><span class="block text-3xs text-muted">Feedback entries</span><strong class="text-base font-bold text-ink">@State.PeerReviews.Count</strong></div>
+                    <div><span class="block text-3xs text-muted">People reviewed</span><strong class="text-base font-bold text-ink">@ReviewSubjectCount</strong></div>
+                    <div><span class="block text-3xs text-muted">Last review upload</span><strong class="text-sm font-bold text-ink">@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</strong></div>
                 </div>
 
                 @if (_confirmReplaceReviews)
@@ -89,12 +89,12 @@
             </section>
 
             <div class="panel-head">
-                <div><h2 class="text-sm font-bold text-ink">Source register</h2><small class="text-[11px] text-muted">Expected export → detected workbook → accepted reporting period</small></div>
-                <span class="ml-auto text-[11px] text-muted">Replace an input to recalculate the month from the new evidence.</span>
+                <div><h2 class="text-sm font-bold text-ink">Source register</h2><small class="text-2xs text-muted">Expected export → detected workbook → accepted reporting period</small></div>
+                <span class="ml-auto text-2xs text-muted">Replace an input to recalculate the month from the new evidence.</span>
             </div>
 
             <div class="overflow-x-auto rounded-xl border border-line bg-surface">
-                <div class="grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-on-dark">
+                <div class="grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-dark">
                     <span>Source</span><span>Expected export</span><span>Loaded evidence</span><span>Period</span><span>Imported</span><span>State</span><span>Action</span>
                 </div>
                 @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
@@ -102,10 +102,10 @@
                     var ready = slot.Status == SourceStatus.Uploaded;
                     <div class="@($"grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] items-center gap-2 border-b border-line px-3 py-2.5 text-xs {(ready ? "" : "bg-surface-inset/40")}")">
                         <div class="flex items-center gap-2">
-                            <i class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-inset text-[10px] font-bold not-italic text-ink-soft">@Initial(slot.ReportType)</i>
-                            <span class="flex flex-col"><strong class="font-medium text-ink">@Label(slot.ReportType)</strong><small class="text-[11px] text-muted">@Description(slot.ReportType)</small></span>
+                            <i class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-inset text-3xs font-bold not-italic text-ink-soft">@Initial(slot.ReportType)</i>
+                            <span class="flex flex-col"><strong class="font-medium text-ink">@Label(slot.ReportType)</strong><small class="text-2xs text-muted">@Description(slot.ReportType)</small></span>
                         </div>
-                        <div><span class="flex flex-col"><code class="truncate text-[11px] text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small class="text-[10px] text-muted" title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span></div>
+                        <div><span class="flex flex-col"><code class="truncate text-2xs text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small class="text-3xs text-muted" title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span></div>
                         <div><span class="truncate text-ink-soft" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
                         <div><span class="text-ink-soft">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
                         <div><span class="text-ink-soft">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
@@ -113,11 +113,11 @@
                         <div>
                             @if (slot.ReportType == ReportType.EngineerReviewWorkbook)
                             {
-                                <button class="btn btn-secondary !px-2.5 !py-1 !text-[11px]" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
+                                <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
                             }
                             else
                             {
-                                <button class="btn btn-secondary !px-2.5 !py-1 !text-[11px]" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
+                                <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
                             }
                         </div>
                     </div>
@@ -134,7 +134,7 @@
         </section>
 
         <aside class="card h-fit">
-            <div class="panel-head"><div><h2 class="text-sm font-bold text-ink">Pipeline status</h2><small class="text-[11px] text-muted">Evidence checks for this month</small></div></div>
+            <div class="panel-head"><div><h2 class="text-sm font-bold text-ink">Pipeline status</h2><small class="text-2xs text-muted">Evidence checks for this month</small></div></div>
             <div class="flex flex-col gap-2">
                 @ValidationSignal("Local database", "SQLite available", true, "DB")
                 @ValidationSignal("Roster", State.Employees.Count == 0 ? "No employees configured" : $"{State.Employees.Count} employees", State.Employees.Count > 0, "ID")
@@ -146,7 +146,7 @@
             @if (State.Performance.Count > 0)
             {
                 <div class="mt-4 rounded-lg bg-surface-inset p-3">
-                    <span class="text-[10px] font-semibold uppercase tracking-wide text-muted">Next</span>
+                    <span class="text-3xs font-semibold uppercase tracking-wide text-muted">Next</span>
                     <strong class="mt-1 block text-sm font-semibold text-ink">Performance Atlas is ready</strong>
                     <button class="btn btn-secondary mt-2 w-full" @onclick='() => Navigation.NavigateTo("/overview")'>Open team performance →</button>
                 </div>
@@ -177,14 +177,14 @@
 
     private RenderFragment PipelineNode(int number, string label, bool ready, string detail) =>
         @<div class="@($"flex items-center gap-2 rounded-lg px-3 py-2 {(ready ? "bg-good-soft" : "bg-surface-inset")}")">
-            <i class="@($"flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold not-italic {(ready ? "bg-good text-white" : "bg-line text-ink-soft")}")">@(ready ? "✓" : number.ToString())</i>
-            <span class="flex flex-col leading-tight"><strong class="text-xs font-semibold text-ink">@label</strong><small class="text-[10px] text-muted">@detail</small></span>
+            <i class="@($"flex h-6 w-6 items-center justify-center rounded-full text-2xs font-bold not-italic {(ready ? "bg-good text-white" : "bg-line text-ink-soft")}")">@(ready ? "✓" : number.ToString())</i>
+            <span class="flex flex-col leading-tight"><strong class="text-xs font-semibold text-ink">@label</strong><small class="text-3xs text-muted">@detail</small></span>
         </div>;
 
     private RenderFragment ValidationSignal(string title, string detail, bool good, string badge, bool optional = false) =>
         @<div class="flex items-center gap-2 rounded-lg bg-surface-inset p-2">
             <i class="@($"flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[9px] font-bold not-italic {(good ? "bg-good-soft text-good" : optional ? "bg-warning-soft text-warning" : "bg-critical-soft text-critical")}")">@badge</i>
-            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-xs font-semibold text-ink">@title</strong><small class="truncate text-[10px] text-muted">@detail</small></span>
+            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-xs font-semibold text-ink">@title</strong><small class="truncate text-3xs text-muted">@detail</small></span>
             <b class="@(good ? "text-good" : optional ? "text-warning" : "text-critical")">@(good ? "●" : optional ? "○" : "!")</b>
         </div>;
 

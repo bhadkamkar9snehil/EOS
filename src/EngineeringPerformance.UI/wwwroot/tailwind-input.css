@@ -3,6 +3,13 @@
 @source "../**/*.cs";
 
 /*
+  Attribute-based dark variant (instead of Tailwind's default media-query-only `dark:`), so a user
+  choice ([data-theme="dark"] set by wwwroot/theme.js) can override the OS preference. "system" mode
+  (no attribute) still falls through to the prefers-color-scheme block further down.
+*/
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
   Single source of truth for every color/spacing token EOS uses. Tailwind's
   @theme block compiles each entry to a real CSS custom property (--color-canvas,
   etc.) AND generates matching utilities (bg-canvas, text-ink, border-line, ...)
@@ -84,6 +91,125 @@
   --color-heat-5: #1c3f70;
 
   --font-sans: "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /*
+    Caption/meta scale below Tailwind's built-in text-xs (0.75rem). EOS is a data-dense dashboard
+    with lots of small labels/captions; these were previously typed as text-[10px]/text-[11px]
+    arbitrary values well over 100 times across the UI. Promoting them to real theme tokens makes
+    them reusable, themeable utilities (text-2xs, text-3xs) instead of untracked magic numbers.
+  */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-3xs: 0.625rem;
+  --text-3xs--line-height: 0.75rem;
+}
+
+/*
+  Dark palette: redefines the same --color-* custom properties @theme emitted above, so every
+  bg-canvas/text-ink/... utility and every chart's getComputedStyle read repaints automatically —
+  no separate dark palette to keep in sync, no dark: variant needed on individual elements.
+
+  Two activation paths, matching the "system" default the theme switcher (wwwroot/theme.js) offers:
+   1. OS preference, only when the user hasn't made an explicit in-app choice ([data-theme] unset).
+   2. Explicit [data-theme="dark"], which always wins regardless of OS preference.
+*/
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-canvas: #17140f;
+    --color-surface: #201c17;
+    --color-surface-inset: #2a251e;
+    --color-surface-dark: #11151c;
+
+    --color-ink: #f2ede2;
+    --color-ink-soft: #c9c0b0;
+    --color-muted: #93897a;
+    --color-on-dark: #f4f1ea;
+    --color-on-dark-soft: #b9bdc6;
+
+    --color-line: #3a342a;
+    --color-line-soft: #2c2720;
+
+    --color-primary: #f26a12;
+    --color-primary-soft: #4a2a10;
+    --color-vermilion: #ff5b45;
+    --color-petrol: #2ba0c9;
+
+    --color-good: #3ecb74;
+    --color-good-soft: #123322;
+    --color-warning: #e0ac2e;
+    --color-warning-soft: #3a2d0d;
+    --color-serious: #f2954a;
+    --color-serious-soft: #3a2311;
+    --color-critical: #e5493e;
+    --color-critical-soft: #3a1712;
+
+    --color-info: #5c8fd6;
+    --color-info-soft: #152a44;
+    --color-missing: #6b6455;
+
+    --color-chart-1: #ff8a3d;
+    --color-chart-2: #5c8fd6;
+    --color-chart-3: #2ba0c9;
+    --color-chart-4: #ff5b4d;
+    --color-chart-5: #e0ac2e;
+    --color-chart-6: #a48ce0;
+    --color-chart-7: #6fbf7f;
+    --color-chart-8: #d189b8;
+
+    --color-heat-1: #1c2a40;
+    --color-heat-2: #2c4568;
+    --color-heat-3: #3f68a0;
+    --color-heat-4: #5c8fd6;
+    --color-heat-5: #a8c8f0;
+  }
+}
+:root[data-theme="dark"] {
+  --color-canvas: #17140f;
+  --color-surface: #201c17;
+  --color-surface-inset: #2a251e;
+  --color-surface-dark: #11151c;
+
+  --color-ink: #f2ede2;
+  --color-ink-soft: #c9c0b0;
+  --color-muted: #93897a;
+  --color-on-dark: #f4f1ea;
+  --color-on-dark-soft: #b9bdc6;
+
+  --color-line: #3a342a;
+  --color-line-soft: #2c2720;
+
+  --color-primary: #f26a12;
+  --color-primary-soft: #4a2a10;
+  --color-vermilion: #ff5b45;
+  --color-petrol: #2ba0c9;
+
+  --color-good: #3ecb74;
+  --color-good-soft: #123322;
+  --color-warning: #e0ac2e;
+  --color-warning-soft: #3a2d0d;
+  --color-serious: #f2954a;
+  --color-serious-soft: #3a2311;
+  --color-critical: #e5493e;
+  --color-critical-soft: #3a1712;
+
+  --color-info: #5c8fd6;
+  --color-info-soft: #152a44;
+  --color-missing: #6b6455;
+
+  --color-chart-1: #ff8a3d;
+  --color-chart-2: #5c8fd6;
+  --color-chart-3: #2ba0c9;
+  --color-chart-4: #ff5b4d;
+  --color-chart-5: #e0ac2e;
+  --color-chart-6: #a48ce0;
+  --color-chart-7: #6fbf7f;
+  --color-chart-8: #d189b8;
+
+  --color-heat-1: #1c2a40;
+  --color-heat-2: #2c4568;
+  --color-heat-3: #3f68a0;
+  --color-heat-4: #5c8fd6;
+  --color-heat-5: #a8c8f0;
 }
 
 /*

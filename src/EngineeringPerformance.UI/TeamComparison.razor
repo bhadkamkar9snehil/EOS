@@ -22,7 +22,7 @@
     else
     {
         <div class="overflow-x-auto rounded-xl border border-line bg-surface">
-            <div class="grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-on-dark">
+            <div class="grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-dark">
                 <span>Team</span><span>People</span><span>Avg. operational score</span><span>Avg. timesheet completion</span><span>Avg. approval completion</span><span>Avg. attendance discipline</span><span>Timesheet fill rate</span><span>Open alerts</span>
             </div>
             @foreach (var card in Scorecards)
@@ -41,7 +41,7 @@
         </div>
         @if (UnassignedCount > 0)
         {
-            <p class="text-[11px] text-muted">@UnassignedCount employee(s) have no team assigned and are not included in the scorecards above.</p>
+            <p class="text-2xs text-muted">@UnassignedCount employee(s) have no team assigned and are not included in the scorecards above.</p>
         }
     }
 </section>

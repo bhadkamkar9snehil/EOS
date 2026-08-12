@@ -33,7 +33,7 @@
             </button>
             @if (!string.IsNullOrEmpty(_bundlePath))
             {
-                <p class="mt-2 text-xs text-ink-soft">Bundle saved to: <code class="text-[11px]">@_bundlePath</code></p>
+                <p class="mt-2 text-xs text-ink-soft">Bundle saved to: <code class="text-2xs">@_bundlePath</code></p>
             }
         </section>
     </div>
@@ -43,7 +43,7 @@
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">▤</span>
             <div><h3 class="text-sm font-bold text-ink">Today's log (last @MaxTailLines lines)</h3><p class="text-xs text-ink-soft">@_todayLogPath</p></div>
         </div>
-        <pre class="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-inset p-3 text-[11px] text-ink-soft">@_logTail</pre>
+        <pre class="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-inset p-3 text-2xs text-ink-soft">@_logTail</pre>
         <button type="button" class="btn btn-secondary mt-3" @onclick="RefreshTailAsync">Refresh</button>
     </div>
 </section>

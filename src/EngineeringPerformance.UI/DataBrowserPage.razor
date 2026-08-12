@@ -12,15 +12,15 @@
             <h2 class="text-xl font-bold text-ink">Evidence worksheet</h2>
             <p class="mt-1 text-sm text-ink-soft">Source and calculated fields for @State.SelectedMonth.ToString("MMMM yyyy"), kept visually separate.</p>
         </div>
-        <span class="text-[11px] text-muted">@FilteredRows.Count engineer rows · horizontal worksheet</span>
+        <span class="text-2xs text-muted">@FilteredRows.Count engineer rows · horizontal worksheet</span>
     </div>
 
     <div class="flex items-center gap-2 border-b border-line">
         <button class="@($"border-b-2 px-3 py-2 text-sm font-medium {(_tab == Tab.Rows ? "border-primary text-primary" : "border-transparent text-ink-soft hover:text-ink")}")" @onclick="() => _tab = Tab.Rows">
-            Evidence rows <span class="ml-1 rounded-full bg-surface-inset px-1.5 py-0.5 text-[10px] text-ink-soft">@FilteredRows.Count</span>
+            Evidence rows <span class="ml-1 rounded-full bg-surface-inset px-1.5 py-0.5 text-3xs text-ink-soft">@FilteredRows.Count</span>
         </button>
         <button class="@($"border-b-2 px-3 py-2 text-sm font-medium {(_tab == Tab.History ? "border-primary text-primary" : "border-transparent text-ink-soft hover:text-ink")}")" @onclick="() => _tab = Tab.History">
-            Import ledger <span class="ml-1 rounded-full bg-surface-inset px-1.5 py-0.5 text-[10px] text-ink-soft">@_history.Count</span>
+            Import ledger <span class="ml-1 rounded-full bg-surface-inset px-1.5 py-0.5 text-3xs text-ink-soft">@_history.Count</span>
         </button>
         <label class="ml-auto flex items-center gap-1.5 pb-2 text-xs text-ink-soft">
             <input type="checkbox" @bind="_allMonths" @bind:after="ReloadHistoryAsync" />
@@ -32,7 +32,7 @@
     {
         <div class="flex items-center justify-between gap-4">
             <input class="w-64 rounded-lg border border-line bg-surface-inset px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted focus:border-primary" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or code…" />
-            <span class="text-[11px] text-muted">Calculated groups are marked separately; source gaps remain em dashes rather than zeros.</span>
+            <span class="text-2xs text-muted">Calculated groups are marked separately; source gaps remain em dashes rather than zeros.</span>
         </div>
         @if (FilteredRows.Count == 0)
         {

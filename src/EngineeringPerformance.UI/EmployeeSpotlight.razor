@@ -7,7 +7,7 @@
     <aside class="flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-surface shadow-2xl" @onclick:stopPropagation="true">
         <header class="flex items-center gap-3 border-b border-line p-4">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">@Initials(Name)</span>
-            <div class="min-w-0 flex-1"><h2 class="truncate text-base font-bold text-ink">@Name</h2><small class="text-[11px] text-muted">@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small></div>
+            <div class="min-w-0 flex-1"><h2 class="truncate text-base font-bold text-ink">@Name</h2><small class="text-2xs text-muted">@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small></div>
             @if (OnOpenProfile.HasDelegate) { <button class="whitespace-nowrap text-xs font-semibold text-primary hover:underline" @onclick="() => OnOpenProfile.InvokeAsync(Name)">Full history →</button> }
             <button class="text-xl text-muted hover:text-ink" @onclick="Close" title="Close">×</button>
         </header>
@@ -29,20 +29,20 @@
 
                 <div class="flex flex-col gap-4">
                     <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Hours allocation</h3><small class="text-[11px] text-muted">Current month</small></div>
+                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Hours allocation</h3><small class="text-2xs text-muted">Current month</small></div>
                         <div id="spotlight-hours" class="h-[200px]"></div>
                     </section>
                     <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Attendance and reconciliation</h3><small class="text-[11px] text-muted">Current month</small></div>
+                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Attendance and reconciliation</h3><small class="text-2xs text-muted">Current month</small></div>
                         <div id="spotlight-attendance" class="h-[160px]"></div>
                     </section>
                     @if (TrendValues.Count >= 2)
                     {
-                        <section class="card"><div class="panel-head"><h3 class="text-sm font-bold text-ink">Score trend</h3><small class="text-[11px] text-muted">@TrendValues.Count months</small></div><div id="spotlight-trend" class="h-[200px]"></div></section>
+                        <section class="card"><div class="panel-head"><h3 class="text-sm font-bold text-ink">Score trend</h3><small class="text-2xs text-muted">@TrendValues.Count months</small></div><div id="spotlight-trend" class="h-[200px]"></div></section>
                     }
 
                     <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Current numerical detail</h3><small class="text-[11px] text-muted">Imported and calculated</small></div>
+                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Current numerical detail</h3><small class="text-2xs text-muted">Imported and calculated</small></div>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Capacity</h4><div class="mt-1 flex flex-col gap-1">@Row("Compliance", Item.ComplianceHours, Item.HasSummaryData, "h")@Row("Entered", Item.EnteredHours, true, "h")@Row("Approved", Item.ApprovedHours, true, "h")@Row("Office", Item.OfficeHours, true, "h")</div></div>
                             <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Allocation</h4><div class="mt-1 flex flex-col gap-1">@Row("Billable", Item.BillableHours, true, "h")@Row("Non-billable", Item.NonBillableHours, true, "h")@Row("Training", Item.TrainingHours, true, "h")@Row("Detailed", Item.DetailedHours, true, "h")</div></div>
@@ -54,26 +54,26 @@
                     </section>
 
                     <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Category performance</h3><small class="text-[11px] text-muted">Against team average</small></div>
+                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Category performance</h3><small class="text-2xs text-muted">Against team average</small></div>
                         <div id="spotlight-radar" class="h-[240px]"></div>
                     </section>
 
                     <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Peer feedback</h3><small class="text-[11px] text-muted">@Peer.ReceivedCount received · @Peer.GivenCount given</small></div>
+                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Peer feedback</h3><small class="text-2xs text-muted">@Peer.ReceivedCount received · @Peer.GivenCount given</small></div>
                         @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
                         { <p class="text-sm text-muted">No peer feedback involving @Name this month.</p> }
                         else
                         {
                             <div class="grid grid-cols-3 gap-2">
-                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@Peer.ReceivedCount</strong><span class="text-[10px] text-muted">Received</span></div>
-                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@Peer.GivenCount</strong><span class="text-[10px] text-muted">Given</span></div>
-                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span class="text-[10px] text-muted">Average</span></div>
+                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@Peer.ReceivedCount</strong><span class="text-3xs text-muted">Received</span></div>
+                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@Peer.GivenCount</strong><span class="text-3xs text-muted">Given</span></div>
+                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span class="text-3xs text-muted">Average</span></div>
                             </div>
                         }
                     </section>
 
                     <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Alerts</h3><small class="text-[11px] text-muted">@Alerts.Count</small></div>
+                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Alerts</h3><small class="text-2xs text-muted">@Alerts.Count</small></div>
                         @if (Alerts.Count == 0) { <p class="text-sm text-muted">No rule fired against @Name this month.</p> }
                         else
                         {
@@ -81,8 +81,8 @@
                                 @foreach (var alert in Alerts)
                                 {
                                     <div class="flex items-start gap-2 rounded-lg bg-surface-inset p-2.5">
-                                        <span class="@($"rounded-full px-2 py-0.5 text-[10px] font-semibold {LevelBg(alert.Level)}")">@LevelIcon(alert.Level) @Level(alert.Level)</span>
-                                        <span class="flex flex-col"><strong class="text-sm font-medium text-ink">@alert.Headline</strong><small class="text-[11px] text-muted">@alert.Detail</small></span>
+                                        <span class="@($"rounded-full px-2 py-0.5 text-3xs font-semibold {LevelBg(alert.Level)}")">@LevelIcon(alert.Level) @Level(alert.Level)</span>
+                                        <span class="flex flex-col"><strong class="text-sm font-medium text-ink">@alert.Headline</strong><small class="text-2xs text-muted">@alert.Detail</small></span>
                                     </div>
                                 }
                             </div>
@@ -141,7 +141,7 @@
     }
 
     private RenderFragment Kpi(string label, decimal value, bool available = true) =>
-        @<div class="rounded-lg bg-surface-inset p-2 text-center"><span class="block text-[10px] text-muted">@label</span><strong class="text-base font-bold text-ink">@(available ? Analytics.Format(value) : "—")</strong></div>;
+        @<div class="rounded-lg bg-surface-inset p-2 text-center"><span class="block text-3xs text-muted">@label</span><strong class="text-base font-bold text-ink">@(available ? Analytics.Format(value) : "—")</strong></div>;
     private RenderFragment Row(string label, decimal value, bool available = true, string suffix = "", bool signed = false) =>
         @<p class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></p>;
 

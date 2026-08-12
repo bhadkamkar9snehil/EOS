@@ -9,7 +9,7 @@
     <header class="panel-head">
         <div>
             <h2 class="text-sm font-bold text-ink">Peer rating network</h2>
-            <small class="text-[11px] text-muted">Arrow: reviewer → colleague · line strength: selected rating</small>
+            <small class="text-2xs text-muted">Arrow: reviewer → colleague · line strength: selected rating</small>
         </div>
         @if (ShowAtlasButton)
         {
@@ -24,7 +24,7 @@
                 <button type="button" class="@($"rounded-md px-2.5 py-1 text-xs font-medium {(_aspect == aspect.Key ? "bg-surface text-primary shadow-sm" : "text-ink-soft hover:text-ink")}")" aria-pressed="@(_aspect == aspect.Key)" @onclick="() => SelectAspect(aspect.Key)">@aspect.Label</button>
             }
         </div>
-        <div class="flex gap-3 text-[11px] text-muted"><span>As of @DateTime.Today.ToString("yyyy-MM-dd")</span><span>Reporting period: <b class="text-ink-soft">@SelectedMonth.ToString("MMMM yyyy")</b></span></div>
+        <div class="flex gap-3 text-2xs text-muted"><span>As of @DateTime.Today.ToString("yyyy-MM-dd")</span><span>Reporting period: <b class="text-ink-soft">@SelectedMonth.ToString("MMMM yyyy")</b></span></div>
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -35,7 +35,7 @@
                 <div class="absolute left-0 top-10 z-20 w-56 rounded-lg border border-line bg-surface p-1 shadow-lg">
                     @foreach (var person in SearchResults)
                     {
-                        <button type="button" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-inset" @onclick="() => FocusPerson(person)"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-inset text-[10px] font-semibold text-ink-soft">@Analytics.Initials(person)</span><b class="font-medium text-ink">@person</b></button>
+                        <button type="button" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-inset" @onclick="() => FocusPerson(person)"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-inset text-3xs font-semibold text-ink-soft">@Analytics.Initials(person)</span><b class="font-medium text-ink">@person</b></button>
                     }
                 </div>
             }
@@ -65,7 +65,7 @@
 
         <div class="relative z-10">
             <h3 class="text-xs font-semibold text-ink-soft">People who rated @_focusFirstName <span class="font-normal text-muted">(Inbound)</span></h3>
-            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem] gap-1 border-b border-line pb-1 text-[10px] font-semibold text-muted"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span></div>
+            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem] gap-1 border-b border-line pb-1 text-3xs font-semibold text-muted"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span></div>
             <div class="mt-1 flex flex-col divide-y divide-line">
                 @if (Inbound.Count == 0)
                 {
@@ -86,7 +86,7 @@
 
         <div class="relative z-10">
             <h3 class="text-xs font-semibold text-ink-soft">People @_focusFirstName rated <span class="font-normal text-muted">(Outbound)</span></h3>
-            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem_4rem] gap-1 border-b border-line pb-1 text-[10px] font-semibold text-muted"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span><span>Reciprocal?</span></div>
+            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem_4rem] gap-1 border-b border-line pb-1 text-3xs font-semibold text-muted"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span><span>Reciprocal?</span></div>
             <div class="mt-1 flex flex-col divide-y divide-line">
                 @if (Outbound.Count == 0)
                 {
@@ -116,7 +116,7 @@
                 @PersonDetail("Recipient", selected.Subject)
                 @MetricDetail("Overall rating", selected.Overall, reciprocal?.Overall)
                 <div class="col-span-2 md:col-span-2">
-                    <label class="block text-[10px] text-muted">Four aspects (out of 5)</label>
+                    <label class="block text-3xs text-muted">Four aspects (out of 5)</label>
                     <div class="mt-1 flex flex-wrap gap-3">
                         @AspectDetail("Collaboration", selected.Collaboration, reciprocal?.Collaboration)
                         @AspectDetail("Communication", selected.Communication, reciprocal?.Communication)
@@ -124,9 +124,9 @@
                         @AspectDetail("Technical help", selected.TechnicalHelp, reciprocal?.TechnicalHelp)
                     </div>
                 </div>
-                <div><label class="block text-[10px] text-muted">Rating gap <small>(Reviewer - Recipient)</small></label><strong class="text-sm font-semibold text-ink">@Gap(selected.Overall, reciprocal?.Overall)</strong></div>
-                <div><label class="block text-[10px] text-muted">Feedback count <small>(This relationship)</small></label><strong class="text-sm font-semibold text-ink">@selected.Count</strong></div>
-                <div><label class="block text-[10px] text-muted">Reciprocal</label><strong class="text-sm font-semibold text-ink">@(reciprocal is null ? "No" : "Yes")</strong><small class="block text-[11px] text-muted">@(reciprocal is null ? $"{selected.Subject} has not rated {selected.Reviewer}" : $"{selected.Subject} rated {selected.Reviewer}")</small></div>
+                <div><label class="block text-3xs text-muted">Rating gap <small>(Reviewer - Recipient)</small></label><strong class="text-sm font-semibold text-ink">@Gap(selected.Overall, reciprocal?.Overall)</strong></div>
+                <div><label class="block text-3xs text-muted">Feedback count <small>(This relationship)</small></label><strong class="text-sm font-semibold text-ink">@selected.Count</strong></div>
+                <div><label class="block text-3xs text-muted">Reciprocal</label><strong class="text-sm font-semibold text-ink">@(reciprocal is null ? "No" : "Yes")</strong><small class="block text-2xs text-muted">@(reciprocal is null ? $"{selected.Subject} has not rated {selected.Reviewer}" : $"{selected.Subject} rated {selected.Reviewer}")</small></div>
             </div>
         </div>
     }
@@ -199,13 +199,13 @@
             @RatingCell(relationship.Collaboration)
             @RatingCell(relationship.Communication)
             @RatingCell(relationship.Reliability)
-            @if (!inbound) { <em class="@($"not-italic text-[10px] font-semibold {(ReciprocalOf(relationship) is null ? "text-muted" : "text-good")}")">@(ReciprocalOf(relationship) is null ? "No" : "Yes")</em> }
+            @if (!inbound) { <em class="@($"not-italic text-3xs font-semibold {(ReciprocalOf(relationship) is null ? "text-muted" : "text-good")}")">@(ReciprocalOf(relationship) is null ? "No" : "Yes")</em> }
         </button>;
 
     private RenderFragment RatingCell(decimal value) => @<span class="text-xs tabular-nums text-ink-soft">@Analytics.Format(value, "0.0")</span>;
-    private RenderFragment PersonDetail(string label, string name) => @<div><label class="block text-[10px] text-muted">@label</label><span class="mt-0.5 flex items-center gap-1.5"><i class="flex h-5 w-5 items-center justify-center rounded-full bg-surface text-[9px] font-semibold not-italic text-ink-soft">@Analytics.Initials(name)</i><b class="text-sm font-medium text-ink">@name</b></span></div>;
-    private RenderFragment MetricDetail(string label, decimal value, decimal? reciprocal) => @<div><label class="block text-[10px] text-muted">@label</label><strong class="text-sm font-semibold text-ink">@Analytics.Format(value, "0.0")</strong>@if (reciprocal.HasValue) { <b class="ml-1 text-xs text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</b> }</div>;
-    private RenderFragment AspectDetail(string label, decimal value, decimal? reciprocal) => @<span class="text-xs"><label class="block text-[10px] text-muted">@label</label><b class="text-ink">@Analytics.Format(value, "0.0")</b>@if (reciprocal.HasValue) { <small class="ml-1 text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</small> }</span>;
+    private RenderFragment PersonDetail(string label, string name) => @<div><label class="block text-3xs text-muted">@label</label><span class="mt-0.5 flex items-center gap-1.5"><i class="flex h-5 w-5 items-center justify-center rounded-full bg-surface text-[9px] font-semibold not-italic text-ink-soft">@Analytics.Initials(name)</i><b class="text-sm font-medium text-ink">@name</b></span></div>;
+    private RenderFragment MetricDetail(string label, decimal value, decimal? reciprocal) => @<div><label class="block text-3xs text-muted">@label</label><strong class="text-sm font-semibold text-ink">@Analytics.Format(value, "0.0")</strong>@if (reciprocal.HasValue) { <b class="ml-1 text-xs text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</b> }</div>;
+    private RenderFragment AspectDetail(string label, decimal value, decimal? reciprocal) => @<span class="text-xs"><label class="block text-3xs text-muted">@label</label><b class="text-ink">@Analytics.Format(value, "0.0")</b>@if (reciprocal.HasValue) { <small class="ml-1 text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</small> }</span>;
 
     private void OnSearch(ChangeEventArgs args) { _search = args.Value?.ToString() ?? string.Empty; _searchOpen = true; }
     private void OpenSearch(FocusEventArgs _) => _searchOpen = true;

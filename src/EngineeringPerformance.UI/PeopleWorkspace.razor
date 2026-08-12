@@ -71,22 +71,22 @@
                         <div class="flex items-center gap-2">
                             <input class="min-w-0 flex-1 rounded-md border border-line bg-surface-inset px-2 py-1 text-sm font-medium text-ink outline-none focus:border-primary" value="@(_editTeamNames.TryGetValue(team.Id, out var n) ? n : team.Name)"
                                    @onchange="e => _editTeamNames[team.Id] = e.Value?.ToString() ?? string.Empty" />
-                            <span class="rounded-full bg-surface-inset px-2 py-0.5 text-[11px] text-ink-soft">@team.MemberCount</span>
+                            <span class="rounded-full bg-surface-inset px-2 py-0.5 text-2xs text-ink-soft">@team.MemberCount</span>
                         </div>
                         @{ var avg = TeamAverageScore(team); }
                         <div class="mt-2 flex items-baseline gap-2">
                             @if (avg is not null)
                             {
-                                <b class="@($"text-lg font-bold {Analytics.BandTextClass(Analytics.ScoreBand(avg.Value))}")">@Analytics.Format(avg.Value)</b><span class="text-[11px] text-muted">avg operational score</span>
+                                <b class="@($"text-lg font-bold {Analytics.BandTextClass(Analytics.ScoreBand(avg.Value))}")">@Analytics.Format(avg.Value)</b><span class="text-2xs text-muted">avg operational score</span>
                             }
                             else
                             {
-                                <span class="text-[11px] text-muted">No scored members this month</span>
+                                <span class="text-2xs text-muted">No scored members this month</span>
                             }
                         </div>
                         <div class="mt-2 flex gap-2">
-                            <button class="btn btn-secondary !px-2.5 !py-1 !text-[11px]" @onclick="() => RenameTeamAsync(team)" disabled="@(State.Busy || !IsTeamRenamed(team))">Rename</button>
-                            <button class="btn btn-danger !px-2.5 !py-1 !text-[11px]" @onclick="() => DeleteTeamAsync(team)" disabled="@State.Busy">Delete</button>
+                            <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="() => RenameTeamAsync(team)" disabled="@(State.Busy || !IsTeamRenamed(team))">Rename</button>
+                            <button class="btn btn-danger !px-2.5 !py-1 !text-2xs" @onclick="() => DeleteTeamAsync(team)" disabled="@State.Busy">Delete</button>
                         </div>
                     </div>
                 }
@@ -95,17 +95,17 @@
     }
 
     <div class="rounded-xl border border-line bg-surface">
-        <div class="grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line bg-surface-dark px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-on-dark">
+        <div class="grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line bg-surface-dark px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-dark">
             <span>Code</span><span>Engineer</span><span>Level</span><span>Team</span><span>Billable</span><span>Employment</span><span title="Daily commute classification imported from the ERP roster.">Commute</span><span>Analysis</span><span>Actions</span>
         </div>
         <Virtualize TItem="EmployeeListItem" Items="_employeesSnapshot" Context="employee" ItemSize="58">
             @{ var editing = _editingEmployeeId == employee.Id; }
             <div class="@($"grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line px-3 py-2 text-xs {(employee.IsExcluded ? "opacity-50" : "")} {(editing ? "bg-primary-soft/30" : "")}")">
-                <div><code class="text-[11px] text-ink-soft">@employee.EmployeeCode</code></div>
+                <div><code class="text-2xs text-ink-soft">@employee.EmployeeCode</code></div>
                 <div>
                     <span class="flex flex-col">
                         <strong class="font-medium text-ink">@employee.Name</strong>
-                        @if (!string.IsNullOrWhiteSpace(employee.Email)) { <small class="text-[10px] text-muted">@employee.Email</small> }
+                        @if (!string.IsNullOrWhiteSpace(employee.Email)) { <small class="text-3xs text-muted">@employee.Email</small> }
                     </span>
                 </div>
 
@@ -156,7 +156,7 @@
                     {
                         <span class="flex flex-col gap-1">
                             @if (employee.IsConsultant) { <span class="badge bg-info-soft text-info w-fit">Consultant</span> }
-                            <select class="w-full rounded border border-line bg-surface-inset px-1.5 py-1 text-[10px] text-ink" value="@(employee.ProbationOverride is null ? "auto" : employee.ProbationOverride.Value ? "on" : "off")"
+                            <select class="w-full rounded border border-line bg-surface-inset px-1.5 py-1 text-3xs text-ink" value="@(employee.ProbationOverride is null ? "auto" : employee.ProbationOverride.Value ? "on" : "off")"
                                     title="Probation status — Auto follows the ERP roster's completion date"
                                     @onchange="e => SetProbationAsync(employee, e.Value?.ToString())">
                                 <option value="auto">Auto (@(employee.IsOnProbation ? "on" : "off"))</option>
@@ -203,16 +203,16 @@
 
                 <div>
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <button class="btn btn-secondary !px-2 !py-1 !text-[11px]" @onclick="() => OpenAnalysis(employee)" title="Open performance portrait">Portrait →</button>
+                        <button class="btn btn-secondary !px-2 !py-1 !text-2xs" @onclick="() => OpenAnalysis(employee)" title="Open performance portrait">Portrait →</button>
                         @if (editing)
                         {
-                            <button class="btn btn-primary !px-2 !py-1 !text-[11px]" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(State.Busy || !IsDirty(employee))">Save</button>
-                            <button class="btn btn-secondary !px-2 !py-1 !text-[11px]" @onclick="StopEditing">Done</button>
-                            <button class="btn btn-danger !px-2 !py-1 !text-[11px]" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@State.Busy">Remove</button>
+                            <button class="btn btn-primary !px-2 !py-1 !text-2xs" @onclick="() => SaveEmployeeAsync(employee)" disabled="@(State.Busy || !IsDirty(employee))">Save</button>
+                            <button class="btn btn-secondary !px-2 !py-1 !text-2xs" @onclick="StopEditing">Done</button>
+                            <button class="btn btn-danger !px-2 !py-1 !text-2xs" @onclick="() => RemoveEmployeeAsync(employee.Id)" disabled="@State.Busy">Remove</button>
                         }
                         else
                         {
-                            <button class="btn btn-secondary !px-2 !py-1 !text-[11px]" @onclick="() => StartEditing(employee)">Edit</button>
+                            <button class="btn btn-secondary !px-2 !py-1 !text-2xs" @onclick="() => StartEditing(employee)">Edit</button>
                         }
                     </div>
                 </div>

@@ -10,7 +10,7 @@
     <section class="flex flex-col gap-4">
         <header class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Current operating profile</span>
+                <span class="block text-3xs font-semibold uppercase tracking-wide text-muted">Current operating profile</span>
                 <h2 class="text-lg font-bold text-ink">@LatestLabel in one decision view</h2>
             </div>
             <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
@@ -27,11 +27,11 @@
 
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
             <section class="card xl:col-span-7">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Current-month hours profile</h2><small class="text-[11px] text-muted">Imported totals across capacity, timesheet and attendance</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Current-month hours profile</h2><small class="text-2xs text-muted">Imported totals across capacity, timesheet and attendance</small></div>
                 <div id="employee-current-hours" class="h-[260px]"></div>
             </section>
             <section class="card xl:col-span-5">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Attendance exception profile</h2><small class="text-[11px] text-muted">Counts are days, not severity scores</small></div>
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Attendance exception profile</h2><small class="text-2xs text-muted">Counts are days, not severity scores</small></div>
                 <div id="employee-current-exceptions" class="h-[260px]"></div>
             </section>
         </div>
@@ -47,14 +47,14 @@
 
         <details class="rounded-xl border border-line bg-surface" open>
             <summary class="flex cursor-pointer items-center justify-between gap-3 p-4">
-                <span><strong class="text-sm font-semibold text-ink">Expanded operational history</strong><small class="ml-2 text-[11px] text-muted">Allocation, reconciliation, exceptions and delivery over @Months.Count loaded month(s)</small></span>
+                <span><strong class="text-sm font-semibold text-ink">Expanded operational history</strong><small class="ml-2 text-2xs text-muted">Allocation, reconciliation, exceptions and delivery over @Months.Count loaded month(s)</small></span>
                 <span class="text-xs font-medium text-primary">Show / hide</span>
             </summary>
             <div class="grid grid-cols-1 gap-4 border-t border-line p-4 xl:grid-cols-2">
-                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Hours history</h2><small class="text-[11px] text-muted">Allocation and capacity</small></div><div id="employee-hours-history" class="h-[320px]"></div></section>
-                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Attendance reconciliation</h2><small class="text-[11px] text-muted">Punch, timesheet and variance</small></div><div id="employee-attendance-history" class="h-[320px]"></div></section>
-                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Exception history</h2><small class="text-[11px] text-muted">Monthly exception days</small></div><div id="employee-exception-history" class="h-[260px]"></div></section>
-                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Delivery activity history</h2><small class="text-[11px] text-muted">Detailed hours, entries and projects</small></div><div id="employee-delivery-history" class="h-[260px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Hours history</h2><small class="text-2xs text-muted">Allocation and capacity</small></div><div id="employee-hours-history" class="h-[320px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Attendance reconciliation</h2><small class="text-2xs text-muted">Punch, timesheet and variance</small></div><div id="employee-attendance-history" class="h-[320px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Exception history</h2><small class="text-2xs text-muted">Monthly exception days</small></div><div id="employee-exception-history" class="h-[260px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Delivery activity history</h2><small class="text-2xs text-muted">Detailed hours, entries and projects</small></div><div id="employee-delivery-history" class="h-[260px]"></div></section>
             </div>
         </details>
     </section>
@@ -163,7 +163,7 @@
     private RenderFragment Count(string label, int value) => @<div class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@value</b></div>;
     private RenderFragment Metric(string label, decimal value, string suffix, string tone, bool signed = false) =>
         @<div class="@($"rounded-lg p-3 {tone}")">
-            <span class="block text-[10px] font-medium opacity-80">@label</span>
+            <span class="block text-3xs font-medium opacity-80">@label</span>
             <strong class="text-lg font-bold">@(signed && value > 0 ? "+" : "")@Analytics.Format(value)</strong>
             <small class="ml-1 text-xs opacity-80">@suffix</small>
         </div>;
