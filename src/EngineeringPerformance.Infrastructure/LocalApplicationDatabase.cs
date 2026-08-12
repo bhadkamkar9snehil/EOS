@@ -7,6 +7,8 @@ namespace EngineeringPerformance.Infrastructure;
 
 public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbContext> contextFactory, IWorkbookService workbookService) : IApplicationDatabase
 {
+    private readonly WorkbookInspectionValidator _inspectionValidator = new();
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -241,6 +243,14 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
 
     public async Task<int> ImportEmployeeRosterAsync(string filePath, CancellationToken cancellationToken = default)
     {
+        // NOTE: EFCore.BulkExtensions' SQLite adapter was evaluated here (BulkInsertOrUpdateAsync)
+        // and rejected — see tests/EngineeringPerformance.Infrastructure.Tests/DatabaseTests.cs's
+        // RosterImportBulkInsertsAndUpdatesEmployees comment / docs/tailwind-grid-ci-plan.md. A
+        // batch mixing a fresh insert with an update to an existing row throws a UNIQUE constraint
+        // violation on SQLite (it emits a plain bulk INSERT rather than a true merge/upsert for
+        // that mix), so the existing dictionary-preload + per-entity SaveChangesAsync approach is
+        // kept as-is: it already solved the N+1 read problem, and SaveChangesAsync's batched write
+        // is correct where the bulk-upsert path was not.
         var roster = workbookService.ReadEmployeeRoster(filePath);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var employeesByCode = await context.Employees.ToDictionaryAsync(x => x.EmployeeCode, x => x, cancellationToken);
@@ -352,19 +362,51 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             }
 
             var reviews = new List<PeerReview>();
+            var skipped = new List<ImportSkipReason>();
             var accepted = 0;
             foreach (var workbook in workbooks)
             {
+                var fileName = Path.GetFileName(workbook);
+                try
+                {
+                    var workbookInspection = workbookService.Inspect(workbook);
+                    var inspectionResult = _inspectionValidator.Validate(workbookInspection);
+                    if (!inspectionResult.IsValid)
+                    {
+                        ImportSkipLog.Record(skipped, fileName, string.Join("; ", inspectionResult.Errors.Select(e => e.ErrorMessage)));
+                        continue;
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+                {
+                    ImportSkipLog.Record(skipped, fileName, $"Workbook could not be opened: {ex.Message}");
+                    continue;
+                }
+
                 IReadOnlyList<PeerReview> fromFile;
                 try { fromFile = workbookService.ReadPeerReviews(workbook, year, month); }
-                catch (Exception) { continue; }   // not a review workbook, or unreadable
-                if (fromFile.Count == 0) continue;
+                catch (Exception ex)
+                {
+                    // Structured skip: this is not a Peer Review sheet, or its shape doesn't parse.
+                    ImportSkipLog.Record(skipped, fileName, $"Not a readable Peer Review sheet: {ex.Message}");
+                    continue;
+                }
+                if (fromFile.Count == 0)
+                {
+                    ImportSkipLog.Record(skipped, fileName, "Peer Review sheet parsed but contained no completed rows.");
+                    continue;
+                }
                 reviews.AddRange(fromFile);
                 accepted++;
             }
 
             if (accepted == 0)
-                throw new InvalidDataException("No completed peer review sheets were found. Generate templates on the Templates screen, have engineers fill the Peer Review sheet, then upload the workbooks or a ZIP of them.");
+            {
+                var detail = skipped.Count > 0
+                    ? " Skipped: " + string.Join(" | ", skipped.Select(s => $"{s.FileName} ({s.Reason})"))
+                    : string.Empty;
+                throw new InvalidDataException("No completed peer review sheets were found. Generate templates on the Templates screen, have engineers fill the Peer Review sheet, then upload the workbooks or a ZIP of them." + detail);
+            }
 
             await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
             var previousRows = await context.PeerReviews.Where(x => x.Year == year && x.Month == month).ToListAsync(cancellationToken);
@@ -416,10 +458,18 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         {
             ZipFile.ExtractToDirectory(zipPath, temporaryDirectory);
             var imported = 0;
+            var skipped = new List<ImportSkipReason>();
             foreach (var file in Directory.EnumerateFiles(temporaryDirectory, "*.xls*", SearchOption.AllDirectories))
             {
+                var fileName = Path.GetFileName(file);
                 ReportType type;
-                try { type = workbookService.DetectReportType(file); } catch (InvalidDataException) { continue; }
+                try { type = workbookService.DetectReportType(file); }
+                catch (InvalidDataException ex)
+                {
+                    // Structured skip: file inside the package isn't a recognizable report workbook.
+                    ImportSkipLog.Record(skipped, fileName, $"Unrecognized report type: {ex.Message}");
+                    continue;
+                }
                 await ImportSourceAsync(type, year, month, file, cancellationToken);
                 imported++;
             }

@@ -291,6 +291,82 @@ public sealed class DatabaseTests
         }
     }
 
+    /// <summary>
+    /// Covers ImportEmployeeRosterAsync's insert-vs-update logic against real SQLite: a first
+    /// import of pure inserts, then a second import mixing an update (seniority level changes)
+    /// with a fresh insert. This also caught a real bug during development — swapping the
+    /// dictionary-preload + SaveChangesAsync approach here for EFCore.BulkExtensions'
+    /// BulkInsertOrUpdateAsync throws "UNIQUE constraint failed" on SQLite for exactly this
+    /// mixed insert+update batch shape, so that swap was reverted (see the NOTE on
+    /// ImportEmployeeRosterAsync and docs/tailwind-grid-ci-plan.md).
+    /// </summary>
+    [Fact]
+    public async Task RosterImportInsertsAndUpdatesEmployees()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-roster-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        var databasePath = Path.Combine(folder, "roster-test.db");
+        try
+        {
+            var options = new DbContextOptionsBuilder<PerformanceDbContext>().UseSqlite($"Data Source={databasePath}").Options;
+            var factory = new TestContextFactory(options);
+            var database = new LocalApplicationDatabase(factory, new WorkbookService());
+            await database.InitializeAsync();
+
+            var rosterPath1 = Path.Combine(folder, "Roster1.xlsx");
+            WriteRoster(rosterPath1, [("E1001", "Priyanka Makwana", 3), ("E1002", "Rohit Sharma", 5)]);
+            var firstChanged = await database.ImportEmployeeRosterAsync(rosterPath1);
+            Assert.Equal(2, firstChanged);
+
+            await using (var context = factory.CreateDbContext())
+            {
+                var employees = await context.Employees.OrderBy(x => x.EmployeeCode).ToListAsync();
+                Assert.Equal(2, employees.Count);
+                Assert.Equal(5, employees.Single(x => x.EmployeeCode == "E1002").SeniorityLevel);
+            }
+
+            // Second import: E1001 gets bulk-updated (seniority change), E1002 is unchanged
+            // (no touch expected), E1003 is a brand-new bulk insert.
+            var rosterPath2 = Path.Combine(folder, "Roster2.xlsx");
+            WriteRoster(rosterPath2, [("E1001", "Priyanka Makwana", 4), ("E1002", "Rohit Sharma", 5), ("E1003", "Ananya Iyer", 2)]);
+            var secondChanged = await database.ImportEmployeeRosterAsync(rosterPath2);
+            Assert.Equal(2, secondChanged);
+
+            await using (var context = factory.CreateDbContext())
+            {
+                var employees = await context.Employees.OrderBy(x => x.EmployeeCode).ToListAsync();
+                Assert.Equal(3, employees.Count);
+                Assert.Equal(4, employees.Single(x => x.EmployeeCode == "E1001").SeniorityLevel);
+                Assert.Equal(2, employees.Single(x => x.EmployeeCode == "E1003").SeniorityLevel);
+            }
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
+    private static void WriteRoster(string path, IReadOnlyList<(string Code, string Name, int Level)> rows)
+    {
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.AddWorksheet("Roster");
+        sheet.Cell(1, 1).Value = "Employee No";
+        sheet.Cell(1, 2).Value = "Full Name";
+        sheet.Cell(1, 3).Value = "Band Level";
+        sheet.Cell(1, 4).Value = "Official Email";
+        var r = 2;
+        foreach (var (code, name, level) in rows)
+        {
+            sheet.Cell(r, 1).Value = code;
+            sheet.Cell(r, 2).Value = name;
+            sheet.Cell(r, 3).Value = level;
+            sheet.Cell(r, 4).Value = $"{code}@example.com";
+            r++;
+        }
+        workbook.SaveAs(path);
+    }
+
     private sealed class TestContextFactory(DbContextOptions<PerformanceDbContext> options) : IDbContextFactory<PerformanceDbContext>
     {
         public PerformanceDbContext CreateDbContext() => new(options);
