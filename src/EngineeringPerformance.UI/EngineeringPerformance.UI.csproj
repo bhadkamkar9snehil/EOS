@@ -22,4 +22,35 @@
     <ProjectReference Include="..\EngineeringPerformance.Application\EngineeringPerformance.Application.csproj" />
   </ItemGroup>
 
+  <!--
+    Compiles wwwroot/tailwind-input.css (the single design-token source, see that file's own
+    header comment) into wwwroot/tailwind.css using the Tailwind standalone CLI binary — no
+    Node/npm toolchain, matching the rest of this repo's build. The binary itself is not
+    committed (~100MB); it's fetched into a repo-root .tailwind/ cache on first build, same
+    idea as the existing CopyCompatibleWindowsSdkFacadeForBuild target in DesktopHost.csproj
+    fetching/copying build tooling on demand.
+  -->
+  <PropertyGroup>
+    <TailwindCliPath>$(MSBuildProjectDirectory)\..\..\.tailwind\tailwindcss.exe</TailwindCliPath>
+    <TailwindCliUrl>https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe</TailwindCliUrl>
+    <TailwindInputCss>$(MSBuildProjectDirectory)\wwwroot\tailwind-input.css</TailwindInputCss>
+    <TailwindOutputCss>$(MSBuildProjectDirectory)\wwwroot\tailwind.css</TailwindOutputCss>
+  </PropertyGroup>
+
+  <Target Name="EnsureTailwindCli" BeforeTargets="CompileTailwindCss">
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(TailwindCliPath)'))" Condition="!Exists('$(TailwindCliPath)')" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Invoke-WebRequest -Uri '$(TailwindCliUrl)' -OutFile '$(TailwindCliPath)'&quot;"
+          Condition="!Exists('$(TailwindCliPath)')" />
+  </Target>
+
+  <!--
+    Always runs, deliberately not gated by MSBuild's Inputs/Outputs incremental-build tracking:
+    Tailwind's own CLI is fast (well under a second) and does its own content scan, and a stale
+    tailwind.css from a missed dependency would be a much worse failure mode (silently wrong
+    styling with no build error) than the small unconditional cost of always recompiling.
+  -->
+  <Target Name="CompileTailwindCss" BeforeTargets="Build;Publish">
+    <Exec Command="&quot;$(TailwindCliPath)&quot; -i &quot;$(TailwindInputCss)&quot; -o &quot;$(TailwindOutputCss)&quot; --minify" />
+  </Target>
+
 </Project>

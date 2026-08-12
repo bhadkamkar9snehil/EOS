@@ -1,4 +1,5 @@
-// ECharts wrapper. Theme identity and semantic colours come exclusively from theme.js.
+// ECharts wrapper. Every colour is read live from the --color-* custom properties Tailwind's
+// @theme block in wwwroot/tailwind-input.css generates — no separate palette to keep in sync.
 (function () {
     const instances = new Map();
     const observers = new Map();
@@ -6,14 +7,14 @@
     let drilldownRef = null;
 
     const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-    const palette = () => window.epaTheme?.chartPalette?.() || {
-        series:Array.from({length:8},(_,i)=>cssVar(`--chart-${i+1}`,'#2563EB')),
-        operational:cssVar('--chart-operational','#2563EB'), timesheet:cssVar('--chart-timesheet','#0F6E9E'), approval:cssVar('--chart-approval','#7C3AED'), attendance:cssVar('--chart-attendance','#16794A'),
-        billable:cssVar('--chart-billable','#2563EB'), nonBillable:cssVar('--chart-nonbillable','#946200'), training:cssVar('--chart-training','#7C3AED'), office:cssVar('--chart-office','#16794A'), punch:cssVar('--chart-punch','#0F6E9E'), underutilized:cssVar('--chart-underutilized','#5B6FD8'),
-        good:cssVar('--good','#16794A'), warning:cssVar('--warn','#946200'), serious:cssVar('--serious','#B45309'), critical:cssVar('--critical','#B42318'), info:cssVar('--info','#0F6E9E'),
-        grid:cssVar('--chart-grid','#E5E7EB'), axis:cssVar('--chart-axis','#CBD5E1'), muted:cssVar('--chart-muted','#64748B'), inkSoft:cssVar('--ink-soft','#475569'), ink:cssVar('--chart-ink','#0F172A'),
-        tooltip:cssVar('--chart-tooltip','#0F172A'), tooltipText:cssVar('--on-chart-tooltip','#FFFFFF'), surface:cssVar('--chart-surface','#FFFFFF'), missing:cssVar('--chart-missing','#667085'), missingSurface:cssVar('--chart-missing-surface','#EAECF0'), naSurface:cssVar('--chart-na-surface','#F2F4F7'),
-        heatScale:Array.from({length:5},(_,i)=>cssVar(`--chart-heat-${i+1}`,'#2563EB')), reducedMotion:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
+    const palette = () => ({
+        series:Array.from({length:8},(_,i)=>cssVar(`--color-chart-${i+1}`,'#2f5fa3')),
+        operational:cssVar('--color-petrol','#0f5f7a'), timesheet:cssVar('--color-chart-2','#2f5fa3'), approval:cssVar('--color-chart-6','#7c5cbf'), attendance:cssVar('--color-chart-7','#4f8a5b'),
+        billable:cssVar('--color-chart-2','#2f5fa3'), nonBillable:cssVar('--color-chart-5','#b08900'), training:cssVar('--color-chart-6','#7c5cbf'), office:cssVar('--color-chart-7','#4f8a5b'), punch:cssVar('--color-chart-3','#0f5f7a'), underutilized:cssVar('--color-chart-8','#a35a8c'),
+        good:cssVar('--color-good','#2f9e58'), warning:cssVar('--color-warning','#b08900'), serious:cssVar('--color-serious','#d97a1f'), critical:cssVar('--color-critical','#d92d20'), info:cssVar('--color-info','#2f5fa3'),
+        grid:cssVar('--color-line','#e4dfd0'), axis:cssVar('--color-line','#e4dfd0'), muted:cssVar('--color-muted','#918d80'), inkSoft:cssVar('--color-ink-soft','#55534c'), ink:cssVar('--color-ink','#1c1c1a'),
+        tooltip:cssVar('--color-surface-dark','#1b2430'), tooltipText:cssVar('--color-on-dark','#f4f1ea'), surface:cssVar('--color-surface','#fff'), missing:cssVar('--color-missing','#b7b2a3'), missingSurface:cssVar('--color-surface-inset','#f7f5ef'), naSurface:cssVar('--color-line-soft','#ece8db'),
+        heatScale:Array.from({length:5},(_,i)=>cssVar(`--color-heat-${i+1}`,'#2f5fa3')), reducedMotion:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
     };
 
     const roleColor = (role, index, p) => {
@@ -234,5 +235,4 @@
     }
 
     window.epaCharts={ensure,dispose,gauge,radar,scatter,trend,multiline,heatmap,network,bars,verticalBars,registerDrilldown,registerThemeUpdater,refreshTheme,roleColor,palette};
-    window.addEventListener('epa-theme-changed',refreshTheme);
 })();

@@ -74,6 +74,37 @@ public static class Analytics
         _ => "Critical (<55)"
     };
 
+    /// <summary>
+    /// Tailwind class names for a score band, written as literal switch-case strings (not string
+    /// interpolation) so Tailwind's static content scanner can find them — a dynamically built
+    /// class name like $"text-{band}" would never appear as a literal substring anywhere Tailwind
+    /// scans, so its utility would silently never be generated.
+    /// </summary>
+    public static string BandTextClass(string band) => band switch
+    {
+        "good" => "text-good",
+        "warning" => "text-warning",
+        "serious" => "text-serious",
+        _ => "text-critical"
+    };
+
+    public static string BandBgClass(string band) => band switch
+    {
+        "good" => "bg-good",
+        "warning" => "bg-warning",
+        "serious" => "bg-serious",
+        _ => "bg-critical"
+    };
+
+    /// <summary>Soft-tinted pill background paired with the matching solid text color.</summary>
+    public static string BandSoftClass(string band) => band switch
+    {
+        "good" => "bg-good-soft text-good",
+        "warning" => "bg-warning-soft text-warning",
+        "serious" => "bg-serious-soft text-serious",
+        _ => "bg-critical-soft text-critical"
+    };
+
     /// <summary>Sequential blue ramp, light to dark, for heatmap magnitude.</summary>
     public static string HeatColor(decimal score) => score switch
     {

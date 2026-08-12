@@ -1,30 +1,42 @@
-// EPA Performance Atlas renderers. Data comes from Razor; colour/contrast comes
-// from the resolved theme contract. Keep the option structures deliberately
+// EPA Performance Atlas renderers. Data comes from Razor; every colour is read live from the
+// --color-* custom properties Tailwind's @theme block in wwwroot/tailwind-input.css generates —
+// there is no separate palette to keep in sync. Keep the option structures deliberately
 // conservative: these charts run inside WPF WebView2 as well as normal browsers.
 (() => {
     const instances = new Map(), renderers = new Map(), peerConnectorObservers = new Map();
     let drilldownRef = null;
 
     const css = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-    const fallbackPalette = () => ({
-        series: Array.from({ length: 8 }, (_, i) => css(`--chart-${i + 1}`, '#0f5f7a')),
-        operational: css('--chart-operational', '#0f5f7a'),
-        attendance: css('--chart-attendance', '#16794a'),
-        timesheet: css('--chart-timesheet', '#0f6e9e'),
-        approval: css('--chart-approval', '#7c3aed'),
-        good: css('--good', '#16794a'), warning: css('--warn', '#946200'), serious: css('--serious', '#b45309'), critical: css('--critical', '#b42318'), missing: css('--chart-missing', '#667085'),
-        grid: css('--chart-grid', '#d8dde2'), axis: css('--chart-axis', '#aeb7c1'), ink: css('--chart-ink', '#0f172a'), inkSoft: css('--ink-soft', '#475569'), muted: css('--chart-muted', '#64748b'),
-        surface: css('--chart-surface', '#fff'), tooltip: css('--chart-tooltip', '#0f172a'), tooltipText: css('--on-chart-tooltip', '#fff'),
+    const palette = () => ({
+        series: Array.from({ length: 8 }, (_, i) => css(`--color-chart-${i + 1}`, '#0f5f7a')),
+        operational: css('--color-petrol', '#0f5f7a'),
+        attendance: css('--color-chart-7', '#4f8a5b'),
+        timesheet: css('--color-chart-2', '#2f5fa3'),
+        approval: css('--color-chart-6', '#7c5cbf'),
+        good: css('--color-good', '#2f9e58'), warning: css('--color-warning', '#b08900'), serious: css('--color-serious', '#d97a1f'), critical: css('--color-critical', '#d92d20'), missing: css('--color-missing', '#b7b2a3'),
+        grid: css('--color-line', '#e4dfd0'), axis: css('--color-line', '#e4dfd0'), ink: css('--color-ink', '#1c1c1a'), inkSoft: css('--color-ink-soft', '#55534c'), muted: css('--color-muted', '#918d80'),
+        surface: css('--color-surface', '#fff'), tooltip: css('--color-surface-dark', '#1b2430'), tooltipText: css('--color-on-dark', '#f4f1ea'),
         reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
     });
-    const palette = () => {
-        const fallback = fallbackPalette();
-        const resolved = window.epaTheme?.chartPalette?.() || {};
-        return { ...fallback, ...resolved, series: Array.isArray(resolved.series) && resolved.series.length ? resolved.series : fallback.series };
+    const orange = () => css('--color-primary', '#f26a12');
+    const chartStroke = role => ({ strong: 3, focus: 2, context: 1.5, hairline: 1 }[role] || 1);
+    const rgbOf = hex => { const c = hex.replace('#', '').trim(); const f = c.length === 3 ? c.split('').map(x => x + x).join('') : c; const n = parseInt(f, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const srgbLinear = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+    const relLuminance = ([r, g, b]) => .2126 * srgbLinear(r) + .7152 * srgbLinear(g) + .0722 * srgbLinear(b);
+    const contrastRatio = (hexA, hexB) => { const a = relLuminance(rgbOf(hexA)), b = relLuminance(rgbOf(hexB)); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };
+    const bestTextColor = fill => contrastRatio(fill, '#ffffff') >= contrastRatio(fill, '#101828') ? '#ffffff' : '#101828';
+    const mixHex = (hexA, hexB, t) => { const [ar, ag, ab] = rgbOf(hexA), [br, bg, bb] = rgbOf(hexB); const m = v => Math.round(v); return `rgb(${m(ar + (br - ar) * t)},${m(ag + (bg - ag) * t)},${m(ab + (bb - ab) * t)})`; };
+    const hexToRgba = (hex, alpha) => {
+        const clean = hex.replace('#', '').trim();
+        const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+        const int = parseInt(full, 16);
+        if (Number.isNaN(int)) return `rgba(15,95,122,${alpha})`;
+        return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
     };
-    const orange = () => css('--atlas-orange', '#f26a12');
-    const chartStroke = role => parseFloat(css(`--chart-stroke-${role}`, role === 'strong' ? '3px' : role === 'focus' ? '2px' : role === 'context' ? '1.5px' : '1px')) || 1;
-    const zoneFill = role => css(`--chart-zone-${role}`, 'rgba(15,95,122,.035)');
+    const zoneFill = role => {
+        const token = { underused: '--color-info', overloaded: '--color-critical', inconsistent: '--color-warning', balanced: '--color-good' }[role];
+        return token ? hexToRgba(css(token, '#0f5f7a'), .05) : 'transparent';
+    };
     const compactViewport = () => window.innerWidth <= 1600 || window.innerHeight <= 900;
     const largeViewport = () => window.innerWidth >= 1900 && window.innerHeight >= 1000;
 
@@ -482,10 +494,19 @@
         const people = rows || [];
         const draw = (silent = false) => {
             const p = palette(), compact = compactViewport(), large = largeViewport();
+            const stops = [p.critical, orange(), p.axis, p.operational, p.good];
+            const heatColor = value => {
+                const pos = Math.max(0, Math.min(4, Math.max(1, Math.min(5, value)) - 1));
+                const lower = Math.floor(pos), upper = Math.min(4, lower + 1);
+                return mixHex(stops[lower], stops[upper], pos - lower);
+            };
             const data = [];
             people.forEach((row, y) => (row.values || []).forEach((value, x) => {
                 const raw = +(row.rawValues || [])[x] || +value;
-                if (value != null && +value > 0) data.push({ value: [x, y, +value, raw], name: row.name, received: +row.received || 0, established: !!row.established, adjusted: +row.adjusted || 0, confidence: +row.confidence || 0 });
+                if (value != null && +value > 0) {
+                    const fill = heatColor(+value);
+                    data.push({ value: [x, y, +value, raw], name: row.name, received: +row.received || 0, established: !!row.established, adjusted: +row.adjusted || 0, confidence: +row.confidence || 0, itemStyle: { color: fill }, label: { color: bestTextColor(fill) } });
+                }
             }));
             chart.setOption({
                 ...(silent ? { animation: false } : motion()),
@@ -496,10 +517,9 @@
                 },
                 xAxis: { type: 'category', data: labels, position: 'top', axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false }, axisLabel: { color: p.inkSoft, fontSize: compact ? 9.5 : large ? 12.5 : 10.5, interval: 0 } },
                 yAxis: { type: 'category', data: people.map(x => x.name), inverse: true, axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false }, axisLabel: { color: p.inkSoft, fontSize: compact ? 9.5 : large ? 12.5 : 10.5, width: compact ? 118 : large ? 182 : 150, overflow: 'truncate', formatter: name => { const row = people.find(x => x.name === name); return `${name}  ·  n=${+row?.received || 0}`; } } },
-                visualMap: { show: false, min: 1, max: 5, inRange: { color: [p.critical, orange(), p.axis, p.operational, p.good] } },
                 series: [{
                     type: 'heatmap', data, cursor: 'pointer',
-                    label: { show: true, formatter: item => (+item.value[2]).toFixed(2), color: p.tooltipText, fontSize: compact ? 9 : large ? 12 : 10, fontWeight: 650 },
+                    label: { show: true, formatter: item => (+item.value[2]).toFixed(2), fontSize: compact ? 9 : large ? 12 : 10, fontWeight: 650 },
                     itemStyle: { borderColor: p.surface, borderWidth: 2 },
                     emphasis: { itemStyle: { borderColor: p.ink, borderWidth: 2 } }
                 }]
@@ -677,7 +697,7 @@
             chart.setOption({
                 ...(silent ? { animation: false } : motion()),
                 tooltip: { ...tip(p), trigger: 'item', formatter: item => `<strong>${item.name}</strong><br/>${(aspects || []).map((a, i) => `${a}: <b>${(+item.value[i] || 0).toFixed(1)}</b>`).join('<br/>')}` },
-                radar: { center: ['50%', '52%'], radius: '64%', indicator: indicators, splitNumber: 5, axisName: { color: p.inkSoft, fontSize: 11.5 }, axisLine: { lineStyle: { color: p.grid } }, splitLine: { lineStyle: { color: p.grid } }, splitArea: { areaStyle: { color: ['transparent', 'rgba(0,0,0,.012)'] } } },
+                radar: { center: ['50%', '52%'], radius: '54%', indicator: indicators, splitNumber: 5, axisName: { color: p.inkSoft, fontSize: 11.5 }, axisLine: { lineStyle: { color: p.grid } }, splitLine: { lineStyle: { color: p.grid } }, splitArea: { areaStyle: { color: ['transparent', 'rgba(0,0,0,.012)'] } } },
                 series: [{ type: 'radar', data: reviewerData, emphasis: { focus: 'self' } }]
             }, true);
         };
@@ -735,9 +755,6 @@
             return null;
         }
     };
-
-    window.addEventListener('epa-theme-changed', refresh);
-    window.addEventListener('epa-motion-changed', refresh);
 
     window.epaAtlas = {
         registerDrilldown,

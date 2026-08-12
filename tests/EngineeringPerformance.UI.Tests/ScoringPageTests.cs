@@ -41,7 +41,7 @@ public sealed class ScoringPageTests : BunitContext
         timesheetInput.Change("0");
 
         Assert.Contains("Add", page.Markup);
-        var saveButton = page.Find("button.action:not(.secondary)");
+        var saveButton = page.Find("button.btn-primary");
         Assert.True(saveButton.HasAttribute("disabled"));
     }
 
@@ -85,7 +85,7 @@ public sealed class ScoringPageTests : BunitContext
         page.FindAll("input[type=number]")[0].Change("0");
         Assert.Contains("Add", page.Markup);
 
-        page.Find("button.action.secondary").Click();
+        page.Find("button.btn-secondary").Click();
 
         Assert.Contains("Ready to apply", page.Markup);
     }
