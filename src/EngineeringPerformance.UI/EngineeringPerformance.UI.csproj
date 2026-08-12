@@ -53,4 +53,26 @@
     <Exec Command="&quot;$(TailwindCliPath)&quot; -i &quot;$(TailwindInputCss)&quot; -o &quot;$(TailwindOutputCss)&quot; --minify" />
   </Target>
 
+  <!--
+    The browser loads wwwroot/*.js as plain scripts, so a syntax error does not fail the build —
+    it just silently prevents the file's globals from ever being defined. That is exactly what
+    happened once: an unbalanced paren in charts.js meant window.epaCharts never existed, and every
+    chart driven by it rendered nothing for an entire release without a single error surfacing.
+    Node's check flag parses each file without executing it, catching that class of bug at build time.
+
+    ContinueOnError + a node-presence check keeps this advisory rather than a hard dependency:
+    the project has no JS toolchain and must still build on a machine without Node installed.
+  -->
+  <Target Name="CheckWwwrootJsSyntax" BeforeTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="where node" ContinueOnError="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="NodeMissing" />
+    </Exec>
+    <ItemGroup Condition="'$(NodeMissing)' == '0'">
+      <WwwrootJs Include="$(MSBuildProjectDirectory)\wwwroot\*.js" Exclude="$(MSBuildProjectDirectory)\wwwroot\echarts.min.js" />
+    </ItemGroup>
+    <Exec Command="node --check &quot;%(WwwrootJs.FullPath)&quot;"
+          Condition="'$(NodeMissing)' == '0'"
+          StandardOutputImportance="low" />
+  </Target>
+
 </Project>

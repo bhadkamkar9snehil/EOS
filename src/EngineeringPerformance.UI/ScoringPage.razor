@@ -6,66 +6,77 @@
 @inject IJSRuntime JS
 
 <section class="flex flex-col gap-6">
-    <div>
-        <h2 class="text-xl font-bold text-ink">Operational score configuration</h2>
-        <p class="mt-1 text-sm text-ink-soft">Controls the operational score shown everywhere in EOS.</p>
-    </div>
-
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Operational weights</h2><small class="text-2xs text-muted">Persisted locally</small></div>
+        @* The weight editor is the calibration panel of this instrument: each input is
+           a labelled channel with its own engraved rail, and the total reads out below. *@
+        <div class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Calibration</div>
+                    <h2 class="panel-title">Operational weights</h2>
+                </div>
+                <span class="label-instrument ml-auto">Persisted locally</span>
+            </div>
 
-            <div class="flex flex-col divide-y divide-line">
-                @OperationalWeight("Timesheet completion", "Entered hours against compliance hours", () => _timesheet, v => _timesheet = v)
-                @OperationalWeight("Approval completion", "Approved hours against entered hours", () => _approval, v => _approval = v)
-                @OperationalWeight("Attendance discipline", "Filled days, punches, duration and punctuality", () => _attendance, v => _attendance = v)
+            <div class="flex flex-col divide-y divide-line-soft">
+                @OperationalWeight("Timesheet completion", "Entered hours against compliance hours", "bg-chart-1", () => _timesheet, v => _timesheet = v)
+                @OperationalWeight("Approval completion", "Approved hours against entered hours", "bg-chart-2", () => _approval, v => _approval = v)
+                @OperationalWeight("Attendance discipline", "Filled days, punches, duration and punctuality", "bg-chart-3", () => _attendance, v => _attendance = v)
             </div>
 
             <div class="mt-4 flex flex-wrap items-center gap-3">
-                <div class="@($"flex flex-1 items-center gap-2 rounded-lg px-3 py-2 {(IsOperationalValid ? "bg-good-soft" : "bg-critical-soft")}")">
-                    <span class="text-xs text-ink-soft">Total</span>
-                    <strong class="@($"text-base font-bold {(IsOperationalValid ? "text-good" : "text-critical")}")">@Analytics.Format(OperationalTotal, "0.#")%</strong>
-                    <small class="text-2xs text-ink-soft">@OperationalValidationText</small>
+                <div class="well flex flex-1 items-baseline gap-2.5 px-3 py-2">
+                    <span class="label-instrument">Total</span>
+                    <strong class="@($"metric text-metric-sm {(IsOperationalValid ? "text-good" : "text-critical")}")">@Analytics.Format(OperationalTotal, "0.#")%</strong>
+                    <small class="@($"metric-delta {(IsOperationalValid ? "text-good" : "text-critical")}")">@OperationalValidationText</small>
                 </div>
-                <button class="btn btn-secondary" @onclick="ResetOperational" disabled="@State.Busy">Reset 55 / 15 / 30</button>
+                <button class="btn btn-secondary" @onclick="ResetOperational" disabled="@State.Busy">Reset <span class="tnum">55 / 15 / 30</span></button>
                 <button class="btn btn-primary" @onclick="SaveAndRecalculateAsync" disabled="@(State.Busy || !IsOperationalValid)">Save &amp; recalculate</button>
             </div>
         </div>
 
-        <div class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Current weighting</h2><small class="text-2xs text-muted">Applied proportionally when a source is unavailable</small></div>
-            <div class="flex h-3 overflow-hidden rounded-full bg-line" role="img" aria-label="@OperationalStackDescription">
+        <div class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Distribution</div>
+                    <h2 class="panel-title">Current weighting</h2>
+                </div>
+                <span class="label-instrument ml-auto">Rescaled when a source is missing</span>
+            </div>
+            <div class="track flex h-3 overflow-hidden" role="img" aria-label="@OperationalStackDescription">
                 @if (_timesheet > 0) { <i class="bg-chart-1" style="@($"flex:{Analytics.Svg((double)_timesheet)}")"></i> }
                 @if (_approval > 0) { <i class="bg-chart-2" style="@($"flex:{Analytics.Svg((double)_approval)}")"></i> }
                 @if (_attendance > 0) { <i class="bg-chart-3" style="@($"flex:{Analytics.Svg((double)_attendance)}")"></i> }
             </div>
             <ul class="mt-3 flex flex-col gap-1.5 text-sm">
-                <li class="flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-chart-1"></i><span class="flex-1 text-ink-soft">Timesheet completion</span><b class="font-semibold text-ink">@Analytics.Format(_timesheet, "0.#")%</b></li>
-                <li class="flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-chart-2"></i><span class="flex-1 text-ink-soft">Approval completion</span><b class="font-semibold text-ink">@Analytics.Format(_approval, "0.#")%</b></li>
-                <li class="flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-chart-3"></i><span class="flex-1 text-ink-soft">Attendance discipline</span><b class="font-semibold text-ink">@Analytics.Format(_attendance, "0.#")%</b></li>
+                <li class="flex items-center gap-2"><i class="lamp h-2 w-2 text-chart-1"></i><span class="flex-1 text-ink-soft">Timesheet completion</span><b class="metric text-sm">@Analytics.Format(_timesheet, "0.#")%</b></li>
+                <li class="flex items-center gap-2"><i class="lamp h-2 w-2 text-chart-2"></i><span class="flex-1 text-ink-soft">Approval completion</span><b class="metric text-sm">@Analytics.Format(_approval, "0.#")%</b></li>
+                <li class="flex items-center gap-2"><i class="lamp h-2 w-2 text-chart-3"></i><span class="flex-1 text-ink-soft">Attendance discipline</span><b class="metric text-sm">@Analytics.Format(_attendance, "0.#")%</b></li>
             </ul>
             <div class="mt-4 rounded-lg bg-surface-inset p-3">
-                <strong class="block text-xs font-semibold text-ink">Recalculation scope</strong>
-                <p class="mt-0.5 text-xs text-ink-soft">Saving recalculates every existing monthly row.</p>
+                <div class="label-instrument">Recalculation scope</div>
+                <p class="mt-1 text-xs text-ink-soft">Saving recalculates every existing monthly row.</p>
             </div>
         </div>
     </div>
 
-    <div>
-        <h2 class="text-lg font-bold text-ink">Scoring presets</h2>
-        <p class="mt-1 text-sm text-ink-soft">Applying a preset saves and recalculates immediately.</p>
-    </div>
-
-    <div class="card">
-        <div class="flex flex-col divide-y divide-line">
+    <div class="plate p-4">
+        <div class="panel-head">
+            <div>
+                <div class="panel-eyebrow">Library</div>
+                <h2 class="panel-title">Scoring presets</h2>
+            </div>
+            <span class="label-instrument ml-auto"><span class="tnum">@_presets.Count</span> saved · applying recalculates immediately</span>
+        </div>
+        <div class="flex flex-col divide-y divide-line-soft">
             @foreach (var preset in _presets)
             {
-                <div class="flex items-center justify-between gap-3 py-2.5">
+                <div class="group flex items-center justify-between gap-3 py-2.5">
                     <span>
                         <strong class="block text-sm font-medium text-ink">@preset.Name</strong>
-                        <small class="text-2xs text-muted">@Analytics.Format(preset.Settings.TimesheetCompletionWeight, "0.#")% timesheet · @Analytics.Format(preset.Settings.ApprovalCompletionWeight, "0.#")% approval · @Analytics.Format(preset.Settings.AttendanceDisciplineWeight, "0.#")% attendance</small>
+                        <small class="label-instrument"><span class="tnum">@Analytics.Format(preset.Settings.TimesheetCompletionWeight, "0.#")%</span> timesheet · <span class="tnum">@Analytics.Format(preset.Settings.ApprovalCompletionWeight, "0.#")%</span> approval · <span class="tnum">@Analytics.Format(preset.Settings.AttendanceDisciplineWeight, "0.#")%</span> attendance</small>
                     </span>
-                    <span class="flex gap-2">
+                    <span class="flex gap-2 opacity-70 transition-opacity duration-150 ease-press group-hover:opacity-100">
                         <button class="btn btn-secondary" @onclick="() => ApplyPresetAsync(preset)" disabled="@State.Busy">Apply</button>
                         @if (!preset.IsBuiltIn)
                         {
@@ -76,20 +87,20 @@
             }
         </div>
         <div class="mt-3 flex gap-2">
-            <input class="flex-1 rounded-lg border border-line bg-surface-inset px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted focus:border-primary" placeholder="New preset name" value="@_newPresetName" @oninput="e => _newPresetName = e.Value?.ToString() ?? string.Empty" />
+            <input class="field flex-1 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" aria-label="New preset name" placeholder="New preset name" value="@_newPresetName" @oninput="e => _newPresetName = e.Value?.ToString() ?? string.Empty" />
             <button class="btn btn-primary" @onclick="SaveCurrentAsPresetAsync" disabled="@(State.Busy || string.IsNullOrWhiteSpace(_newPresetName) || !IsOperationalValid)">Save current weights as preset</button>
         </div>
     </div>
 
-    <div>
-        <h2 class="text-lg font-bold text-ink">Review framework preview</h2>
-        <p class="mt-1 text-sm text-ink-soft">Planning preview — does not alter the score above.</p>
-    </div>
-
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Review category weights</h2><small class="text-2xs text-muted">Preview only</small></div>
-            <div class="flex flex-col divide-y divide-line">
+        <div class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Preview · not applied</div>
+                    <h2 class="panel-title">Review category weights</h2>
+                </div>
+            </div>
+            <div class="flex flex-col divide-y divide-line-soft">
                 @Weight("Assignment execution", () => _execution, v => _execution = v)
                 @Weight("Ownership &amp; accountability", () => _ownership, v => _ownership = v)
                 @Weight("Collaboration", () => _collaboration, v => _collaboration = v)
@@ -101,19 +112,28 @@
         </div>
 
         <div class="flex flex-col gap-4">
-            <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Review-weight validation</h2><small class="text-2xs text-muted">Must total 100%</small></div>
-                <div class="flex items-center gap-3">
-                    <span class="@($"rounded-lg px-3 py-1.5 text-base font-bold {(IsReviewValid ? "bg-good-soft text-good" : "bg-critical-soft text-critical")}")">@Analytics.Format(ReviewTotal, "0.#")%</span>
-                    <span class="@($"text-xs font-medium {(IsReviewValid ? "text-good" : "text-critical")}")">@(IsReviewValid ? "Valid preview" : ReviewTotal > 100 ? $"Over by {Analytics.Format(ReviewTotal - 100, "0.#")}" : $"Under by {Analytics.Format(100 - ReviewTotal, "0.#")}")</span>
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Validation</div>
+                        <h2 class="panel-title">Review-weight total</h2>
+                    </div>
                 </div>
+                <div class="@($"metric text-metric {(IsReviewValid ? "text-good" : "text-critical")}")">@Analytics.Format(ReviewTotal, "0.#")%</div>
+                <div class="@($"metric-delta mt-1 {(IsReviewValid ? "text-good" : "text-critical")}")">@(IsReviewValid ? "Valid preview" : ReviewTotal > 100 ? $"Over by {Analytics.Format(ReviewTotal - 100, "0.#")}" : $"Under by {Analytics.Format(100 - ReviewTotal, "0.#")}")</div>
+                <div class="label-instrument mt-1">Must total 100%</div>
             </div>
-            <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Score bands</h2><small class="text-2xs text-muted">Applied across the application</small></div>
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Reference</div>
+                        <h2 class="panel-title">Score bands</h2>
+                    </div>
+                </div>
                 <ul class="flex flex-col gap-1.5">
                     @foreach (var (band, label, range) in Bands)
                     {
-                        <li class="flex items-center gap-2 text-sm"><i class="@($"h-2.5 w-2.5 rounded-full {Analytics.BandBgClass(band)}")"></i><span class="flex-1 text-ink-soft">@label</span><b class="font-semibold text-ink">@range</b></li>
+                        <li class="flex items-center gap-2 text-sm"><i class="@($"lamp h-2 w-2 {Analytics.BandTextClass(band)}")"></i><span class="flex-1 text-ink-soft">@label</span><b class="metric text-sm">@range</b></li>
                     }
                 </ul>
             </div>
@@ -212,19 +232,31 @@
         ("critical", "Critical", "below 55")
     ];
 
-    private RenderFragment OperationalWeight(string label, string detail, Func<decimal> get, Action<decimal> set) =>
-        @<label class="flex items-center justify-between gap-3 py-2.5">
-            <span class="flex-1"><strong class="block text-sm font-medium text-ink">@label</strong><small class="text-2xs text-muted">@detail</small></span>
-            <span class="flex items-center gap-1 rounded-lg border border-line bg-surface-inset px-2 py-1">
-                <input type="number" min="0" max="100" step="1" class="w-12 bg-transparent text-right text-sm text-ink outline-none" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b class="text-xs text-muted">%</b>
+    // A calibration channel: label, engraved rail showing the current setting against
+    // the 0–100 scale, and the numeric readout. Markup only — the binding is unchanged.
+    private RenderFragment OperationalWeight(string label, string detail, string barClass, Func<decimal> get, Action<decimal> set) =>
+        @<label class="group flex flex-col gap-1.5 py-3">
+            <span class="flex items-center justify-between gap-3">
+                <span class="flex-1"><strong class="block text-sm font-medium text-ink">@label</strong><small class="text-2xs text-muted">@detail</small></span>
+                <span class="control flex items-center gap-1 px-2 py-1">
+                    <input type="number" min="0" max="100" step="1" aria-label="@label weight percent" class="w-12 bg-transparent text-right text-sm tabular-nums text-ink outline-none" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b class="label-instrument">%</b>
+                </span>
+            </span>
+            <span class="track flex h-1.5 overflow-hidden" role="img" aria-hidden="true">
+                <i class="@($"{barClass} rounded-full transition-[width] duration-150 ease-press")" style="@($"width:{Analytics.Svg((double)get())}%")"></i>
             </span>
         </label>;
 
     private RenderFragment Weight(string label, Func<decimal> get, Action<decimal> set) =>
-        @<label class="flex items-center justify-between gap-3 py-2.5">
-            <span class="flex-1 text-sm text-ink-soft">@((MarkupString)label)</span>
-            <span class="flex items-center gap-1 rounded-lg border border-line bg-surface-inset px-2 py-1">
-                <input type="number" min="0" max="100" class="w-12 bg-transparent text-right text-sm text-ink outline-none" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b class="text-xs text-muted">%</b>
+        @<label class="group flex flex-col gap-1.5 py-2.5">
+            <span class="flex items-center justify-between gap-3">
+                <span class="flex-1 text-sm text-ink-soft">@((MarkupString)label)</span>
+                <span class="control flex items-center gap-1 px-2 py-1">
+                    <input type="number" min="0" max="100" class="w-12 bg-transparent text-right text-sm tabular-nums text-ink outline-none" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b class="label-instrument">%</b>
+                </span>
+            </span>
+            <span class="track flex h-1 overflow-hidden" role="img" aria-hidden="true">
+                <i class="rounded-full bg-chart-6 transition-[width] duration-150 ease-press" style="@($"width:{Analytics.Svg((double)get())}%")"></i>
             </span>
         </label>;
 }

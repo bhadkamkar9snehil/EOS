@@ -3,223 +3,621 @@
 @source "../**/*.cs";
 
 /*
-  Attribute-based dark variant (instead of Tailwind's default media-query-only `dark:`), so a user
-  choice ([data-theme="dark"] set by wwwroot/theme.js) can override the OS preference. "system" mode
-  (no attribute) still falls through to the prefers-color-scheme block further down.
+  ============================================================================
+  EOS MATERIAL SYSTEM
+  ============================================================================
+  This file is the single source of truth for the whole interface: not just a
+  colour palette, but a *material* system — surfaces, depth, edges, light and
+  motion. Every value below compiles to a real CSS custom property AND its
+  matching utility class, so nothing is ever duplicated as a literal in markup
+  or in JS. Chart code (atlas-charts.js / charts.js) reads the very same
+  custom properties via getComputedStyle, which is why chart colours and UI
+  colours are provably identical and both follow the theme.
+
+  THE VISUAL TARGET
+  Not a "modern Tailwind dashboard", and not retro skeuomorphism, but:
+  a precision analytical instrument assembled from physical-looking parts.
+  Ivory plates mounted into graphite chassis. Charts recessed *into* those
+  plates rather than stacked as more boxes. Orange used as an illuminated
+  indicator, not decoration. Numbers that look printed onto the panel.
+
+  THE LIGHT SOURCE
+  Fixed at upper-left (~10:30). This is the rule that keeps depth believable:
+    - top edges catch a highlight
+    - bottom / bottom-right cast the shadow
+    - recesses invert exactly that relationship
+  Every shadow token below obeys it. If you add one, it must too.
+
+  THE Z-LEVELS
+    -2 cavity          chart wells, gauge bays        inset-shadow-well
+    -1 engraved recess  inputs, tracks, empty slots    inset-shadow-track
+     0 chassis          page + structural frame        shadow-flush
+    +1 mounted plate    normal analytical panel        shadow-plate
+    +2 raised control   button, selector, active tab   shadow-control
+    +3 floating         popover / modal / tooltip      shadow-floating
+  ============================================================================
+*/
+
+/*
+  Attribute-based dark variant (rather than Tailwind's media-query-only default)
+  so an explicit user choice ([data-theme="dark"], set by wwwroot/theme.js) can
+  override the OS preference. "System" mode sets no attribute and falls through
+  to the prefers-color-scheme block below.
 */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
-  Single source of truth for every color/spacing token EOS uses. Tailwind's
-  @theme block compiles each entry to a real CSS custom property (--color-canvas,
-  etc.) AND generates matching utilities (bg-canvas, text-ink, border-line, ...)
-  from the same declaration — nothing is duplicated as a literal hex value
-  anywhere else. Chart JS (atlas-charts.js) reads these same custom properties
-  via getComputedStyle(document.documentElement) instead of keeping its own
-  palette, so chart colors and UI colors are provably identical.
-
-  Palette derived from the shipped Atlas screenshots: warm cream canvas, white
-  cards, near-black ink, orange primary accent, a petrol/vermilion secondary
-  pair, and a semantic status scale (good/warning/critical) plus an 8-series
-  categorical chart palette.
-*/
-/*
-  "static" (not the bare @theme block) is required here: Tailwind v4 otherwise tree-shakes any
-  theme variable that no utility class in the scanned content currently references. Chart JS reads
-  these --color-* custom properties directly via getComputedStyle, independent of whether any
-  .razor file happens to use the matching utility class yet, so every token must always be emitted.
+  "static" (not a bare @theme block) is required: Tailwind v4 otherwise
+  tree-shakes any theme variable no scanned utility class currently references.
+  Chart JS reads these --color-* properties directly via getComputedStyle,
+  independent of whether markup happens to use the matching utility yet, so
+  every token must always be emitted.
 */
 @theme static {
-  /* Surfaces */
-  --color-canvas: #f4f1ea;
-  --color-surface: #ffffff;
-  --color-surface-inset: #f7f5ef;
-  --color-surface-dark: #1b2430;
+  /* ---------------------------------------------------------------- SURFACES
+     Ordered by physical depth, from the frame inward. */
+  --color-canvas: #efeadf;          /* the bench the instrument sits on       */
+  --color-chassis: #232a33;         /* graphite structure plates mount into   */
+  --color-chassis-deep: #1a2027;    /* shaded chassis / recessed frame        */
+  --color-surface: #fffefb;         /* the ivory plate itself                 */
+  --color-surface-raised: #ffffff;  /* plate lifted toward the viewer         */
+  --color-surface-inset: #f4f1e8;   /* shallow inset region on a plate        */
+  --color-well: #e9e4d6;            /* machined cavity: chart + gauge bays    */
+  --color-well-deep: #ded8c7;       /* deeper cavity / empty slot             */
+  --color-surface-dark: #232a33;    /* legacy alias of chassis (table heads)  */
+  --color-glass: #ffffffd9;         /* floating glass assemblies              */
 
-  /* Text */
-  --color-ink: #1c1c1a;
-  --color-ink-soft: #55534c;
-  --color-muted: #918d80;
-  --color-on-dark: #f4f1ea;
-  --color-on-dark-soft: #b9bdc6;
+  /* -------------------------------------------------------------------- INK */
+  --color-ink: #1a1a18;
+  --color-ink-soft: #4e4c45;
+  --color-muted: #8a8578;
+  --color-on-dark: #f2eee4;         /* text on chassis                        */
+  --color-on-dark-soft: #a8b0bb;
+  --color-on-chassis: #f2eee4;
+  --color-on-chassis-soft: #a8b0bb;
+  --color-on-chassis-muted: #6f7A87;
 
-  /* Structure */
-  --color-line: #e4dfd0;
-  --color-line-soft: #ece8db;
+  /* ------------------------------------------------------------------ EDGES
+     A plate has more than one kind of edge, and they are not interchangeable:
+       hairline  the faint rule between related content
+       rim       the plate's own outer boundary
+       bevel     the lit top edge that sells the raise
+       groove    the dark upper-inner edge that sells a recess */
+  --color-line: #ddd6c5;            /* rim (legacy name, used everywhere)     */
+  --color-line-soft: #e8e2d4;       /* hairline                               */
+  --color-bevel: #fffffff2;         /* lit top edge                           */
+  --color-groove: #00000014;        /* dark inner edge of a recess            */
 
-  /* Brand / accent */
+  /* ------------------------------------------------------------ BRAND / LAMP
+     Orange is an *illuminated indicator*, not a decorative accent. It is
+     permitted in exactly three roles — current/selected, the primary action,
+     and a single analytical emphasis — and nowhere else. It is deliberately
+     absent from the categorical chart series below so that it never competes
+     with itself. */
   --color-primary: #f26a12;
-  --color-primary-soft: #fce3cf;
+  --color-primary-soft: #fbe2ce;
+  --color-primary-glow: #f26a1259;
   --color-vermilion: #d92d20;
   --color-petrol: #0f5f7a;
 
-  /*
-    Score-band scale: these 4 names (good/warning/serious/critical) match
-    Analytics.ScoreBand()'s exact 4 return values 1:1 — see Analytics.BandTextClass/
-    BandBgClass/BandSoftClass, which are the only place these tokens' class names
-    are constructed, so Tailwind's static scanner always sees the literal strings.
-  */
-  --color-good: #2f9e58;
-  --color-good-soft: #ddf0e3;
-  --color-warning: #b08900;
-  --color-warning-soft: #f6edd0;
-  --color-serious: #d97a1f;
-  --color-serious-soft: #fbe6d2;
-  --color-critical: #d92d20;
-  --color-critical-soft: #fbdfdb;
+  /* -------------------------------------------------------------- SEMANTIC
+     These four names match Analytics.ScoreBand()'s four return values 1:1 —
+     see Analytics.BandTextClass/BandBgClass/BandSoftClass, the only place the
+     class names are built, so Tailwind's static scanner always sees literals. */
+  --color-good: #2f8f52;
+  --color-good-soft: #dcefe0;
+  --color-warning: #a37f00;
+  --color-warning-soft: #f4ecce;
+  --color-serious: #cf7118;
+  --color-serious-soft: #f9e5d0;
+  --color-critical: #cf2a1e;
+  --color-critical-soft: #f9ddd9;
 
-  /* Other semantic status (not score bands) */
   --color-info: #2f5fa3;
-  --color-info-soft: #dde6f4;
-  --color-missing: #b7b2a3;
+  --color-info-soft: #dce5f3;
+  --color-missing: #aca696;
 
-  /* Categorical chart series (8) */
-  --color-chart-1: #f26a12;
-  --color-chart-2: #2f5fa3;
-  --color-chart-3: #0f5f7a;
-  --color-chart-4: #d92d20;
-  --color-chart-5: #b08900;
-  --color-chart-6: #7c5cbf;
-  --color-chart-7: #4f8a5b;
-  --color-chart-8: #a35a8c;
+  /* --------------------------------------------------- CATEGORICAL SERIES
+     Deliberately cool and desaturated: petrol, blue, violet, plum, teal,
+     cool grey. No red / green / amber / orange here — those carry *meaning*
+     elsewhere, and a categorical series that borrows them creates semantic
+     ambiguity ("is series 4 bad, or is it just series 4?"). */
+  --color-chart-1: #0f5f7a;   /* petrol      */
+  --color-chart-2: #33619f;   /* blue        */
+  --color-chart-3: #6f5bb0;   /* violet      */
+  --color-chart-4: #96588a;   /* plum        */
+  --color-chart-5: #2f8189;   /* muted teal  */
+  --color-chart-6: #5f6b7a;   /* cool grey   */
+  --color-chart-7: #4a7fa8;   /* steel       */
+  --color-chart-8: #7d6ea3;   /* dusk        */
 
-  /* Sequential heat ramp (light to dark) for heatmap magnitude, e.g. peer rating matrices */
-  --color-heat-1: #dde6f4;
-  --color-heat-2: #9fb8dd;
-  --color-heat-3: #5c85c2;
-  --color-heat-4: #2f5fa3;
-  --color-heat-5: #1c3f70;
+  /* Sequential ramp for magnitude (peer matrices, heat cells) */
+  --color-heat-1: #e4ebf5;
+  --color-heat-2: #a8c0de;
+  --color-heat-3: #6389c0;
+  --color-heat-4: #35619f;
+  --color-heat-5: #1f3f6e;
 
+  /* ------------------------------------------------------------ FIELD ZONES
+     Fully resolved per theme rather than composited from a semantic colour at
+     low alpha. Alpha math cannot serve both themes: 5% of a hue over cream
+     reads as a clean pastel band, but the same 5% over near-black turns into a
+     muddy smear. These are picked, not calculated. */
+  --color-zone-underused: #eaeff7;
+  --color-zone-overloaded: #f9ece9;
+  --color-zone-inconsistent: #f7f1e2;
+  --color-zone-balanced: #eaf4ec;
+
+  /* -------------------------------------------------------------- GEOMETRY
+     Tightened from Tailwind's defaults. 12px everywhere is what makes an
+     interface read as generic consumer SaaS; precision hardware is milled to
+     tighter radii. 12px+ is now reserved for genuinely floating assemblies. */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 5px;
+  --radius-xl: 7px;    /* the workhorse: plates and panels                    */
+  --radius-2xl: 10px;  /* large structural containers                         */
+  --radius-3xl: 14px;  /* modals / floating assemblies only                   */
+
+  /* ------------------------------------------------------------------ DEPTH
+     Compound lighting, never a single blurred blob. A believable raised plate
+     needs a lit top edge, a tight contact shadow and a wider ambient shadow
+     working together; that combination is what reads as "mounted", where one
+     large soft shadow just reads as "floating sticker". */
+  --shadow-flush: 0 0 0 0 #0000;
+  --shadow-plate:
+    inset 0 1px 0 0 var(--color-bevel),
+    0 1px 1px -0.5px #1a1a1810,
+    0 3px 6px -2px #1a1a1812,
+    0 10px 18px -10px #1a1a1815;
+  --shadow-plate-lifted:
+    inset 0 1px 0 0 var(--color-bevel),
+    0 2px 3px -1px #1a1a1814,
+    0 8px 14px -4px #1a1a1818,
+    0 18px 30px -14px #1a1a181f;
+  --shadow-control:
+    inset 0 1px 0 0 #fffffff5,
+    0 1px 1px 0 #1a1a1814,
+    0 2px 4px -1px #1a1a1818;
+  --shadow-control-hover:
+    inset 0 1px 0 0 #fffffff7,
+    0 2px 2px 0 #1a1a1816,
+    0 5px 10px -2px #1a1a181c;
+  --shadow-pressed:
+    inset 0 2px 4px 0 #1a1a1826,
+    inset 0 1px 1px 0 #1a1a1820;
+  --shadow-floating:
+    0 2px 4px -1px #1a1a1818,
+    0 12px 24px -6px #1a1a182b,
+    0 28px 50px -16px #1a1a1833;
+  --shadow-lamp: 0 0 0 0 #0000;
+
+  /* Recesses. The groove sits at the top because the light is upper-left. */
+  --inset-shadow-well:
+    inset 0 2px 5px 0 #1a1a181f,
+    inset 0 1px 2px 0 #1a1a1817,
+    inset 0 -1px 0 0 #fffffcb3;
+  --inset-shadow-track:
+    inset 0 1px 2px 0 #1a1a1826,
+    inset 0 -1px 0 0 #fffffca6;
+  --inset-shadow-engraved:
+    inset 0 1px 1px 0 #1a1a181a;
+
+  /* ------------------------------------------------------------- TYPOGRAPHY
+     Roles, not just sizes. The failure mode to avoid is everything landing on
+     "text-xs + semibold + uppercase", which flattens hierarchy into mush.
+     Uppercase is reserved for machine-like instrument labels. */
   --font-sans: "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Bahnschrift is Windows' DIN 1451 grotesk — the typeface of gauges, road
+     signage and control panels. It ships with Windows 10 1709+, so it needs no
+     network fetch (this app runs offline in WebView2) and gives EOS a
+     technical voice that Segoe UI alone cannot. Segoe remains the fallback and
+     still carries dense tabular content, where its legibility wins. */
+  --font-display: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
 
-  /*
-    Caption/meta scale below Tailwind's built-in text-xs (0.75rem). EOS is a data-dense dashboard
-    with lots of small labels/captions; these were previously typed as text-[10px]/text-[11px]
-    arbitrary values well over 100 times across the UI. Promoting them to real theme tokens makes
-    them reusable, themeable utilities (text-2xs, text-3xs) instead of untracked magic numbers.
-  */
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 0.875rem;
-  --text-3xs: 0.625rem;
-  --text-3xs--line-height: 0.75rem;
+  --text-3xs: 0.625rem;      --text-3xs--line-height: 0.75rem;
+  --text-2xs: 0.6875rem;     --text-2xs--line-height: 0.875rem;
+  /* Display metrics: tight leading, because a number this size is a graphic. */
+  --text-metric-sm: 1.375rem; --text-metric-sm--line-height: 1.05;
+  --text-metric: 2rem;        --text-metric--line-height: 1;
+  --text-metric-lg: 2.75rem;  --text-metric-lg--line-height: 0.95;
+
+  /* ----------------------------------------------------------------- MOTION
+     Heavier objects move slower. A switch snaps; a drawer settles. Using one
+     duration for everything is what makes motion feel synthetic. */
+  --ease-press: cubic-bezier(.3, .7, .4, 1);
+  --ease-settle: cubic-bezier(.2, .8, .2, 1);
+  --duration-switch: 110ms;
+  --duration-control: 140ms;
+  --duration-lift: 180ms;
+  --duration-drawer: 260ms;
 }
 
 /*
-  Dark palette: redefines the same --color-* custom properties @theme emitted above, so every
-  bg-canvas/text-ink/... utility and every chart's getComputedStyle read repaints automatically —
-  no separate dark palette to keep in sync, no dark: variant needed on individual elements.
-
-  Two activation paths, matching the "system" default the theme switcher (wwwroot/theme.js) offers:
-   1. OS preference, only when the user hasn't made an explicit in-app choice ([data-theme] unset).
-   2. Explicit [data-theme="dark"], which always wins regardless of OS preference.
+  ============================================================================
+  DARK MATERIAL
+  ============================================================================
+  Dark mode redefines the same custom properties rather than adding dark:
+  variants across the markup, so every utility and every chart repaints from
+  one edit point. Crucially this is not an inversion: in dark the light source
+  is unchanged, but highlights become a faint white film rather than a bright
+  bevel, and shadows deepen considerably — because a dark material reflects
+  less and occludes more.
 */
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { color-scheme: dark; }
+}
+:root[data-theme="dark"] { color-scheme: dark; }
+
+@media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --color-canvas: #17140f;
-    --color-surface: #201c17;
-    --color-surface-inset: #2a251e;
-    --color-surface-dark: #11151c;
+    --color-canvas: #12151a;
+    --color-chassis: #1b2129;
+    --color-chassis-deep: #141920;
+    --color-surface: #212831;
+    --color-surface-raised: #262e38;
+    --color-surface-inset: #1b222a;
+    --color-well: #151b22;
+    --color-well-deep: #10151b;
+    --color-surface-dark: #141920;
+    --color-glass: #212831e6;
 
-    --color-ink: #f2ede2;
-    --color-ink-soft: #c9c0b0;
-    --color-muted: #93897a;
-    --color-on-dark: #f4f1ea;
-    --color-on-dark-soft: #b9bdc6;
+    --color-ink: #eef1f5;
+    --color-ink-soft: #b9c1cc;
+    --color-muted: #7d8794;
+    --color-on-dark: #eef1f5;
+    --color-on-dark-soft: #a8b0bb;
+    --color-on-chassis: #eef1f5;
+    --color-on-chassis-soft: #a8b0bb;
+    --color-on-chassis-muted: #6f7a87;
 
-    --color-line: #3a342a;
-    --color-line-soft: #2c2720;
+    --color-line: #333c47;
+    --color-line-soft: #2a323b;
+    --color-bevel: #ffffff14;
+    --color-groove: #00000059;
 
-    --color-primary: #f26a12;
-    --color-primary-soft: #4a2a10;
-    --color-vermilion: #ff5b45;
-    --color-petrol: #2ba0c9;
+    --color-primary: #ff7d28;
+    --color-primary-soft: #4a2810;
+    --color-primary-glow: #ff7d2866;
+    --color-vermilion: #ff6a55;
+    --color-petrol: #3aa6cc;
 
-    --color-good: #3ecb74;
-    --color-good-soft: #123322;
-    --color-warning: #e0ac2e;
-    --color-warning-soft: #3a2d0d;
-    --color-serious: #f2954a;
-    --color-serious-soft: #3a2311;
-    --color-critical: #e5493e;
-    --color-critical-soft: #3a1712;
+    --color-good: #4cc47a;
+    --color-good-soft: #14301f;
+    --color-warning: #d7a52f;
+    --color-warning-soft: #322710;
+    --color-serious: #ee9553;
+    --color-serious-soft: #362010;
+    --color-critical: #f2604f;
+    --color-critical-soft: #3a1a15;
 
-    --color-info: #5c8fd6;
-    --color-info-soft: #152a44;
-    --color-missing: #6b6455;
+    --color-info: #6b9ade;
+    --color-info-soft: #16243a;
+    --color-missing: #5d6673;
 
-    --color-chart-1: #ff8a3d;
-    --color-chart-2: #5c8fd6;
-    --color-chart-3: #2ba0c9;
-    --color-chart-4: #ff5b4d;
-    --color-chart-5: #e0ac2e;
-    --color-chart-6: #a48ce0;
-    --color-chart-7: #6fbf7f;
-    --color-chart-8: #d189b8;
+    --color-chart-1: #3aa6cc;
+    --color-chart-2: #6b9ade;
+    --color-chart-3: #a08ce6;
+    --color-chart-4: #d489bd;
+    --color-chart-5: #49b2b9;
+    --color-chart-6: #8b95a3;
+    --color-chart-7: #74a6d4;
+    --color-chart-8: #a294cf;
 
-    --color-heat-1: #1c2a40;
-    --color-heat-2: #2c4568;
-    --color-heat-3: #3f68a0;
-    --color-heat-4: #5c8fd6;
-    --color-heat-5: #a8c8f0;
+    --color-heat-1: #1a2433;
+    --color-heat-2: #26406b;
+    --color-heat-3: #3c67a8;
+    --color-heat-4: #6b9ade;
+    --color-heat-5: #b3cdf2;
+
+    --color-zone-underused: #171d27;
+    --color-zone-overloaded: #241a19;
+    --color-zone-inconsistent: #22200f;
+    --color-zone-balanced: #15211a;
+
+    --shadow-plate:
+      inset 0 1px 0 0 var(--color-bevel),
+      0 1px 2px 0 #00000073,
+      0 4px 10px -3px #00000080,
+      0 12px 22px -10px #0000008c;
+    --shadow-plate-lifted:
+      inset 0 1px 0 0 #ffffff1f,
+      0 2px 4px 0 #00000080,
+      0 10px 18px -4px #0000008c,
+      0 22px 36px -14px #00000099;
+    --shadow-control:
+      inset 0 1px 0 0 #ffffff1a,
+      0 1px 2px 0 #00000080,
+      0 2px 5px -1px #0000008c;
+    --shadow-control-hover:
+      inset 0 1px 0 0 #ffffff26,
+      0 2px 3px 0 #00000086,
+      0 6px 12px -2px #00000099;
+    --shadow-pressed:
+      inset 0 2px 5px 0 #00000099,
+      inset 0 1px 2px 0 #00000080;
+    --shadow-floating:
+      0 2px 6px -1px #00000099,
+      0 14px 28px -6px #000000a6,
+      0 32px 56px -16px #000000b3;
+
+    --inset-shadow-well:
+      inset 0 2px 6px 0 #00000099,
+      inset 0 1px 2px 0 #00000080,
+      inset 0 -1px 0 0 #ffffff0f;
+    --inset-shadow-track:
+      inset 0 1px 3px 0 #000000a6,
+      inset 0 -1px 0 0 #ffffff0d;
+    --inset-shadow-engraved:
+      inset 0 1px 1px 0 #00000080;
   }
 }
+
 :root[data-theme="dark"] {
-  --color-canvas: #17140f;
-  --color-surface: #201c17;
-  --color-surface-inset: #2a251e;
-  --color-surface-dark: #11151c;
+  --color-canvas: #12151a;
+  --color-chassis: #1b2129;
+  --color-chassis-deep: #141920;
+  --color-surface: #212831;
+  --color-surface-raised: #262e38;
+  --color-surface-inset: #1b222a;
+  --color-well: #151b22;
+  --color-well-deep: #10151b;
+  --color-surface-dark: #141920;
+  --color-glass: #212831e6;
 
-  --color-ink: #f2ede2;
-  --color-ink-soft: #c9c0b0;
-  --color-muted: #93897a;
-  --color-on-dark: #f4f1ea;
-  --color-on-dark-soft: #b9bdc6;
+  --color-ink: #eef1f5;
+  --color-ink-soft: #b9c1cc;
+  --color-muted: #7d8794;
+  --color-on-dark: #eef1f5;
+  --color-on-dark-soft: #a8b0bb;
+  --color-on-chassis: #eef1f5;
+  --color-on-chassis-soft: #a8b0bb;
+  --color-on-chassis-muted: #6f7a87;
 
-  --color-line: #3a342a;
-  --color-line-soft: #2c2720;
+  --color-line: #333c47;
+  --color-line-soft: #2a323b;
+  --color-bevel: #ffffff14;
+  --color-groove: #00000059;
 
-  --color-primary: #f26a12;
-  --color-primary-soft: #4a2a10;
-  --color-vermilion: #ff5b45;
-  --color-petrol: #2ba0c9;
+  --color-primary: #ff7d28;
+  --color-primary-soft: #4a2810;
+  --color-primary-glow: #ff7d2866;
+  --color-vermilion: #ff6a55;
+  --color-petrol: #3aa6cc;
 
-  --color-good: #3ecb74;
-  --color-good-soft: #123322;
-  --color-warning: #e0ac2e;
-  --color-warning-soft: #3a2d0d;
-  --color-serious: #f2954a;
-  --color-serious-soft: #3a2311;
-  --color-critical: #e5493e;
-  --color-critical-soft: #3a1712;
+  --color-good: #4cc47a;
+  --color-good-soft: #14301f;
+  --color-warning: #d7a52f;
+  --color-warning-soft: #322710;
+  --color-serious: #ee9553;
+  --color-serious-soft: #362010;
+  --color-critical: #f2604f;
+  --color-critical-soft: #3a1a15;
 
-  --color-info: #5c8fd6;
-  --color-info-soft: #152a44;
-  --color-missing: #6b6455;
+  --color-info: #6b9ade;
+  --color-info-soft: #16243a;
+  --color-missing: #5d6673;
 
-  --color-chart-1: #ff8a3d;
-  --color-chart-2: #5c8fd6;
-  --color-chart-3: #2ba0c9;
-  --color-chart-4: #ff5b4d;
-  --color-chart-5: #e0ac2e;
-  --color-chart-6: #a48ce0;
-  --color-chart-7: #6fbf7f;
-  --color-chart-8: #d189b8;
+  --color-chart-1: #3aa6cc;
+  --color-chart-2: #6b9ade;
+  --color-chart-3: #a08ce6;
+  --color-chart-4: #d489bd;
+  --color-chart-5: #49b2b9;
+  --color-chart-6: #8b95a3;
+  --color-chart-7: #74a6d4;
+  --color-chart-8: #a294cf;
 
-  --color-heat-1: #1c2a40;
-  --color-heat-2: #2c4568;
-  --color-heat-3: #3f68a0;
-  --color-heat-4: #5c8fd6;
-  --color-heat-5: #a8c8f0;
+  --color-heat-1: #1a2433;
+  --color-heat-2: #26406b;
+  --color-heat-3: #3c67a8;
+  --color-heat-4: #6b9ade;
+  --color-heat-5: #b3cdf2;
+
+  --color-zone-underused: #171d27;
+  --color-zone-overloaded: #241a19;
+  --color-zone-inconsistent: #22200f;
+  --color-zone-balanced: #15211a;
+
+  --shadow-plate:
+    inset 0 1px 0 0 var(--color-bevel),
+    0 1px 2px 0 #00000073,
+    0 4px 10px -3px #00000080,
+    0 12px 22px -10px #0000008c;
+  --shadow-plate-lifted:
+    inset 0 1px 0 0 #ffffff1f,
+    0 2px 4px 0 #00000080,
+    0 10px 18px -4px #0000008c,
+    0 22px 36px -14px #00000099;
+  --shadow-control:
+    inset 0 1px 0 0 #ffffff1a,
+    0 1px 2px 0 #00000080,
+    0 2px 5px -1px #0000008c;
+  --shadow-control-hover:
+    inset 0 1px 0 0 #ffffff26,
+    0 2px 3px 0 #00000086,
+    0 6px 12px -2px #00000099;
+  --shadow-pressed:
+    inset 0 2px 5px 0 #00000099,
+    inset 0 1px 2px 0 #00000080;
+  --shadow-floating:
+    0 2px 6px -1px #00000099,
+    0 14px 28px -6px #000000a6,
+    0 32px 56px -16px #000000b3;
+
+  --inset-shadow-well:
+    inset 0 2px 6px 0 #00000099,
+    inset 0 1px 2px 0 #00000080,
+    inset 0 -1px 0 0 #ffffff0f;
+  --inset-shadow-track:
+    inset 0 1px 3px 0 #000000a6,
+    inset 0 -1px 0 0 #ffffff0d;
+  --inset-shadow-engraved:
+    inset 0 1px 1px 0 #00000080;
 }
 
 /*
-  A handful of genuinely repeated structural patterns get a real component class here (composed
-  entirely of theme tokens/utilities, not literal values) rather than being retyped as the same
-  long utility string on every card across every page.
+  ============================================================================
+  DENSITY
+  ============================================================================
+  An information-dense application needs a density model rather than p-2/p-3/
+  p-4 scattered by feel. These drive the component classes below; set
+  data-density="compact" on any subtree (or <html>) to tighten it.
+*/
+:root {
+  --density-plate-pad: 1rem;
+  --density-row-h: 2.5rem;
+  --density-cell-y: 0.5rem;
+}
+[data-density="compact"] {
+  --density-plate-pad: 0.75rem;
+  --density-row-h: 2rem;
+  --density-cell-y: 0.3125rem;
+}
+
+/*
+  ============================================================================
+  PHYSICAL PRIMITIVES
+  ============================================================================
+  A deliberately small vocabulary of custom utilities describing *material*,
+  composed entirely from the tokens above. These exist because "this is a
+  mounted instrument" is a far better thing for a developer to express than
+  "maybe shadow-lg looks about right". Everything else — layout, typography,
+  colour — stays in ordinary Tailwind utilities.
+
+  Because they are @utility (not plain CSS), they compose with variants
+  normally: hover:plate-lifted, group-hover:lamp-lit, @lg:well, and so on.
+*/
+
+/* +1 — a plate mounted onto the chassis. The default home for a panel. */
+@utility plate {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-plate);
+  border: 1px solid var(--color-line);
+}
+
+/* +1 lifted — the same plate brought toward the viewer (selected/active). */
+@utility plate-lifted {
+  background-color: var(--color-surface-raised);
+  box-shadow: var(--shadow-plate-lifted);
+}
+
+/* 0 — structural frame. Matte, deliberately almost shadowless: the chassis is
+   what everything else is mounted *into*, so it must not compete. */
+@utility chassis {
+  background-color: var(--color-chassis);
+  color: var(--color-on-chassis);
+}
+
+/* -2 — a cavity machined into a plate. This is the key move that stops charts
+   from being "another card": the chart is a hole in the panel, not a box on
+   top of it. */
+@utility well {
+  background-color: var(--color-well);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--inset-shadow-well);
+}
+
+/* -1 — a narrow engraved channel: rails, meters, sparkline strips. Fully rounded,
+   because a meter is a rod sitting in a groove. */
+@utility track {
+  background-color: var(--color-well);
+  border-radius: 9999px;
+  box-shadow: var(--inset-shadow-track);
+}
+
+/* -1 rectangular — an engraved slot for text entry. Distinct from `track` because a
+   pill-shaped text field reads as a consumer search box, not a panel input, and
+   `track !rounded-md` was having to be written at every call site. */
+@utility field {
+  background-color: var(--color-well);
+  border-radius: var(--radius-md);
+  box-shadow: var(--inset-shadow-track);
+  border: 1px solid var(--color-line-soft);
+  transition: box-shadow var(--duration-control) var(--ease-press);
+}
+@utility field-focus {
+  box-shadow: var(--inset-shadow-track), 0 0 0 2px var(--color-primary-glow);
+  border-color: var(--color-primary);
+}
+
+/* +2 rest / hover / press. Real controls have three physical states, and the
+   press state matters more than the hover state: 1px of travel plus a
+   collapsing shadow is what makes a button feel like it has mass. */
+@utility control {
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-control);
+  transition: box-shadow var(--duration-control) var(--ease-press),
+              transform var(--duration-control) var(--ease-press),
+              background-color var(--duration-control) var(--ease-press);
+}
+@utility control-hover {
+  box-shadow: var(--shadow-control-hover);
+  transform: translateY(-1px);
+}
+@utility control-pressed {
+  box-shadow: var(--shadow-pressed);
+  transform: translateY(1px);
+}
+
+/* +3 — a floating assembly. The only place a large soft shadow is correct. */
+@utility floating {
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-floating);
+}
+
+/* Real glass: use backdrop blur ONLY where the metaphor is actually glass
+   (command palette, hover inspector, modal scrim). Never on dashboard panels. */
+@utility glass {
+  background-color: var(--color-glass);
+  backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-floating);
+}
+
+/* Text pressed *into* the plate rather than sitting on it. Reserved for large
+   metrics and machine labels; on small body copy it just looks blurry. */
+@utility engraved {
+  text-shadow: 0 1px 0 #ffffffb3;
+}
+@utility engraved-dark {
+  text-shadow: 0 1px 0 #00000059;
+}
+
+/* An indicator lamp, not a coloured dot: currentColor lights the lens and
+   bleeds a small glow into the surrounding plate. */
+@utility lamp {
+  border-radius: 9999px;
+  background-color: currentColor;
+  box-shadow: 0 0 0 1px #0000001a inset, 0 0 6px 0 currentColor;
+}
+@utility lamp-off {
+  background-color: var(--color-missing);
+  box-shadow: var(--inset-shadow-engraved);
+}
+
+/*
+  ============================================================================
+  COMPOSED COMPONENTS
+  ============================================================================
+  Structural patterns repeated across many pages. Built only from the tokens
+  and primitives above — no literal colour or shadow values appear here.
 */
 @layer components {
-  /* Card header: title + caption on one line, with an optional trailing legend/action pushed
-     right via ml-auto on that child. Used at the top of nearly every panel/card in the app. */
+  /*
+    Panel header. Opinionated by design: eyebrow (machine label) sits above a
+    human title, with legend/period/action pushed right via ml-auto on that
+    child. The eyebrow is what makes repeating the title in a subtitle
+    unnecessary — "PERFORMANCE / Performance trajectory / 12 months · 47
+    engineers" says more, in less space, than a title plus a sentence.
+  */
   .panel-head {
     display: flex;
     align-items: baseline;
@@ -228,75 +626,220 @@
     row-gap: 0.375rem;
     margin-bottom: 0.75rem;
   }
+  .panel-eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--text-3xs);
+    line-height: var(--text-3xs--line-height);
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    color: var(--color-ink);
+  }
 
   /*
-    QuickGrid (Microsoft.AspNetCore.Components.QuickGrid) renders its own <table>/<thead>/<tr>
-    structure — there's no markup to attach utility classes to for the table chrome itself, only
-    for each TemplateColumn's own cell content. This is the one place a real stylesheet rule
-    (rather than a utility class in markup) is the only mechanism available, so it's kept to
-    exactly the QuickGrid chrome and still built entirely from the same design tokens as everywhere
-    else — nothing here is a color/spacing value that doesn't already exist in the @theme block.
+    Instrument label: the small uppercase machine-voice caption used on axes,
+    column heads and gauge legends. Kept as a class so that "uppercase +
+    tracking + size + muted + display face" stay locked together — that
+    combination is a typographic role, and splitting it across four utilities
+    everywhere is how hierarchy erodes.
+  */
+  .label-instrument {
+    font-family: var(--font-display);
+    font-size: var(--text-3xs);
+    line-height: var(--text-3xs--line-height);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /*
+    Metrics are the primary visual object in this application: the interface
+    should be read through its numbers first. Display face, tabular figures so
+    columns of digits align and don't shimmer when they update, tight leading.
+  */
+  .metric {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    line-height: 1;
+  }
+  .metric-delta {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+  }
+  /* Any digit anywhere should be tabular; this is the escape hatch for text
+     that isn't a full .metric (table cells, inline counts, timestamps). */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /*
+    QuickGrid renders its own <table>/<thead>/<tr>, so there is no markup to
+    hang utilities on for the table chrome — only inside each TemplateColumn.
+    This is the one place a real stylesheet rule is the only mechanism
+    available. It is still built entirely from the tokens above.
   */
   .epa-grid {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
   }
   .epa-grid thead th {
-    background-color: var(--color-surface-dark);
-    color: var(--color-on-dark);
+    background-color: var(--color-chassis);
+    color: var(--color-on-chassis-soft);
     text-align: left;
-    padding: 0.5rem 0.75rem;
+    padding: 0.625rem 0.75rem;
+    font-family: var(--font-display);
     font-weight: 600;
-    font-size: 0.6875rem;
+    font-size: var(--text-3xs);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.08em;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    box-shadow: inset 0 1px 0 0 #ffffff12, 0 1px 0 0 var(--color-line);
   }
-  .epa-grid thead th:first-child { border-top-left-radius: 0.5rem; border-bottom-left-radius: 0.5rem; }
-  .epa-grid thead th:last-child { border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem; }
+  .epa-grid thead th:first-child { border-top-left-radius: var(--radius-md); border-bottom-left-radius: var(--radius-md); }
+  .epa-grid thead th:last-child { border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md); }
   .epa-grid thead th button {
-    color: inherit;
-    font: inherit;
-    text-transform: inherit;
-    letter-spacing: inherit;
-    background: none;
-    border: 0;
-    cursor: pointer;
+    color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit;
+    background: none; border: 0; cursor: pointer;
   }
-  .epa-grid tbody tr { border-bottom: 1px solid var(--color-line); }
-  .epa-grid tbody tr:hover { background-color: var(--color-surface-inset); }
-  .epa-grid tbody tr.row-flag { background-color: var(--color-warning-soft); }
-  .epa-grid tbody tr.row-flag-critical { background-color: var(--color-critical-soft); }
-  .epa-grid tbody td { padding: 0.5rem 0.75rem; color: var(--color-ink); vertical-align: middle; }
+  .epa-grid tbody tr {
+    border-bottom: 1px solid var(--color-line-soft);
+    transition: background-color var(--duration-switch) var(--ease-press);
+  }
+  .epa-grid tbody td {
+    padding: var(--density-cell-y) 0.75rem;
+    height: var(--density-row-h);
+    color: var(--color-ink);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--color-line-soft);
+  }
+  .epa-grid tbody tr:hover td { background-color: var(--color-surface-inset); }
 
+  /*
+    Severity as a 3px status rail rather than a full-row wash. Flooding whole
+    rows with pale yellow and pale red makes a dense table visually noisy and
+    destroys its scannability — and it fights the row-hover and row-selected
+    states for the same pixels. A rail reads instantly, stacks with hover, and
+    leaves the data itself on a clean surface. Full backgrounds are reserved
+    for the row actually being inspected.
+  */
+  .epa-grid tbody tr.row-flag td:first-child { box-shadow: inset 3px 0 0 0 var(--color-warning); }
+  .epa-grid tbody tr.row-flag-critical td:first-child { box-shadow: inset 3px 0 0 0 var(--color-critical); }
+  .epa-grid tbody tr.row-selected td { background-color: var(--color-primary-soft); }
+
+  /*
+    .card is kept as a deliberately *flatter* container than .plate, for
+    genuinely independent modules. Most analytical regions should now be a
+    plate containing wells, not four cards in a row — page canvas → plate →
+    recessed instruments, rather than canvas → card → card → card.
+  */
   .card {
-    border-radius: 0.75rem;
+    border-radius: var(--radius-xl);
     border: 1px solid var(--color-line);
     background-color: var(--color-surface);
-    padding: 1rem;
+    box-shadow: var(--shadow-plate);
+    padding: var(--density-plate-pad);
   }
 
+  /*
+    Buttons are physical controls: raised at rest, lifted on hover, and
+    genuinely depressed on press. The travel is only 1px each way — more than
+    that reads as a toy.
+  */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.375rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     padding: 0.5rem 1rem;
+    font-family: var(--font-display);
     font-size: 0.8125rem;
     font-weight: 600;
+    letter-spacing: 0.01em;
     cursor: pointer;
     white-space: nowrap;
-    transition: background-color .15s, opacity .15s;
+    transition: box-shadow var(--duration-control) var(--ease-press),
+                transform var(--duration-control) var(--ease-press),
+                background-color var(--duration-control) var(--ease-press);
   }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn-primary { background-color: var(--color-primary); color: #fff; }
-  .btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--color-primary) 88%, black); }
-  .btn-secondary { background-color: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-line); }
-  .btn-secondary:hover:not(:disabled) { background-color: var(--color-surface-inset); }
-  .btn-danger { background-color: var(--color-critical); color: #fff; }
-  .btn-danger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--color-critical) 88%, black); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
+  .btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--shadow-pressed); }
 
-  .badge { display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.125rem 0.5rem; font-size: 0.625rem; font-weight: 600; }
+  .btn-primary {
+    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 88%, white), var(--color-primary));
+    color: #fff;
+    box-shadow: var(--shadow-control), 0 0 0 0 var(--color-primary-glow);
+    text-shadow: 0 1px 1px #00000040;
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: var(--shadow-control-hover), 0 0 12px -2px var(--color-primary-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background-image: linear-gradient(to bottom, var(--color-surface-raised), var(--color-surface-inset));
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+    box-shadow: var(--shadow-control);
+  }
+  .btn-secondary:hover:not(:disabled) { box-shadow: var(--shadow-control-hover); transform: translateY(-1px); }
+
+  .btn-danger {
+    background-image: linear-gradient(to bottom, color-mix(in srgb, var(--color-critical) 88%, white), var(--color-critical));
+    color: #fff;
+    box-shadow: var(--shadow-control);
+    text-shadow: 0 1px 1px #00000040;
+  }
+  .btn-danger:hover:not(:disabled) { box-shadow: var(--shadow-control-hover); transform: translateY(-1px); }
+
+  /* A segmented control is a recessed track holding raised segments. */
+  .segmented {
+    display: inline-flex;
+    padding: 2px;
+    gap: 2px;
+    border-radius: var(--radius-md);
+    background-color: var(--color-well);
+    box-shadow: var(--inset-shadow-track);
+  }
+  .segmented > * {
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-ink-soft);
+    transition: all var(--duration-switch) var(--ease-press);
+  }
+  .segmented > [aria-pressed="true"], .segmented > [aria-checked="true"], .segmented > .is-active {
+    background-color: var(--color-surface-raised);
+    color: var(--color-primary);
+    box-shadow: var(--shadow-control);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: var(--text-3xs);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    box-shadow: var(--inset-shadow-engraved);
+  }
 }

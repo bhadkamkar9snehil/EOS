@@ -3,23 +3,27 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="fixed inset-0 z-50 flex justify-end bg-ink/40" @onclick="Close">
-    <aside class="flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-surface shadow-2xl" @onclick:stopPropagation="true">
+<div class="fixed inset-0 z-50 flex justify-end bg-ink/40 transition-opacity duration-300 ease-settle" @onclick="Close">
+    <aside class="glass flex h-full w-full max-w-2xl flex-col overflow-y-auto !rounded-none transition-transform duration-300 ease-settle" role="dialog" aria-modal="true" aria-label="@($"Spotlight for {Name}")" @onclick:stopPropagation="true">
         <header class="flex items-center gap-3 border-b border-line p-4">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">@Initials(Name)</span>
-            <div class="min-w-0 flex-1"><h2 class="truncate text-base font-bold text-ink">@Name</h2><small class="text-2xs text-muted">@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small></div>
-            @if (OnOpenProfile.HasDelegate) { <button class="whitespace-nowrap text-xs font-semibold text-primary hover:underline" @onclick="() => OnOpenProfile.InvokeAsync(Name)">Full history →</button> }
-            <button class="text-xl text-muted hover:text-ink" @onclick="Close" title="Close">×</button>
+            <span class="well flex h-10 w-10 shrink-0 items-center justify-center !rounded-full font-display text-sm font-semibold text-ink-soft">@Initials(Name)</span>
+            <div class="min-w-0 flex-1">
+                <div class="panel-eyebrow">Spotlight</div>
+                <h2 class="panel-title truncate">@Name</h2>
+                <small class="text-2xs tabular-nums text-muted">@(Item?.EmployeeCode ?? "No code on file") — @Month.ToString("MMMM yyyy")</small>
+            </div>
+            @if (OnOpenProfile.HasDelegate) { <button type="button" class="control whitespace-nowrap px-2.5 py-1.5 text-xs font-semibold text-primary hover:control-hover active:control-pressed" @onclick="() => OnOpenProfile.InvokeAsync(Name)">Full history →</button> }
+            <button type="button" class="control flex h-7 w-7 items-center justify-center text-muted hover:control-hover active:control-pressed" @onclick="Close" title="Close" aria-label="Close spotlight">×</button>
         </header>
 
         <div class="flex flex-col gap-4 p-4">
             @if (Item is null)
             {
-                <div class="rounded-xl border border-line bg-surface-inset p-6"><strong class="block text-sm font-semibold text-ink">No @Month.ToString("MMMM yyyy") data for @Name</strong><p class="mt-1 text-sm text-ink-soft">This person has no imported rows for the selected month.</p></div>
+                <div class="plate p-6"><strong class="panel-title block">No <span class="tabular-nums">@Month.ToString("MMMM yyyy")</span> data for @Name</strong><p class="mt-1 text-sm text-ink-soft">This person has no imported rows for the selected month.</p></div>
             }
             else
             {
-                <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                <div class="plate grid grid-cols-3 gap-2 p-3 sm:grid-cols-5">
                     @Kpi("Operational", Item.OperationalScore)
                     @Kpi("Timesheet", Item.TimesheetCompletionScore, Item.HasSummaryData)
                     @Kpi("Approval", Item.ApprovalScore, Item.HasSummaryData)
@@ -28,60 +32,63 @@
                 </div>
 
                 <div class="flex flex-col gap-4">
-                    <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Hours allocation</h3><small class="text-2xs text-muted">Current month</small></div>
-                        <div id="spotlight-hours" class="h-[200px]"></div>
+                    <section class="plate p-4">
+                        <div class="panel-head"><div><div class="panel-eyebrow">Allocation</div><h3 class="panel-title">Hours allocation</h3></div><span class="label-instrument ml-auto tabular-nums">@Month.ToString("MMM yyyy")</span></div>
+                        <div class="well p-2"><div id="spotlight-hours" class="h-[200px]"></div></div>
                     </section>
-                    <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Attendance and reconciliation</h3><small class="text-2xs text-muted">Current month</small></div>
-                        <div id="spotlight-attendance" class="h-[160px]"></div>
+                    <section class="plate p-4">
+                        <div class="panel-head"><div><div class="panel-eyebrow">Attendance</div><h3 class="panel-title">Attendance and reconciliation</h3></div></div>
+                        <div class="well p-2"><div id="spotlight-attendance" class="h-[160px]"></div></div>
                     </section>
                     @if (TrendValues.Count >= 2)
                     {
-                        <section class="card"><div class="panel-head"><h3 class="text-sm font-bold text-ink">Score trend</h3><small class="text-2xs text-muted">@TrendValues.Count months</small></div><div id="spotlight-trend" class="h-[200px]"></div></section>
+                        <section class="plate p-4">
+                            <div class="panel-head"><div><div class="panel-eyebrow">Trajectory</div><h3 class="panel-title">Score trend</h3></div><span class="label-instrument ml-auto tabular-nums">@TrendValues.Count months</span></div>
+                            <div class="well p-2"><div id="spotlight-trend" class="h-[200px]"></div></div>
+                        </section>
                     }
 
-                    <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Current numerical detail</h3><small class="text-2xs text-muted">Imported and calculated</small></div>
+                    <section class="plate p-4">
+                        <div class="panel-head"><div><div class="panel-eyebrow">Readout</div><h3 class="panel-title">Current numerical detail</h3></div></div>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Capacity</h4><div class="mt-1 flex flex-col gap-1">@Row("Compliance", Item.ComplianceHours, Item.HasSummaryData, "h")@Row("Entered", Item.EnteredHours, true, "h")@Row("Approved", Item.ApprovedHours, true, "h")@Row("Office", Item.OfficeHours, true, "h")</div></div>
-                            <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Allocation</h4><div class="mt-1 flex flex-col gap-1">@Row("Billable", Item.BillableHours, true, "h")@Row("Non-billable", Item.NonBillableHours, true, "h")@Row("Training", Item.TrainingHours, true, "h")@Row("Detailed", Item.DetailedHours, true, "h")</div></div>
-                            <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Attendance</h4><div class="mt-1 flex flex-col gap-1">@Row("Punch", Item.PunchHours, true, "h")@Row("Attendance TS", Item.AttendanceTimesheetHours, true, "h")@Row("Variance", Item.ReconciliationVariance, true, "h", true)@Row("Attendance days", Item.AttendanceDays)</div></div>
-                            <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Activity</h4><div class="mt-1 flex flex-col gap-1">@Row("Filled days", Item.TimesheetFilledDays)@Row("Expected days", Item.ExpectedTimesheetDays)@Row("Entries", Item.DetailedEntries)@Row("Projects", Item.UniqueProjects)</div></div>
-                            <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Exceptions</h4><div class="mt-1 flex flex-col gap-1">@Row("Missing punch", Item.MissingPunchDays)@Row("Late", Item.LateDays)@Row("Early", Item.EarlyDays)@Row("Less duration", Item.LessDurationDays)</div></div>
-                            <div><h4 class="text-xs font-semibold uppercase tracking-wide text-muted">Leave</h4><div class="mt-1 flex flex-col gap-1">@Row("Leave days", Item.LeaveDays)@Row("Reconciliation", Math.Abs(Item.ReconciliationVariance), true, "h")</div></div>
+                            <div><h4 class="label-instrument">Capacity</h4><div class="mt-1 flex flex-col gap-1">@Row("Compliance", Item.ComplianceHours, Item.HasSummaryData, "h")@Row("Entered", Item.EnteredHours, true, "h")@Row("Approved", Item.ApprovedHours, true, "h")@Row("Office", Item.OfficeHours, true, "h")</div></div>
+                            <div><h4 class="label-instrument">Allocation</h4><div class="mt-1 flex flex-col gap-1">@Row("Billable", Item.BillableHours, true, "h")@Row("Non-billable", Item.NonBillableHours, true, "h")@Row("Training", Item.TrainingHours, true, "h")@Row("Detailed", Item.DetailedHours, true, "h")</div></div>
+                            <div><h4 class="label-instrument">Attendance</h4><div class="mt-1 flex flex-col gap-1">@Row("Punch", Item.PunchHours, true, "h")@Row("Attendance TS", Item.AttendanceTimesheetHours, true, "h")@Row("Variance", Item.ReconciliationVariance, true, "h", true)@Row("Attendance days", Item.AttendanceDays)</div></div>
+                            <div><h4 class="label-instrument">Activity</h4><div class="mt-1 flex flex-col gap-1">@Row("Filled days", Item.TimesheetFilledDays)@Row("Expected days", Item.ExpectedTimesheetDays)@Row("Entries", Item.DetailedEntries)@Row("Projects", Item.UniqueProjects)</div></div>
+                            <div><h4 class="label-instrument">Exceptions</h4><div class="mt-1 flex flex-col gap-1">@Row("Missing punch", Item.MissingPunchDays)@Row("Late", Item.LateDays)@Row("Early", Item.EarlyDays)@Row("Less duration", Item.LessDurationDays)</div></div>
+                            <div><h4 class="label-instrument">Leave</h4><div class="mt-1 flex flex-col gap-1">@Row("Leave days", Item.LeaveDays)@Row("Reconciliation", Math.Abs(Item.ReconciliationVariance), true, "h")</div></div>
                         </div>
                     </section>
 
-                    <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Category performance</h3><small class="text-2xs text-muted">Against team average</small></div>
-                        <div id="spotlight-radar" class="h-[240px]"></div>
+                    <section class="plate p-4">
+                        <div class="panel-head"><div><div class="panel-eyebrow">Profile</div><h3 class="panel-title">Category performance</h3></div><span class="label-instrument ml-auto">Against team average</span></div>
+                        <div class="well p-2"><div id="spotlight-radar" class="h-[240px]"></div></div>
                     </section>
 
-                    <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Peer feedback</h3><small class="text-2xs text-muted">@Peer.ReceivedCount received · @Peer.GivenCount given</small></div>
+                    <section class="plate p-4">
+                        <div class="panel-head"><div><div class="panel-eyebrow">Peers</div><h3 class="panel-title">Peer feedback</h3></div></div>
                         @if (Peer.ReceivedCount == 0 && Peer.GivenCount == 0)
                         { <p class="text-sm text-muted">No peer feedback involving @Name this month.</p> }
                         else
                         {
                             <div class="grid grid-cols-3 gap-2">
-                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@Peer.ReceivedCount</strong><span class="text-3xs text-muted">Received</span></div>
-                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@Peer.GivenCount</strong><span class="text-3xs text-muted">Given</span></div>
-                                <div class="rounded-lg bg-surface-inset p-2 text-center"><strong class="block text-lg font-bold text-ink">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span class="text-3xs text-muted">Average</span></div>
+                                <div class="well p-2 text-center"><strong class="metric text-metric-sm block">@Peer.ReceivedCount</strong><span class="label-instrument mt-1 block">Received</span></div>
+                                <div class="well p-2 text-center"><strong class="metric text-metric-sm block">@Peer.GivenCount</strong><span class="label-instrument mt-1 block">Given</span></div>
+                                <div class="well p-2 text-center"><strong class="metric text-metric-sm block">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</strong><span class="label-instrument mt-1 block">Average</span></div>
                             </div>
                         }
                     </section>
 
-                    <section class="card">
-                        <div class="panel-head"><h3 class="text-sm font-bold text-ink">Alerts</h3><small class="text-2xs text-muted">@Alerts.Count</small></div>
+                    <section class="plate p-4">
+                        <div class="panel-head"><div><div class="panel-eyebrow">Alerts</div><h3 class="panel-title">Alerts</h3></div><span class="label-instrument ml-auto tabular-nums">@Alerts.Count</span></div>
                         @if (Alerts.Count == 0) { <p class="text-sm text-muted">No rule fired against @Name this month.</p> }
                         else
                         {
                             <div class="flex flex-col gap-2">
                                 @foreach (var alert in Alerts)
                                 {
-                                    <div class="flex items-start gap-2 rounded-lg bg-surface-inset p-2.5">
-                                        <span class="@($"rounded-full px-2 py-0.5 text-3xs font-semibold {LevelBg(alert.Level)}")">@LevelIcon(alert.Level) @Level(alert.Level)</span>
+                                    <div class="group well flex items-start gap-2 p-2.5">
+                                        <span class="@($"badge gap-1.5 {LevelBg(alert.Level)}")"><i class="lamp h-1.5 w-1.5" aria-hidden="true"></i>@Level(alert.Level)</span>
                                         <span class="flex flex-col"><strong class="text-sm font-medium text-ink">@alert.Headline</strong><small class="text-2xs text-muted">@alert.Detail</small></span>
                                     </div>
                                 }
@@ -141,9 +148,9 @@
     }
 
     private RenderFragment Kpi(string label, decimal value, bool available = true) =>
-        @<div class="rounded-lg bg-surface-inset p-2 text-center"><span class="block text-3xs text-muted">@label</span><strong class="text-base font-bold text-ink">@(available ? Analytics.Format(value) : "—")</strong></div>;
+        @<div class="well p-2 text-center"><strong class="metric text-metric-sm block">@(available ? Analytics.Format(value) : "—")</strong><span class="label-instrument mt-1 block">@label</span></div>;
     private RenderFragment Row(string label, decimal value, bool available = true, string suffix = "", bool signed = false) =>
-        @<p class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></p>;
+        @<p class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold tabular-nums text-ink">@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></p>;
 
     private async Task Close()
     {

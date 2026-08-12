@@ -7,65 +7,69 @@
 <div class="flex flex-col gap-6">
     @if (Rows.Count == 0)
     {
-        <div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-8">
-            <h2 class="text-lg font-bold text-ink">No timesheet data for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
+        <div class="plate flex flex-col items-start gap-3 p-8">
+            <div class="panel-eyebrow">Timesheets</div>
+            <h2 class="panel-title">No timesheet data for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span></h2>
             <p class="text-sm text-ink-soft">Import this month's attendance and utilization exports on the Data imports screen.</p>
-            <button class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>
+            <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>
         </div>
     }
     else
     {
-        <header class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-bold text-ink">Timesheet control ledger</h2>
-                <p class="mt-1 text-sm text-ink-soft">Exceptions are marked inline, at the row and field.</p>
+        <section class="plate p-4" aria-label="Timesheet pulse">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Compliance</div>
+                    <h2 class="panel-title">Timesheet control ledger</h2>
+                </div>
+                <span class="label-instrument ml-auto"><span class="tabular-nums">@Rows.Count</span> engineers · <span class="tabular-nums">@Analytics.Format(TotalExpected, "0.#")</span> accountable days</span>
             </div>
-            <div class="flex gap-6">
-                <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Engineers</span><strong class="text-lg font-bold text-ink">@Rows.Count</strong></div>
-                <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Accountable days</span><strong class="text-lg font-bold text-ink">@Analytics.Format(TotalExpected, "0.#")</strong></div>
-            </div>
-        </header>
 
-        <section class="grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-3 lg:grid-cols-6" aria-label="Timesheet pulse">
-            <div>
-                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Team fill rate</label>
-                <strong class="mt-1 block text-xl font-bold text-ink">@Analytics.Format(FillRate)%</strong>
-                <small class="text-2xs text-muted">@TotalFilled of @TotalExpected accountable days filled</small>
-            </div>
-            <div>
-                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Missing days</label>
-                <strong class="@($"mt-1 block text-xl font-bold {(_missingDays > 0 ? "text-serious" : "text-ink")}")">@Analytics.Format(_missingDays, "0.#")</strong>
-                <small class="text-2xs text-muted">@_withGaps engineer(s) with gaps</small>
-            </div>
-            <div>
-                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Awaiting approval</label>
-                <strong class="mt-1 block text-xl font-bold text-ink">@Analytics.Format(_pendingHours, "0") h</strong>
-                <small class="text-2xs text-muted">@_awaitingApproval engineer(s)</small>
-            </div>
-            <div>
-                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Billable capacity used</label>
-                <strong class="mt-1 block text-xl font-bold text-ink">@Analytics.Format(CapacityUsed)%</strong>
-                <small class="text-2xs text-muted">Across billable engineers</small>
-            </div>
-            <div>
-                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Probation context</label>
-                <strong class="mt-1 block text-xl font-bold text-ink">@Probationers</strong>
-                <small class="text-2xs text-muted">Freshers on probation in ERP roster</small>
-            </div>
-            <div>
-                <label class="block text-3xs font-semibold uppercase tracking-wide text-muted">Avg filing delay</label>
-                <strong class="@($"mt-1 block text-xl font-bold {(AvgFilingDelay > 1 ? "text-serious" : "text-ink")}")">@Analytics.Format(AvgFilingDelay, "0.0") d</strong>
-                <small class="text-2xs text-muted">@FilingDays day(s) filed this month</small>
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,14rem)_1fr]">
+                <div class="well p-4">
+                    <div class="metric text-metric">@Analytics.Format(FillRate)<span class="text-metric-sm">%</span></div>
+                    <div class="metric-delta text-ink-soft"><span class="tabular-nums">@TotalFilled</span> of <span class="tabular-nums">@TotalExpected</span> days filled</div>
+                    <div class="label-instrument mt-1">Team fill rate</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <div>
+                        <div class="@($"metric text-metric-sm {(_missingDays > 0 ? "text-serious" : "")}")">@Analytics.Format(_missingDays, "0.#")</div>
+                        <div class="metric-delta text-muted"><span class="tabular-nums">@_withGaps</span> engineer(s) with gaps</div>
+                        <div class="label-instrument mt-1">Missing days</div>
+                    </div>
+                    <div>
+                        <div class="metric text-metric-sm">@Analytics.Format(_pendingHours, "0")<span class="text-sm"> h</span></div>
+                        <div class="metric-delta text-muted"><span class="tabular-nums">@_awaitingApproval</span> engineer(s)</div>
+                        <div class="label-instrument mt-1">Awaiting approval</div>
+                    </div>
+                    <div>
+                        <div class="metric text-metric-sm">@Analytics.Format(CapacityUsed)<span class="text-sm">%</span></div>
+                        <div class="metric-delta text-muted">Across billable engineers</div>
+                        <div class="label-instrument mt-1">Billable capacity used</div>
+                    </div>
+                    <div>
+                        <div class="metric text-metric-sm">@Probationers</div>
+                        <div class="metric-delta text-muted">Freshers on probation</div>
+                        <div class="label-instrument mt-1">Probation context</div>
+                    </div>
+                    <div>
+                        <div class="@($"metric text-metric-sm {(AvgFilingDelay > 1 ? "text-serious" : "")}")">@Analytics.Format(AvgFilingDelay, "0.0")<span class="text-sm"> d</span></div>
+                        <div class="metric-delta text-muted"><span class="tabular-nums">@FilingDays</span> day(s) filed</div>
+                        <div class="label-instrument mt-1">Avg filing delay</div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section class="rounded-xl border border-line bg-surface p-4">
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <section class="plate p-4">
+            <div class="panel-head">
                 <div>
-                    <span class="text-sm font-bold text-ink">Compliance ledger</span>
-                    <span class="ml-2 text-2xs text-muted">@FilteredRows.Count of @Rows.Count engineers · click any sortable header to rank</span>
+                    <div class="panel-eyebrow">Ledger</div>
+                    <h2 class="panel-title">Engineer compliance</h2>
                 </div>
-                <input class="w-64 rounded-lg border border-line bg-surface-inset px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted focus:border-primary" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or team…" aria-label="Filter engineer or team" />
+                <span class="label-instrument"><span class="tabular-nums">@FilteredRows.Count</span> of <span class="tabular-nums">@Rows.Count</span> engineers · sortable headers rank</span>
+                <input class="field ml-auto w-64 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or team…" aria-label="Filter engineer or team" />
             </div>
 
             <div class="overflow-x-auto">
@@ -77,9 +81,9 @@
                         @if (context.IsConsultant || context.IsOnProbation || context.IsNonBillable)
                         {
                             <span class="flex flex-wrap gap-1">
-                                @if (context.IsConsultant) { <span class="rounded-full bg-info-soft px-2 py-0.5 text-3xs font-semibold text-info">Consultant</span> }
-                                @if (context.IsOnProbation) { <span class="rounded-full bg-warning-soft px-2 py-0.5 text-3xs font-semibold text-warning">Probation</span> }
-                                @if (context.IsNonBillable) { <span class="rounded-full bg-surface-inset px-2 py-0.5 text-3xs font-semibold text-muted">Non-billable</span> }
+                                @if (context.IsConsultant) { <span class="badge bg-info-soft text-info">Consultant</span> }
+                                @if (context.IsOnProbation) { <span class="badge bg-warning-soft text-warning">Probation</span> }
+                                @if (context.IsNonBillable) { <span class="badge bg-surface-inset text-muted">Non-billable</span> }
                             </span>
                         }
                         else
@@ -96,7 +100,9 @@
                     <TemplateColumn Title="Fill rate" Align="Align.Right" Sortable="true" SortBy="@_sortByFillRate">
                         <span class="flex items-center justify-end gap-2">
                             <b class="@($"tabular-nums font-semibold {Analytics.BandTextClass(Analytics.ScoreBand(context.FillRate))}")">@Analytics.Format(context.FillRate)%</b>
-                            <i class="@($"block h-1.5 rounded-full {Analytics.BandBgClass(Analytics.ScoreBand(context.FillRate))}")" style="@($"width:{Analytics.Svg((double)context.FillRate * 0.42)}px")"></i>
+                            <i class="track block h-1.5 w-[42px] shrink-0 overflow-hidden" role="img" aria-label="@($"Fill rate {Analytics.Format(context.FillRate)} percent")">
+                                <i class="@($"block h-full rounded-full {Analytics.BandBgClass(Analytics.ScoreBand(context.FillRate))}")" style="@($"width:{Analytics.Svg((double)context.FillRate * 0.42)}px")"></i>
+                            </i>
                         </span>
                     </TemplateColumn>
                     <TemplateColumn Title="Entered" Align="Align.Right" Sortable="true" SortBy="@_sortByEntered">
@@ -125,17 +131,23 @@
 
         @if (FilingRows.Count > 0)
         {
-            <section class="rounded-xl border border-line bg-surface p-4" aria-label="Timesheet filing delay">
+            <section class="plate p-4" aria-label="Timesheet filing delay">
                 <div class="panel-head">
-                    <div><h2 class="text-sm font-bold text-ink">Timesheet filing</h2><small class="text-2xs text-muted">How late each entry was filed after its work date, worst first</small></div>
-                    <span class="ml-auto text-2xs text-muted">@FilingRows.Count of @Rows.Count engineers with filed entries</span>
+                    <div>
+                        <div class="panel-eyebrow">Latency</div>
+                        <h2 class="panel-title">Timesheet filing delay</h2>
+                    </div>
+                    <span class="label-instrument ml-auto"><span class="tabular-nums">@FilingRows.Count</span> of <span class="tabular-nums">@Rows.Count</span> engineers with filed entries · worst first</span>
                 </div>
-                <ul class="flex flex-col divide-y divide-line">
+                <ul class="flex flex-col divide-y divide-line-soft">
                     @foreach (var row in FilingRows.Take(15))
                     {
-                        <li class="py-1.5">
-                            <strong class="@($"text-sm font-semibold {(row.AverageDelayDays > 1 ? "text-serious" : "text-ink")}")">@row.EmployeeName — @Analytics.Format(row.AverageDelayDays, "0.0") day(s) avg delay</strong>
-                            <small class="block text-2xs text-muted">Worst @Analytics.Format(row.MaxDelayDays, "0.#") day(s) late, for @row.WorstDay.ToString("dd MMM") · @row.FiledDays entr@(row.FiledDays == 1 ? "y" : "ies") filed</small>
+                        <li class="flex items-baseline gap-3 py-1.5">
+                            <strong class="min-w-0 flex-1 truncate text-sm font-medium text-ink">@row.EmployeeName</strong>
+                            <span class="flex flex-1 flex-col text-right">
+                                <b class="@($"metric text-sm {(row.AverageDelayDays > 1 ? "text-serious" : "text-ink")}")">@Analytics.Format(row.AverageDelayDays, "0.0") d avg</b>
+                                <small class="text-2xs tabular-nums text-muted">Worst @Analytics.Format(row.MaxDelayDays, "0.#") day(s) late, for @row.WorstDay.ToString("dd MMM") · @row.FiledDays entr@(row.FiledDays == 1 ? "y" : "ies") filed</small>
+                            </span>
                         </li>
                     }
                 </ul>

@@ -10,12 +10,15 @@
     const palette = () => ({
         series: Array.from({ length: 8 }, (_, i) => css(`--color-chart-${i + 1}`, '#0f5f7a')),
         operational: css('--color-petrol', '#0f5f7a'),
-        attendance: css('--color-chart-7', '#4f8a5b'),
-        timesheet: css('--color-chart-2', '#2f5fa3'),
-        approval: css('--color-chart-6', '#7c5cbf'),
-        good: css('--color-good', '#2f9e58'), warning: css('--color-warning', '#b08900'), serious: css('--color-serious', '#d97a1f'), critical: css('--color-critical', '#d92d20'), missing: css('--color-missing', '#b7b2a3'),
-        grid: css('--color-line', '#e4dfd0'), axis: css('--color-line', '#e4dfd0'), ink: css('--color-ink', '#1c1c1a'), inkSoft: css('--color-ink-soft', '#55534c'), muted: css('--color-muted', '#918d80'),
-        surface: css('--color-surface', '#fff'), tooltip: css('--color-surface-dark', '#1b2430'), tooltipText: css('--color-on-dark', '#f4f1ea'),
+        attendance: css('--color-chart-5', '#2f8189'),
+        timesheet: css('--color-chart-2', '#33619f'),
+        approval: css('--color-chart-3', '#6f5bb0'),
+        good: css('--color-good', '#2f8f52'), warning: css('--color-warning', '#a37f00'), serious: css('--color-serious', '#cf7118'), critical: css('--color-critical', '#cf2a1e'), missing: css('--color-missing', '#aca696'),
+        grid: css('--color-line', '#ddd6c5'), axis: css('--color-line', '#ddd6c5'), ink: css('--color-ink', '#1a1a18'), inkSoft: css('--color-ink-soft', '#4e4c45'), muted: css('--color-muted', '#8a8578'),
+        // Charts now sit in a recessed `well`, so the plot ground is the well colour,
+        // not the plate's surface — labels and fills must contrast against that.
+        surface: css('--color-well', '#e9e4d6'), plate: css('--color-surface', '#fff'),
+        tooltip: css('--color-chassis', '#232a33'), tooltipText: css('--color-on-chassis', '#f2eee4'),
         reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
     });
     const orange = () => css('--color-primary', '#f26a12');
@@ -33,9 +36,18 @@
         if (Number.isNaN(int)) return `rgba(15,95,122,${alpha})`;
         return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
     };
+    // Quadrant tints come from fully resolved per-theme tokens rather than a semantic
+    // colour composited at low alpha. Alpha math cannot serve both themes: 5% of a hue
+    // over cream reads as a clean pastel band, but the same 5% over near-black turns
+    // into a muddy olive/brown smear. These are picked per theme, not calculated.
     const zoneFill = role => {
-        const token = { underused: '--color-info', overloaded: '--color-critical', inconsistent: '--color-warning', balanced: '--color-good' }[role];
-        return token ? hexToRgba(css(token, '#0f5f7a'), .05) : 'transparent';
+        const token = {
+            underused: '--color-zone-underused',
+            overloaded: '--color-zone-overloaded',
+            inconsistent: '--color-zone-inconsistent',
+            balanced: '--color-zone-balanced'
+        }[role];
+        return token ? css(token, 'transparent') : 'transparent';
     };
     const compactViewport = () => window.innerWidth <= 1600 || window.innerHeight <= 900;
     const largeViewport = () => window.innerWidth >= 1900 && window.innerHeight >= 1000;
@@ -494,7 +506,10 @@
         const people = rows || [];
         const draw = (silent = false) => {
             const p = palette(), compact = compactViewport(), large = largeViewport();
-            const stops = [p.critical, orange(), p.axis, p.operational, p.good];
+            // A 1–5 rating is a semantic magnitude scale, so semantic colours are correct
+            // here — but orange is reserved for indicator roles, so the low-mid stop uses
+            // `serious` and the midpoint a neutral rather than borrowing the brand accent.
+            const stops = [p.critical, p.serious, p.missing, p.operational, p.good];
             const heatColor = value => {
                 const pos = Math.max(0, Math.min(4, Math.max(1, Math.min(5, value)) - 1));
                 const lower = Math.floor(pos), upper = Math.min(4, lower + 1);

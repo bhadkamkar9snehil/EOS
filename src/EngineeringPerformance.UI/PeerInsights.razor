@@ -10,8 +10,9 @@
 <div class="flex flex-col gap-6">
     @if (Summary.TotalFeedback == 0)
     {
-        <div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-8">
-            <h2 class="text-lg font-bold text-ink">No peer feedback for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
+        <div class="plate flex flex-col items-start gap-3 p-8">
+            <div class="panel-eyebrow">Peer evidence</div>
+            <h2 class="panel-title">No peer feedback for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span></h2>
             <p class="text-sm text-ink-soft">Generate review workbooks, collect the completed sheets, and upload them through Data imports.</p>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/templates")'>Go to review templates</button>
         </div>
@@ -19,67 +20,83 @@
     else
     {
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
-            <div class="card">
+            <div class="plate p-4">
                 <div class="panel-head">
-                    <h2 class="text-sm font-bold text-ink">Reliable team signal</h2>
+                    <div>
+                        <div class="panel-eyebrow">Standings</div>
+                        <h2 class="panel-title">Reliable team signal</h2>
+                    </div>
                     <details class="ml-auto">
-                        <summary class="cursor-pointer text-2xs font-semibold text-primary">How this rank works</summary>
-                        <div class="mt-2 max-w-sm rounded-lg border border-line bg-surface-inset p-3 text-xs text-ink-soft">
+                        <summary class="cursor-pointer text-2xs font-semibold text-ink-soft hover:text-ink">How this rank works</summary>
+                        <div class="well mt-2 max-w-sm p-3 text-xs text-ink-soft">
                             <strong class="block text-ink">Evidence target adapts to this month</strong>
-                            <p class="mt-1">An established placement currently requires @Summary.EvidenceCoverageTarget independent reviewers, the median coverage among reviewed employees. Thinner results stay visible as provisional signals after the established ranking.</p>
+                            <p class="mt-1">An established placement currently requires <span class="tabular-nums">@Summary.EvidenceCoverageTarget</span> independent reviewers, the median coverage among reviewed employees. Thinner results stay visible as provisional signals after the established ranking.</p>
                             <p class="mt-1">The team mean stabilizes sparse averages, but only actual reviewers narrow the uncertainty range. Model assumptions never count as extra reviews.</p>
-                            <span class="mt-1 block">Team mean <b class="text-ink">@Analytics.Format(Summary.AverageRating, "0.00")</b></span>
-                            <span class="block">Data-derived stabilizer <b class="text-ink">@Analytics.Format(Summary.ModelPriorStrength, "0.0")</b></span>
+                            <span class="mt-1 block">Team mean <b class="tabular-nums text-ink">@Analytics.Format(Summary.AverageRating, "0.00")</b></span>
+                            <span class="block">Data-derived stabilizer <b class="tabular-nums text-ink">@Analytics.Format(Summary.ModelPriorStrength, "0.0")</b></span>
                         </div>
                     </details>
                 </div>
-                <div class="grid grid-cols-[1.5rem_1fr_5rem_3rem_3rem] gap-2 border-b border-line pb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted" aria-hidden="true">
-                    <span></span><span>Person and evidence</span><span>Rating range</span><span class="text-right">Raw</span><span class="text-right">Reliable</span>
+                <div class="grid grid-cols-[1.5rem_1fr_5rem_3rem_3rem] gap-2 border-b border-line pb-1.5" aria-hidden="true">
+                    <span></span><span class="label-instrument">Person and evidence</span><span class="label-instrument">Rating range</span><span class="label-instrument text-right">Raw</span><span class="label-instrument text-right">Reliable</span>
                 </div>
-                <ol class="flex flex-col divide-y divide-line">
+                <ol class="flex flex-col divide-y divide-line-soft">
                     @for (var i = 0; i < Summary.Standings.Count; i++)
                     {
                         var standing = Summary.Standings[i];
                         if (i > 0 && Summary.Standings[i - 1].IsEstablished && !standing.IsEstablished)
                         {
-                            <li class="flex items-baseline gap-2 bg-surface-inset px-1 py-1.5 text-2xs"><span class="font-semibold text-ink-soft">Provisional signals</span><small class="text-muted">Fewer than @Summary.EvidenceCoverageTarget independent reviewers</small></li>
+                            <li class="flex items-baseline gap-2 bg-surface-inset px-1 py-1.5 text-2xs"><span class="label-instrument">Provisional signals</span><small class="text-muted">Fewer than <span class="tabular-nums">@Summary.EvidenceCoverageTarget</span> independent reviewers</small></li>
                         }
-                        <li>
-                            <button type="button" class="@($"grid w-full grid-cols-[1.5rem_1fr_5rem_3rem_3rem] items-center gap-2 rounded-lg px-1 py-2 text-left hover:bg-surface-inset {(!standing.IsEstablished ? "opacity-70" : "")} {(IsFocused(standing.Name) ? "bg-primary-soft" : "")}")" @onclick="() => SelectPerson(standing.Name)" aria-pressed="@IsFocused(standing.Name)" title="Focus @standing.Name in the relationship network">
-                                <span class="text-xs font-semibold text-muted">@(i + 1)</span>
-                                <span class="flex min-w-0 flex-col"><strong class="truncate text-sm font-medium text-ink">@standing.Name</strong><small class="truncate text-2xs text-muted">@standing.ReviewsReceived received · @EvidenceLabel(standing)</small></span>
-                                <span class="relative h-1.5 rounded-full bg-line">
-                                    <i class="absolute inset-y-0 rounded-full bg-primary/25" style="@ConfidenceTrackStyle(standing)"></i>
+                        <li class="group">
+                            <button type="button" class="@($"grid w-full grid-cols-[1.5rem_1fr_5rem_3rem_3rem] items-center gap-2 rounded-md px-1 py-2 text-left transition-colors duration-100 ease-press hover:bg-surface-inset {(!standing.IsEstablished ? "opacity-70" : "")} {(IsFocused(standing.Name) ? "bg-primary-soft" : "")}")" @onclick="() => SelectPerson(standing.Name)" aria-pressed="@IsFocused(standing.Name)" title="Focus @standing.Name in the relationship network">
+                                <span class="text-xs font-semibold tabular-nums text-muted">@(i + 1)</span>
+                                <span class="flex min-w-0 flex-col"><strong class="truncate text-sm font-medium text-ink">@standing.Name</strong><small class="truncate text-2xs tabular-nums text-muted">@standing.ReviewsReceived received · @EvidenceLabel(standing)</small></span>
+                                <span class="track relative h-1.5">
+                                    <i class="absolute inset-y-0 rounded-full bg-petrol/35" style="@ConfidenceTrackStyle(standing)"></i>
                                     <i class="absolute top-1/2 h-2 w-0.5 -translate-y-1/2 bg-ink-soft" style="@($"left:{ScorePct(Summary.AverageRating)}")"></i>
                                 </span>
                                 <span class="text-right text-xs tabular-nums text-ink-soft">@Analytics.Format(standing.Average, "0.00")</span>
-                                <span class="text-right text-xs font-semibold tabular-nums text-ink">@Analytics.Format(standing.ConfidenceLowerBound, "0.00")</span>
+                                <span class="metric text-right text-xs">@Analytics.Format(standing.ConfidenceLowerBound, "0.00")</span>
                             </button>
                         </li>
                     }
                 </ol>
-                <div class="mt-3 flex gap-4 text-3xs text-muted">
-                    <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-primary/25"></i>95% uncertainty</span>
-                    <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-ink-soft"></i>Raw average</span>
-                    <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-ink-soft"></i>Team mean</span>
+                <div class="mt-3 flex gap-4">
+                    <span class="label-instrument flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-petrol/35"></i><span class="tabular-nums">95%</span> uncertainty</span>
+                    <span class="label-instrument flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-ink-soft"></i>Raw average</span>
+                    <span class="label-instrument flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-ink-soft"></i>Team mean</span>
                 </div>
             </div>
 
-            <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Aspect landscape</h2><small class="text-2xs text-muted">Evidence-adjusted aspect estimates · ordered by reliable signal</small></div>
-                <div id="peer-aspect-landscape" class="h-[420px]" aria-label="Peer aspect comparison heatmap"></div>
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Aspects</div>
+                        <h2 class="panel-title">Aspect landscape</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Evidence-adjusted · ordered by reliable signal</span>
+                </div>
+                <div class="well p-3">
+                    <div id="peer-aspect-landscape" class="h-[420px]" aria-label="Peer aspect comparison heatmap"></div>
+                </div>
             </div>
         </section>
 
         <PeerRelationshipExplorer Reviews="State.PeerReviews" SelectedMonth="State.SelectedMonth" InitialFocusName="_focusName" />
 
-        <section class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Coverage and blind spots</h2></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Network</div>
+                    <h2 class="panel-title">Coverage and blind spots</h2>
+                </div>
+            </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr]">
-                <div class="rounded-lg bg-surface-inset p-4">
-                    <strong class="block text-2xl font-bold text-ink">@Analytics.Format(NetworkCompletion, "0")%</strong>
-                    <span class="text-xs text-ink-soft">of possible reviewer-to-colleague links recorded</span>
-                    <div class="mt-2 h-1.5 rounded-full bg-line"><i class="block h-full rounded-full bg-primary" style="@($"width:{CssPct(NetworkCompletion)}")"></i></div>
+                <div class="well p-4">
+                    <div class="metric text-metric">@Analytics.Format(NetworkCompletion, "0")<span class="text-metric-sm">%</span></div>
+                    <div class="track mt-2 h-1.5 overflow-hidden"><i class="block h-full rounded-full bg-petrol" style="@($"width:{CssPct(NetworkCompletion)}")"></i></div>
+                    <div class="label-instrument mt-1">Reviewer-to-colleague links recorded</div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     @Diagnostic("Reciprocal pairs", ReciprocalPairs.ToString(), "Both colleagues rated each other")
@@ -87,15 +104,15 @@
                 </div>
             </div>
             <div class="mt-4">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Thinnest evidence</h3>
-                <ol class="mt-2 flex flex-col divide-y divide-line">
+                <h3 class="label-instrument">Thinnest evidence</h3>
+                <ol class="mt-2 flex flex-col divide-y divide-line-soft">
                     @foreach (var person in ThinEvidence)
                     {
-                        <li>
-                            <button type="button" class="flex w-full items-center gap-3 py-1.5 text-left hover:bg-surface-inset" @onclick="() => SelectPerson(person.Name)">
-                                <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm font-medium text-ink">@person.Name</strong><small class="text-2xs text-muted">@person.ReviewsReceived ratings received</small></span>
-                                <i class="h-1.5 w-20 rounded-full bg-line"><i class="block h-full rounded-full bg-primary" style="@CoverageBarStyle(person)"></i></i>
-                                <b class="w-6 text-right text-sm font-semibold text-ink">@person.ReviewsReceived</b>
+                        <li class="group">
+                            <button type="button" class="flex w-full items-center gap-3 rounded-md px-1 py-1.5 text-left transition-colors duration-100 ease-press hover:bg-surface-inset" title="Focus @person.Name in the relationship network" @onclick="() => SelectPerson(person.Name)">
+                                <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm font-medium text-ink">@person.Name</strong><small class="text-2xs tabular-nums text-muted">@person.ReviewsReceived ratings received</small></span>
+                                <i class="track block h-1.5 w-20 shrink-0 overflow-hidden"><i class="block h-full rounded-full bg-petrol" style="@CoverageBarStyle(person)"></i></i>
+                                <b class="metric w-6 text-right text-sm">@person.ReviewsReceived</b>
                             </button>
                         </li>
                     }
@@ -103,20 +120,29 @@
             </div>
         </section>
 
-        <details class="rounded-xl border border-line bg-surface">
+        <details class="plate">
             <summary class="flex cursor-pointer items-center justify-between gap-3 p-4">
-                <span><strong class="text-sm font-semibold text-ink">Reviewer × colleague matrix</strong><small class="ml-2 text-2xs text-muted">Open the complete directed evidence table for @AspectLabel.ToLowerInvariant()</small></span>
-                <b class="text-xs text-muted">@Summary.TotalFeedback values</b>
+                <span>
+                    <span class="panel-eyebrow block">Evidence table</span>
+                    <strong class="panel-title">Reviewer × colleague matrix</strong>
+                </span>
+                <b class="label-instrument"><span class="tabular-nums">@Summary.TotalFeedback</span> values</b>
             </summary>
             <div class="border-t border-line p-4">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">@AspectLabel rating matrix</h2><small class="text-2xs text-muted">Rows rate columns · direct values out of 5</small></div>
-                <div class="overflow-auto">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">@AspectLabel</div>
+                        <h2 class="panel-title">Rating matrix</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Rows rate columns · direct values out of 5</span>
+                </div>
+                <div class="well overflow-auto p-3">
                     <div class="grid gap-1" style="@PeerMatrixStyle">
-                        <span class="sticky left-0 bg-surface text-3xs text-muted">Reviewer ↓ / colleague →</span>
-                        @foreach (var subject in PeerNames) { <span class="text-center text-3xs font-semibold text-ink-soft" title="@subject">@Analytics.Initials(subject)</span> }
+                        <span class="label-instrument sticky left-0 bg-well">Reviewer ↓ / colleague →</span>
+                        @foreach (var subject in PeerNames) { <span class="label-instrument text-center" title="@subject">@Analytics.Initials(subject)</span> }
                         @foreach (var reviewer in PeerNames)
                         {
-                            <strong class="sticky left-0 truncate bg-surface text-xs font-medium text-ink" title="@reviewer">@reviewer</strong>
+                            <strong class="sticky left-0 truncate bg-well text-xs font-medium text-ink" title="@reviewer">@reviewer</strong>
                             @foreach (var subject in PeerNames)
                             {
                                 var review = PairReview(reviewer, subject);
@@ -131,7 +157,7 @@
                                 else
                                 {
                                     var rating = AspectValue(review);
-                                    <button type="button" class="flex h-8 items-center justify-center rounded text-2xs font-semibold text-white" style="@($"background-color:color-mix(in srgb, var(--color-primary) {CssPct(rating * 20m)}, var(--color-surface-inset))")" title="@PairTooltip(review)" @onclick="() => OpenPortrait(subject)">@Analytics.Format(rating, "0.0")</button>
+                                    <button type="button" class="@($"flex h-8 items-center justify-center rounded-sm text-2xs font-semibold tabular-nums {(rating >= 3.5m ? "text-white" : "text-ink")}")" style="@($"background-color:color-mix(in srgb, var(--color-heat-5) {CssPct(rating * 20m)}, var(--color-heat-1))")" title="@PairTooltip(review)" @onclick="() => OpenPortrait(subject)">@Analytics.Format(rating, "0.0")</button>
                                 }
                             }
                         }
@@ -140,8 +166,14 @@
             </div>
         </details>
 
-        <section class="card">
-            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Written evidence</h2><small class="text-2xs text-muted">@AllComments.Count comments · reviewer context preserved</small></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Comments</div>
+                    <h2 class="panel-title">Written evidence</h2>
+                </div>
+                <span class="label-instrument ml-auto"><span class="tabular-nums">@AllComments.Count</span> comments · reviewer context preserved</span>
+            </div>
             @if (AllComments.Count == 0)
             {
                 <p class="text-sm text-muted">No reviewer left a written comment this month.</p>
@@ -151,9 +183,9 @@
                 <ul class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     @foreach (var c in AllComments)
                     {
-                        <li class="cursor-pointer rounded-lg border border-line p-3 hover:bg-surface-inset" @onclick="() => OpenPortrait(c.SubjectName)" title="Open @c.SubjectName portrait">
-                            <strong class="block text-sm font-semibold text-ink">@c.ReviewerName → @c.SubjectName</strong>
-                            <span class="mt-1 block text-2xs text-muted">@Analytics.Format(c.Average, "0.00") overall · Collab @Analytics.Format(c.Collaboration, "0.0") · Comms @Analytics.Format(c.Communication, "0.0") · Reliable @Analytics.Format(c.Reliability, "0.0") · Tech @Analytics.Format(c.TechnicalHelp, "0.0")</span>
+                        <li class="group cursor-pointer rounded-lg border border-line-soft bg-surface-inset p-3 transition-colors duration-100 ease-press hover:bg-surface-raised" @onclick="() => OpenPortrait(c.SubjectName)" title="Open @c.SubjectName portrait">
+                            <strong class="block text-sm font-medium text-ink">@c.ReviewerName → @c.SubjectName</strong>
+                            <span class="mt-1 block text-2xs tabular-nums text-muted">@Analytics.Format(c.Average, "0.00") overall · Collab @Analytics.Format(c.Collaboration, "0.0") · Comms @Analytics.Format(c.Communication, "0.0") · Reliable @Analytics.Format(c.Reliability, "0.0") · Tech @Analytics.Format(c.TechnicalHelp, "0.0")</span>
                             <p class="mt-2 text-xs text-ink-soft">@c.Comment</p>
                         </li>
                     }
@@ -233,7 +265,7 @@
     private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
     private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
     private RenderFragment Diagnostic(string label, string value, string detail) =>
-        @<div class="rounded-lg bg-surface-inset p-3"><span class="block text-3xs text-muted">@label</span><strong class="block text-lg font-bold text-ink">@value</strong><small class="text-2xs text-muted">@detail</small></div>;
+        @<div class="well p-3"><strong class="metric block text-metric-sm">@value</strong><small class="metric-delta block text-muted">@detail</small><span class="label-instrument mt-1 block">@label</span></div>;
 
     public async ValueTask DisposeAsync()
     {

@@ -11,35 +11,36 @@
 <section class="flex flex-col gap-4">
     <header class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h2 class="text-xl font-bold text-ink">People &amp; teams</h2>
+            <div class="panel-eyebrow">Roster</div>
+            <h2 class="panel-title">People &amp; teams</h2>
             <p class="mt-1 text-sm text-ink-soft">Read-only ERP evidence — classification controls appear while editing.</p>
         </div>
         <div class="flex items-center gap-3">
             @if (ExcludedCount > 0)
             {
-                <span class="badge bg-warning-soft text-warning">@ExcludedCount excluded from analysis</span>
+                <span class="badge gap-1.5 bg-warning-soft text-warning"><i class="lamp h-1.5 w-1.5" aria-hidden="true"></i><span class="tabular-nums">@ExcludedCount</span> excluded from analysis</span>
             }
             <button class="btn btn-secondary" @onclick="ImportRosterAsync" disabled="@State.Busy">Import ERP roster</button>
         </div>
     </header>
 
-    <details class="rounded-xl border border-line bg-surface">
-        <summary class="cursor-pointer p-4 text-sm font-semibold text-ink">Add employee or create team</summary>
+    <details class="plate">
+        <summary class="panel-title cursor-pointer p-4">Add employee or create team</summary>
         <div class="grid grid-cols-1 gap-4 border-t border-line p-4 lg:grid-cols-2">
             <EditForm Model="_newEmployee" OnValidSubmit="AddEmployeeAsync">
                 <DataAnnotationsValidator />
                 <div class="flex flex-wrap items-end gap-3">
-                    <span class="w-full text-xs font-semibold uppercase tracking-wide text-muted">Add employee</span>
+                    <span class="label-instrument w-full">Add employee</span>
                     <label class="flex flex-col gap-1 text-xs text-ink-soft">Employee code
-                        <InputText @bind-Value="_newEmployee.Code" placeholder="E1042" class="w-28 rounded-lg border border-line bg-surface-inset px-2 py-1.5 text-sm text-ink outline-none focus:border-primary" />
+                        <InputText @bind-Value="_newEmployee.Code" placeholder="E1042" class="w-28 field px-2.5 py-1.5 text-sm text-ink outline-none focus:ring-1 focus:ring-primary" />
                         <ValidationMessage For="() => _newEmployee.Code" class="text-critical" />
                     </label>
                     <label class="flex flex-1 flex-col gap-1 text-xs text-ink-soft">Employee name
-                        <InputText @bind-Value="_newEmployee.Name" placeholder="Full name" class="w-full rounded-lg border border-line bg-surface-inset px-2 py-1.5 text-sm text-ink outline-none focus:border-primary" />
+                        <InputText @bind-Value="_newEmployee.Name" placeholder="Full name" class="w-full field px-2.5 py-1.5 text-sm text-ink outline-none focus:ring-1 focus:ring-primary" />
                         <ValidationMessage For="() => _newEmployee.Name" class="text-critical" />
                     </label>
                     <label class="flex flex-col gap-1 text-xs text-ink-soft">Level
-                        <InputNumber @bind-Value="_newEmployee.Level" min="1" max="99" class="w-16 rounded-lg border border-line bg-surface-inset px-2 py-1.5 text-sm text-ink outline-none focus:border-primary" />
+                        <InputNumber @bind-Value="_newEmployee.Level" min="1" max="99" class="w-16 field px-2.5 py-1.5 text-sm text-ink outline-none focus:ring-1 focus:ring-primary" />
                         <ValidationMessage For="() => _newEmployee.Level" class="text-critical" />
                     </label>
                     <button type="submit" class="btn btn-primary" disabled="@State.Busy">Add employee</button>
@@ -49,9 +50,9 @@
             <EditForm Model="_newTeam" OnValidSubmit="AddTeamAsync">
                 <DataAnnotationsValidator />
                 <div class="flex flex-wrap items-end gap-3">
-                    <span class="w-full text-xs font-semibold uppercase tracking-wide text-muted">Create team</span>
+                    <span class="label-instrument w-full">Create team</span>
                     <label class="flex flex-1 flex-col gap-1 text-xs text-ink-soft">Team name
-                        <InputText @bind-Value="_newTeam.Name" placeholder="e.g. X-Force Execution" class="w-full rounded-lg border border-line bg-surface-inset px-2 py-1.5 text-sm text-ink outline-none focus:border-primary" />
+                        <InputText @bind-Value="_newTeam.Name" placeholder="e.g. X-Force Execution" class="w-full field px-2.5 py-1.5 text-sm text-ink outline-none focus:ring-1 focus:ring-primary" />
                         <ValidationMessage For="() => _newTeam.Name" class="text-critical" />
                     </label>
                     <button type="submit" class="btn btn-secondary" disabled="@State.Busy">Create team</button>
@@ -62,29 +63,30 @@
 
     @if (State.Teams.Count > 0)
     {
-        <details class="rounded-xl border border-line bg-surface">
-            <summary class="cursor-pointer p-4 text-sm font-semibold text-ink">Team structure · @State.Teams.Count team(s)</summary>
+        <details class="plate">
+            <summary class="cursor-pointer p-4"><span class="panel-title">Team structure</span> <span class="label-instrument ml-2 tabular-nums">@State.Teams.Count team(s)</span></summary>
             <div class="grid grid-cols-1 gap-3 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach (var team in State.Teams)
                 {
-                    <div class="rounded-lg border border-line p-3">
+                    <div class="group rounded-lg border border-line-soft bg-surface-inset p-3">
                         <div class="flex items-center gap-2">
-                            <input class="min-w-0 flex-1 rounded-md border border-line bg-surface-inset px-2 py-1 text-sm font-medium text-ink outline-none focus:border-primary" value="@(_editTeamNames.TryGetValue(team.Id, out var n) ? n : team.Name)"
+                            <input class="field min-w-0 flex-1 px-2.5 py-1 text-sm font-medium text-ink outline-none focus:ring-1 focus:ring-primary" aria-label="Team name" value="@(_editTeamNames.TryGetValue(team.Id, out var n) ? n : team.Name)"
                                    @onchange="e => _editTeamNames[team.Id] = e.Value?.ToString() ?? string.Empty" />
-                            <span class="rounded-full bg-surface-inset px-2 py-0.5 text-2xs text-ink-soft">@team.MemberCount</span>
+                            <span class="badge bg-surface-raised text-ink-soft" title="Members">@team.MemberCount</span>
                         </div>
                         @{ var avg = TeamAverageScore(team); }
-                        <div class="mt-2 flex items-baseline gap-2">
+                        <div class="mt-2.5 flex flex-col">
                             @if (avg is not null)
                             {
-                                <b class="@($"text-lg font-bold {Analytics.BandTextClass(Analytics.ScoreBand(avg.Value))}")">@Analytics.Format(avg.Value)</b><span class="text-2xs text-muted">avg operational score</span>
+                                <b class="@($"metric text-metric-sm {Analytics.BandTextClass(Analytics.ScoreBand(avg.Value))}")">@Analytics.Format(avg.Value)</b>
+                                <span class="label-instrument mt-1">Avg operational score</span>
                             }
                             else
                             {
                                 <span class="text-2xs text-muted">No scored members this month</span>
                             }
                         </div>
-                        <div class="mt-2 flex gap-2">
+                        <div class="mt-2.5 flex gap-2">
                             <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="() => RenameTeamAsync(team)" disabled="@(State.Busy || !IsTeamRenamed(team))">Rename</button>
                             <button class="btn btn-danger !px-2.5 !py-1 !text-2xs" @onclick="() => DeleteTeamAsync(team)" disabled="@State.Busy">Delete</button>
                         </div>
@@ -94,14 +96,14 @@
         </details>
     }
 
-    <div class="rounded-xl border border-line bg-surface">
-        <div class="grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line bg-surface-dark px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-dark">
+    <div class="plate overflow-hidden">
+        <div class="chassis label-instrument grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-chassis-deep px-3 py-2 !text-on-chassis-soft">
             <span>Code</span><span>Engineer</span><span>Level</span><span>Team</span><span>Billable</span><span>Employment</span><span title="Daily commute classification imported from the ERP roster.">Commute</span><span>Analysis</span><span>Actions</span>
         </div>
         <Virtualize TItem="EmployeeListItem" Items="_employeesSnapshot" Context="employee" ItemSize="58">
             @{ var editing = _editingEmployeeId == employee.Id; }
-            <div class="@($"grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line px-3 py-2 text-xs {(employee.IsExcluded ? "opacity-50" : "")} {(editing ? "bg-primary-soft/30" : "")}")">
-                <div><code class="text-2xs text-ink-soft">@employee.EmployeeCode</code></div>
+            <div class="@($"group grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line-soft px-3 py-2 text-xs transition-colors duration-100 ease-press hover:bg-surface-inset {(employee.IsExcluded ? "opacity-50" : "")} {(editing ? "bg-primary-soft/30" : "")}")">
+                <div><code class="text-2xs tabular-nums text-ink-soft">@employee.EmployeeCode</code></div>
                 <div>
                     <span class="flex flex-col">
                         <strong class="font-medium text-ink">@employee.Name</strong>
@@ -113,9 +115,9 @@
                     @if (editing)
                     {
                         <div class="flex items-center gap-1">
-                            <button class="flex h-6 w-6 items-center justify-center rounded border border-line text-ink-soft hover:bg-surface-inset" title="Decrease level" @onclick="() => AdjustLevel(employee, -1)">−</button>
-                            <input type="number" min="1" max="99" class="w-10 rounded border border-line bg-surface-inset px-1 py-0.5 text-center text-xs text-ink" value="@(_editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel)" @onchange="e => _editLevel[employee.Id] = int.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 1, 99) : employee.SeniorityLevel" />
-                            <button class="flex h-6 w-6 items-center justify-center rounded border border-line text-ink-soft hover:bg-surface-inset" title="Increase level" @onclick="() => AdjustLevel(employee, 1)">+</button>
+                            <button class="control flex h-6 w-6 items-center justify-center text-ink-soft hover:control-hover active:control-pressed" title="Decrease level" @onclick="() => AdjustLevel(employee, -1)">−</button>
+                            <input type="number" min="1" max="99" class="field w-10 px-1 py-0.5 text-center text-xs tabular-nums text-ink outline-none focus:ring-1 focus:ring-primary" value="@(_editLevel.TryGetValue(employee.Id, out var l) ? l : employee.SeniorityLevel)" @onchange="e => _editLevel[employee.Id] = int.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 1, 99) : employee.SeniorityLevel" />
+                            <button class="control flex h-6 w-6 items-center justify-center text-ink-soft hover:control-hover active:control-pressed" title="Increase level" @onclick="() => AdjustLevel(employee, 1)">+</button>
                         </div>
                     }
                     else
@@ -127,7 +129,7 @@
                 <div>
                     @if (editing)
                     {
-                        <select class="w-full rounded border border-line bg-surface-inset px-1.5 py-1 text-xs text-ink" value="@(employee.TeamId?.ToString() ?? "")" @onchange="e => AssignTeamAsync(employee, e.Value?.ToString())">
+                        <select class="field w-full px-1.5 py-1 text-xs text-ink outline-none focus:ring-1 focus:ring-primary" value="@(employee.TeamId?.ToString() ?? "")" @onchange="e => AssignTeamAsync(employee, e.Value?.ToString())">
                             <option value="">— Unassigned —</option>
                             @foreach (var team in State.Teams) { <option value="@team.Id">@team.Name</option> }
                         </select>
@@ -156,7 +158,7 @@
                     {
                         <span class="flex flex-col gap-1">
                             @if (employee.IsConsultant) { <span class="badge bg-info-soft text-info w-fit">Consultant</span> }
-                            <select class="w-full rounded border border-line bg-surface-inset px-1.5 py-1 text-3xs text-ink" value="@(employee.ProbationOverride is null ? "auto" : employee.ProbationOverride.Value ? "on" : "off")"
+                            <select class="field w-full px-1.5 py-1 text-3xs text-ink outline-none focus:ring-1 focus:ring-primary" value="@(employee.ProbationOverride is null ? "auto" : employee.ProbationOverride.Value ? "on" : "off")"
                                     title="Probation status — Auto follows the ERP roster's completion date"
                                     @onchange="e => SetProbationAsync(employee, e.Value?.ToString())">
                                 <option value="auto">Auto (@(employee.IsOnProbation ? "on" : "off"))</option>
@@ -178,7 +180,7 @@
                 <div>
                     @if (editing)
                     {
-                        <select class="w-full rounded border border-line bg-surface-inset px-1.5 py-1 text-xs text-ink" value="@(employee.IsUpdown ? "on" : "off")" title="Daily commute classification" @onchange="e => SetUpdownAsync(employee, e.Value?.ToString())">
+                        <select class="field w-full px-1.5 py-1 text-xs text-ink outline-none focus:ring-1 focus:ring-primary" value="@(employee.IsUpdown ? "on" : "off")" title="Daily commute classification" @onchange="e => SetUpdownAsync(employee, e.Value?.ToString())">
                             <option value="on">Yes</option><option value="off">No</option>
                         </select>
                     }

@@ -8,14 +8,16 @@
 
     const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
     const palette = () => ({
-        series:Array.from({length:8},(_,i)=>cssVar(`--color-chart-${i+1}`,'#2f5fa3')),
-        operational:cssVar('--color-petrol','#0f5f7a'), timesheet:cssVar('--color-chart-2','#2f5fa3'), approval:cssVar('--color-chart-6','#7c5cbf'), attendance:cssVar('--color-chart-7','#4f8a5b'),
-        billable:cssVar('--color-chart-2','#2f5fa3'), nonBillable:cssVar('--color-chart-5','#b08900'), training:cssVar('--color-chart-6','#7c5cbf'), office:cssVar('--color-chart-7','#4f8a5b'), punch:cssVar('--color-chart-3','#0f5f7a'), underutilized:cssVar('--color-chart-8','#a35a8c'),
-        good:cssVar('--color-good','#2f9e58'), warning:cssVar('--color-warning','#b08900'), serious:cssVar('--color-serious','#d97a1f'), critical:cssVar('--color-critical','#d92d20'), info:cssVar('--color-info','#2f5fa3'),
-        grid:cssVar('--color-line','#e4dfd0'), axis:cssVar('--color-line','#e4dfd0'), muted:cssVar('--color-muted','#918d80'), inkSoft:cssVar('--color-ink-soft','#55534c'), ink:cssVar('--color-ink','#1c1c1a'),
-        tooltip:cssVar('--color-surface-dark','#1b2430'), tooltipText:cssVar('--color-on-dark','#f4f1ea'), surface:cssVar('--color-surface','#fff'), missing:cssVar('--color-missing','#b7b2a3'), missingSurface:cssVar('--color-surface-inset','#f7f5ef'), naSurface:cssVar('--color-line-soft','#ece8db'),
-        heatScale:Array.from({length:5},(_,i)=>cssVar(`--color-heat-${i+1}`,'#2f5fa3')), reducedMotion:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
-    };
+        series:Array.from({length:8},(_,i)=>cssVar(`--color-chart-${i+1}`,'#33619f')),
+        operational:cssVar('--color-petrol','#0f5f7a'), timesheet:cssVar('--color-chart-2','#33619f'), approval:cssVar('--color-chart-3','#6f5bb0'), attendance:cssVar('--color-chart-5','#2f8189'),
+        billable:cssVar('--color-chart-2','#33619f'), nonBillable:cssVar('--color-chart-6','#5f6b7a'), training:cssVar('--color-chart-3','#6f5bb0'), office:cssVar('--color-chart-7','#4a7fa8'), punch:cssVar('--color-chart-1','#0f5f7a'), underutilized:cssVar('--color-chart-4','#96588a'),
+        good:cssVar('--color-good','#2f8f52'), warning:cssVar('--color-warning','#a37f00'), serious:cssVar('--color-serious','#cf7118'), critical:cssVar('--color-critical','#cf2a1e'), info:cssVar('--color-info','#2f5fa3'),
+        grid:cssVar('--color-line','#ddd6c5'), axis:cssVar('--color-line','#ddd6c5'), muted:cssVar('--color-muted','#8a8578'), inkSoft:cssVar('--color-ink-soft','#4e4c45'), ink:cssVar('--color-ink','#1a1a18'),
+        tooltip:cssVar('--color-chassis','#232a33'), tooltipText:cssVar('--color-on-chassis','#f2eee4'),
+        // Charts sit in a recessed `well`, so the plot ground is the well colour.
+        surface:cssVar('--color-well','#e9e4d6'), missing:cssVar('--color-missing','#aca696'), missingSurface:cssVar('--color-well-deep','#ded8c7'), naSurface:cssVar('--color-line-soft','#e8e2d4'),
+        heatScale:Array.from({length:5},(_,i)=>cssVar(`--color-heat-${i+1}`,'#35619f')), reducedMotion:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
+    });
 
     const roleColor = (role, index, p) => {
         switch (String(role || '').toLowerCase()) {

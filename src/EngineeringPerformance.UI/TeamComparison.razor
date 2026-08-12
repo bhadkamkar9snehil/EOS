@@ -6,42 +6,59 @@
 @implements IDisposable
 
 <section class="flex flex-col gap-6">
-    <div>
-        <h2 class="text-xl font-bold text-ink">Team comparison</h2>
-        <p class="mt-1 text-sm text-ink-soft">Scorecards for @State.SelectedMonth.ToString("MMMM yyyy").</p>
-    </div>
-
     @if (Scorecards.Count == 0)
     {
-        <div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-8">
-            <h2 class="text-lg font-bold text-ink">No teams with scored people yet</h2>
+        <div class="plate flex flex-col items-start gap-3 p-8">
+            <div class="panel-eyebrow">Team comparison</div>
+            <h2 class="panel-title">No teams with scored people yet</h2>
             <p class="text-sm text-ink-soft">Assign employees to teams on the Employees &amp; Teams page, then come back here once performance data is imported.</p>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/employees")'>Go to Employees &amp; Teams</button>
         </div>
     }
     else
     {
-        <div class="overflow-x-auto rounded-xl border border-line bg-surface">
-            <div class="grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-dark">
-                <span>Team</span><span>People</span><span>Avg. operational score</span><span>Avg. timesheet completion</span><span>Avg. approval completion</span><span>Avg. attendance discipline</span><span>Timesheet fill rate</span><span>Open alerts</span>
-            </div>
-            @foreach (var card in Scorecards)
-            {
-                <div class="grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] items-center gap-2 border-b border-line px-3 py-2.5 text-sm">
-                    <span><strong class="font-medium text-ink">@card.TeamName</strong></span>
-                    <span class="text-ink-soft">@card.MemberCount</span>
-                    <span><b class="@Analytics.BandTextClass(Analytics.ScoreBand(card.AverageScore))">@Analytics.Format(card.AverageScore)</b></span>
-                    <span class="text-ink-soft">@Analytics.Format(card.AverageTimesheet, "0.#")%</span>
-                    <span class="text-ink-soft">@Analytics.Format(card.AverageApproval, "0.#")%</span>
-                    <span class="text-ink-soft">@Analytics.Format(card.AverageAttendance, "0.#")%</span>
-                    <span class="text-ink-soft">@Analytics.Format(card.TimesheetFillRate, "0.#")%</span>
-                    <span class="text-ink-soft">@card.OpenAlerts</span>
+        <div class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Comparison</div>
+                    <h2 class="panel-title">Team scorecards</h2>
                 </div>
-            }
+                <span class="label-instrument ml-auto"><span class="tnum">@Scorecards.Count</span> teams · <span class="tnum">@State.SelectedMonth.ToString("MMMM yyyy")</span></span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <div class="chassis grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] gap-2 rounded-md px-3 py-2">
+                    <span class="label-instrument !text-on-chassis-soft">Team</span>
+                    <span class="label-instrument !text-on-chassis-soft">People</span>
+                    <span class="label-instrument !text-on-chassis-soft">Avg. operational score</span>
+                    <span class="label-instrument !text-on-chassis-soft">Avg. timesheet completion</span>
+                    <span class="label-instrument !text-on-chassis-soft">Avg. approval completion</span>
+                    <span class="label-instrument !text-on-chassis-soft">Avg. attendance discipline</span>
+                    <span class="label-instrument !text-on-chassis-soft">Timesheet fill rate</span>
+                    <span class="label-instrument !text-on-chassis-soft">Open alerts</span>
+                </div>
+                @foreach (var card in Scorecards)
+                {
+                    <div class="group grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] items-center gap-2 border-b border-line-soft px-3 py-2.5 text-sm transition-colors duration-100 ease-press hover:bg-surface-inset"
+                         data-band="@Analytics.ScoreBand(card.AverageScore)">
+                        <span><strong class="font-medium text-ink">@card.TeamName</strong></span>
+                        <span class="tabular-nums text-ink-soft">@card.MemberCount</span>
+                        <span><b class="@($"metric text-sm {Analytics.BandTextClass(Analytics.ScoreBand(card.AverageScore))}")">@Analytics.Format(card.AverageScore)</b></span>
+                        <span class="tabular-nums text-ink-soft">@Analytics.Format(card.AverageTimesheet, "0.#")%</span>
+                        <span class="tabular-nums text-ink-soft">@Analytics.Format(card.AverageApproval, "0.#")%</span>
+                        <span class="tabular-nums text-ink-soft">@Analytics.Format(card.AverageAttendance, "0.#")%</span>
+                        <span class="tabular-nums text-ink-soft">@Analytics.Format(card.TimesheetFillRate, "0.#")%</span>
+                        <span class="flex items-center gap-1.5">
+                            <i class="@($"h-2 w-2 {(card.OpenAlerts > 0 ? "lamp text-critical" : "lamp-off")}")" aria-hidden="true"></i>
+                            <span class="tabular-nums text-ink-soft">@card.OpenAlerts</span>
+                        </span>
+                    </div>
+                }
+            </div>
         </div>
         @if (UnassignedCount > 0)
         {
-            <p class="text-2xs text-muted">@UnassignedCount employee(s) have no team assigned and are not included in the scorecards above.</p>
+            <p class="text-2xs text-muted"><span class="tnum">@UnassignedCount</span> employee(s) have no team assigned and are not included in the scorecards above.</p>
         }
     }
 </section>

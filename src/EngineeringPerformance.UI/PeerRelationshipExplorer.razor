@@ -5,12 +5,13 @@
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
 
-<section class="card" aria-label="Peer rating network">
+<section class="plate p-4" aria-label="Peer rating network">
     <header class="panel-head">
         <div>
-            <h2 class="text-sm font-bold text-ink">Peer rating network</h2>
-            <small class="text-2xs text-muted">Arrow: reviewer → colleague · line strength: selected rating</small>
+            <div class="panel-eyebrow">Relationships</div>
+            <h2 class="panel-title">Peer rating network</h2>
         </div>
+        <span class="label-instrument">Arrow: reviewer → colleague · line strength: selected rating</span>
         @if (ShowAtlasButton)
         {
             <button type="button" class="btn btn-secondary ml-auto" @onclick='() => Navigation.NavigateTo("/peer-insights")'>Open collaboration atlas</button>
@@ -18,55 +19,56 @@
     </header>
 
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex flex-wrap gap-1 rounded-lg bg-surface-inset p-1" role="group" aria-label="Peer rating aspect">
+        <div class="segmented flex-wrap" role="group" aria-label="Peer rating aspect">
             @foreach (var aspect in Aspects)
             {
-                <button type="button" class="@($"rounded-md px-2.5 py-1 text-xs font-medium {(_aspect == aspect.Key ? "bg-surface text-primary shadow-sm" : "text-ink-soft hover:text-ink")}")" aria-pressed="@(_aspect == aspect.Key)" @onclick="() => SelectAspect(aspect.Key)">@aspect.Label</button>
+                <button type="button" aria-pressed="@(_aspect == aspect.Key)" @onclick="() => SelectAspect(aspect.Key)">@aspect.Label</button>
             }
         </div>
-        <div class="flex gap-3 text-2xs text-muted"><span>As of @DateTime.Today.ToString("yyyy-MM-dd")</span><span>Reporting period: <b class="text-ink-soft">@SelectedMonth.ToString("MMMM yyyy")</b></span></div>
+        <div class="flex gap-3"><span class="label-instrument">As of <span class="tabular-nums">@DateTime.Today.ToString("yyyy-MM-dd")</span></span><span class="label-instrument">Reporting period: <span class="tabular-nums">@SelectedMonth.ToString("MMMM yyyy")</span></span></div>
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-3">
         <div class="relative">
-            <input class="w-56 rounded-lg border border-line bg-surface-inset px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted focus:border-primary" value="@_search" @oninput="OnSearch" @onfocus="OpenSearch" placeholder="Search people" aria-label="Search people" />
+            <input class="field w-56 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" value="@_search" @oninput="OnSearch" @onfocus="OpenSearch" placeholder="Search people" aria-label="Search people" />
             @if (_searchOpen && SearchResults.Count > 0)
             {
-                <div class="absolute left-0 top-10 z-20 w-56 rounded-lg border border-line bg-surface p-1 shadow-lg">
+                <div class="floating absolute left-0 top-10 z-20 w-56 p-1" role="listbox" aria-label="People search results">
                     @foreach (var person in SearchResults)
                     {
-                        <button type="button" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-inset" @onclick="() => FocusPerson(person)"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-inset text-3xs font-semibold text-ink-soft">@Analytics.Initials(person)</span><b class="font-medium text-ink">@person</b></button>
+                        <button type="button" role="option" aria-selected="false" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-100 ease-press hover:bg-surface-inset" @onclick="() => FocusPerson(person)"><span class="well flex h-6 w-6 items-center justify-center !rounded-full text-3xs font-semibold text-ink-soft">@Analytics.Initials(person)</span><b class="font-medium text-ink">@person</b></button>
                     }
                 </div>
             }
         </div>
 
         <div class="flex flex-1 items-center justify-center gap-2 text-xs text-ink-soft" aria-label="Focused employee navigation">
-            <button type="button" class="rounded px-1.5 py-0.5 hover:bg-surface-inset" title="Previous person" @onclick="PreviousPerson">‹</button>
+            <button type="button" class="control px-1.5 py-0.5 hover:control-hover active:control-pressed" title="Previous person" aria-label="Previous person" @onclick="PreviousPerson">‹</button>
             <span>Previous: <b class="text-ink">@PreviousName</b></span>
             <strong class="rounded-full bg-primary-soft px-2.5 py-1 text-primary">Focused: @_focusName</strong>
             <span>Next: <b class="text-ink">@NextName</b></span>
-            <button type="button" class="rounded px-1.5 py-0.5 hover:bg-surface-inset" title="Next person" @onclick="NextPerson">›</button>
+            <button type="button" class="control px-1.5 py-0.5 hover:control-hover active:control-pressed" title="Next person" aria-label="Next person" @onclick="NextPerson">›</button>
         </div>
 
         <div class="flex items-center gap-3">
-            <div class="flex gap-1 rounded-lg bg-surface-inset p-1" role="group" aria-label="Connection emphasis">
+            <div class="segmented" role="group" aria-label="Connection emphasis">
                 @foreach (var option in Directions)
                 {
-                    <button type="button" class="@($"rounded-md px-2.5 py-1 text-xs font-medium {(_direction == option.Key ? "bg-surface text-primary shadow-sm" : "text-ink-soft hover:text-ink")}")" aria-pressed="@(_direction == option.Key)" @onclick="() => SelectDirection(option.Key)">@option.Label</button>
+                    <button type="button" aria-pressed="@(_direction == option.Key)" @onclick="() => SelectDirection(option.Key)">@option.Label</button>
                 }
             </div>
-            <div class="flex items-center gap-1.5 text-xs text-ink-soft"><span>Coverage</span><b class="text-ink">@Analytics.Format(FocusCoverage, "0")%</b></div>
+            <div class="flex items-center gap-1.5"><span class="label-instrument">Coverage</span><b class="metric text-sm">@Analytics.Format(FocusCoverage, "0")%</b></div>
         </div>
     </div>
 
-    <div class="relative mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_140px_1fr]" id="@_mapId">
+    <div class="well mt-4 p-3">
+    <div class="relative grid grid-cols-1 gap-4 lg:grid-cols-[1fr_140px_1fr]" id="@_mapId">
         <canvas aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full"></canvas>
 
         <div class="relative z-10">
-            <h3 class="text-xs font-semibold text-ink-soft">People who rated @_focusFirstName <span class="font-normal text-muted">(Inbound)</span></h3>
-            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem] gap-1 border-b border-line pb-1 text-3xs font-semibold text-muted"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span></div>
-            <div class="mt-1 flex flex-col divide-y divide-line">
+            <h3 class="label-instrument">People who rated @_focusFirstName (inbound)</h3>
+            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem] gap-1 border-b border-line pb-1"><span></span><b class="label-instrument">Overall</b><span class="label-instrument">Collab</span><span class="label-instrument">Comm</span><span class="label-instrument">Reliab</span></div>
+            <div class="mt-1 flex flex-col divide-y divide-line-soft">
                 @if (Inbound.Count == 0)
                 {
                     <div class="py-3 text-xs text-muted">No inbound ratings for this period.</div>
@@ -78,16 +80,17 @@
             </div>
         </div>
 
-        <div class="relative z-10 flex flex-col items-center justify-center gap-1 self-start rounded-xl border border-primary-soft bg-primary-soft px-4 py-4 text-center lg:self-center">
+        <div class="plate plate-lifted relative z-10 flex flex-col items-center justify-center gap-1 self-start bg-primary-soft px-4 py-4 text-center lg:self-center">
             <span class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">@Analytics.Initials(_focusName)</span>
-            <strong class="text-sm font-semibold text-ink">@_focusName</strong>
-            <b class="text-lg font-bold text-primary">@Analytics.Format(FocusAverage, "0.0")</b>
+            <b class="metric text-metric-sm text-primary">@Analytics.Format(FocusAverage, "0.0")</b>
+            <strong class="text-sm font-medium text-ink">@_focusName</strong>
+            <span class="label-instrument">Focused</span>
         </div>
 
         <div class="relative z-10">
-            <h3 class="text-xs font-semibold text-ink-soft">People @_focusFirstName rated <span class="font-normal text-muted">(Outbound)</span></h3>
-            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem_4rem] gap-1 border-b border-line pb-1 text-3xs font-semibold text-muted"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span><span>Reciprocal?</span></div>
-            <div class="mt-1 flex flex-col divide-y divide-line">
+            <h3 class="label-instrument">People @_focusFirstName rated (outbound)</h3>
+            <div class="mt-2 grid grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem_4rem] gap-1 border-b border-line pb-1"><span></span><b class="label-instrument">Overall</b><span class="label-instrument">Collab</span><span class="label-instrument">Comm</span><span class="label-instrument">Reliab</span><span class="label-instrument">Reciprocal?</span></div>
+            <div class="mt-1 flex flex-col divide-y divide-line-soft">
                 @if (Outbound.Count == 0)
                 {
                     <div class="py-3 text-xs text-muted">No outbound ratings for this period.</div>
@@ -99,24 +102,26 @@
             </div>
         </div>
     </div>
+    </div>
 
     @if (SelectedRelationship is not null)
     {
         var selected = SelectedRelationship;
         var reciprocal = ReciprocalOf(selected);
-        <div class="mt-4 rounded-xl border border-line bg-surface-inset p-4">
+        <div class="well mt-4 p-4">
             <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-soft">
-                <span>Selected relationship: <b class="text-ink">@selected.Reviewer</b> → <strong class="text-ink">@selected.Subject</strong></span>
-                <span>Feedback count: <b class="text-ink">@selected.Count</b></span>
+                <span class="label-instrument">Selected relationship</span>
+                <span>Reviewer → recipient: <b class="text-ink">@selected.Reviewer</b> → <strong class="text-ink">@selected.Subject</strong></span>
+                <span>Feedback count: <b class="tabular-nums text-ink">@selected.Count</b></span>
                 <span>Reciprocal: <b class="text-ink">@(reciprocal is null ? "No" : "Yes")</b></span>
-                <button type="button" class="text-base text-muted hover:text-ink" title="Close relationship details" @onclick="ClearRelationship">×</button>
+                <button type="button" class="text-base text-muted hover:text-ink" title="Close relationship details" aria-label="Close relationship details" @onclick="ClearRelationship">×</button>
             </div>
             <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
                 @PersonDetail("Reviewer", selected.Reviewer)
                 @PersonDetail("Recipient", selected.Subject)
                 @MetricDetail("Overall rating", selected.Overall, reciprocal?.Overall)
                 <div class="col-span-2 md:col-span-2">
-                    <label class="block text-3xs text-muted">Four aspects (out of 5)</label>
+                    <label class="label-instrument block">Four aspects (out of 5)</label>
                     <div class="mt-1 flex flex-wrap gap-3">
                         @AspectDetail("Collaboration", selected.Collaboration, reciprocal?.Collaboration)
                         @AspectDetail("Communication", selected.Communication, reciprocal?.Communication)
@@ -124,9 +129,9 @@
                         @AspectDetail("Technical help", selected.TechnicalHelp, reciprocal?.TechnicalHelp)
                     </div>
                 </div>
-                <div><label class="block text-3xs text-muted">Rating gap <small>(Reviewer - Recipient)</small></label><strong class="text-sm font-semibold text-ink">@Gap(selected.Overall, reciprocal?.Overall)</strong></div>
-                <div><label class="block text-3xs text-muted">Feedback count <small>(This relationship)</small></label><strong class="text-sm font-semibold text-ink">@selected.Count</strong></div>
-                <div><label class="block text-3xs text-muted">Reciprocal</label><strong class="text-sm font-semibold text-ink">@(reciprocal is null ? "No" : "Yes")</strong><small class="block text-2xs text-muted">@(reciprocal is null ? $"{selected.Subject} has not rated {selected.Reviewer}" : $"{selected.Subject} rated {selected.Reviewer}")</small></div>
+                <div><label class="label-instrument block">Rating gap (reviewer − recipient)</label><strong class="metric text-sm">@Gap(selected.Overall, reciprocal?.Overall)</strong></div>
+                <div><label class="label-instrument block">Feedback count (this relationship)</label><strong class="metric text-sm">@selected.Count</strong></div>
+                <div><label class="label-instrument block">Reciprocal</label><strong class="text-sm font-semibold text-ink">@(reciprocal is null ? "No" : "Yes")</strong><small class="block text-2xs text-muted">@(reciprocal is null ? $"{selected.Subject} has not rated {selected.Reviewer}" : $"{selected.Subject} rated {selected.Reviewer}")</small></div>
             </div>
         </div>
     }
@@ -193,9 +198,9 @@
     }
 
     private RenderFragment RelationshipRow(Relationship relationship, bool inbound) =>
-        @<button id="@RowId(relationship)" type="button" class="@($"grid w-full items-center gap-1 rounded-md px-1 py-1.5 text-left hover:bg-surface-inset {(inbound ? "grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem]" : "grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem_4rem]")} {(relationship.Key == _selectedKey ? "bg-primary-soft" : "")} {(DirectionMuted(inbound) ? "opacity-40" : "")}")" @onclick="() => SelectRelationship(relationship)">
-            <span class="flex min-w-0 items-center gap-1.5"><i class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-inset text-[9px] font-semibold not-italic text-ink-soft">@Analytics.Initials(inbound ? relationship.Reviewer : relationship.Subject)</i><b class="truncate text-xs font-medium text-ink">@(inbound ? relationship.Reviewer : relationship.Subject)</b></span>
-            <strong class="@($"text-xs font-semibold {RatingClass(AspectValue(relationship))}")">@Analytics.Format(AspectValue(relationship), "0.0")</strong>
+        @<button id="@RowId(relationship)" type="button" aria-pressed="@(relationship.Key == _selectedKey)" class="@($"group grid w-full items-center gap-1 rounded-md px-1 py-1.5 text-left transition-colors duration-100 ease-press hover:bg-surface-inset {(inbound ? "grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem]" : "grid-cols-[1fr_2.5rem_2.5rem_2.5rem_2.5rem_4rem]")} {(relationship.Key == _selectedKey ? "bg-primary-soft" : "")} {(DirectionMuted(inbound) ? "opacity-40" : "")}")" @onclick="() => SelectRelationship(relationship)">
+            <span class="flex min-w-0 items-center gap-1.5"><i class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-inset text-3xs font-semibold not-italic text-ink-soft">@Analytics.Initials(inbound ? relationship.Reviewer : relationship.Subject)</i><b class="truncate text-xs font-medium text-ink">@(inbound ? relationship.Reviewer : relationship.Subject)</b></span>
+            <strong class="@($"metric text-xs {RatingClass(AspectValue(relationship))}")">@Analytics.Format(AspectValue(relationship), "0.0")</strong>
             @RatingCell(relationship.Collaboration)
             @RatingCell(relationship.Communication)
             @RatingCell(relationship.Reliability)
@@ -203,9 +208,9 @@
         </button>;
 
     private RenderFragment RatingCell(decimal value) => @<span class="text-xs tabular-nums text-ink-soft">@Analytics.Format(value, "0.0")</span>;
-    private RenderFragment PersonDetail(string label, string name) => @<div><label class="block text-3xs text-muted">@label</label><span class="mt-0.5 flex items-center gap-1.5"><i class="flex h-5 w-5 items-center justify-center rounded-full bg-surface text-[9px] font-semibold not-italic text-ink-soft">@Analytics.Initials(name)</i><b class="text-sm font-medium text-ink">@name</b></span></div>;
-    private RenderFragment MetricDetail(string label, decimal value, decimal? reciprocal) => @<div><label class="block text-3xs text-muted">@label</label><strong class="text-sm font-semibold text-ink">@Analytics.Format(value, "0.0")</strong>@if (reciprocal.HasValue) { <b class="ml-1 text-xs text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</b> }</div>;
-    private RenderFragment AspectDetail(string label, decimal value, decimal? reciprocal) => @<span class="text-xs"><label class="block text-3xs text-muted">@label</label><b class="text-ink">@Analytics.Format(value, "0.0")</b>@if (reciprocal.HasValue) { <small class="ml-1 text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</small> }</span>;
+    private RenderFragment PersonDetail(string label, string name) => @<div><label class="label-instrument block">@label</label><span class="mt-0.5 flex items-center gap-1.5"><i class="flex h-5 w-5 items-center justify-center rounded-full bg-surface text-3xs font-semibold not-italic text-ink-soft">@Analytics.Initials(name)</i><b class="text-sm font-medium text-ink">@name</b></span></div>;
+    private RenderFragment MetricDetail(string label, decimal value, decimal? reciprocal) => @<div><label class="label-instrument block">@label</label><strong class="metric text-sm">@Analytics.Format(value, "0.0")</strong>@if (reciprocal.HasValue) { <b class="ml-1 text-xs tabular-nums text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</b> }</div>;
+    private RenderFragment AspectDetail(string label, decimal value, decimal? reciprocal) => @<span class="text-xs"><label class="label-instrument block">@label</label><b class="tabular-nums text-ink">@Analytics.Format(value, "0.0")</b>@if (reciprocal.HasValue) { <small class="ml-1 tabular-nums text-muted">(@Analytics.Format(reciprocal.Value, "0.0"))</small> }</span>;
 
     private void OnSearch(ChangeEventArgs args) { _search = args.Value?.ToString() ?? string.Empty; _searchOpen = true; }
     private void OpenSearch(FocusEventArgs _) => _searchOpen = true;

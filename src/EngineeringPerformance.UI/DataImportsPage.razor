@@ -9,19 +9,26 @@
 @implements IDisposable
 
 <div class="flex flex-col gap-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <h2 class="text-xl font-bold text-ink">Evidence pipeline</h2>
-            <p class="mt-1 text-sm text-ink-soft">Source evidence for @State.SelectedMonth.ToString("MMMM yyyy").</p>
+            <div class="panel-eyebrow">Intake</div>
+            <h2 class="panel-title">Evidence pipeline</h2>
+            <p class="mt-1 text-sm text-ink-soft">Source evidence for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span>.</p>
         </div>
-        <div class="flex items-center gap-4">
-            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">ERP inputs</span><strong class="text-lg font-bold text-ink">@State.SystemReadyCount / 3</strong></div>
-            <div class="text-right"><span class="block text-3xs uppercase tracking-wide text-muted">Review input</span><strong class="text-lg font-bold text-ink">@(ReviewReviewerCount == 0 ? "Open" : $"{ReviewReviewerCount} reviewer{(ReviewReviewerCount == 1 ? "" : "s")}")</strong></div>
+        <div class="flex items-end gap-6">
+            <div class="text-right">
+                <div class="metric text-metric-sm tabular-nums">@State.SystemReadyCount<span class="text-muted">/3</span></div>
+                <div class="label-instrument mt-1">ERP inputs</div>
+            </div>
+            <div class="text-right">
+                <div class="metric text-metric-sm tabular-nums">@ReviewReviewerCount</div>
+                <div class="label-instrument mt-1">@(ReviewReviewerCount == 1 ? "Reviewer" : "Reviewers")</div>
+            </div>
             <button class="btn btn-primary" @onclick="UploadZipAsync" disabled="@State.Busy">Import package</button>
         </div>
     </header>
 
-    <section class="flex flex-wrap gap-2 rounded-xl border border-line bg-surface p-3" aria-label="Import workflow">
+    <section class="plate flex flex-wrap gap-2 p-3" aria-label="Import workflow">
         @PipelineNode(1, "Period", true, State.SelectedMonth.ToString("MMM yy"))
         @PipelineNode(2, "ERP evidence", State.SystemReadyCount >= 3, $"{State.SystemReadyCount}/3")
         @PipelineNode(3, "Normalize", State.Performance.Count > 0, State.Performance.Count == 0 ? "waiting" : $"{State.Performance.Count} people")
@@ -31,27 +38,24 @@
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
         <section class="flex flex-col gap-4">
-            <section class="card">
-                <header class="flex flex-wrap items-start justify-between gap-3">
-                    <div class="flex items-start gap-3">
-                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-2xs font-bold text-primary">REV</span>
-                        <div>
-                            <span class="block text-3xs font-semibold uppercase tracking-wide text-muted">Peer review intake · @State.SelectedMonth.ToString("MMMM yyyy")</span>
-                            <h2 class="text-sm font-bold text-ink">Add returned employee reviews</h2>
-                            <p class="mt-1 max-w-md text-xs text-ink-soft">Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
-                        </div>
+            <section class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Peer review intake</div>
+                        <h2 class="panel-title">Add returned employee reviews</h2>
+                        <p class="mt-1 max-w-md text-xs text-ink-soft">Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
                     </div>
-                    <div class="flex shrink-0 gap-2">
+                    <div class="ml-auto flex shrink-0 gap-2">
                         <button class="btn btn-primary" @onclick="AddReviewsAsync" disabled="@State.Busy">Add review files</button>
                         <button class="btn btn-secondary" @onclick="BeginReplaceReviews" disabled="@State.Busy">Replace month set</button>
                     </div>
-                </header>
+                </div>
 
-                <div class="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-surface-inset p-3 sm:grid-cols-4" aria-label="Loaded review evidence">
-                    <div><span class="block text-3xs text-muted">Reviewers loaded</span><strong class="text-base font-bold text-ink">@ReviewReviewerCount</strong></div>
-                    <div><span class="block text-3xs text-muted">Feedback entries</span><strong class="text-base font-bold text-ink">@State.PeerReviews.Count</strong></div>
-                    <div><span class="block text-3xs text-muted">People reviewed</span><strong class="text-base font-bold text-ink">@ReviewSubjectCount</strong></div>
-                    <div><span class="block text-3xs text-muted">Last review upload</span><strong class="text-sm font-bold text-ink">@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</strong></div>
+                <div class="well mt-4 grid grid-cols-2 gap-3 p-3 sm:grid-cols-4" aria-label="Loaded review evidence">
+                    <div><div class="metric text-metric-sm tabular-nums">@ReviewReviewerCount</div><div class="label-instrument mt-1">Reviewers loaded</div></div>
+                    <div><div class="metric text-metric-sm tabular-nums">@State.PeerReviews.Count</div><div class="label-instrument mt-1">Feedback entries</div></div>
+                    <div><div class="metric text-metric-sm tabular-nums">@ReviewSubjectCount</div><div class="label-instrument mt-1">People reviewed</div></div>
+                    <div><div class="metric text-sm tabular-nums">@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</div><div class="label-instrument mt-1">Last review upload</div></div>
                 </div>
 
                 @if (_confirmReplaceReviews)
@@ -67,18 +71,20 @@
 
                 @if (_lastReviewImport is { } result)
                 {
-                    <div class="mt-3 rounded-lg border border-line p-3">
+                    <div class="well mt-3 p-3">
                         <div class="mb-2">
-                            <strong class="block text-sm font-semibold text-ink">@result.AcceptedWorkbooks workbook(s) accepted</strong>
-                            <span class="text-xs text-muted">@result.AddedReviews added · @result.UpdatedReviews updated · @result.RemovedReviews removed · @result.TotalReviews total</span>
+                            <div class="metric text-metric-sm tabular-nums">@result.AcceptedWorkbooks</div>
+                            <div class="label-instrument mt-1">Workbooks accepted</div>
+                            <div class="mt-1 text-xs tabular-nums text-muted">@result.AddedReviews added · @result.UpdatedReviews updated · @result.RemovedReviews removed · @result.TotalReviews total</div>
                         </div>
                         <div class="flex flex-col gap-1.5">
                             @foreach (var file in result.Files)
                             {
-                                <span class="@($"flex items-center gap-2 rounded-md p-1.5 text-xs {(file.Accepted ? "bg-good-soft" : "bg-critical-soft")}")" title="@(file.Error ?? file.ReviewerName)">
+                                <span class="flex items-center gap-2 rounded-md bg-surface p-1.5 text-xs" data-state="@(file.Accepted ? "accepted" : "rejected")" title="@(file.Error ?? file.ReviewerName)">
+                                    <i class="@($"h-2 w-2 shrink-0 lamp {(file.Accepted ? "text-good" : "text-critical")}")" aria-hidden="true"></i>
                                     <b class="@(file.Accepted ? "text-good" : "text-critical")">@(file.Accepted ? "Accepted" : "Rejected")</b>
                                     <i class="not-italic text-ink-soft">@file.FileName</i>
-                                    <em class="not-italic text-muted">@(file.Accepted ? $"{file.ReviewerName} · {file.ReviewCount} entries" : file.Error)</em>
+                                    <em class="not-italic tabular-nums text-muted">@(file.Accepted ? $"{file.ReviewerName} · {file.ReviewCount} entries" : file.Error)</em>
                                 </span>
                             }
                         </div>
@@ -88,43 +94,51 @@
                 <footer class="mt-3 flex items-center gap-2 text-xs text-muted"><strong class="text-ink-soft">Safe merge</strong><span>Re-uploading one employee's workbook replaces only that reviewer's entries for this month.</span></footer>
             </section>
 
-            <div class="panel-head">
-                <div><h2 class="text-sm font-bold text-ink">Source register</h2><small class="text-2xs text-muted">Expected export → detected workbook → accepted reporting period</small></div>
-                <span class="ml-auto text-2xs text-muted">Replace an input to recalculate the month from the new evidence.</span>
-            </div>
-
-            <div class="overflow-x-auto rounded-xl border border-line bg-surface">
-                <div class="grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-dark">
-                    <span>Source</span><span>Expected export</span><span>Loaded evidence</span><span>Period</span><span>Imported</span><span>State</span><span>Action</span>
-                </div>
-                @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
-                {
-                    var ready = slot.Status == SourceStatus.Uploaded;
-                    <div class="@($"grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] items-center gap-2 border-b border-line px-3 py-2.5 text-xs {(ready ? "" : "bg-surface-inset/40")}")">
-                        <div class="flex items-center gap-2">
-                            <i class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-inset text-3xs font-bold not-italic text-ink-soft">@Initial(slot.ReportType)</i>
-                            <span class="flex flex-col"><strong class="font-medium text-ink">@Label(slot.ReportType)</strong><small class="text-2xs text-muted">@Description(slot.ReportType)</small></span>
-                        </div>
-                        <div><span class="flex flex-col"><code class="truncate text-2xs text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small class="text-3xs text-muted" title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span></div>
-                        <div><span class="truncate text-ink-soft" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
-                        <div><span class="text-ink-soft">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
-                        <div><span class="text-ink-soft">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
-                        <div><span class="@($"badge {(ready ? "bg-good-soft text-good" : "bg-surface-inset text-muted")}")">@(ready ? "Accepted" : "Open")</span></div>
-                        <div>
-                            @if (slot.ReportType == ReportType.EngineerReviewWorkbook)
-                            {
-                                <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
-                            }
-                        </div>
+            <section class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Register</div>
+                        <h2 class="panel-title">Source register</h2>
                     </div>
-                }
-            </div>
+                    <span class="label-instrument ml-auto">Replace an input to recalculate the month</span>
+                </div>
 
-            <details class="rounded-xl border border-line bg-surface p-3 text-xs">
+                <div class="overflow-x-auto rounded-lg">
+                    <div class="chassis grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] gap-2 rounded-md px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-chassis-soft">
+                        <span>Source</span><span>Expected export</span><span>Loaded evidence</span><span>Period</span><span>Imported</span><span>State</span><span>Action</span>
+                    </div>
+                    @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
+                    {
+                        var ready = slot.Status == SourceStatus.Uploaded;
+                        <div class="group grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] items-center gap-2 border-b border-line-soft px-3 py-2.5 text-xs transition-colors duration-100 hover:bg-surface-inset" data-state="@(ready ? "accepted" : "open")">
+                            <div class="flex items-center gap-2">
+                                <i class="well flex h-7 w-7 shrink-0 items-center justify-center !rounded-md font-display text-3xs font-semibold not-italic text-ink-soft">@Initial(slot.ReportType)</i>
+                                <span class="flex flex-col"><strong class="font-medium text-ink">@Label(slot.ReportType)</strong><small class="text-2xs text-muted">@Description(slot.ReportType)</small></span>
+                            </div>
+                            <div><span class="flex flex-col"><code class="truncate text-2xs text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small class="text-3xs text-muted" title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span></div>
+                            <div><span class="truncate text-ink-soft" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
+                            <div><span class="tabular-nums text-ink-soft">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
+                            <div><span class="tabular-nums text-ink-soft">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
+                            <div class="flex items-center gap-1.5">
+                                <i class="@($"h-2 w-2 shrink-0 {(ready ? "lamp text-good" : "lamp-off")}")" aria-hidden="true"></i>
+                                <span class="@(ready ? "text-2xs text-good" : "text-2xs text-muted")">@(ready ? "Accepted" : "Open")</span>
+                            </div>
+                            <div>
+                                @if (slot.ReportType == ReportType.EngineerReviewWorkbook)
+                                {
+                                    <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-secondary !px-2.5 !py-1 !text-2xs" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <details class="plate p-3 text-xs">
                 <summary class="cursor-pointer font-semibold text-ink-soft">Reporting-period rules</summary>
                 <div class="mt-2 flex flex-col gap-2 text-ink-soft">
                     <p>Attendance and detailed-timesheet rows carry their own dates, so EOS files each row into its actual reporting month.</p>
@@ -133,8 +147,13 @@
             </details>
         </section>
 
-        <aside class="card h-fit">
-            <div class="panel-head"><div><h2 class="text-sm font-bold text-ink">Pipeline status</h2><small class="text-2xs text-muted">Evidence checks for this month</small></div></div>
+        <aside class="plate h-fit p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Checks</div>
+                    <h2 class="panel-title">Pipeline status</h2>
+                </div>
+            </div>
             <div class="flex flex-col gap-2">
                 @ValidationSignal("Local database", "SQLite available", true, "DB")
                 @ValidationSignal("Roster", State.Employees.Count == 0 ? "No employees configured" : $"{State.Employees.Count} employees", State.Employees.Count > 0, "ID")
@@ -145,8 +164,8 @@
 
             @if (State.Performance.Count > 0)
             {
-                <div class="mt-4 rounded-lg bg-surface-inset p-3">
-                    <span class="text-3xs font-semibold uppercase tracking-wide text-muted">Next</span>
+                <div class="well mt-4 p-3">
+                    <div class="label-instrument">Next</div>
                     <strong class="mt-1 block text-sm font-semibold text-ink">Performance Atlas is ready</strong>
                     <button class="btn btn-secondary mt-2 w-full" @onclick='() => Navigation.NavigateTo("/overview")'>Open team performance →</button>
                 </div>
@@ -176,16 +195,19 @@
     private DateTime? ImportedAt(ReportType type) => _history.Where(x => x.ReportType == type).Select(x => (DateTime?)x.ImportedLocal).FirstOrDefault();
 
     private RenderFragment PipelineNode(int number, string label, bool ready, string detail) =>
-        @<div class="@($"flex items-center gap-2 rounded-lg px-3 py-2 {(ready ? "bg-good-soft" : "bg-surface-inset")}")">
-            <i class="@($"flex h-6 w-6 items-center justify-center rounded-full text-2xs font-bold not-italic {(ready ? "bg-good text-white" : "bg-line text-ink-soft")}")">@(ready ? "✓" : number.ToString())</i>
-            <span class="flex flex-col leading-tight"><strong class="text-xs font-semibold text-ink">@label</strong><small class="text-3xs text-muted">@detail</small></span>
+        @<div class="well flex items-center gap-2.5 px-3 py-2" data-state="@(ready ? "ready" : "waiting")">
+            <i class="@($"h-2 w-2 shrink-0 {(ready ? "lamp text-good" : "lamp-off")}")" aria-hidden="true"></i>
+            <span class="flex flex-col leading-tight">
+                <strong class="text-xs font-semibold text-ink"><span class="label-instrument mr-1 tabular-nums">@number</span>@label</strong>
+                <small class="text-3xs tabular-nums text-muted">@detail</small>
+            </span>
         </div>;
 
     private RenderFragment ValidationSignal(string title, string detail, bool good, string badge, bool optional = false) =>
-        @<div class="flex items-center gap-2 rounded-lg bg-surface-inset p-2">
-            <i class="@($"flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[9px] font-bold not-italic {(good ? "bg-good-soft text-good" : optional ? "bg-warning-soft text-warning" : "bg-critical-soft text-critical")}")">@badge</i>
-            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-xs font-semibold text-ink">@title</strong><small class="truncate text-3xs text-muted">@detail</small></span>
-            <b class="@(good ? "text-good" : optional ? "text-warning" : "text-critical")">@(good ? "●" : optional ? "○" : "!")</b>
+        @<div class="well flex items-center gap-2 p-2" data-state="@(good ? "good" : optional ? "optional" : "missing")">
+            <i class="@($"flex h-7 w-7 shrink-0 items-center justify-center rounded-md font-display text-[9px] font-semibold not-italic {(good ? "bg-good-soft text-good" : optional ? "bg-warning-soft text-warning" : "bg-critical-soft text-critical")}")">@badge</i>
+            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-xs font-semibold text-ink">@title</strong><small class="truncate text-3xs tabular-nums text-muted">@detail</small></span>
+            <i class="@($"h-2 w-2 shrink-0 {(good ? "lamp text-good" : optional ? "lamp text-warning" : "lamp text-critical")}")" title="@(good ? "Ready" : optional ? "Optional" : "Missing")" aria-hidden="true"></i>
         </div>;
 
     private async Task UploadAsync(ReportType type)

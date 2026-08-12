@@ -9,53 +9,63 @@
 <div class="flex flex-col gap-6">
     @if (Months.Count == 0)
     {
-        <div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-8">
-            <h2 class="text-lg font-bold text-ink">No history for @Name</h2>
+        <div class="plate flex flex-col items-start gap-3 p-8">
+            <div>
+                <div class="panel-eyebrow">Portrait</div>
+                <h2 class="panel-title">No history for @Name</h2>
+            </div>
             <p class="text-sm text-ink-soft">No imported rows were found for this person across the months currently loaded.</p>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/overview")'>Back to team performance</button>
         </div>
     }
     else
     {
-        <header class="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-surface p-4">
-            <button class="text-sm font-medium text-ink-soft hover:text-ink" @onclick='() => Navigation.NavigateTo("/overview")'>← Team performance</button>
+        <header class="plate flex flex-wrap items-center gap-5 p-4">
+            <button type="button" class="control px-2.5 py-1.5 text-sm font-medium text-ink-soft hover:control-hover active:control-pressed" @onclick='() => Navigation.NavigateTo("/overview")'>← Team performance</button>
             <div class="relative">
-                <button type="button" class="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface-inset" aria-haspopup="listbox" aria-expanded="@_personPickerOpen" @onclick="TogglePersonPicker">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">@Analytics.Initials(Name)</span>
-                    <span class="flex flex-col text-left"><strong class="text-sm font-semibold text-ink">@Name</strong><small class="text-2xs text-muted">@EmployeeIdentity</small></span>
-                    <span class="text-muted" aria-hidden="true">⌄</span>
+                <button type="button" class="group flex items-center gap-2.5 rounded-md px-2 py-1 transition-colors duration-150 ease-press hover:bg-surface-inset" aria-haspopup="listbox" aria-expanded="@_personPickerOpen" @onclick="TogglePersonPicker">
+                    <span class="well flex h-10 w-10 items-center justify-center !rounded-full font-display text-sm font-semibold text-ink-soft">@Analytics.Initials(Name)</span>
+                    <span class="flex flex-col text-left"><strong class="font-display text-sm font-semibold text-ink">@Name</strong><small class="label-instrument">@EmployeeIdentity</small></span>
+                    <span class="text-muted transition-opacity duration-150 group-hover:opacity-100 md:opacity-60" aria-hidden="true">⌄</span>
                 </button>
                 @if (_personPickerOpen)
                 {
-                    <div class="absolute left-0 top-14 z-20 max-h-96 w-72 overflow-y-auto rounded-xl border border-line bg-surface p-2 shadow-lg" role="listbox" aria-label="Select team member">
-                        <strong class="block px-2 py-1 text-3xs font-semibold uppercase tracking-wide text-muted">Select team member</strong>
+                    <div class="floating absolute left-0 top-14 z-20 max-h-96 w-72 overflow-y-auto p-2" role="listbox" aria-label="Select team member">
+                        <span class="panel-eyebrow block px-2 py-1">Select team member</span>
                         <div class="flex flex-col">
                             @foreach (var personName in SelectableNames)
                             {
-                                <button type="button" class="@($"flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface-inset {(PersonName.Matches(personName, Name) ? "bg-primary-soft" : "")}")" role="option" aria-selected="@PersonName.Matches(personName, Name)" @onclick="() => SelectPerson(personName)">
-                                    <span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-inset text-3xs font-semibold text-ink-soft">@Analytics.Initials(personName)</span>
-                                    <span class="flex flex-col"><b class="text-sm font-medium text-ink">@personName</b><small class="text-3xs text-muted">@EmployeeIdentityFor(personName)</small></span>
+                                <button type="button" class="@($"flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150 ease-press hover:bg-surface-inset {(PersonName.Matches(personName, Name) ? "bg-primary-soft" : "")}")" role="option" aria-selected="@PersonName.Matches(personName, Name)" @onclick="() => SelectPerson(personName)">
+                                    <span class="well flex h-7 w-7 shrink-0 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Analytics.Initials(personName)</span>
+                                    <span class="flex flex-col"><b class="text-sm font-medium text-ink">@personName</b><small class="text-3xs tabular-nums text-muted">@EmployeeIdentityFor(personName)</small></span>
                                 </button>
                             }
                         </div>
                     </div>
                 }
             </div>
-            <div class="flex items-center gap-3">
-                <strong class="@($"text-3xl font-bold {Analytics.BandTextClass(Analytics.ScoreBand(Latest.OperationalScore))}")">@Analytics.Format(Latest.OperationalScore, "0")</strong>
-                <span class="flex flex-col text-xs text-ink-soft">Operational score<small class="text-2xs text-muted">@LatestLabel · @ScoreMovement</small></span>
+            <div class="flex flex-col">
+                <span class="@($"metric text-metric-lg {Analytics.BandTextClass(Analytics.ScoreBand(Latest.OperationalScore))}")">@Analytics.Format(Latest.OperationalScore, "0")</span>
+                <span class="metric-delta mt-1 text-ink-soft">@ScoreMovement</span>
+                <span class="label-instrument mt-0.5">Operational score · <span class="tabular-nums">@LatestLabel</span></span>
             </div>
-            <div class="ml-auto flex flex-wrap gap-4 text-xs text-ink-soft">
-                <span><b class="text-ink">@Analytics.Format(Latest.Workload(), "0.0")</b> h/day</span>
-                <span><b class="text-ink">@Analytics.Format(Latest.Utilization, "0")%</b> utilization</span>
-                <span><b class="text-ink">@ExceptionTotal</b> exception days</span>
-                <span><b class="text-ink">@Months.Count</b> loaded months</span>
+            <div class="ml-auto flex flex-wrap gap-5">
+                <span class="flex flex-col"><b class="metric text-metric-sm">@Analytics.Format(Latest.Workload(), "0.0")</b><small class="label-instrument mt-1">Hours / day</small></span>
+                <span class="flex flex-col"><b class="metric text-metric-sm">@Analytics.Format(Latest.Utilization, "0")%</b><small class="label-instrument mt-1">Utilization</small></span>
+                <span class="flex flex-col"><b class="metric text-metric-sm">@ExceptionTotal</b><small class="label-instrument mt-1">Exception days</small></span>
+                <span class="flex flex-col"><b class="metric text-metric-sm">@Months.Count</b><small class="label-instrument mt-1">Loaded months</small></span>
             </div>
         </header>
 
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
-            <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Operational score decomposition</h2><small class="text-2xs text-muted">Current source measures · peer ratings remain separate</small></div>
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Composition</div>
+                        <h2 class="panel-title">Operational score decomposition</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Peer ratings scored separately</span>
+                </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     @PortraitMetric("Timesheet completion", Latest.HasSummaryData ? Latest.TimesheetCompletionScore : null)
                     @PortraitMetric("Approval completion", Latest.HasSummaryData ? Latest.ApprovalScore : null)
@@ -64,7 +74,7 @@
                     @PortraitMetric("Workload balance", WorkloadIndex(Latest))
                     @PortraitMetric("Reconciliation quality", ReconciliationIndex(Latest))
                 </div>
-                <div class="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-surface-inset p-3 sm:grid-cols-3">
+                <div class="well mt-4 grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
                     @SourceFact("Expected days", Analytics.Format(Latest.ExpectedTimesheetDays, "0.#"))
                     @SourceFact("Filled days", Analytics.Format(Latest.TimesheetFilledDays, "0.#"))
                     @SourceFact("Entered hours", Analytics.Format(Latest.EnteredHours, "0.0"))
@@ -73,20 +83,42 @@
                     @SourceFact("Projects", Latest.UniqueProjects.ToString())
                 </div>
             </div>
-            <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Weekly operating rhythm</h2><small class="text-2xs text-muted">Hours, timesheet coverage and attendance discipline</small></div>
-                <div id="portrait-weekly" class="h-[260px]"></div>
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Rhythm</div>
+                        <h2 class="panel-title">Weekly operating rhythm</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Hours · coverage · discipline</span>
+                </div>
+                <div class="well p-2">
+                    <div id="portrait-weekly" class="h-[260px]"></div>
+                </div>
             </div>
         </section>
 
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
-            <div class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Six-month performance history</h2><small class="text-2xs text-muted">Operational score and its three weighted inputs</small></div>
-                <div id="portrait-history" class="h-[260px]"></div>
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">History</div>
+                        <h2 class="panel-title">Six-month performance history</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Score and its three weighted inputs</span>
+                </div>
+                <div class="well p-2">
+                    <div id="portrait-history" class="h-[260px]"></div>
+                </div>
             </div>
-            <aside class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Intervention evidence</h2><small class="text-2xs text-muted">@LatestLabel</small></div>
-                <ul class="flex flex-col divide-y divide-line">
+            <aside class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Evidence</div>
+                        <h2 class="panel-title">Intervention evidence</h2>
+                    </div>
+                    <span class="label-instrument ml-auto tabular-nums">@LatestLabel</span>
+                </div>
+                <ul class="flex flex-col divide-y divide-line-soft">
                     @if (Alerts.Count == 0)
                     {
                         <li class="py-1.5"><strong class="text-sm font-semibold text-ink">No active alert rule</strong><small class="block text-2xs text-muted">No anomaly rule fired for the current month.</small></li>
@@ -95,19 +127,26 @@
                     {
                         @foreach (var alert in Alerts.Take(6)) { <li class="py-1.5"><strong class="@($"text-sm font-semibold {Level(alert.Level)}")">@alert.Headline</strong><small class="block text-2xs text-muted">@alert.Detail</small></li> }
                     }
-                    @if (Latest.MissingPunchDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Missing punch · @Latest.MissingPunchDays day(s)</strong><small class="block text-2xs text-muted">Attendance evidence is incomplete on those days.</small></li> }
-                    @if (Latest.LateDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Late arrival · @Latest.LateDays day(s)</strong><small class="block text-2xs text-muted">Punctuality contributed to attendance discipline.</small></li> }
-                    @if (Latest.EarlyDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Early departure · @Latest.EarlyDays day(s)</strong><small class="block text-2xs text-muted">Early departures contributed to attendance discipline.</small></li> }
-                    @if (Latest.LessDurationDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Short duration · @Latest.LessDurationDays day(s)</strong><small class="block text-2xs text-muted">Office duration fell below the configured threshold.</small></li> }
+                    @if (Latest.MissingPunchDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Missing punch · <span class="tabular-nums">@Latest.MissingPunchDays</span> day(s)</strong><small class="block text-2xs text-muted">Attendance evidence is incomplete on those days.</small></li> }
+                    @if (Latest.LateDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Late arrival · <span class="tabular-nums">@Latest.LateDays</span> day(s)</strong><small class="block text-2xs text-muted">Punctuality contributed to attendance discipline.</small></li> }
+                    @if (Latest.EarlyDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Early departure · <span class="tabular-nums">@Latest.EarlyDays</span> day(s)</strong><small class="block text-2xs text-muted">Early departures contributed to attendance discipline.</small></li> }
+                    @if (Latest.LessDurationDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Short duration · <span class="tabular-nums">@Latest.LessDurationDays</span> day(s)</strong><small class="block text-2xs text-muted">Office duration fell below the configured threshold.</small></li> }
                 </ul>
             </aside>
         </section>
 
         <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
-            <div class="card">
+            <div class="plate p-4">
                 <div class="panel-head">
-                    <h2 class="text-sm font-bold text-ink">Peer evidence</h2><small class="text-2xs text-muted">How colleagues experience @Name across four aspects</small>
-                    <div class="ml-auto flex items-baseline gap-2"><b class="text-xl font-bold text-ink">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</b><span class="flex flex-col text-3xs text-muted">raw average<small>@Peer.ReceivedCount received · @Peer.GivenCount given · @PeerSignalStatus · reliable floor @ReliablePeerRating</small></span></div>
+                    <div>
+                        <div class="panel-eyebrow">Peers</div>
+                        <h2 class="panel-title">Peer evidence</h2>
+                    </div>
+                    <div class="ml-auto flex flex-col items-end">
+                        <b class="metric text-metric-sm">@(Peer.ReceivedCount == 0 ? "—" : Analytics.Format(Peer.AverageReceived, "0.00"))</b>
+                        <span class="label-instrument mt-1">Raw average</span>
+                        <small class="mt-0.5 text-3xs tabular-nums text-muted">@Peer.ReceivedCount received · @Peer.GivenCount given · @PeerSignalStatus · reliable floor @ReliablePeerRating</small>
+                    </div>
                 </div>
                 @if (Peer.ReceivedCount == 0)
                 {
@@ -116,7 +155,9 @@
                 else
                 {
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
-                        <div id="portrait-peer-radar" class="h-[260px]" aria-label="Employee peer aspect profile"></div>
+                        <div class="well p-2">
+                            <div id="portrait-peer-radar" class="h-[260px]" aria-label="Employee peer aspect profile"></div>
+                        </div>
                         <div class="flex flex-col gap-2">
                             @PeerAspect("Collaboration", Peer.Collaboration, TeamPeerAverage(x => x.Collaboration))
                             @PeerAspect("Communication", Peer.Communication, TeamPeerAverage(x => x.Communication))
@@ -125,10 +166,10 @@
                         </div>
                     </div>
                     <div class="mt-4 overflow-x-auto">
-                        <div class="grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] gap-2 border-b border-line pb-1 text-3xs font-semibold uppercase tracking-wide text-muted"><span>Reviewer</span><span>Collab</span><span>Comms</span><span>Reliable</span><span>Tech</span><span>Overall</span></div>
+                        <div class="label-instrument grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] gap-2 border-b border-line pb-1"><span>Reviewer</span><span>Collab</span><span>Comms</span><span>Reliable</span><span>Tech</span><span>Overall</span></div>
                         @foreach (var review in Peer.Received.OrderByDescending(x => x.Average).ThenBy(x => x.ReviewerName))
                         {
-                            <div class="grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] items-center gap-2 border-b border-line py-1.5 text-xs">
+                            <div class="group grid min-w-[520px] grid-cols-[1fr_3rem_3rem_3rem_3rem_3rem] items-center gap-2 border-b border-line-soft py-1.5 text-xs transition-colors duration-100 ease-press hover:bg-surface-inset">
                                 <span class="flex flex-col"><strong class="font-medium text-ink">@review.ReviewerName</strong>@if (!string.IsNullOrWhiteSpace(review.Comment)) { <small class="text-3xs text-muted">@review.Comment</small> }</span>
                                 <b class="tabular-nums text-ink-soft">@Analytics.Format(review.Collaboration, "0.0")</b><b class="tabular-nums text-ink-soft">@Analytics.Format(review.Communication, "0.0")</b><b class="tabular-nums text-ink-soft">@Analytics.Format(review.Reliability, "0.0")</b><b class="tabular-nums text-ink-soft">@Analytics.Format(review.TechnicalHelp, "0.0")</b><strong class="tabular-nums font-semibold text-ink">@Analytics.Format(review.Average, "0.00")</strong>
                             </div>
@@ -137,23 +178,31 @@
                 }
             </div>
 
-            <aside class="card">
-                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Work and evidence ledger</h2><small class="text-2xs text-muted">Most recent month first</small></div>
+            <aside class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Ledger</div>
+                        <h2 class="panel-title">Work and evidence ledger</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Most recent month first</span>
+                </div>
                 <div class="flex flex-col gap-2.5">
                     @PortraitHours("Billable", Latest.BillableHours, Latest.EnteredHours)
                     @PortraitHours("Detailed", Latest.DetailedHours, Latest.EnteredHours)
                     @PortraitHours("Non-billable", Latest.NonBillableHours, Latest.EnteredHours)
                     @PortraitHours("Training", Latest.TrainingHours, Latest.EnteredHours)
                 </div>
-                <div class="mt-3 flex justify-between rounded-lg bg-surface-inset p-2.5 text-xs text-ink-soft">
-                    <span><b class="text-ink">@Latest.DetailedEntries</b> detailed entries</span><span><b class="text-ink">@Latest.UniqueProjects</b> projects</span><span><b class="text-ink">@Analytics.Format(Latest.BillableHours, "0.0")</b> billable h</span>
+                <div class="well mt-3 flex justify-between p-2.5">
+                    <span class="flex flex-col"><b class="metric text-sm">@Latest.DetailedEntries</b><small class="label-instrument mt-1">Detailed entries</small></span>
+                    <span class="flex flex-col"><b class="metric text-sm">@Latest.UniqueProjects</b><small class="label-instrument mt-1">Projects</small></span>
+                    <span class="flex flex-col"><b class="metric text-sm">@Analytics.Format(Latest.BillableHours, "0.0")</b><small class="label-instrument mt-1">Billable h</small></span>
                 </div>
-                <ul class="mt-3 flex max-h-64 flex-col divide-y divide-line overflow-y-auto">
+                <ul class="mt-3 flex max-h-64 flex-col divide-y divide-line-soft overflow-y-auto">
                     @foreach (var month in Months.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month))
                     {
-                        <li class="py-1.5">
-                            <strong class="flex items-center gap-2 text-sm font-semibold text-ink">@(new DateTime(month.Year, month.Month, 1).ToString("MMM yyyy")) <span class="@Analytics.BandTextClass(Analytics.ScoreBand(month.OperationalScore))">@Analytics.Format(month.OperationalScore)</span></strong>
-                            <small class="block text-2xs text-muted">@Analytics.Format(month.Workload(), "0.0") h/day · @Analytics.Format(month.BillableHours, "0.0") billable h · @month.TimesheetFilledDays/@month.ExpectedTimesheetDays days filled</small>
+                        <li class="group py-1.5">
+                            <strong class="flex items-center gap-2 text-sm font-semibold tabular-nums text-ink">@(new DateTime(month.Year, month.Month, 1).ToString("MMM yyyy")) <span class="@($"metric text-sm {Analytics.BandTextClass(Analytics.ScoreBand(month.OperationalScore))}")">@Analytics.Format(month.OperationalScore)</span></strong>
+                            <small class="block text-2xs tabular-nums text-muted">@Analytics.Format(month.Workload(), "0.0") h/day · @Analytics.Format(month.BillableHours, "0.0") billable h · @month.TimesheetFilledDays/@month.ExpectedTimesheetDays days filled</small>
                         </li>
                     }
                 </ul>
@@ -236,22 +285,22 @@
     private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "text-critical", AlertLevel.Serious => "text-serious", _ => "text-warning" };
 
     private RenderFragment PortraitMetric(string label, decimal? value) =>
-        @<div>
-            <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@(value is null ? "—" : Analytics.Format(value.Value, "0") + "%")</b></label>
-            <span class="mt-1 block h-1.5 rounded-full bg-line"><i class="block h-full rounded-full bg-primary" style="@($"width:{CssPct(value ?? 0)}")"></i></span>
+        @<div class="group">
+            <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="metric text-sm">@(value is null ? "—" : Analytics.Format(value.Value, "0") + "%")</b></label>
+            <span class="track mt-1.5 block h-1.5"><i class="block h-full rounded-full bg-petrol" style="@($"width:{CssPct(value ?? 0)}")"></i></span>
         </div>;
     private RenderFragment PortraitHours(string label, decimal value, decimal total) =>
-        @<div>
-            <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@Analytics.Format(value, "0.0") h</b></label>
-            <span class="mt-1 block h-1.5 rounded-full bg-line"><i class="block h-full rounded-full bg-primary" style="@($"width:{CssPct(total <= 0 ? 0 : value * 100m / total)}")"></i></span>
+        @<div class="group">
+            <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="metric text-sm">@Analytics.Format(value, "0.0") h</b></label>
+            <span class="track mt-1.5 block h-1.5"><i class="block h-full rounded-full bg-chart-1" style="@($"width:{CssPct(total <= 0 ? 0 : value * 100m / total)}")"></i></span>
         </div>;
-    private RenderFragment SourceFact(string label, string value) => @<span class="flex flex-col"><small class="text-3xs text-muted">@label</small><b class="text-sm font-semibold text-ink">@value</b></span>;
+    private RenderFragment SourceFact(string label, string value) => @<span class="flex flex-col"><b class="metric text-sm">@value</b><small class="label-instrument mt-1">@label</small></span>;
     private RenderFragment PeerAspect(string label, decimal value, decimal team) =>
-        @<div>
-            <span class="flex items-baseline justify-between"><strong class="text-xs font-medium text-ink-soft">@label</strong><small class="text-3xs text-muted">@Analytics.Format(value, "0.00") employee · @Analytics.Format(team, "0.00") team</small></span>
-            <span class="relative mt-1 block h-1.5 rounded-full bg-line">
-                <i class="absolute top-1/2 h-2 w-0.5 -translate-y-1/2 bg-ink-soft" style="@($"left:{CssPct(team * 20m)}")"></i>
-                <i class="absolute inset-y-0 left-0 rounded-full bg-primary" style="@($"width:{CssPct(value * 20m)}")"></i>
+        @<div class="group">
+            <span class="flex items-baseline justify-between"><strong class="text-xs font-medium text-ink-soft">@label</strong><small class="text-3xs tabular-nums text-muted">@Analytics.Format(value, "0.00") employee · @Analytics.Format(team, "0.00") team</small></span>
+            <span class="track relative mt-1.5 block h-1.5">
+                <i class="absolute inset-y-0 left-0 rounded-full bg-chart-2" style="@($"width:{CssPct(value * 20m)}")"></i>
+                <i class="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 bg-ink-soft opacity-70 transition-opacity duration-150 group-hover:opacity-100" title="Team average" style="@($"left:{CssPct(team * 20m)}")"></i>
             </span>
         </div>;
 

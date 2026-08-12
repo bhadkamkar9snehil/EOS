@@ -4,46 +4,58 @@
 @inject AppState State
 
 <section class="flex flex-col gap-6">
-    <div>
-        <h2 class="text-xl font-bold text-ink">Diagnostics</h2>
-        <p class="mt-1 text-sm text-ink-soft">App version, database and log locations, and a recent log tail — useful information to include when reporting a problem.</p>
-    </div>
-
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section class="card">
-            <div class="flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◫</span>
-                <div><h3 class="text-sm font-bold text-ink">Application</h3><p class="text-xs text-ink-soft">Build and storage details.</p></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Build</div>
+                    <h2 class="panel-title">Application</h2>
+                </div>
+                <span class="ml-auto flex items-center gap-1.5">
+                    <i class="@($"h-2 w-2 {(_dbSize == "(not found)" ? "lamp-off" : "lamp text-good")}")" aria-hidden="true"></i>
+                    <span class="label-instrument">@(_dbSize == "(not found)" ? "Database missing" : "Database present")</span>
+                </span>
             </div>
-            <dl class="mt-3 flex flex-col divide-y divide-line">
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="shrink-0 text-ink-soft">Version</dt><dd class="truncate text-right text-ink">@_appVersion</dd></div>
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="shrink-0 text-ink-soft">Database file</dt><dd class="truncate text-right text-ink">@_dbPath</dd></div>
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="shrink-0 text-ink-soft">Database size</dt><dd class="truncate text-right text-ink">@_dbSize</dd></div>
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="shrink-0 text-ink-soft">Log directory</dt><dd class="truncate text-right text-ink">@_logDirectory</dd></div>
+            <dl class="flex flex-col divide-y divide-line-soft">
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Version</dt><dd class="truncate text-right tabular-nums text-ink">@_appVersion</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Database file</dt><dd class="truncate text-right font-mono text-2xs text-ink" title="@_dbPath">@_dbPath</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Database size</dt><dd class="truncate text-right tabular-nums text-ink">@_dbSize</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Log directory</dt><dd class="truncate text-right font-mono text-2xs text-ink" title="@_logDirectory">@_logDirectory</dd></div>
             </dl>
         </section>
 
-        <section class="card">
-            <div class="flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◎</span>
-                <div><h3 class="text-sm font-bold text-ink">Bug report bundle</h3><p class="text-xs text-ink-soft">Zips the last few days of logs plus a small info.txt for attaching to a bug report.</p></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Support</div>
+                    <h2 class="panel-title">Bug report bundle</h2>
+                </div>
+                <span class="ml-auto flex items-center gap-1.5">
+                    <i class="@($"h-2 w-2 {(_bundling ? "lamp text-warning" : _bundlePath is not null ? "lamp text-good" : "lamp-off")}")" aria-hidden="true"></i>
+                    <span class="label-instrument">@(_bundling ? "Building" : _bundlePath is not null ? "Ready" : "Idle")</span>
+                </span>
             </div>
+            <p class="text-xs text-ink-soft">Zips the last few days of logs plus a small info.txt for attaching to a bug report.</p>
             <button type="button" class="btn btn-secondary mt-3" @onclick="CreateBundleAsync" disabled="@_bundling">
                 @(_bundling ? "Building bundle..." : "Copy diagnostics bundle")
             </button>
             @if (!string.IsNullOrEmpty(_bundlePath))
             {
-                <p class="mt-2 text-xs text-ink-soft">Bundle saved to: <code class="text-2xs">@_bundlePath</code></p>
+                <p class="mt-2 text-xs text-ink-soft">Bundle saved to: <code class="font-mono text-2xs">@_bundlePath</code></p>
             }
         </section>
     </div>
 
-    <div class="card">
-        <div class="flex items-start gap-3">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">▤</span>
-            <div><h3 class="text-sm font-bold text-ink">Today's log (last @MaxTailLines lines)</h3><p class="text-xs text-ink-soft">@_todayLogPath</p></div>
+    @* The log tail is a recessed readout bay machined into the plate, not another card. *@
+    <div class="plate p-4">
+        <div class="panel-head">
+            <div>
+                <div class="panel-eyebrow">Readout</div>
+                <h2 class="panel-title">Today's log</h2>
+            </div>
+            <span class="label-instrument ml-auto">last <span class="tnum">@MaxTailLines</span> lines · <span class="font-mono normal-case tracking-normal">@_todayLogPath</span></span>
         </div>
-        <pre class="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-inset p-3 text-2xs text-ink-soft">@_logTail</pre>
+        <pre class="well max-h-96 overflow-auto whitespace-pre-wrap p-3 font-mono text-2xs tabular-nums text-ink-soft" role="log" aria-label="Recent log output">@_logTail</pre>
         <button type="button" class="btn btn-secondary mt-3" @onclick="RefreshTailAsync">Refresh</button>
     </div>
 </section>

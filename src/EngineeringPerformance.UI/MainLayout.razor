@@ -9,54 +9,61 @@
 <PageTitle>EOS — Engineering Performance</PageTitle>
 
 <div class="flex h-screen min-w-[900px] bg-canvas font-sans text-ink">
-    <aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
+    @* The chassis: the graphite structure every ivory plate is mounted into. It is
+       intentionally identical in both themes — a machine's frame does not change
+       colour when the room lights go down, and it is what gives the plates
+       something to sit against. *@
+    <aside class="chassis flex w-60 shrink-0 flex-col border-r border-chassis-deep">
         <div class="flex flex-col gap-1 px-5 pb-5 pt-6" aria-label="EOS Engineering Performance Analyzer">
-            <strong class="flex items-center gap-2 text-lg font-bold text-primary">
-                <i aria-hidden="true" class="not-italic">✦</i><span>EOS</span>
+            <strong class="flex items-center gap-2 font-display text-lg font-semibold tracking-wide text-primary">
+                <i aria-hidden="true" class="not-italic drop-shadow-[0_0_6px_var(--color-primary-glow)]">✦</i><span>EOS</span>
             </strong>
-            <small class="text-3xs font-semibold uppercase tracking-wider text-muted">Engineering performance analyzer</small>
+            <small class="label-instrument !text-on-chassis-muted">Engineering performance analyzer</small>
         </div>
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
-            <span class="mb-1 mt-3 px-2 text-3xs font-semibold uppercase tracking-wider text-muted">Analyze</span>
+            <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Analyze</span>
             @NavButton("overview", "Overview", Icon.Overview)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
 
-            <span class="mb-1 mt-3 px-2 text-3xs font-semibold uppercase tracking-wider text-muted">Manage</span>
+            <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Manage</span>
             @NavButton("imports", "Data Imports", Icon.Imports)
             @NavButton("data", "Imported Data", Icon.DataBrowser)
             @NavButton("employees", "Employees & Teams", Icon.Employees)
             @NavButton("templates", "Review Templates", Icon.Templates)
 
-            <span class="mb-1 mt-3 px-2 text-3xs font-semibold uppercase tracking-wider text-muted">Configure</span>
+            <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
             @NavButton("diagnostics", "Diagnostics", Icon.Settings)
             @NavButton("backup", "Backup & Restore", Icon.Settings)
         </nav>
-        <div class="border-t border-line px-3 py-3">
+        <div class="border-t border-chassis-deep px-3 py-3">
             <button class="@NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
                 <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)Icon.Settings)</b><span>Settings</span>
             </button>
-            <small class="mt-2 block px-2 text-3xs text-muted">Local analysis · SQLite</small>
+            <small class="mt-2 block px-2 text-3xs text-on-chassis-muted">Local analysis · SQLite</small>
         </div>
     </aside>
 
     <section class="flex min-w-0 flex-1 flex-col">
-        <header class="flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-4">
-            <h1 class="text-xl font-bold text-ink">@PageTitleText</h1>
+        @* The header is part of the chassis, not a plate: it frames the work area
+           rather than sitting on it. *@
+        <header class="chassis flex items-center justify-between gap-4 border-b border-chassis-deep px-6 py-3">
+            <h1 class="font-display text-xl font-semibold tracking-tight text-on-chassis">@PageTitleText</h1>
 
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2 rounded-full border border-line bg-surface-inset px-3 py-1.5 text-xs">
-                    <span class="text-muted">Reporting month</span>
-                    <button class="rounded px-1 text-ink-soft hover:bg-line-soft disabled:opacity-30" title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
-                    <strong class="font-semibold text-ink">@State.SelectedMonth.ToString("MMMM yyyy")</strong>
-                    <button class="rounded px-1 text-ink-soft hover:bg-line-soft disabled:opacity-30" title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
+            <div class="flex items-center gap-2.5">
+                @* Month stepper: a recessed track holding the current value, with the
+                   steppers as the only raised parts. *@
+                <div class="track flex items-center gap-1 px-1.5 py-1 text-xs">
+                    <button class="rounded-sm px-1.5 text-on-chassis-soft transition-colors duration-100 hover:bg-chassis/70 hover:text-on-chassis disabled:opacity-25" title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
+                    <strong class="font-display text-sm font-semibold tabular-nums text-on-chassis">@State.SelectedMonth.ToString("MMM yyyy")</strong>
+                    <button class="rounded-sm px-1.5 text-on-chassis-soft transition-colors duration-100 hover:bg-chassis/70 hover:text-on-chassis disabled:opacity-25" title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
                 </div>
 
                 <button type="button"
-                        class="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-surface-inset"
+                        class="control flex h-8 w-8 items-center justify-center !rounded-md text-ink-soft hover:control-hover active:control-pressed"
                         title="@ThemeTooltip"
                         aria-label="@ThemeTooltip"
                         @onclick="CycleThemeAsync">
@@ -65,7 +72,7 @@
 
                 <div class="relative">
                     <button type="button"
-                            class="@($"flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-surface-inset {(_searchOpen ? "bg-primary-soft text-primary" : "")}")"
+                            class="@($"control flex h-8 w-8 items-center justify-center !rounded-md hover:control-hover active:control-pressed {(_searchOpen ? "!bg-primary-soft text-primary" : "text-ink-soft")}")"
                             title="Search engineers"
                             aria-label="Search engineers"
                             aria-expanded="@_searchOpen"
@@ -74,8 +81,10 @@
                     </button>
                     @if (_searchOpen)
                     {
-                        <div class="absolute right-0 top-11 z-20 w-80 rounded-xl border border-line bg-surface p-2 shadow-lg">
-                            <div class="flex items-center gap-2 rounded-lg border border-line bg-surface-inset px-2.5 py-1.5">
+                        @* A genuinely floating assembly, so real glass is appropriate here —
+                           unlike dashboard panels, which must stay opaque and matte. *@
+                        <div class="glass absolute right-0 top-11 z-20 w-80 p-2">
+                            <div class="well flex items-center gap-2 px-2.5 py-1.5">
                                 <span class="text-muted">@((MarkupString)Icon.Search)</span>
                                 <input autofocus
                                        class="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-muted"
@@ -94,12 +103,12 @@
                                 {
                                     @foreach (var result in SearchResults)
                                     {
-                                        <button type="button" class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-surface-inset" @onclick="() => OpenEmployee(result.Name)">
-                                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-semibold text-ink-soft">@Analytics.Initials(result.Name)</span>
-                                            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm font-medium text-ink">@result.Name</strong><small class="text-xs text-muted">@result.EmployeeCode</small></span>
+                                        <button type="button" class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors duration-100 hover:bg-surface-inset" @onclick="() => OpenEmployee(result.Name)">
+                                            <span class="well flex h-7 w-7 shrink-0 items-center justify-center !rounded-full font-display text-xs font-semibold text-ink-soft">@Analytics.Initials(result.Name)</span>
+                                            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm font-medium text-ink">@result.Name</strong><small class="text-xs tabular-nums text-muted">@result.EmployeeCode</small></span>
                                             @if (result.Score is not null)
                                             {
-                                                <b class="@($"text-sm font-semibold {Analytics.BandTextClass(Analytics.ScoreBand(result.Score.Value))}")">@Analytics.Format(result.Score.Value)</b>
+                                                <b class="@($"metric text-sm {Analytics.BandTextClass(Analytics.ScoreBand(result.Score.Value))}")">@Analytics.Format(result.Score.Value)</b>
                                             }
                                         </button>
                                     }
@@ -109,8 +118,17 @@
                     }
                 </div>
 
-                <div class="rounded-full border border-line bg-surface-inset px-3 py-1.5 text-xs" title="System and review inputs available for the selected month">
-                    <span class="text-muted">Readiness</span> <strong class="font-semibold text-ink">@State.ReadyCount / 4 inputs</strong>
+                @* Readiness as four status lamps rather than a sentence — the count is
+                   readable at a glance, and each lamp is individually inspectable. *@
+                <div class="track flex items-center gap-2 px-2.5 py-1.5" title="System and review inputs available for the selected month">
+                    <span class="label-instrument !text-on-chassis-muted">Ready</span>
+                    <span class="flex items-center gap-1" aria-label="@State.ReadyCount of 4 inputs available">
+                        @for (var i = 0; i < 4; i++)
+                        {
+                            <i class="@($"h-2 w-2 {(i < State.ReadyCount ? "lamp text-good" : "lamp-off")}")"></i>
+                        }
+                    </span>
+                    <strong class="font-display text-xs font-semibold tabular-nums text-on-chassis">@State.ReadyCount/4</strong>
                 </div>
             </div>
         </header>
@@ -128,10 +146,10 @@
         <main class="@($"route-{CurrentRoute} min-w-0 flex-1 overflow-y-auto p-6")">
             @Body
         </main>
-        <footer class="flex justify-between border-t border-line bg-surface px-6 py-2 text-3xs text-muted">
-            <span>DATA FRESHNESS · refreshed @State.LastRefresh.ToString("h:mm tt")</span>
-            <span>Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
-            <span>v2.6.1</span>
+        <footer class="chassis flex justify-between border-t border-chassis-deep px-6 py-2">
+            <span class="label-instrument !text-on-chassis-muted">Data freshness · refreshed <span class="tabular-nums">@State.LastRefresh.ToString("h:mm tt")</span></span>
+            <span class="label-instrument !text-on-chassis-muted">Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+            <span class="label-instrument !text-on-chassis-muted">v@AppVersion</span>
         </footer>
     </section>
 </div>
@@ -139,6 +157,10 @@
 @code {
     private bool _searchOpen;
     private string _searchQuery = string.Empty;
+
+    // Was hardcoded to "v2.6.1", which had drifted from the actual shipped version.
+    private static readonly string AppVersion =
+        System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.1.0";
 
     protected override async Task OnInitializedAsync()
     {
@@ -321,9 +343,13 @@
             <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)icon)</b><span>@label</span>
         </button>;
 
+    // Selected nav reads as a switch pressed *into* the chassis — recessed, with an
+    // illuminated orange rail — rather than a highlighted rectangle. Unselected items
+    // sit flush. This is the same physical grammar used everywhere else: depth encodes
+    // state, colour only confirms it.
     private string NavButtonClass(string route) => CurrentRoute == route
-        ? "flex items-center gap-3 rounded-lg bg-primary-soft px-3 py-2 text-sm font-semibold text-primary"
-        : "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink-soft hover:bg-surface-inset";
+        ? "relative flex items-center gap-3 rounded-md bg-chassis-deep px-3 py-2 font-display text-sm font-semibold text-on-chassis inset-shadow-track before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_8px_0_var(--color-primary-glow)]"
+        : "flex items-center gap-3 rounded-md px-3 py-2 font-display text-sm font-medium text-on-chassis-soft transition-colors duration-100 ease-press hover:bg-chassis-deep/60 hover:text-on-chassis";
 
     private void GoTo(string route)
     {

@@ -5,42 +5,49 @@
 @implements IDisposable
 
 <section class="flex flex-col gap-6">
-    <div>
-        <h2 class="text-xl font-bold text-ink">Settings</h2>
-        <p class="mt-1 text-sm text-ink-soft">EOS uses one fixed Performance Atlas interface.</p>
-    </div>
-
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section class="card">
-            <div class="flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◐</span>
-                <div><h3 class="text-sm font-bold text-ink">Appearance</h3><p class="text-xs text-ink-soft">"System" follows your Windows light/dark setting.</p></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Appearance</div>
+                    <h2 class="panel-title">Theme</h2>
+                </div>
+                <span class="label-instrument ml-auto">"System" follows Windows</span>
             </div>
-            <div class="mt-3 inline-flex rounded-lg border border-line bg-surface-inset p-1" role="radiogroup" aria-label="Theme">
+            <div class="segmented" role="radiogroup" aria-label="Theme">
                 @ThemeOption("light", "Light")
                 @ThemeOption("dark", "Dark")
                 @ThemeOption("system", "System")
             </div>
         </section>
 
-        <section class="card">
-            <div class="flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◫</span>
-                <div><h3 class="text-sm font-bold text-ink">Local application</h3><p class="text-xs text-ink-soft">All performance data and imported files remain on this computer.</p></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Storage</div>
+                    <h2 class="panel-title">Local application</h2>
+                </div>
+                <span class="ml-auto flex items-center gap-1.5">
+                    <i class="lamp h-2 w-2 text-good" aria-hidden="true"></i>
+                    <span class="label-instrument">On this computer only</span>
+                </span>
             </div>
-            <dl class="mt-3 flex flex-col divide-y divide-line">
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Database</dt><dd class="text-right text-ink">%LOCALAPPDATA%\EngineeringPerformance</dd></div>
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Imported files</dt><dd class="text-right text-ink">%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div>
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Storage mode</dt><dd class="text-right text-ink">SQLite with WAL</dd></div>
-                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Calculation</dt><dd class="text-right text-ink">Immediate, in process</dd></div>
+            <dl class="flex flex-col divide-y divide-line-soft">
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Database</dt><dd class="text-right font-mono text-2xs text-ink">%LOCALAPPDATA%\EngineeringPerformance</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Imported files</dt><dd class="text-right font-mono text-2xs text-ink">%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Storage mode</dt><dd class="text-right text-ink">SQLite with WAL</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Calculation</dt><dd class="text-right text-ink">Immediate, in process</dd></div>
             </dl>
         </section>
 
-        <section class="card">
-            <div class="flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">▤</span>
-                <div><h3 class="text-sm font-bold text-ink">Diagnostics</h3><p class="text-xs text-ink-soft">App version, database location, and a log tail for troubleshooting.</p></div>
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Support</div>
+                    <h2 class="panel-title">Diagnostics</h2>
+                </div>
             </div>
+            <p class="text-xs text-ink-soft">App version, database location, and a log tail for troubleshooting.</p>
             <button type="button" class="btn btn-secondary mt-3" @onclick='() => Navigation.NavigateTo("/diagnostics")'>Open Diagnostics</button>
         </section>
     </div>
@@ -52,8 +59,9 @@
     public void Dispose() => State.Changed -= OnStateChanged;
 
     private RenderFragment ThemeOption(string mode, string label) =>
-        @<button type="button" role="radio" aria-checked="@(State.ThemeMode == mode)"
-                 class="@($"rounded-md px-3 py-1.5 text-xs font-medium {(State.ThemeMode == mode ? "bg-surface text-primary shadow-sm" : "text-ink-soft hover:text-ink")}")"
+        @* .segmented styles the selected child off aria-checked, so no conditional class string is needed. *@
+        @<button type="button" role="radio" aria-checked="@(State.ThemeMode == mode ? "true" : "false")" aria-label="@label theme"
+                 class="@($"cursor-pointer hover:text-ink {(State.ThemeMode == mode ? "is-active" : string.Empty)}")"
                  @onclick="() => State.SetThemeAsync(JS, mode)">
             @label
         </button>;
