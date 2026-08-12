@@ -170,9 +170,13 @@ lowest-friction "real CI" option that isn't GitHub Actions.
 | CSS `<link>` tags vs files on disk audit | ✅ Done — no dead links, no orphaned files (see below) |
 | Tailwind adoption | 📝 Planned — do after visual-design branch merges |
 | Grid replacement | 📝 Evaluated — **recommendation is no replacement**, keep QuickGrid |
+| Grid standardization audit (`PeerInsights`, `Reports`, `EmployeeDetail`, `EmployeeMetricsExtension`) | ✅ Done — audited, **no changes needed**; see "Grid standardization audit" below |
 | CSS consolidation (3 overlapping theme systems) | 📝 Not started — depends on visual-design branch outcome |
 | CI/CD (non-Actions) | ✅ Done — `build/release.ps1` (test → publish → `vpk pack`); see `docs/installer.md` |
 | Installer (Velopack) | ✅ Done — package added, `VelopackApp.Build().Run()` wired in, in-app update check on startup; see `docs/installer.md` |
+| EFCore.BulkExtensions for import batch writes | ❌ Evaluated and **skipped** — throws on SQLite for mixed insert+update batches; existing dictionary-preload + `SaveChangesAsync` approach kept. See "Bulk-write evaluation" below |
+| FluentValidation for import skip tracking | ✅ Done — `ImportEngineerReviewsAsync`/`ImportPackageAsync` now record structured `ImportSkipReason`s instead of silently swallowing exceptions |
+| bUnit component tests | ✅ Done — new `tests/EngineeringPerformance.UI.Tests` project, 8 tests (`ScoringPage` × 5, `EmployeeMetricsExtension` × 3), all passing |
 
 ---
 
@@ -238,3 +242,35 @@ Compared the 19 `<link rel="stylesheet">` tags in `index.html` against the `.css
 in `src/EngineeringPerformance.UI/wwwroot/`: **exact 1:1 match, no dead links, no orphaned
 files.** (The task brief said "21 `<link>` tags" — the actual current count in `index.html` is 19;
 this may be from an earlier state of the file. No CSS files were touched.)
+
+### Grid standardization audit (this branch)
+
+Re-checked every `.razor` page not already using QuickGrid for hand-rolled tabular rendering
+(`PeerInsights.razor`, `Reports.razor`, `EmployeeDetail.razor`, `EmployeeMetricsExtension.razor`).
+None of them are QuickGrid candidates:
+- `PeerInsights.razor` renders a peer-by-peer cross-tab matrix (`@foreach` inside `@foreach`), not
+  a row-per-record table — QuickGrid's row/column model doesn't fit a matrix.
+- `Reports.razor`'s only `@foreach` populates an `<select>` dropdown of employees, not a table.
+- `EmployeeDetail.razor`'s "Monthly ledger" is a capped (`Take(6)`), single-employee `<ul>` of
+  evidence cards, not tabular data.
+- `EmployeeMetricsExtension.razor` renders metric ribbons/tiles and chart containers, no rows at
+  all.
+
+No refactor performed — forcing QuickGrid onto any of these would be a worse fit than what's there
+today. `DataBrowserPage.razor` and `Timesheets.razor` remain the only genuine tables, and both were
+already on QuickGrid before this branch. `PeopleWorkspace.razor`'s roster list stays on
+`<Virtualize>` (card-style list, not tabular; its allocation issue was already fixed).
+
+### Bulk-write evaluation (this branch)
+
+`EFCore.BulkExtensions.Sqlite` 10.0.1 (matching this repo's EF Core 10.0.10) was added and tried
+against `ImportEmployeeRosterAsync`'s upsert — the cleanest candidate, since it's already a
+straightforward preload-then-upsert-by-key loop. `BulkInsertOrUpdateAsync` throws `SQLite Error 19:
+'UNIQUE constraint failed: employee.EmployeeCode'` whenever a single batch mixes a brand-new row
+with an update to an existing row (confirmed with a dedicated test,
+`RosterImportInsertsAndUpdatesEmployees`, before reverting) — the SQLite adapter emits a plain bulk
+`INSERT` rather than a real merge for that shape, so it silently corrupts exactly the case this
+method needs every time the roster has both new hires and existing employees in one file. Reverted
+in favor of the existing dictionary-preload + `SaveChangesAsync` approach, which was already
+correct and reasonably efficient for roster-sized batches (typically hundreds of rows, not
+millions). Package reference removed; not adopted anywhere in the codebase.
