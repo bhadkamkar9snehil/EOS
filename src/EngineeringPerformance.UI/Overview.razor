@@ -170,6 +170,22 @@
             <button class="evidence-link" @onclick='() => Navigation.NavigateTo("/peer-insights")'><span><strong>Peer collaboration</strong><small>Review coverage and relationships</small></span><b>@Peers.TotalFeedback</b></button>
             <button class="evidence-link" @onclick='() => Navigation.NavigateTo("/employees")'><span><strong>People & teams</strong><small>Roster, classifications and ownership</small></span><b>@State.Employees.Count</b></button>
         </section>
+
+        @if (Alerts.Count > 0)
+        {
+            <section class="atlas-primary trend-alerts-section" aria-label="Trend alerts">
+                <div class="atlas-panel-head">
+                    <div><h2>Trend alerts</h2><small>Sharp month-over-month score drops and missing evidence, computed from the current and previous reporting month</small></div>
+                    <span class="atlas-caption">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</span>
+                </div>
+                <ul class="portrait-evidence-list">
+                    @foreach (var alert in Alerts.Take(20))
+                    {
+                        <li><strong class="@Level(alert.Level)">@alert.EmployeeName — @alert.Headline</strong><small>@alert.Detail</small></li>
+                    }
+                </ul>
+            </section>
+        }
     }
 </div>
 
@@ -283,6 +299,7 @@
 
     private DateTime Previous => State.SelectedMonth.AddMonths(-1);
     private IReadOnlyList<Anomaly> Alerts => _alerts;
+    private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
     private Analytics.PeerSummary Peers => _peers ??= Analytics.Peers(State.PeerReviews);
     private Dictionary<string, decimal> PreviousScores => _previousScores;
     private List<DateTime> HeatmapMonths => _heatmapMonths;
