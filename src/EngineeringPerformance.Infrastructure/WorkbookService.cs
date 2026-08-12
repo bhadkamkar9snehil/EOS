@@ -188,6 +188,12 @@ public sealed partial class WorkbookService : IWorkbookService
         var reviewerName = MetadataValue(metadata, "EmployeeName");
         if (string.IsNullOrWhiteSpace(reviewerCode)) return [];
 
+        if (!int.TryParse(MetadataValue(metadata, "Year"), out var workbookYear) ||
+            !int.TryParse(MetadataValue(metadata, "Month"), out var workbookMonth))
+            throw new InvalidDataException("The review workbook does not contain a valid reporting month in Template Metadata.");
+        if (workbookYear != year || workbookMonth != month)
+            throw new InvalidDataException($"This review belongs to {new DateTime(workbookYear, workbookMonth, 1):MMMM yyyy}, not {new DateTime(year, month, 1):MMMM yyyy}.");
+
         var results = new List<PeerReview>();
         for (var row = PeerHeaderRow + 1; row <= (sheet.LastRowUsed()?.RowNumber() ?? PeerHeaderRow); row++)
         {

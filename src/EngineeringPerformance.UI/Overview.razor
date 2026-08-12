@@ -32,97 +32,129 @@
 
             <div class="pulse-distribution">
                 <h2 class="pulse-heading">Score distribution · people</h2>
-                <div class="score-axis" role="img" aria-label="@DistributionSummary">
-                    <i class="score-axis-line"></i>
-                    @foreach (var item in State.Performance)
+                <div class="score-band-grid" role="img" aria-label="@DistributionSummary">
+                    @foreach (var band in ScoreBands)
                     {
-                        <button type="button"
-                                class="score-axis-dot @Analytics.ScoreBand(item.OperationalScore) @(IsFocused(item.EmployeeName) ? "focused" : null)"
-                                style="left:@CssPct(item.OperationalScore)"
-                                title="@item.EmployeeName · @Analytics.Format(item.OperationalScore)"
-                                aria-label="@item.EmployeeName score @Analytics.Format(item.OperationalScore)"
-                                @onclick="() => Focus(item.EmployeeName)"></button>
+                        var members = BandMembers(band);
+                        <section class="score-band @band.CssClass">
+                            <div class="score-band-head"><span>@band.Label</span><strong>@members.Count</strong><small>@BandShare(members.Count)% of team</small></div>
+                            <div class="score-band-plot" aria-label="@members.Count people scoring @band.Label">
+                                @for (var i = 0; i < members.Count; i++)
+                                {
+                                    var member = members[i];
+                                    <button type="button"
+                                            class="score-band-dot @(IsFocused(member.EmployeeName) ? "focused" : null)"
+                                            style="@BandDotStyle(members, band, i)"
+                                            title="@member.EmployeeName · @Analytics.Format(member.OperationalScore)"
+                                            aria-label="@member.EmployeeName score @Analytics.Format(member.OperationalScore)"
+                                            @onclick="() => Focus(member.EmployeeName)"></button>
+                                }
+                            </div>
+                        </section>
                     }
-                    <div class="score-bands">
-                        <span><em>0–49</em><b>@BinCount(0, 50)</b></span>
-                        <span><em>50–64</em><b>@BinCount(50, 65)</b></span>
-                        <span><em>65–79</em><b>@BinCount(65, 80)</b></span>
-                        <span><em>80–100</em><b>@BinCount(80, 101)</b></span>
-                    </div>
                 </div>
             </div>
 
             <div class="pulse-trends">
-                <h2 class="pulse-heading">Key trends · @HeatmapMonths.Count month window</h2>
+                <h2 class="pulse-heading">Key trends · 30 days</h2>
                 <div class="trend-triplet">
-                    <div class="trend-mini"><label>Attendance</label><strong>@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong><div id="pulse-attendance" class="atlas-spark"></div></div>
-                    <div class="trend-mini"><label>Completion</label><strong>@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong><div id="pulse-completion" class="atlas-spark"></div></div>
-                    <div class="trend-mini"><label>Utilization</label><strong>@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><div id="pulse-utilization" class="atlas-spark"></div></div>
+                    <div class="trend-mini">
+                        <div class="trend-mini-head"><label>Attendance</label><span>@TrendCoverage(AttendanceTrend, "weeks")</span></div>
+                        <div class="trend-value"><strong>@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong>@TrendChange(AttendanceTrend)</div>
+                        <div id="pulse-attendance" class="atlas-spark"></div>
+                    </div>
+                    <div class="trend-mini">
+                        <div class="trend-mini-head"><label>Completion</label><span>@TrendCoverage(CompletionTrend, "weeks")</span></div>
+                        <div class="trend-value"><strong>@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong>@TrendChange(CompletionTrend)</div>
+                        <div id="pulse-completion" class="atlas-spark"></div>
+                    </div>
+                    <div class="trend-mini current-only">
+                        <div class="trend-mini-head"><label>Utilization</label><span>Monthly source</span></div>
+                        <div class="trend-value"><strong>@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><small>Current period</small></div>
+                        <div id="pulse-utilization" class="atlas-spark"></div>
+                    </div>
                 </div>
             </div>
 
             <div class="pulse-readiness">
                 <h2 class="pulse-heading">Data readiness</h2>
                 <div class="readiness-lights">
-                    @ReadinessLight("Utilization", IsReady(ReportType.MonthlyTimesheetSummary))
-                    @ReadinessLight("Detailed", IsReady(ReportType.DetailedTimesheetTransactions))
-                    @ReadinessLight("Attendance", IsReady(ReportType.AttendanceLeaveUaaTimesheet))
-                    @ReadinessLight("Reviews", State.ReviewsUploaded, true)
+                    @ReadinessLight("Timesheets", IsReady(ReportType.MonthlyTimesheetSummary))
+                    @ReadinessLight("Imports", IsReady(ReportType.DetailedTimesheetTransactions))
+                    @ReadinessLight("Mappings", IsReady(ReportType.AttendanceLeaveUaaTimesheet))
+                    @ReadinessLight("Coverage", State.ReviewsUploaded, true)
                 </div>
             </div>
 
             <div class="pulse-pressure">
                 <h2 class="pulse-heading">Alert pressure</h2>
-                <strong>@AlertPressureLabel</strong>
-                <div class="pressure-bars" aria-label="@Alerts.Count open analytical alerts">
-                    @for (var i = 0; i < 12; i++) { <i class="@(i < AlertPressureBars ? "on" : null)"></i> }
+                <div class="pressure-body" title="Alert pressure increases with the number of open analytical alerts; critical alerts carry additional weight.">
+                    <strong>@AlertPressureLabel</strong>
+                    <div class="pressure-bars" aria-label="@Alerts.Count open analytical alerts">
+                        @for (var i = 0; i < 12; i++) { <i class="@(i < AlertPressureBars ? "on" : null)"></i> }
+                    </div>
+                    <small>@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</small>
                 </div>
-                <small>@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</small>
             </div>
         </section>
 
         <section class="atlas-primary">
             <div class="performance-field">
                 <div class="atlas-panel-head">
-                    <div><h2>Workforce performance field</h2><small>X: accountable punch hours · Y: utilization</small></div>
-                    @if (FocusItem is not null)
-                    {
-                        <span class="focus-chip" aria-label="Focused engineer controls">
-                            <button type="button" class="focus-team" title="Return to the whole-team view" @onclick="ClearFocus">Team view</button>
-                            <b>@FocusItem.EmployeeName</b>
-                            <button type="button" class="focus-open" @onclick="OpenFocusedPortrait">Open portrait <span aria-hidden="true">↗</span></button>
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="team-mode-chip"><b>Team view</b><small>Select a person to focus</small></span>
-                    }
+                    <div><h2>Workforce performance field</h2><small>X: accountable hours (30 days)<br />Y: utilization (%)</small></div>
+                    <div class="field-panel-actions">
+                        @if (FocusedMovement is not null)
+                        {
+                            <span class="field-movement-key" title="@FocusedMovement.Tooltip">
+                                <i></i>
+                                <span class="field-movement-period"><small>Movement</small><b>@Previous.ToString("MMM") → @State.SelectedMonth.ToString("MMM")</b></span>
+                                <strong class="@(FocusedMovement.DirectionClass)">@FocusedMovement.DeltaLabel</strong>
+                            </span>
+                        }
+                        @if (FocusItem is not null)
+                        {
+                            <span class="focus-chip" aria-label="Focused engineer controls">
+                                <button type="button" class="focus-team" title="Return to the whole-team view" @onclick="ClearFocus">Team view</button>
+                                <b>@FocusItem.EmployeeName</b>
+                                <button type="button" class="focus-open" title="Open @FocusItem.EmployeeName performance portrait" @onclick="OpenFocusedPortrait">Open portrait <span aria-hidden="true">↗</span></button>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="team-mode-chip"><b>Team view</b><small>Select a person to focus</small></span>
+                        }
+                    </div>
                 </div>
                 <div id="atlas-field" aria-label="Workforce performance field"></div>
             </div>
 
             <aside class="attention-lens">
                 <div class="atlas-panel-head"><div><h2>Attention lens</h2><small>Ranked by intervention priority</small></div></div>
-                <div class="attention-columns" aria-hidden="true">
+                <div class="attention-columns">
                     <span class="attention-columns-id">Person</span>
-                    <span>Score</span>
-                    <span class="attention-columns-fingerprint"><i>Comp</i><i>App</i><i>Att</i><i>Util</i></span>
-                    <span>30-day rhythm</span>
+                    <span title="Current operational score out of 100">Score</span>
+                    <span class="attention-columns-fingerprint">
+                        <abbr tabindex="0" aria-label="Completion: expected timesheet days with an entry" title="Completion: expected timesheet days with an entry">Comp</abbr>
+                        <abbr tabindex="0" aria-label="Approval: submitted timesheets approved on time" title="Approval: submitted timesheets approved on time">App</abbr>
+                        <abbr tabindex="0" aria-label="Attendance: punctuality and attendance discipline" title="Attendance: punctuality and attendance discipline">Att</abbr>
+                        <abbr tabindex="0" aria-label="Utilization: accountable hours compared with available capacity" title="Utilization: accountable hours compared with available capacity">Util</abbr>
+                    </span>
+                    <span title="Recent weekly attendance-discipline pattern">30-day rhythm</span>
                 </div>
                 <ol class="attention-list">
                     @for (var i = 0; i < AttentionRows.Count; i++)
                     {
                         var row = AttentionRows[i];
-                        <li class="attention-row @(IsFocused(row.Name) ? "selected" : null)" @onclick="() => Focus(row.Name)">
+                        <li class="attention-row @(IsFocused(row.Name) ? "selected" : null)" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
                             <span class="attention-rank">@(i + 1)</span>
                             <span class="attention-avatar">@Initials(row.Name)</span>
                             <span class="attention-person"><strong>@row.Name</strong><small>@EmployeeContext(row.Name)</small></span>
-                            <span class="attention-score"><strong>@Analytics.Format(row.Score, "0")</strong>@if (row.Delta is not null && row.Delta != 0){<small class="@(row.Delta > 0 ? "up" : null)">@(row.Delta > 0 ? "↑" : "↓") @Analytics.Format(Math.Abs(row.Delta.Value), "0")</small>}</span>
-                            <span class="fingerprint-mini" title="Completion · approval · attendance · utilization">
-                                @MiniFingerprint(row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
-                                @MiniFingerprint(row.Item.ApprovalScore, row.Item.HasSummaryData)
-                                @MiniFingerprint(row.Item.AttendanceDisciplineScore, true)
-                                @MiniFingerprint(row.Item.Utilization, row.Item.HasSummaryData)
+                            <span class="attention-score" title="Operational score; arrow shows change from the previous loaded month"><strong>@Analytics.Format(row.Score, "0")</strong>@if (row.Delta is not null && row.Delta != 0){<small class="@(row.Delta > 0 ? "up" : null)">@(row.Delta > 0 ? "↑" : "↓") @Analytics.Format(Math.Abs(row.Delta.Value), "0")</small>}</span>
+                            <span class="fingerprint-mini" aria-label="Completion, approval, attendance and utilization diagnostic fingerprint">
+                                @MiniFingerprint("Completion", row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
+                                @MiniFingerprint("Approval", row.Item.ApprovalScore, row.Item.HasSummaryData)
+                                @MiniFingerprint("Attendance", row.Item.AttendanceDisciplineScore, true)
+                                @MiniFingerprint("Utilization", row.Item.Utilization, row.Item.HasSummaryData)
                             </span>
                             <span class="rhythm-mini" title="Weekly attendance discipline">
                                 @foreach (var value in WeeklyRhythm(row.Name)) { <i style="--v:@CssPct(value)"></i> }
@@ -136,7 +168,14 @@
 
         <section class="atlas-secondary">
             <div class="movement-river">
-                <div class="atlas-panel-head"><div><h2>Movement river</h2><small>Operational score · recent loaded months</small></div></div>
+                <div class="atlas-panel-head">
+                    <div><h2>Movement river</h2><small>Operational score · recent loaded months</small></div>
+                    <div class="movement-legend" aria-label="Movement river legend">
+                        <span class="team"><i></i>Every engineer</span>
+                        <span class="attention"><i></i>Attention lens</span>
+                        <span class="median"><i></i>Team median</span>
+                    </div>
+                </div>
                 <div id="atlas-river" aria-label="Employee score movement over time"></div>
             </div>
 
@@ -164,11 +203,18 @@
             </div>
         </section>
 
-        <section class="atlas-evidence" aria-label="Evidence workspaces">
-            <button class="evidence-link" @onclick='() => Navigation.NavigateTo("/timesheets")'><span><strong>Timesheet ledger</strong><small>Completion, missing days and approvals</small></span><b>@Analytics.Format(TimesheetFillRate, "0")%</b></button>
-            <button class="evidence-link" @onclick='() => Navigation.NavigateTo("/data")'><span><strong>Imported evidence</strong><small>Source and calculated fields</small></span><b>@State.Performance.Count</b></button>
-            <button class="evidence-link" @onclick='() => Navigation.NavigateTo("/peer-insights")'><span><strong>Peer collaboration</strong><small>Review coverage and relationships</small></span><b>@Peers.TotalFeedback</b></button>
-            <button class="evidence-link" @onclick='() => Navigation.NavigateTo("/employees")'><span><strong>People & teams</strong><small>Roster, classifications and ownership</small></span><b>@State.Employees.Count</b></button>
+        <section class="atlas-peer-review" aria-label="Peer rating relationships">
+            @if (Peers.TotalFeedback == 0)
+            {
+                <div class="peer-review-empty">
+                    <div><strong>No peer feedback for @State.SelectedMonth.ToString("MMMM yyyy")</strong><p>Upload completed review workbooks to reveal who rated whom and how the team experiences each colleague.</p></div>
+                    <button type="button" @onclick='() => Navigation.NavigateTo("/imports")'>Import peer reviews</button>
+                </div>
+            }
+            else
+            {
+                <PeerRelationshipExplorer Reviews="State.PeerReviews" SelectedMonth="State.SelectedMonth" InitialFocusName="_focusName" ShowAtlasButton="true" />
+            }
         </section>
 
         @if (Alerts.Count > 0)
@@ -194,6 +240,7 @@
     private string? _focusName;
     private string? _renderedSignature;
     private bool _chartsPending;
+    private bool _layoutLogged;
     private DotNetObjectReference<Overview>? _selfRef;
     private OperationalScoringSettings _settings = OperationalScoringSettings.Default;
     private IReadOnlyList<Anomaly> _alerts = [];
@@ -231,7 +278,7 @@
             .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
         _alerts = Analytics.Anomalies(State.Performance, _previousScores);
         _peers = Analytics.Peers(State.PeerReviews);
-        _heatmapMonths = State.History.Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).TakeLast(6).ToList();
+        _heatmapMonths = State.History.Select(x => new DateTime(x.Year, x.Month, 1)).Distinct().OrderBy(x => x).ToList();
         _teamScore = State.Performance.Count == 0 ? 0 : decimal.Round(State.Performance.Average(x => x.OperationalScore), 1);
 
         _attentionRows = State.Performance.Select(item =>
@@ -254,7 +301,7 @@
 
     private void CheckChartsPending()
     {
-        var signature = $"{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}|{State.History.Count}|{State.WeeklyPerformance.Count}|{State.SelectedMonth:yyyyMM}|{_focusName}|{_settings.Total:0.###}";
+        var signature = $"{State.Performance.Count}|{State.Performance.Sum(x => x.OperationalScore):0.0}|{State.History.Count}|{State.WeeklyPerformance.Count}|{State.PeerReviews.Count}|{State.PeerReviews.Sum(x => x.Average):0.00}|{State.SelectedMonth:yyyyMM}|{_focusName}|{_settings.Total:0.###}";
         if (signature != _renderedSignature) { _renderedSignature = signature; _chartsPending = true; }
     }
 
@@ -265,9 +312,9 @@
         _selfRef ??= DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("epaEchartsLoader.ensureLoaded");
         await JS.InvokeVoidAsync("epaAtlas.registerDrilldown", _selfRef);
-        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-attendance", MetricTrend(x => x.AttendanceDisciplineScore, false), "attendance");
-        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-completion", MetricTrend(x => x.TimesheetCompletionScore, true), "timesheet");
-        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-utilization", MetricTrend(x => x.Utilization, true), "operational");
+        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-attendance", AttendanceTrend, "attendance");
+        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-completion", CompletionTrend, "timesheet");
+        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-utilization", UtilizationCurrent, "operational");
 
         var previousRows = State.History
             .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
@@ -276,15 +323,21 @@
         var fieldPoints = State.Performance.Select(x =>
         {
             previousRows.TryGetValue(x.EmployeeName, out var prev);
+            var hasPrevious = prev is not null && prev.HasSummaryData && x.HasSummaryData;
+            var showMovement = hasPrevious
+                && (Math.Abs(x.PunchHours - prev!.PunchHours) >= 0.5m || Math.Abs(x.Utilization - prev.Utilization) >= 1m);
             return new
             {
                 name = x.EmployeeName, x = (double)x.PunchHours, y = (double)x.Utilization,
                 prevX = prev is null ? (double?)null : (double)prev.PunchHours,
                 prevY = prev is null ? (double?)null : (double)prev.Utilization,
+                hasPrevious,
+                showMovement,
                 score = (double)x.OperationalScore, exceptions = ExceptionCount(x), band = Analytics.ScoreBand(x.OperationalScore), missing = !x.HasSummaryData
             };
         }).ToArray();
-        var fieldMax = Math.Max(60m, State.Performance.Max(x => x.PunchHours) * 1.14m);
+        var focusedPreviousHours = FocusedMovement?.PreviousHours ?? 0m;
+        var fieldMax = Math.Max(60m, Math.Max(State.Performance.Max(x => x.PunchHours), focusedPreviousHours) * 1.14m);
         await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)Median(State.Performance.Select(x => x.PunchHours)), _focusName);
 
         var attentionNames = AttentionRows.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -296,6 +349,13 @@
         }).ToArray();
         var riverMedian = HeatmapMonths.Select(month => Median(State.History.Where(x => x.Year == month.Year && x.Month == month.Month).Select(x => x.OperationalScore))).ToArray();
         await JS.InvokeVoidAsync("epaAtlas.movementRiver", "atlas-river", HeatmapMonths.Select(x => x.ToString("MMM yy")).ToArray(), riverSeries, riverMedian, _focusName);
+
+        if (!_layoutLogged)
+        {
+            _layoutLogged = true;
+            var layout = await JS.InvokeAsync<string>("epaAtlas.measureOverview");
+            InteractionLog.Write("overview.layout", layout);
+        }
     }
 
     private DateTime Previous => State.SelectedMonth.AddMonths(-1);
@@ -308,6 +368,20 @@
     private IReadOnlyList<AttentionRow> AttentionRows => _attentionRows;
     private decimal? PreviousTeamScore => PreviousScores.Count == 0 ? null : decimal.Round(PreviousScores.Values.Average(), 1);
     private MonthlyPerformanceItem? FocusItem => _focusName is null ? null : State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, _focusName));
+    private FieldMovement? FocusedMovement
+    {
+        get
+        {
+            var current = FocusItem;
+            if (current is null || !current.HasSummaryData) return null;
+            var previous = State.History.FirstOrDefault(x => x.Year == Previous.Year && x.Month == Previous.Month && PersonName.Matches(x.EmployeeName, current.EmployeeName));
+            if (previous is null || !previous.HasSummaryData) return null;
+            var hoursDelta = current.PunchHours - previous.PunchHours;
+            var utilizationDelta = current.Utilization - previous.Utilization;
+            if (Math.Abs(hoursDelta) < 0.5m && Math.Abs(utilizationDelta) < 1m) return null;
+            return new FieldMovement(previous.PunchHours, previous.Utilization, current.PunchHours, current.Utilization, hoursDelta, utilizationDelta);
+        }
+    }
     private string FingerprintLabel => FocusItem is null ? "Team profile" : $"{FocusItem.EmployeeName} vs team distribution";
 
     private decimal Average(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly = false)
@@ -322,6 +396,28 @@
         return rows.Length == 0 ? (decimal?)null : decimal.Round(rows.Average(selector), 1);
     }).ToArray();
 
+    private decimal?[] AttendanceTrend => State.WeeklyPerformance
+        .Where(x => x.ExpectedDays > 0)
+        .GroupBy(x => x.WeekStart.Date)
+        .OrderBy(x => x.Key)
+        .Select(week => (decimal?)decimal.Round(week.Average(x => x.AttendanceDisciplineScore), 1))
+        .TakeLast(5)
+        .ToArray();
+
+    private decimal?[] CompletionTrend => State.WeeklyPerformance
+        .Where(x => x.ExpectedDays > 0)
+        .GroupBy(x => x.WeekStart.Date)
+        .OrderBy(x => x.Key)
+        .Select(week =>
+        {
+            var expected = week.Sum(x => x.ExpectedDays);
+            return expected <= 0 ? (decimal?)null : decimal.Round(week.Sum(x => x.FilledDays) * 100m / expected, 1);
+        })
+        .TakeLast(5)
+        .ToArray();
+
+    private decimal?[] UtilizationCurrent => [Average(x => x.Utilization, true)];
+
     private decimal? ScoreFor(string name, DateTime month) => State.History
         .Where(x => x.Year == month.Year && x.Month == month.Month && PersonName.Matches(x.EmployeeName, name))
         .Select(x => (decimal?)x.OperationalScore).FirstOrDefault();
@@ -329,6 +425,71 @@
     private decimal TimesheetFillRate => State.Performance.Sum(x => x.ExpectedTimesheetDays) == 0 ? 0 : decimal.Round(State.Performance.Sum(x => x.TimesheetFilledDays) * 100m / State.Performance.Sum(x => x.ExpectedTimesheetDays), 1);
     private int BinCount(decimal fromInclusive, decimal toExclusive) => State.Performance.Count(x => x.OperationalScore >= fromInclusive && x.OperationalScore < toExclusive);
     private string DistributionSummary => $"0–49: {BinCount(0,50)}, 50–64: {BinCount(50,65)}, 65–79: {BinCount(65,80)}, 80–100: {BinCount(80,101)}";
+    private IReadOnlyList<MonthlyPerformanceItem> BandMembers(ScoreBand band) => State.Performance
+        .Where(x => x.OperationalScore >= band.FromInclusive && x.OperationalScore < band.ToExclusive)
+        .OrderBy(x => x.OperationalScore)
+        .ThenBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+    private decimal BandShare(int count) => State.Performance.Count == 0 ? 0 : decimal.Round(count * 100m / State.Performance.Count, 0);
+    private static string BandDotStyle(IReadOnlyList<MonthlyPerformanceItem> members, ScoreBand band, int index)
+    {
+        const decimal collisionDistance = 7m;
+        const int laneCount = 3;
+        var positions = members.Take(index + 1).Select(item => BandPosition(item, band)).ToArray();
+        var lanes = new int[index + 1];
+
+        for (var current = 0; current <= index; current++)
+        {
+            var selectedLane = 0;
+            var bestClearance = -1m;
+            for (var candidate = 0; candidate < laneCount; candidate++)
+            {
+                var clearance = decimal.MaxValue;
+                for (var previous = 0; previous < current; previous++)
+                {
+                    if (lanes[previous] == candidate)
+                    {
+                        clearance = Math.Min(clearance, Math.Abs(positions[current] - positions[previous]));
+                    }
+                }
+
+                if (clearance >= collisionDistance)
+                {
+                    selectedLane = candidate;
+                    break;
+                }
+
+                if (clearance > bestClearance)
+                {
+                    bestClearance = clearance;
+                    selectedLane = candidate;
+                }
+            }
+
+            lanes[current] = selectedLane;
+        }
+
+        var lane = lanes[index];
+        return $"left:{CssPct(positions[index])};--dot-lift:{lane * 9}px;--dot-lift-compact:{lane * 7}px;--dot-lift-large:{lane * 10}px";
+    }
+    private static decimal BandPosition(MonthlyPerformanceItem item, ScoreBand band)
+    {
+        var span = Math.Max(1m, band.ToExclusive - band.FromInclusive - 1m);
+        return Math.Clamp((item.OperationalScore - band.FromInclusive) * 100m / span, 4m, 96m);
+    }
+    private static string TrendCoverage(IReadOnlyList<decimal?> values, string unit)
+    {
+        var count = values.Count(x => x is not null);
+        return count >= 2 ? $"{count} {unit}" : count == 1 ? "Current only" : "No dated evidence";
+    }
+    private static RenderFragment TrendChange(IReadOnlyList<decimal?> values)
+    {
+        var observed = values.Where(x => x is not null).Select(x => x!.Value).ToArray();
+        if (observed.Length < 2) return @<small>Baseline</small>;
+        var delta = decimal.Round(observed[^1] - observed[^2], 0);
+        if (delta == 0) return @<small>→ steady</small>;
+        return @<small class="@(delta > 0 ? "up" : "down")">@(delta > 0 ? "↑" : "↓") @Analytics.Format(Math.Abs(delta), "0") pts</small>;
+    }
     private static int ExceptionCount(MonthlyPerformanceItem item) => item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
 
     private string EmployeeContext(string name)
@@ -399,10 +560,14 @@
     private void ClearFocus() { _focusName = null; _chartsPending = true; }
     private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
     private void OpenFocusedPortrait() { if (FocusItem is not null) OpenPortrait(FocusItem.EmployeeName); }
+    private void HandleAttentionKey(KeyboardEventArgs args, string name)
+    {
+        if (args.Key is "Enter" or " ") Focus(name);
+    }
     private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
     private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
-    private RenderFragment ReadinessLight(string label, bool ready, bool optional = false) => @<div class="readiness-light @(ready ? "ready" : optional ? "warn" : null)"><span>@label</span><i></i></div>;
-    private RenderFragment MiniFingerprint(decimal value, bool available) => @<i class="@(!available || value < 65 ? "low" : null)" style="--v:@CssPct(available ? value : 0)" title="@(available ? Analytics.Format(value,"0") + "%" : "No source")"></i>;
+    private RenderFragment ReadinessLight(string label, bool ready, bool optional = false) => @<div class="readiness-light @(ready ? "ready" : optional ? "warn" : null)" title="@label: @(ready ? "ready" : optional ? "optional evidence missing" : "required evidence missing")"><span>@label</span><i></i></div>;
+    private RenderFragment MiniFingerprint(string label, decimal value, bool available) => @<i class="@(!available || value < 65 ? "low" : null)" style="--v:@CssPct(available ? value : 0)" title="@label: @(available ? Analytics.Format(value,"0") + "%" : "No source")"></i>;
 
     public async ValueTask DisposeAsync()
     {
@@ -412,5 +577,20 @@
     }
 
     private sealed record AttentionRow(string Name, decimal Score, decimal? Delta, decimal Risk, MonthlyPerformanceItem Item);
+    private sealed record ScoreBand(string Label, decimal FromInclusive, decimal ToExclusive, string CssClass);
+    private static readonly ScoreBand[] ScoreBands =
+    [
+        new("0–49", 0m, 50m, "critical"),
+        new("50–64", 50m, 65m, "serious"),
+        new("65–79", 65m, 80m, "warning"),
+        new("80–100", 80m, 101m, "good")
+    ];
     private sealed record FingerprintMetric(string Label, decimal Value, decimal Median, decimal Q1, decimal Q3, string Display, decimal Target, string TargetLabel, string Tooltip);
+    private sealed record FieldMovement(decimal PreviousHours, decimal PreviousUtilization, decimal CurrentHours, decimal CurrentUtilization, decimal HoursDelta, decimal UtilizationDelta)
+    {
+        public string DirectionClass => UtilizationDelta > 0 ? "movement-up" : UtilizationDelta < 0 ? "movement-down" : "movement-flat";
+        public string DeltaLabel => $"{Signed(HoursDelta, "0.0")} h · {Signed(UtilizationDelta, "0")} pp";
+        public string Tooltip => $"Previous: {Analytics.Format(PreviousHours, "0.0")} h · {Analytics.Format(PreviousUtilization, "0.0")}% | Current: {Analytics.Format(CurrentHours, "0.0")} h · {Analytics.Format(CurrentUtilization, "0.0")}%";
+        private static string Signed(decimal value, string format) => value > 0 ? $"+{value.ToString(format)}" : value.ToString(format);
+    }
 }

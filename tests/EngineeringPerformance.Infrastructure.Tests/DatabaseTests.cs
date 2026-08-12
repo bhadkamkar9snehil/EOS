@@ -8,6 +8,44 @@ namespace EngineeringPerformance.Infrastructure.Tests;
 public sealed class DatabaseTests
 {
     [Fact]
+    public void DetailedWorkLogBuildsOneEvidenceRecordPerEngineerWorkdayUsingLatestFilledDate()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-discipline-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, "worklog.xlsx");
+        try
+        {
+            using (var workbook = new ClosedXML.Excel.XLWorkbook())
+            {
+                var sheet = workbook.AddWorksheet("Sheet1");
+                string[] headers = ["Employee", "Project Task Status", "Project No", "Project", "Description", "Filled Date", "Date", "Start Time", "EndTime", "Total work Hours"];
+                for (var column = 0; column < headers.Length; column++) sheet.Cell(1, column + 1).Value = headers[column];
+                sheet.Cell(2, 1).Value = "Utsav Patel";
+                sheet.Cell(2, 6).Value = new DateTime(2026, 8, 11, 9, 15, 0);
+                sheet.Cell(2, 7).Value = new DateTime(2026, 8, 10);
+                sheet.Cell(2, 10).Value = 3.5m;
+                sheet.Cell(3, 1).Value = "Utsav  Patel";
+                sheet.Cell(3, 6).Value = new DateTime(2026, 8, 11, 9, 32, 0);
+                sheet.Cell(3, 7).Value = new DateTime(2026, 8, 10);
+                sheet.Cell(3, 10).Value = 4.14m;
+                workbook.SaveAs(path);
+            }
+
+            var evidence = new WorkbookService().ReadTimesheetDayEvidence(path, 2026, 8);
+
+            var day = Assert.Single(evidence);
+            Assert.Equal("Utsav Patel", day.EmployeeName);
+            Assert.Equal(new DateTime(2026, 8, 11, 9, 32, 0), day.LastFilledAt);
+            Assert.Equal(7.64m, day.RecordedHours);
+            Assert.Equal(2, day.EntryCount);
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void TeamAndEmployeeReportsAreValidWorkbooks()
     {
         var folder = Path.Combine(Path.GetTempPath(), $"epa-reports-{Guid.NewGuid():N}");
@@ -347,6 +385,95 @@ public sealed class DatabaseTests
         }
     }
 
+    [Fact]
+    public async Task IndividualReviewerWorkbooksMergeWithoutErasingOtherReviewers()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-review-merge-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        var databasePath = Path.Combine(folder, "review-merge.db");
+        try
+        {
+            var service = new WorkbookService();
+            var employees = new[]
+            {
+                new Employee("E1001", "Priyanka Makwana", 3),
+                new Employee("E1002", "Rohit Sharma", 5),
+                new Employee("E1003", "Ananya Iyer", 2)
+            };
+            var priPath = Path.Combine(folder, "Priyanka.xlsx");
+            var ananyaPath = Path.Combine(folder, "Ananya.xlsx");
+            service.GenerateEngineerTemplate(priPath, employees[0], 2026, 7, employees);
+            service.GenerateEngineerTemplate(ananyaPath, employees[2], 2026, 7, employees);
+            FillPeerRating(priPath, "E1002", 5);
+            FillPeerRating(ananyaPath, "E1002", 4);
+
+            var options = new DbContextOptionsBuilder<PerformanceDbContext>().UseSqlite($"Data Source={databasePath}").Options;
+            var factory = new TestContextFactory(options);
+            var database = new LocalApplicationDatabase(factory, service);
+            await database.InitializeAsync();
+
+            var first = await database.ImportEngineerReviewsAsync(2026, 7, [priPath]);
+            Assert.Equal(1, first.ReviewerCount);
+            Assert.Equal(1, first.TotalReviews);
+
+            var second = await database.ImportEngineerReviewsAsync(2026, 7, [ananyaPath]);
+            Assert.Equal(2, second.ReviewerCount);
+            Assert.Equal(2, second.TotalReviews);
+            Assert.Equal(1, second.AddedReviews);
+
+            FillPeerRating(priPath, "E1002", 2);
+            var update = await database.ImportEngineerReviewsAsync(2026, 7, [priPath]);
+            Assert.Equal(2, update.ReviewerCount);
+            Assert.Equal(2, update.TotalReviews);
+            Assert.Equal(1, update.UpdatedReviews);
+
+            var rows = await database.GetPeerReviewsAsync(2026, 7);
+            Assert.Equal(2m, rows.Single(x => x.ReviewerCode == "E1001").Collaboration);
+            Assert.Equal(4m, rows.Single(x => x.ReviewerCode == "E1003").Collaboration);
+
+            var replace = await database.ImportEngineerReviewsAsync(2026, 7, [priPath], ReviewImportMode.ReplaceMonth);
+            Assert.Equal(1, replace.ReviewerCount);
+            Assert.Equal(1, replace.TotalReviews);
+            Assert.Equal(1, replace.RemovedReviews);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public async Task ReviewWorkbookCannotBeImportedIntoTheWrongMonth()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-review-month-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        var databasePath = Path.Combine(folder, "review-month.db");
+        try
+        {
+            var service = new WorkbookService();
+            var reviewer = new Employee("E1001", "Priyanka Makwana", 3);
+            var subject = new Employee("E1002", "Rohit Sharma", 5);
+            var path = Path.Combine(folder, "July-review.xlsx");
+            service.GenerateEngineerTemplate(path, reviewer, 2026, 7, [reviewer, subject]);
+            FillPeerRating(path, "E1002", 5);
+
+            var options = new DbContextOptionsBuilder<PerformanceDbContext>().UseSqlite($"Data Source={databasePath}").Options;
+            var database = new LocalApplicationDatabase(new TestContextFactory(options), service);
+            await database.InitializeAsync();
+
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                database.ImportEngineerReviewsAsync(2026, 8, [path]));
+            Assert.Contains("July 2026", exception.Message);
+            Assert.Contains("August 2026", exception.Message);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
     private static void WriteRoster(string path, IReadOnlyList<(string Code, string Name, int Level)> rows)
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();
@@ -365,6 +492,19 @@ public sealed class DatabaseTests
             r++;
         }
         workbook.SaveAs(path);
+    }
+
+    private static void FillPeerRating(string path, string subjectCode, int collaboration)
+    {
+        using var workbook = new ClosedXML.Excel.XLWorkbook(path);
+        var sheet = workbook.Worksheet("Peer Review");
+        var row = Enumerable.Range(7, Math.Max(0, (sheet.LastRowUsed()?.RowNumber() ?? 6) - 6))
+            .Single(x => sheet.Cell(x, 1).GetString() == subjectCode);
+        sheet.Cell(row, 3).Value = collaboration;
+        sheet.Cell(row, 4).Value = collaboration;
+        sheet.Cell(row, 5).Value = collaboration;
+        sheet.Cell(row, 6).Value = collaboration;
+        workbook.Save();
     }
 
     private sealed class TestContextFactory(DbContextOptions<PerformanceDbContext> options) : IDbContextFactory<PerformanceDbContext>

@@ -75,9 +75,7 @@ try {
     if ($node) {
         $jsFiles = @(
             'src/EngineeringPerformance.UI/wwwroot/theme.js',
-            'src/EngineeringPerformance.UI/wwwroot/skin.js',
-            'src/EngineeringPerformance.UI/wwwroot/atlas-charts.js',
-            'src/EngineeringPerformance.UI/wwwroot/realist-runtime.js'
+            'src/EngineeringPerformance.UI/wwwroot/atlas-charts.js'
         )
         foreach ($jsFile in $jsFiles) {
             Invoke-Native 'node' @('--check',$jsFile) 'VALIDATE' "Checking $([System.IO.Path]::GetFileName($jsFile))…"

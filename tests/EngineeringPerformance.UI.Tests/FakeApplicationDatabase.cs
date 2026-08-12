@@ -44,7 +44,7 @@ public sealed class FakeApplicationDatabase : IApplicationDatabase
         return Task.FromResult(SavedScoringRowCount);
     }
 
-    public Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<ReviewImportResult> ImportEngineerReviewsAsync(int year, int month, IReadOnlyList<string> paths, ReviewImportMode mode = ReviewImportMode.MergeReviewers, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<PeerReviewItem>>([]);
     public Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<string>>([]);
     public Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default) => throw new NotSupportedException();

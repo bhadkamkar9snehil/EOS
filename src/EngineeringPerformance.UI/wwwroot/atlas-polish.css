@@ -1,7 +1,7 @@
 /* Small cross-route Atlas details kept separate from the structural layout file. */
 .fingerprint-target {
     position:absolute; top:1px; bottom:1px; left:var(--target); width:0;
-    border-left:1px dashed var(--atlas-orange); opacity:.62;
+    border-left:var(--chart-stroke-context) dashed var(--atlas-orange); opacity:.72;
 }
 .fingerprint-row > strong { font-variant-numeric:tabular-nums; }
 .fingerprint-row > strong::after { content:""; }
@@ -110,8 +110,8 @@
 .trend-mini label { font-size:10.5px; }
 .trend-mini strong { font-size:23px; }
 .atlas-spark { height:36px; }
-.readiness-light span { height:30px; font-size:10.25px; line-height:1.15; white-space:normal; overflow:visible; }
-.readiness-light i { width:24px; height:24px; }
+.readiness-light span { height:auto; font-size:9px; line-height:1.1; white-space:nowrap; overflow:visible; }
+.readiness-light i { width:20px; height:20px; }
 .pulse-pressure strong { font-size:15px; }
 .pressure-bars i { width:6px; }
 
@@ -124,8 +124,8 @@
 .focus-chip { font-size:11px; padding:5px 8px; background:transparent; }
 
 .attention-lens { padding-left:20px; padding-right:20px; }
-.attention-row {
-    grid-template-columns:24px 40px minmax(86px,1fr) 54px 112px 82px;
+.attention-columns,.attention-row {
+    grid-template-columns:24px 40px minmax(86px,1fr) 68px 112px 82px;
     gap:8px;
     min-height:72px;
 }
@@ -149,16 +149,596 @@
 .fingerprint-row { min-height:46px; }
 .fingerprint-row label { font-size:12px; }
 .fingerprint-row strong { font-size:13px; }
-.atlas-evidence { min-height:78px; }
-.evidence-link strong { font-size:13px; }
-.evidence-link small { font-size:10.75px; }
+.atlas-peer-review { min-height:456px; }
+.peer-review-person strong { font-size:12px; }
+.peer-aspect-profile li > button { min-height:54px; }
 
 @media (max-width:1500px) {
     .atlas-pulse { grid-template-columns:180px minmax(300px,1.4fr) minmax(270px,1fr) 200px 135px; padding-left:20px; padding-right:20px; }
     .pulse-distribution,.pulse-trends,.pulse-readiness,.pulse-pressure { padding-left:15px; padding-right:15px; }
     .atlas-primary { grid-template-columns:minmax(0,1.75fr) minmax(390px,1fr); }
     .performance-field,.attention-lens { padding-left:20px; padding-right:20px; }
-    .attention-row { grid-template-columns:22px 36px minmax(78px,1fr) 50px 100px 68px; gap:6px; }
+    .attention-columns,.attention-row { grid-template-columns:22px 36px minmax(78px,1fr) 64px 100px 68px; gap:6px; }
     .attention-avatar { width:34px; height:34px; }
     .rhythm-mini i { width:2px; }
+}
+
+/* Employee portrait: information-dense without becoming miniature.
+   Windows display scaling frequently reports a 1300-1500 CSS-pixel viewport on
+   a physically large screen, so this tier is intentionally based on usable
+   width rather than the large-display breakpoint above. */
+@media (min-width:1121px) {
+    .portrait-page { padding:0 16px 24px; }
+    .portrait-command { min-height:68px; grid-template-columns:auto minmax(210px,.78fr) minmax(220px,.68fr) minmax(430px,1.28fr); }
+    .portrait-back { padding-inline:15px; font-size:12px; }
+    .portrait-command .portrait-person { padding-inline:16px; }
+    .portrait-person .avatar.big { width:48px; height:48px; font-size:14px; }
+    .portrait-person h2 { font-size:19px; }
+    .portrait-person small { font-size:11px; }
+    .portrait-command-score { padding-inline:16px; }
+    .portrait-command-score > strong { font-size:43px; }
+    .portrait-command-score > span { font-size:11.5px; }
+    .portrait-command-score small { font-size:10.5px; }
+    .portrait-command-facts span { padding-inline:13px; font-size:10.5px; }
+    .portrait-command-facts b { font-size:18px; }
+
+    .portrait-page .atlas-panel-head h2 { font-size:15px; }
+    .portrait-page .atlas-panel-head small { font-size:10.5px; }
+    .portrait-diagnostic-band { min-height:0; grid-template-columns:minmax(0,1.08fr) minmax(440px,.92fr); }
+    .portrait-decomposition,
+    .portrait-weekly,
+    .portrait-history,
+    .portrait-evidence,
+    .portrait-peer-panel,
+    .portrait-work-ledger { padding:13px 16px; }
+    .portrait-metrics.dense { gap:10px 20px; }
+    .portrait-metric label { font-size:11.5px; }
+    .portrait-metric-track { height:6px; }
+    .portrait-source-facts { margin-top:14px; }
+    .portrait-source-facts > span { min-height:48px; padding:8px 10px; }
+    .portrait-source-facts small { font-size:9.5px; }
+    .portrait-source-facts b { font-size:15px; }
+    #portrait-weekly { height:145px; }
+
+    .portrait-main { grid-template-columns:minmax(0,1.48fr) minmax(360px,.62fr); }
+    #portrait-history { height:195px; }
+    .portrait-evidence-list.compact { max-height:196px; }
+    .portrait-evidence-list.compact li { min-height:38px; padding:5px 0; }
+    .portrait-evidence-list strong { font-size:12.5px; }
+    .portrait-evidence-list small { font-size:11px; }
+
+    .portrait-insight-grid { grid-template-columns:minmax(0,1.5fr) minmax(390px,.5fr); }
+    .portrait-peer-summary > b { font-size:32px; }
+    .portrait-peer-summary > span { font-size:10px; }
+    .portrait-peer-summary small { font-size:10.5px; }
+    .portrait-peer-layout { min-height:205px; grid-template-columns:270px minmax(0,1fr); }
+    #portrait-peer-radar { height:200px; }
+    .portrait-peer-aspects { padding:10px 15px; }
+    .peer-aspect-comparison { grid-template-columns:155px minmax(0,1fr); min-height:39px; }
+    .peer-aspect-comparison strong { font-size:12px; }
+    .peer-aspect-comparison small,
+    .portrait-peer-aspects p { font-size:10.5px; }
+    .peer-reviewer-head { min-height:30px; font-size:10px; }
+    .peer-reviewer-row { min-height:41px; }
+    .peer-reviewer-row > span strong,
+    .peer-reviewer-row > b { font-size:12px; }
+    .peer-reviewer-row > span small { font-size:10.5px; }
+    .peer-reviewer-row > strong { font-size:13px; }
+    .work-mix-stack { gap:9px; padding:6px 0 11px; }
+    .work-ledger-facts span { min-height:48px; font-size:9.5px; }
+    .work-ledger-facts b { font-size:16px; }
+    .portrait-evidence-list.ledger li { min-height:40px; padding:6px 0; }
+}
+
+@media (min-width:1900px) and (min-height:1000px) {
+    .portrait-page { padding:0 24px 30px; }
+    .portrait-command { min-height:74px; }
+    .portrait-person h2 { font-size:23px; }
+    .portrait-person small,
+    .portrait-command-score > span { font-size:12.5px; }
+    .portrait-command-score > strong { font-size:50px; }
+    .portrait-command-facts span { font-size:11.5px; }
+    .portrait-command-facts b { font-size:22px; }
+    .portrait-page .atlas-panel-head h2 { font-size:18px; }
+    .portrait-page .atlas-panel-head small { font-size:12px; }
+    .portrait-metric label,
+    .portrait-evidence-list small { font-size:12.5px; }
+    .portrait-evidence-list strong { font-size:14px; }
+    .peer-reviewer-row > span strong,
+    .peer-reviewer-row > b { font-size:13.5px; }
+}
+
+/* Employee portrait controls and diagnostic hierarchy. */
+.portrait-command { position:relative; z-index:12; overflow:visible; }
+.portrait-person-picker { position:relative; min-width:0; height:100%; }
+.portrait-person-selector {
+    width:100%; height:100%; min-width:0; border:0; background:transparent; color:var(--ink); font:inherit; text-align:left; cursor:pointer;
+}
+.portrait-person-selector:hover,
+.portrait-person-selector[aria-expanded="true"] { background:var(--surface-selected); }
+.portrait-person-copy { display:flex; min-width:0; flex:1; flex-direction:column; }
+.portrait-person-copy > strong { overflow:hidden; font-size:19px; line-height:1.15; text-overflow:ellipsis; white-space:nowrap; }
+.portrait-person-copy small { overflow:hidden; margin-top:3px; color:var(--muted); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.portrait-person-chevron { flex:none; margin-left:auto; color:var(--atlas-petrol); font-size:19px; line-height:1; transform:translateY(-2px); }
+.portrait-person-menu {
+    position:absolute; z-index:40; top:calc(100% - 1px); left:0; width:clamp(320px,30vw,430px); padding:10px;
+    border:1px solid var(--atlas-rule); background:var(--atlas-paper); box-shadow:0 14px 28px color-mix(in srgb,var(--ink) 18%,transparent);
+}
+.portrait-person-menu > strong { display:block; padding:3px 6px 9px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+.portrait-person-options { max-height:360px; overflow:auto; border-top:1px solid var(--atlas-rule); }
+.portrait-person-options > button {
+    display:grid; grid-template-columns:34px minmax(0,1fr); gap:10px; align-items:center; width:100%; min-height:48px; padding:6px;
+    border:0; border-bottom:1px solid var(--atlas-rule-soft); background:transparent; color:var(--ink); font:inherit; text-align:left; cursor:pointer;
+}
+.portrait-person-options > button:hover { background:color-mix(in srgb,var(--atlas-petrol) 6%,var(--atlas-paper)); }
+.portrait-person-options > button.selected { background:color-mix(in srgb,var(--atlas-orange) 9%,var(--atlas-paper)); outline:1px solid color-mix(in srgb,var(--atlas-orange) 42%,transparent); outline-offset:-1px; }
+.portrait-person-options .avatar { width:30px; height:30px; }
+.portrait-person-options b,
+.portrait-person-options small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.portrait-person-options b { font-size:12px; }
+.portrait-person-options small { margin-top:2px; color:var(--muted); font-size:10px; }
+
+.portrait-decomposition .atlas-panel-head { margin-bottom:10px; }
+.portrait-metrics.dense { gap:8px; }
+.portrait-decomposition .portrait-metric {
+    min-width:0; padding:8px 10px 9px; border:1px solid var(--atlas-rule-soft); background:color-mix(in srgb,var(--atlas-petrol) 2.5%,var(--atlas-paper));
+}
+.portrait-decomposition .portrait-metric label { align-items:baseline; gap:8px; font-size:11px; }
+.portrait-decomposition .portrait-metric label b { color:var(--ink); font-size:13px; }
+.portrait-decomposition .portrait-metric-track { height:7px; margin-top:7px; }
+.portrait-decomposition .portrait-metric-track i { min-width:2px; }
+.portrait-source-facts { margin-top:10px; }
+.portrait-source-facts > span { min-height:42px; padding:7px 9px; }
+.portrait-source-facts b { margin-top:3px; font-size:14px; }
+.portrait-history #portrait-history { margin-top:3px; }
+
+@media (min-width:1900px) and (min-height:1000px) {
+    .portrait-person-copy > strong { font-size:23px; }
+    .portrait-decomposition .portrait-metric label { font-size:12px; }
+}
+
+@media (max-width:720px) {
+    .portrait-person-menu { position:fixed; top:76px; right:12px; left:12px; width:auto; }
+}
+
+/* Portrait closing section: use the available width for the evidence values and
+   terminate directly against the application footer. */
+.portrait-page { padding-bottom:0!important; }
+.portrait-insight-grid { border-bottom:0; }
+.peer-reviewer-table {
+    margin-top:10px; border:1px solid var(--atlas-rule); border-bottom-color:var(--atlas-rule);
+}
+.peer-reviewer-head,
+.peer-reviewer-row {
+    grid-template-columns:minmax(260px,1.4fr) repeat(5,minmax(70px,.6fr)); gap:0;
+}
+.peer-reviewer-head {
+    min-height:32px; padding:0; border-bottom:1px solid var(--atlas-rule); background:var(--atlas-muted-plate);
+}
+.peer-reviewer-head span {
+    display:flex; align-items:center; align-self:stretch; justify-content:center; padding:0 10px; border-left:1px solid var(--atlas-rule-soft);
+}
+.peer-reviewer-head span:first-child { justify-content:flex-start; border-left:0; }
+.peer-reviewer-row { min-height:40px; padding:0; }
+.peer-reviewer-row:last-child { border-bottom:0; }
+.peer-reviewer-row > span,
+.peer-reviewer-row > b,
+.peer-reviewer-row > strong {
+    display:flex; align-self:stretch; align-items:center; justify-content:center; padding:6px 10px; border-left:1px solid var(--atlas-rule-soft);
+}
+.peer-reviewer-row > span {
+    align-items:flex-start; justify-content:center; border-left:0;
+}
+.peer-reviewer-row:nth-child(odd) { background:color-mix(in srgb,var(--atlas-petrol) 1.8%,transparent); }
+
+@media (max-width:900px) {
+    .peer-reviewer-table { overflow-x:auto; }
+    .peer-reviewer-head,
+    .peer-reviewer-row { min-width:760px; }
+}
+
+/* --------------------------------------------------------------------------
+   Authoritative Atlas responsive density
+
+   WebView2 reports CSS pixels after Windows display scaling. A 1920 x 1080
+   laptop at 125-150% scaling therefore has both a narrower and shorter layout
+   viewport than an unscaled monitor. Width-only breakpoints caused the shell
+   to enter a partial tablet layout while the 1920 acceptance min-heights below
+   remained active. These states are intentionally keyed to width OR height.
+   -------------------------------------------------------------------------- */
+@media (max-width:1600px), (max-height:900px) {
+    .app-shell { grid-template-columns:146px minmax(0,1fr); }
+    .workspace { grid-template-rows:48px auto minmax(0,1fr) 28px; }
+    .atlas-brand { min-height:78px; height:78px; padding:11px 14px; gap:5px; }
+    .atlas-brand strong { font-size:25px; }
+    .atlas-brand small { max-width:112px; font-size:8px; line-height:1.35; letter-spacing:.13em; }
+    .nav-rail nav { padding:4px 0; }
+    .nav-group-label { padding:9px 14px 3px; font-size:8px; }
+    .nav-rail button { height:36px; padding:0 14px; gap:9px; font-size:11.5px; }
+    .nav-rail button b { width:15px; height:15px; }
+    .nav-footer { padding:5px 0 8px; }
+    .nav-footer small { padding:3px 14px 0; font-size:8.5px; }
+
+    .topbar { grid-template-columns:minmax(180px,1fr) auto; gap:10px; padding:0 16px; }
+    .topbar h1 { font-size:19px; }
+    .topbar-actions { gap:7px; }
+    .month-control { height:32px; grid-template-columns:auto 26px 112px 26px; }
+    .month-control span { padding:0 8px; font-size:9px; }
+    .month-control strong { font-size:10.5px; }
+    .icon-button { width:32px; height:32px; }
+    .readiness { padding-left:10px; }
+    .readiness span { font-size:8.5px; }
+    .readiness strong { font-size:10.5px; }
+    footer { height:28px; padding:0 16px; font-size:8.5px; }
+
+    .atlas-page { display:block; min-height:100%; }
+    .atlas-pulse {
+        height:88px;
+        min-height:88px;
+        grid-template-columns:145px minmax(220px,1.3fr) minmax(210px,1fr) 176px 116px;
+        padding:7px 16px 6px;
+    }
+    .pulse-distribution,
+    .pulse-trends,
+    .pulse-readiness,
+    .pulse-pressure { padding:0 11px; }
+    .pulse-score { padding-right:12px; }
+    .pulse-score .atlas-section-label { margin-bottom:3px; font-size:9.5px; }
+    .pulse-score-main { gap:10px; }
+    .pulse-score-main strong { font-size:40px; }
+    .pulse-score-main span { padding-left:9px; font-size:23px; }
+    .pulse-score-meta { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:3px; font-size:9px; }
+    .pulse-score-meta span:last-child { text-align:right; }
+    .pulse-heading { margin-bottom:4px; font-size:9.5px; }
+    .score-axis { height:40px; padding-top:2px; }
+    .score-axis-line { top:18px; }
+    .score-axis-dot { top:14px; width:8px; height:8px; }
+    .score-bands { margin-top:23px; font-size:8.5px; }
+    .score-bands b { font-size:11px; }
+    .score-band-grid { min-height:52px; }
+    .score-band-grid::after { right:5px; bottom:2px; left:5px; height:3px; }
+    .score-band { padding:3px 5px 2px; }
+    .score-band-head span { font-size:9px; }
+    .score-band-head strong { font-size:11px; }
+    .score-band-head small { display:none; }
+    .score-band-plot { height:23px; margin-top:auto; border-bottom-width:3px; }
+    .score-band-dot { bottom:calc(3px + var(--dot-lift-compact,0px)); width:9px; height:9px; margin-left:-4px; border-width:1.5px; }
+    .trend-triplet { gap:0; }
+    .trend-mini label { font-size:9px; }
+    .trend-mini strong { margin:1px 0; font-size:17px; }
+    .trend-mini { padding:2px 7px 1px; }
+    .trend-mini-head span,
+    .trend-value small { display:none; }
+    .atlas-spark { height:20px; }
+    .readiness-lights { gap:5px 7px; }
+    .readiness-light { grid-template-columns:17px minmax(0,1fr); gap:5px; }
+    .readiness-light span { font-size:9px; }
+    .readiness-light i { width:14px; height:14px; }
+    .pulse-pressure strong { margin:1px 0 3px; font-size:12px; }
+    .pressure-bars { height:16px; gap:2px; }
+    .pressure-bars i { width:4px; height:12px; }
+    .pulse-pressure small { margin-top:2px; font-size:9px; }
+
+    .atlas-primary { grid-template-columns:minmax(0,1.5fr) minmax(390px,.9fr); min-height:340px; }
+    .performance-field,
+    .attention-lens { padding:13px 14px 10px; }
+    #atlas-field { min-height:276px; height:276px; }
+    .atlas-panel-head { margin-bottom:6px; gap:10px; }
+    .atlas-panel-head h2 { font-size:12.5px; }
+    .atlas-panel-head small { font-size:9.25px; line-height:1.4; }
+    .attention-columns,
+    .attention-row { grid-template-columns:16px 28px minmax(118px,1fr) 48px 88px 52px; gap:5px; }
+    .attention-columns { min-height:24px; padding-bottom:4px; font-size:9px; }
+    .attention-row { min-height:50px; }
+    .attention-rank { font-size:15px; }
+    .attention-avatar { width:28px; height:28px; font-size:9px; }
+    .attention-person strong { font-size:11px; }
+    .attention-person small { font-size:9px; }
+    .attention-score { gap:3px; }
+    .attention-score strong { font-size:19px; }
+    .attention-score small { font-size:9px; }
+    .fingerprint-mini { gap:3px; }
+    .fingerprint-mini i { height:18px; }
+    .rhythm-mini { height:22px; gap:1px; }
+    .rhythm-mini i { width:2px; }
+
+    .atlas-secondary { min-height:240px; }
+    .movement-river,
+    .operational-fingerprint { padding:12px 14px 10px; }
+    #atlas-river { height:184px; }
+    .movement-legend,
+    .fingerprint-legend { gap:5px 9px; font-size:8.5px; }
+    .fingerprint-table { margin-top:8px; }
+    .fingerprint-head { min-height:22px; font-size:8px; }
+    .fingerprint-row { min-height:36px; }
+    .fingerprint-row label { font-size:10px; }
+    .fingerprint-row strong { font-size:10px; }
+
+    .workbench-page,
+    .collaboration-page,
+    .portrait-page,
+    .route-data .single-pane.wide,
+    .route-employees .single-pane.wide { padding:11px 14px 20px; }
+    .workbench-header { padding-bottom:10px; }
+    .workbench-header h2,
+    .peer-workbench-header h2 { font-size:17px; }
+    .workbench-header p,
+    .peer-workbench-header p { font-size:9.5px; }
+    .workbench-summary { gap:15px; }
+    .workbench-summary strong { font-size:19px; }
+    .timesheet-pulse { min-height:78px; grid-template-columns:minmax(155px,1.25fr) repeat(4,minmax(92px,.75fr)); }
+    .timesheet-pulse > div { padding:11px 12px; }
+    .timesheet-pulse strong { font-size:21px; }
+    .timesheet-ledger { margin-top:10px; }
+    .timesheet-ledger .epa-grid tbody td,
+    .route-data .epa-grid tbody td { padding:7px 8px; font-size:10px; }
+
+    .peer-evidence-grid { min-height:470px; grid-template-columns:minmax(480px,.92fr) minmax(520px,1.08fr); }
+    .peer-confidence-panel,
+    .peer-landscape-workbench,
+    .peer-network-workbench { padding:11px 12px 9px; }
+    .peer-confidence-list { max-height:388px; }
+    .peer-confidence-row { min-height:39px; }
+    #peer-aspect-landscape { height:392px; }
+    .peer-relationship-grid { min-height:420px; grid-template-columns:minmax(0,1fr) minmax(500px,.9fr); }
+    #peer-insights-network { height:300px; }
+    .peer-diagnostics { padding:11px 12px; }
+    .peer-insights-profile { padding:11px 12px 9px; }
+    .peer-insights-profile ol { max-height:345px; }
+    .peer-diagnostics-wide { grid-template-columns:180px minmax(340px,.85fr) minmax(420px,1.15fr); }
+
+    .portrait-command { min-height:70px; grid-template-columns:auto minmax(190px,.8fr) minmax(190px,.65fr) minmax(330px,1.1fr); }
+    .portrait-person .avatar.big { width:44px; height:44px; font-size:13px; }
+    .portrait-person h2 { font-size:17px; }
+    .portrait-command-score > strong { font-size:38px; }
+    .portrait-command-facts b { font-size:14px; }
+    .portrait-diagnostic-band { min-height:220px; }
+    #portrait-weekly { height:160px; }
+    #portrait-history { height:225px; }
+    .portrait-peer-layout { min-height:220px; grid-template-columns:280px minmax(0,1fr); }
+    #portrait-peer-radar { height:215px; }
+
+    .route-imports .page-grid { grid-template-columns:minmax(0,1fr) 245px; }
+    .export-lane,
+    .template-flow { min-height:330px; }
+}
+
+@media (max-width:1350px) {
+    .peer-evidence-grid,
+    .peer-relationship-grid { grid-template-columns:1fr; }
+    .peer-confidence-panel,
+    .peer-network-workbench { border-right:0; border-bottom:1px solid var(--atlas-rule); }
+    .peer-diagnostics-wide { grid-template-columns:1fr; }
+    .peer-diagnostics-summary { grid-template-columns:1fr 1fr; }
+    .portrait-command { grid-template-columns:auto minmax(180px,1fr) minmax(180px,.8fr); }
+    .portrait-command-facts { grid-column:1 / -1; min-height:56px; border-top:1px solid var(--atlas-rule); }
+}
+
+@media (max-height:720px) {
+    .app-shell { grid-template-columns:132px minmax(0,1fr); }
+    .workspace { grid-template-rows:42px auto minmax(0,1fr) 24px; }
+    .atlas-brand { min-height:58px; height:58px; padding:7px 12px; }
+    .atlas-brand small { display:none; }
+    .nav-group-label { padding:5px 12px 2px; }
+    .nav-rail button { height:31px; padding:0 12px; font-size:10px; }
+    .nav-footer { padding:3px 0 5px; }
+    .atlas-pulse { min-height:126px; padding-top:10px; padding-bottom:9px; }
+    .atlas-primary { min-height:340px; }
+    #atlas-field { min-height:276px; height:276px; }
+    .attention-row { min-height:48px; }
+    .atlas-secondary { min-height:238px; }
+    #atlas-river { height:184px; }
+}
+
+@media (max-width:1120px) {
+    .app-shell { grid-template-columns:58px minmax(0,1fr); }
+    .atlas-brand { padding:0; align-items:center; }
+    .atlas-brand strong span,
+    .atlas-brand small,
+    .nav-rail button span,
+    .nav-group-label,
+    .nav-footer small { display:none; }
+    .nav-rail button { justify-content:center; padding:0; }
+    .readiness { display:none; }
+    .month-control { grid-template-columns:26px 105px 26px; }
+    .month-control span { display:none; }
+    .atlas-primary { grid-template-columns:minmax(0,1.45fr) minmax(330px,.8fr); }
+    .portrait-main,
+    .portrait-insight-grid,
+    .portrait-diagnostic-band { grid-template-columns:1fr; }
+}
+
+/* True narrow windows stack the analytical bands deliberately. This comes after
+   the compact laptop rules so a resized desktop never inherits impossible
+   minimum columns from the wide-screen acceptance composition. */
+@media (max-width:900px) {
+    .topbar h1 { font-size:16px; }
+    .topbar { padding:0 10px; }
+    .month-control { grid-template-columns:24px 88px 24px; }
+    .icon-button { display:none; }
+    .atlas-pulse { grid-template-columns:minmax(150px,.7fr) minmax(260px,1.3fr); height:auto; min-height:0; }
+    .pulse-score,
+    .pulse-distribution,
+    .pulse-trends,
+    .pulse-readiness,
+    .pulse-pressure { min-width:0; padding:10px; }
+    .pulse-trends { grid-column:1 / -1; border-top:1px solid var(--atlas-rule); }
+    .pulse-readiness,
+    .pulse-pressure { border-top:1px solid var(--atlas-rule); }
+    .atlas-primary,
+    .atlas-secondary { grid-template-columns:1fr; min-height:0; }
+    .performance-field,
+    .movement-river { border-right:0; border-bottom:1px solid var(--atlas-rule); }
+    #atlas-field { min-height:300px; height:300px; }
+    #atlas-river { height:210px; }
+    .attention-columns,
+    .attention-row { grid-template-columns:18px 30px minmax(90px,1fr) 54px 90px 64px; }
+    .timesheet-pulse { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .route-imports .page-grid { grid-template-columns:1fr; }
+    .route-imports .activity-pane { border-left:0; border-top:1px solid var(--atlas-rule); }
+    .portrait-peer-layout { grid-template-columns:1fr; }
+}
+
+/* --------------------------------------------------------------------------
+   Large-display Atlas density
+
+   A 2560 x 1369 WebView has enough room for a genuinely more legible
+   instrument surface. Do not simply fit more small content into that space:
+   enlarge navigation, operational type, interaction targets and chart frames.
+   This tier is deliberately disjoint from the 1304 x 821 scaled-laptop rules.
+   -------------------------------------------------------------------------- */
+@media (min-width:1900px) and (min-height:1000px) {
+    .app-shell { grid-template-columns:228px minmax(0,1fr); }
+    .workspace { grid-template-rows:72px auto minmax(0,1fr) 38px; }
+    .atlas-brand { min-height:140px; padding:24px 26px; gap:9px; }
+    .atlas-brand strong { font-size:36px; }
+    .atlas-brand strong i { font-size:26px; }
+    .atlas-brand small { max-width:155px; font-size:12px; line-height:1.5; }
+    .nav-rail nav { padding:18px 0 14px; }
+    .nav-group-label { padding:20px 26px 8px; font-size:12px!important; }
+    .nav-rail button { height:54px; padding:0 25px; gap:14px; font-size:15px; }
+    .nav-rail button b { width:20px; height:20px; }
+    .nav-footer { padding-bottom:14px; }
+    .nav-footer small { padding-inline:25px; font-size:11px; }
+
+    .topbar { padding:0 30px; gap:20px; }
+    .topbar h1 { font-size:28px; }
+    .topbar-actions { gap:14px; }
+    .month-control { height:44px; grid-template-columns:auto 34px 150px 34px; }
+    .month-control span { font-size:12px; }
+    .month-control strong { font-size:14px; }
+    .icon-button { width:44px; height:44px; }
+    .readiness span { font-size:11.5px; }
+    .readiness strong { font-size:13.5px; }
+    footer { height:38px; padding:0 30px; font-size:11.5px; }
+
+    .atlas-page { min-height:calc(100vh - 110px); grid-template-rows:auto minmax(560px,1.45fr) minmax(390px,.95fr) auto; }
+    .atlas-pulse { min-height:158px; grid-template-columns:235px minmax(430px,1.58fr) minmax(380px,1.1fr) 225px 160px; padding:13px 30px 11px; }
+    .pulse-score { padding-right:25px; }
+    .pulse-distribution,
+    .pulse-trends,
+    .pulse-readiness,
+    .pulse-pressure { padding-inline:22px; }
+    .atlas-section-label { font-size:13px; }
+    .pulse-score-main strong { font-size:76px; }
+    .pulse-score-main span { font-size:44px; }
+    .pulse-score-meta { font-size:12px; }
+    .pulse-heading { margin-bottom:7px; font-size:13px; }
+    .score-axis-dot { width:12px; height:12px; }
+    .score-bands { font-size:12px; }
+    .score-bands b { font-size:16px; }
+    .score-band-grid { min-height:86px; }
+    .score-band-grid::after { right:14px; bottom:7px; left:14px; height:3px; }
+    .score-band { padding:8px 14px 7px; }
+    .score-band-head span { font-size:12.5px; }
+    .score-band-head strong { font-size:21px; }
+    .score-band-head small { font-size:10.5px; }
+    .score-band-plot { height:31px; margin-top:auto; border-bottom-width:3px; }
+    .score-band-dot { bottom:calc(5px + var(--dot-lift-large,0px)); width:15px; height:15px; margin-left:-7px; border-width:2px; }
+    .trend-mini label { font-size:12px; }
+    .trend-mini strong { font-size:27px; }
+    .trend-mini { padding:12px 18px 10px; }
+    .trend-mini-head span { font-size:10.5px; }
+    .trend-value small { font-size:11px; }
+    .atlas-spark { height:48px; }
+    .readiness-light { grid-template-columns:24px minmax(0,1fr); gap:9px; }
+    .readiness-light span { font-size:10.5px; }
+    .readiness-light i { width:22px; height:22px; }
+    .pulse-pressure strong { font-size:17px; }
+    .pressure-bars i { width:7px; }
+    .pulse-pressure small { font-size:12px; }
+
+    .atlas-primary { grid-template-columns:minmax(0,2fr) minmax(500px,1fr); min-height:560px; }
+    .performance-field,
+    .attention-lens { padding:24px 28px 20px; }
+    #atlas-field { min-height:490px; }
+    .atlas-panel-head { margin-bottom:14px; }
+    .atlas-panel-head h2 { font-size:17px; }
+    .atlas-panel-head small { font-size:12.5px; }
+    .focus-chip { padding:6px 10px; font-size:12.5px; }
+    .team-mode-chip b { font-size:13px; }
+    .team-mode-chip small { font-size:11px; }
+    .attention-columns,
+    .attention-row { grid-template-columns:30px 48px minmax(120px,1fr) 78px 150px 105px; gap:11px; }
+    .attention-columns { min-height:36px; font-size:10.5px; }
+    .attention-row { min-height:82px; }
+    .attention-rank { font-size:25px; }
+    .attention-avatar { width:44px; height:44px; font-size:14px; }
+    .attention-person strong { font-size:15px; }
+    .attention-person small { font-size:12px; }
+    .attention-score strong { font-size:28px; }
+    .attention-score small { font-size:11.5px; }
+    .fingerprint-mini i { height:28px; }
+    .rhythm-mini { height:36px; }
+
+    .atlas-secondary { min-height:390px; }
+    .movement-river,
+    .operational-fingerprint { padding:22px 28px 18px; }
+    #atlas-river { height:315px; }
+    .movement-legend,
+    .fingerprint-legend { font-size:11.5px; }
+    .fingerprint-head { min-height:34px; font-size:11.5px; }
+    .fingerprint-row { min-height:52px; }
+    .fingerprint-row label { font-size:13.5px; }
+    .fingerprint-row strong { font-size:14px; }
+
+    .atlas-peer-review { min-height:540px; grid-template-columns:minmax(0,1.3fr) minmax(600px,.7fr); }
+    .peer-network-panel,
+    .peer-aspect-profile { padding:22px 28px 20px; }
+    .peer-aspect-switcher button { min-height:38px; padding-inline:15px; font-size:12px; }
+    .peer-network-panel { grid-template-rows:auto auto minmax(390px,1fr) auto; }
+    #atlas-peer-network { min-height:390px; }
+    .peer-network-note { padding-top:11px; font-size:11.5px; }
+    .peer-aspect-head { min-height:36px; font-size:10.5px; }
+    .peer-aspect-profile li > button { min-height:64px; }
+    .peer-review-person strong { font-size:13.5px; }
+    .peer-review-person small { font-size:11px; }
+    .peer-aspect-cell b { font-size:12px; }
+
+    .workbench-page,
+    .collaboration-page,
+    .portrait-page,
+    .route-data .single-pane.wide,
+    .route-employees .single-pane.wide { padding:24px 30px 36px; }
+    .workbench-header h2,
+    .peer-workbench-header h2 { font-size:25px; }
+    .workbench-header p,
+    .peer-workbench-header p { font-size:13.5px; }
+    .timesheet-pulse strong { font-size:32px; }
+    .timesheet-ledger .epa-grid tbody td,
+    .route-data .epa-grid tbody td { padding:12px 14px; font-size:14px; }
+    .timesheet-ledger .epa-grid thead th { height:46px; font-size:12.5px!important; }
+
+    .peer-confidence-row { min-height:56px; }
+    .peer-confidence-person strong { font-size:13.5px; }
+    .peer-confidence-person small { font-size:10.5px; }
+    .peer-confidence-raw { font-size:13px; }
+    .peer-confidence-floor { font-size:14.5px; }
+    .peer-confidence-columns,
+    .peer-confidence-legend { font-size:10.5px; }
+}
+
+/* Final portrait geometry overrides. Keep these after the global compact and
+   large-display tiers so OS-scaled WebView widths do not reintroduce the old
+   oversized bands and undersized type. */
+@media (min-width:1121px) {
+    .portrait-page { padding:10px 16px 24px; }
+    .portrait-command { min-height:78px; grid-template-columns:auto minmax(210px,.78fr) minmax(220px,.68fr) minmax(430px,1.28fr); }
+    .portrait-person .avatar.big { width:48px; height:48px; font-size:14px; }
+    .portrait-person h2 { font-size:19px; }
+    .portrait-command-score > strong { font-size:43px; }
+    .portrait-command-facts b { font-size:18px; }
+    .portrait-diagnostic-band { min-height:0; grid-template-columns:minmax(0,1.08fr) minmax(440px,.92fr); }
+    #portrait-weekly { height:145px; }
+    #portrait-history { height:195px; }
+    .portrait-peer-layout { min-height:205px; grid-template-columns:270px minmax(0,1fr); }
+    #portrait-peer-radar { height:200px; }
+}
+
+@media (min-width:1900px) and (min-height:1000px) {
+    .portrait-page { padding:14px 24px 30px; }
+    .portrait-command { min-height:88px; }
+    .portrait-person h2 { font-size:23px; }
+    .portrait-command-score > strong { font-size:50px; }
+    .portrait-command-facts b { font-size:22px; }
 }

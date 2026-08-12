@@ -109,7 +109,13 @@
                     <TemplateColumn Title="Reporting month">@(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))</TemplateColumn>
                     <TemplateColumn Title="File"><span class="filename" title="@context.OriginalFileName">@context.OriginalFileName</span></TemplateColumn>
                     <TemplateColumn Title="Rows" Align="Align.Right"><span class="num">@(context.RowCount == 0 ? "—" : context.RowCount.ToString())</span></TemplateColumn>
-                    <TemplateColumn Title="Effect"><span class="@(context.ReplacedExisting ? "flag-warning" : null)">@(context.ReplacedExisting ? "Replaced earlier file" : "First upload")</span></TemplateColumn>
+                    <TemplateColumn Title="Effect">
+                        <span class="@(context.ReplacedExisting ? "flag-warning" : null)">
+                            @(context.ReportType == ReportType.EngineerReviewWorkbook
+                                ? context.ReplacedExisting ? "Updated review evidence" : "Added review evidence"
+                                : context.ReplacedExisting ? "Replaced earlier file" : "First upload")
+                        </span>
+                    </TemplateColumn>
                 </QuickGrid>
             }
         </div>
@@ -144,9 +150,13 @@
     }
 
     private void OnStateChanged() => InvokeAsync(async () => { await ReloadHistoryAsync(); StateHasChanged(); });
-    private async Task ReloadHistoryAsync() => _history = _allMonths
-        ? await Database.GetImportHistoryAsync()
-        : await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
+    private async Task ReloadHistoryAsync()
+    {
+        var history = _allMonths
+            ? await Database.GetImportHistoryAsync()
+            : await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
+        _history = history.Where(x => AppState.IsFiscalMonth(new DateTime(x.Year, x.Month, 1))).ToArray();
+    }
     public void Dispose() => State.Changed -= OnStateChanged;
 
     private static string Num(decimal value) => value <= 0 ? "—" : Analytics.Format(value);

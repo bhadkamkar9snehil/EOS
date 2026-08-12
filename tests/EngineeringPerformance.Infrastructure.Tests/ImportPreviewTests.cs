@@ -19,6 +19,8 @@ file sealed class FakeWorkbookService(ReportType reportType, IReadOnlyList<Emplo
     public IReadOnlyList<WeeklyPerformanceItem> ReadWeeklyPerformance(string filePath, ReportType type, int year, int month) => [];
     public IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month) => [];
     public IReadOnlyList<RosterEntry> ReadEmployeeRoster(string filePath) => [];
+    public IReadOnlyList<TimesheetDayEvidence> ReadTimesheetDayEvidence(string filePath, int year, int month) => [];
+    public IReadOnlyList<AccountableWorkday> ReadAccountableWorkdays(string filePath, int year, int month) => [];
     public void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null) { }
     public IReadOnlyList<string> GenerateEngineerTemplates(string destinationFolder, IReadOnlyList<Employee> employees, int year, int month) => [];
     public void GenerateEmployeeReport(string destinationPath, EmployeeReportData data) { }

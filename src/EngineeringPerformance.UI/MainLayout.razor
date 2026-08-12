@@ -9,14 +9,15 @@
 
 <div class="app-shell">
     <aside class="nav-rail">
-        <div class="brand atlas-brand">
-            <strong>EOS <i>✦</i></strong>
+        <div class="brand atlas-brand" aria-label="EOS Engineering Performance Analyzer">
+            <strong><i aria-hidden="true">✦</i><span>EOS</span></strong>
             <small>Engineering performance analyzer</small>
         </div>
         <nav>
             <span class="nav-group-label">Analyze</span>
             @NavButton("overview", "Overview", Icon.Overview)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
+            @NavButton("discipline", "Execution Discipline", Icon.Discipline)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
@@ -38,63 +39,18 @@
             </button>
             <small>Local analysis · SQLite</small>
         </div>
-        <div class="realist-lower-console" aria-label="Console controls">
-            <button class="realist-back" type="button" title="Back to Overview" @onclick='() => Navigation.NavigateTo("/overview")'><span>≪</span></button>
-            <button class="realist-dial" type="button" title="Appearance controls" aria-label="Appearance controls" @onclick='() => Navigation.NavigateTo("/settings")'><i></i></button>
-        </div>
     </aside>
 
     <section class="workspace">
         <header class="topbar">
             <div class="page-heading"><h1>@PageTitleText</h1></div>
 
-            <div class="realist-control-bank" aria-label="Performance Atlas controls">
-                <div class="rcb-month" aria-label="Reporting month">
-                    <span class="rcb-icon" aria-hidden="true"></span>
-                    <button type="button" class="rcb-month-prev" title="Previous month" aria-label="Previous month" @onclick="PreviousMonthAsync">‹</button>
-                    <strong class="rcb-month-label">@State.SelectedMonth.ToString("MMMM yyyy")</strong>
-                    <button type="button" class="rcb-month-next" title="Next month" aria-label="Next month" @onclick="NextMonthAsync">›</button>
-                </div>
-                <button type="button" class="rcb-selector" title="Team scope" @onclick='() => State.ShowMessage("Team scope: All")'><span>Team:</span><strong>All</strong><i>⌄</i></button>
-                <button type="button" class="rcb-selector" title="Group scope" @onclick='() => State.ShowMessage("Group scope: All")'><span>Group:</span><strong>All</strong><i>⌄</i></button>
-                <label class="rcb-search">
-                    <span aria-hidden="true"></span>
-                    <input value="@_searchQuery" @oninput="OnRealistSearchInput" @onkeydown="OnSearchKeyDown" placeholder="Search employees..." aria-label="Search employees" />
-                </label>
-                <button type="button" class="rcb-rotary" title="Appearance controls" aria-label="Appearance controls" @onclick='() => Navigation.NavigateTo("/settings")'><i></i></button>
-                @if (_searchOpen && !string.IsNullOrWhiteSpace(_searchQuery))
-                {
-                    <div class="realist-search-popover">
-                        <div class="global-search-results">
-                            @if (SearchResults.Count == 0)
-                            {
-                                <p>No matching engineer.</p>
-                            }
-                            else
-                            {
-                                @foreach (var result in SearchResults)
-                                {
-                                    <button type="button" @onclick="() => OpenEmployee(result.Name)">
-                                        <span class="search-avatar">@Analytics.Initials(result.Name)</span>
-                                        <span class="search-person"><strong>@result.Name</strong><small>@result.EmployeeCode</small></span>
-                                        @if (result.Score is not null)
-                                        {
-                                            <b class="@Analytics.ScoreBand(result.Score.Value)">@Analytics.Format(result.Score.Value)</b>
-                                        }
-                                    </button>
-                                }
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-
             <div class="topbar-actions">
                 <div class="month-control">
                     <span>Reporting month</span>
-                    <button title="Previous month" aria-label="Previous month" @onclick="PreviousMonthAsync">‹</button>
+                    <button title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
                     <strong>@State.SelectedMonth.ToString("MMMM yyyy")</strong>
-                    <button title="Next month" aria-label="Next month" @onclick="NextMonthAsync">›</button>
+                    <button title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
                 </div>
 
                 <div class="global-search">
@@ -161,7 +117,7 @@
         <footer>
             <span>DATA FRESHNESS · refreshed @State.LastRefresh.ToString("h:mm tt")</span>
             <span>Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
-            <span class="realist-footer-mark">EOS · v2.6.1</span>
+            <span>v2.6.1</span>
         </footer>
     </section>
 </div>
@@ -174,6 +130,7 @@
     {
         State.Changed += OnStateChanged;
         Navigation.LocationChanged += OnLocationChanged;
+        InteractionLog.Write("shell.initialize", $"uri={Navigation.Uri}");
         await State.RefreshAsync();
     }
 
@@ -192,6 +149,7 @@
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
+        InteractionLog.Write("navigation.changed", $"location={e.Location}; intercepted={e.IsNavigationIntercepted}");
         State.ClearMessage();
         _searchOpen = false;
         _searchQuery = string.Empty;
@@ -230,6 +188,7 @@
         "imports" => "Data imports",
         "data" => "Imported data",
         "timesheets" => "Timesheets",
+        "discipline" => "Execution discipline",
         "employees" => "Employees & teams",
         "peer-insights" => "Peer insights",
         "templates" => "Review templates",
@@ -277,12 +236,6 @@
 
     private void OnSearchInput(ChangeEventArgs args) => _searchQuery = args.Value?.ToString() ?? string.Empty;
 
-    private void OnRealistSearchInput(ChangeEventArgs args)
-    {
-        _searchQuery = args.Value?.ToString() ?? string.Empty;
-        _searchOpen = !string.IsNullOrWhiteSpace(_searchQuery);
-    }
-
     private void OnSearchKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape") CloseSearch();
@@ -298,19 +251,45 @@
     private async Task PreviousMonthAsync()
     {
         CloseSearch();
-        await State.PreviousMonthAsync();
+        var before = State.SelectedMonth;
+        InteractionLog.Write("month.previous.request", $"from={before:yyyy-MM}");
+        try
+        {
+            await State.PreviousMonthAsync();
+            InteractionLog.Write("month.previous.completed", $"from={before:yyyy-MM}; to={State.SelectedMonth:yyyy-MM}");
+        }
+        catch (Exception exception)
+        {
+            InteractionLog.Write("month.previous.failed", $"from={before:yyyy-MM}", exception);
+            throw;
+        }
     }
 
     private async Task NextMonthAsync()
     {
         CloseSearch();
-        await State.NextMonthAsync();
+        var before = State.SelectedMonth;
+        InteractionLog.Write("month.next.request", $"from={before:yyyy-MM}");
+        try
+        {
+            await State.NextMonthAsync();
+            InteractionLog.Write("month.next.completed", $"from={before:yyyy-MM}; to={State.SelectedMonth:yyyy-MM}");
+        }
+        catch (Exception exception)
+        {
+            InteractionLog.Write("month.next.failed", $"from={before:yyyy-MM}", exception);
+            throw;
+        }
     }
 
     private RenderFragment NavButton(string route, string label, string icon) =>
         @<button class="@(CurrentRoute == route ? "selected" : null)" @onclick="() => GoTo(route)"><b>@((MarkupString)icon)</b><span>@label</span></button>;
 
-    private void GoTo(string route) => Navigation.NavigateTo($"/{route}");
+    private void GoTo(string route)
+    {
+        InteractionLog.Write("navigation.request", $"from={CurrentRoute}; to={route}");
+        Navigation.NavigateTo($"/{route}");
+    }
 
     private sealed record SearchResult(string Name, string EmployeeCode, decimal? Score);
 
@@ -325,6 +304,7 @@
         public static readonly string Imports = Svg($"<path d=\"M10 13V4\" {Stroke}/><path d=\"M6.5 7.5 10 4l3.5 3.5\" {Stroke}/><path d=\"M4 13v3h12v-3\" {Stroke}/>");
         public static readonly string DataBrowser = Svg($"<rect x=\"3.5\" y=\"4.5\" width=\"13\" height=\"11\" rx=\"1.6\" {Stroke}/><path d=\"M3.5 8.2h13M8.2 8.2V15.5M12.6 8.2V15.5\" {Stroke}/>");
         public static readonly string Timesheets = Svg($"<rect x=\"4\" y=\"4\" width=\"12\" height=\"12\" rx=\"2.5\" {Stroke}/><path d=\"M7 10.2 9 12l4-4.2\" {Stroke}/>");
+        public static readonly string Discipline = Svg($"<path d=\"M4 5.5h12M4 10h12M4 14.5h12\" {Stroke}/><circle cx=\"7\" cy=\"5.5\" r=\"1.5\" fill=\"currentColor\"/><circle cx=\"12.5\" cy=\"10\" r=\"1.5\" fill=\"currentColor\"/><circle cx=\"9\" cy=\"14.5\" r=\"1.5\" fill=\"currentColor\"/>");
         public static readonly string Employees = Svg($"<circle cx=\"7.5\" cy=\"7\" r=\"2.4\" {Stroke}/><path d=\"M3.2 16c.5-2.7 2.2-4.2 4.3-4.2s3.8 1.5 4.3 4.2\" {Stroke}/><circle cx=\"14.2\" cy=\"7.6\" r=\"1.9\" {Stroke}/><path d=\"M13 11.9c1.9.2 3.1 1.5 3.6 3.9\" {Stroke}/>");
         public static readonly string PeerInsights = Svg($"<path d=\"M4 6h9l-2.2-2.2\" {Stroke}/><path d=\"M16 14H7l2.2 2.2\" {Stroke}/>");
         public static readonly string Templates = Svg($"<rect x=\"4.5\" y=\"3.5\" width=\"11\" height=\"13\" rx=\"1.6\" {Stroke}/><path d=\"M7 7.5h6M7 10.5h6M7 13.5h3.5\" {Stroke}/>");

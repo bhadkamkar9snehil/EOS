@@ -185,28 +185,113 @@ public static class Analytics
     /// <summary>Aggregate view of who reviewed whom, and how they were rated.</summary>
     public sealed record PeerSummary(
         int TotalFeedback, int UniqueReviewers, int PeopleReviewed, decimal AverageRating,
-        decimal FeedbackPerReviewer, decimal EngagementScore,
+        decimal FeedbackPerReviewer, decimal EngagementScore, decimal ModelPriorStrength, int EvidenceCoverageTarget,
         PeerStanding? HighestRated, PeerStanding? MostActiveReviewer,
         IReadOnlyList<PeerStanding> Standings);
 
-    public sealed record PeerStanding(string Name, decimal Average, int ReviewsReceived, int ReviewsGiven);
+    public sealed record PeerStanding(
+        string Name, decimal Average, decimal ConfidenceAdjustedAverage, decimal ConfidenceLowerBound, decimal EvidenceStrength,
+        int ReviewsReceived, int ReviewsGiven, bool IsEstablished);
+
+    /// <summary>
+    /// Applies the standing's evidence-derived conservative penalty to one raw
+    /// peer aspect. This preserves the person's aspect pattern while ensuring a
+    /// sparse perfect result cannot be encoded like a well-supported result.
+    /// </summary>
+    public static decimal ReliableAspectEstimate(PeerStanding standing, decimal rawAspect, decimal teamAspectAverage, decimal modelPriorStrength)
+    {
+        if (rawAspect <= 0) return 0;
+        var evidenceAdjustedMean = (rawAspect * standing.ReviewsReceived + teamAspectAverage * modelPriorStrength)
+            / Math.Max(1m, standing.ReviewsReceived + modelPriorStrength);
+        var uncertaintyPenalty = Math.Max(0m, standing.ConfidenceAdjustedAverage - standing.ConfidenceLowerBound);
+        // EvidenceStrength is measured against this month's ordinary review
+        // coverage. Below that coverage, the same uncertainty gap must carry more
+        // weight; otherwise a tiny perfect sample still looks fully established.
+        // This remains data-derived: no fixed review-count threshold is introduced.
+        var evidenceRatio = Math.Max(0.01m, standing.EvidenceStrength / 100m);
+        var conservativePenalty = uncertaintyPenalty / evidenceRatio;
+        return decimal.Round(Math.Clamp(evidenceAdjustedMean - conservativePenalty, 1m, 5m), 2);
+    }
 
     public static PeerSummary Peers(IReadOnlyList<PeerReviewItem> reviews)
     {
-        if (reviews.Count == 0) return new PeerSummary(0, 0, 0, 0, 0, 0, null, null, []);
+        if (reviews.Count == 0) return new PeerSummary(0, 0, 0, 0, 0, 0, 0, 0, null, null, []);
 
         var reviewers = reviews.Select(x => PersonName.Normalize(x.ReviewerName)).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var given = reviews.GroupBy(x => PersonName.Normalize(x.ReviewerName), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.Count(), StringComparer.OrdinalIgnoreCase);
 
-        var standings = reviews
+        var teamAverage = reviews.Average(x => x.Average);
+        var groups = reviews
             .GroupBy(x => PersonName.Normalize(x.SubjectName), StringComparer.OrdinalIgnoreCase)
-            .Select(group => new PeerStanding(
-                group.Key,
-                decimal.Round(group.Average(x => x.Average), 2),
-                group.Count(),
-                given.TryGetValue(group.Key, out var count) ? count : 0))
-            .OrderByDescending(x => x.Average).ThenBy(x => x.Name)
+            .Select(group =>
+            {
+                // A reviewer is one independent source of evidence. If an imported
+                // package contains duplicate reviewer/subject rows, combine those rows
+                // instead of allowing them to manufacture extra confidence.
+                var values = group
+                    .GroupBy(x => PersonName.Normalize(x.ReviewerName), StringComparer.OrdinalIgnoreCase)
+                    .Select(reviewer => reviewer.Average(x => x.Average))
+                    .ToArray();
+                return new
+                {
+                    Name = group.Key,
+                    Values = values,
+                    Average = values.Average(),
+                    Received = values.Length,
+                    Given = given.TryGetValue(group.Key, out var count) ? count : 0
+                };
+            })
+            .ToArray();
+
+        // "Enough evidence" follows the current month's ordinary coverage rather
+        // than a fixed product rule. The lower median is stable for even-sized teams
+        // and does not let a handful of unusually dense review sets raise the bar.
+        var orderedCoverage = groups.Select(x => x.Received).OrderBy(x => x).ToArray();
+        var evidenceCoverageTarget = Math.Max(1, orderedCoverage[(orderedCoverage.Length - 1) / 2]);
+
+        // Empirical-Bayes reliability model. Both the ordinary reviewer noise and
+        // the genuine spread between colleagues are estimated from this month's
+        // imported ratings, so there is no fixed or hand-tuned review threshold.
+        var withinDegrees = groups.Sum(x => Math.Max(0, x.Received - 1));
+        var withinSquares = groups.Sum(group => group.Values.Sum(value => Math.Pow((double)(value - group.Average), 2)));
+        var pooledVariance = withinDegrees > 0 ? withinSquares / withinDegrees : 0.25d;
+        if (pooledVariance < 0.0001d) pooledVariance = 0.25d;
+
+        var meanOfGroupMeans = groups.Average(x => (double)x.Average);
+        var observedBetweenVariance = groups.Length > 1
+            ? groups.Sum(x => Math.Pow((double)x.Average - meanOfGroupMeans, 2)) / (groups.Length - 1)
+            : pooledVariance;
+        var meanSamplingVariance = groups.Average(x => pooledVariance / Math.Max(1, x.Received));
+        var signalVariance = Math.Max(0.01d, observedBetweenVariance - meanSamplingVariance);
+        var priorStrength = pooledVariance / signalVariance;
+        const double oneSided95 = 1.645d;
+
+        var standings = groups
+            .Select(group =>
+            {
+                var adjusted = ((double)group.Average * group.Received + (double)teamAverage * priorStrength) / (group.Received + priorStrength);
+                // The prior may stabilize the estimated mean, but it is not a real
+                // reviewer and must never narrow the uncertainty interval. Only the
+                // independent reviewers actually observed contribute to precision.
+                var observedStandardError = Math.Sqrt(pooledVariance / Math.Max(1, group.Received));
+                var lowerBound = Math.Clamp(adjusted - oneSided95 * observedStandardError, 1d, 5d);
+                var evidenceStrength = Math.Min(100d, group.Received * 100d / evidenceCoverageTarget);
+                return new PeerStanding(
+                    group.Name,
+                    decimal.Round(group.Average, 2),
+                    decimal.Round((decimal)adjusted, 2),
+                    decimal.Round((decimal)lowerBound, 2),
+                    decimal.Round((decimal)evidenceStrength, 0),
+                    group.Received,
+                    group.Given,
+                    group.Received >= evidenceCoverageTarget);
+            })
+            .OrderByDescending(x => x.IsEstablished)
+            .ThenByDescending(x => x.ConfidenceLowerBound)
+            .ThenByDescending(x => x.ConfidenceAdjustedAverage)
+            .ThenByDescending(x => x.ReviewsReceived)
+            .ThenBy(x => x.Name)
             .ToArray();
 
         // Everyone who appears at all — as reviewer, subject, or both — so a person who
@@ -226,17 +311,18 @@ public static class Analytics
             return Math.Clamp((double)(received + giv) / ceiling, 0, 1);
         }) * 10;
 
-        var mostLiked = standings.Where(x => x.ReviewsReceived >= 2).OrderByDescending(x => x.Average).ThenBy(x => x.Name).FirstOrDefault()
-            ?? standings.OrderByDescending(x => x.Average).ThenBy(x => x.Name).FirstOrDefault();
+        var mostLiked = standings.FirstOrDefault();
         var mostCollaborative = standings.Where(x => x.ReviewsGiven > 0).OrderByDescending(x => x.ReviewsGiven).ThenBy(x => x.Name).FirstOrDefault();
 
         return new PeerSummary(
             reviews.Count,
             reviewers,
             standings.Length,
-            decimal.Round(reviews.Average(x => x.Average), 2),
+            decimal.Round(teamAverage, 2),
             reviewers == 0 ? 0 : decimal.Round((decimal)reviews.Count / reviewers, 1),
             decimal.Round((decimal)engagement, 1),
+            decimal.Round((decimal)priorStrength, 1),
+            evidenceCoverageTarget,
             mostLiked, mostCollaborative,
             standings);
     }

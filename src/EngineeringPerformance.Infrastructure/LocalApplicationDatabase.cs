@@ -13,7 +13,6 @@ public sealed class LocalApplicationDatabase(
     ILogger<LocalApplicationDatabase>? logger = null) : IApplicationDatabase
 {
     private readonly ILogger<LocalApplicationDatabase> _logger = logger ?? NullLogger<LocalApplicationDatabase>.Instance;
-    private readonly WorkbookInspectionValidator _inspectionValidator = new();
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -420,100 +419,150 @@ public sealed class LocalApplicationDatabase(
         x.DetailedHours, x.DetailedEntries, x.UniqueProjects, x.AttendanceDays, x.LeaveDays, x.PunchHours, x.AttendanceTimesheetHours,
         x.TimesheetFilledDays, x.ExpectedTimesheetDays, x.MissingPunchDays, x.LateDays, x.EarlyDays, x.LessDurationDays, x.EmployeeCode);
 
-    public async Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default)
+    public async Task<ReviewImportResult> ImportEngineerReviewsAsync(
+        int year,
+        int month,
+        IReadOnlyList<string> paths,
+        ReviewImportMode mode = ReviewImportMode.MergeReviewers,
+        CancellationToken cancellationToken = default)
     {
-        var isZip = path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
-        var temporaryDirectory = isZip ? Path.Combine(Path.GetTempPath(), $"epa-reviews-{Guid.NewGuid():N}") : null;
+        if (paths.Count == 0) throw new ArgumentException("Select at least one review workbook or ZIP file.", nameof(paths));
+
+        var temporaryDirectory = Path.Combine(Path.GetTempPath(), $"epa-reviews-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
         try
         {
-            string[] workbooks;
-            if (temporaryDirectory is not null)
+            var candidates = new List<(string Path, string DisplayName)>();
+            for (var inputIndex = 0; inputIndex < paths.Count; inputIndex++)
             {
-                Directory.CreateDirectory(temporaryDirectory);
-                ZipFile.ExtractToDirectory(path, temporaryDirectory);
-                workbooks = [.. Directory.EnumerateFiles(temporaryDirectory, "*.xls*", SearchOption.AllDirectories)
-                    .Where(x => !Path.GetFileName(x).StartsWith("~$", StringComparison.Ordinal))];
-            }
-            else
-            {
-                workbooks = [path];
+                var path = paths[inputIndex];
+                if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    var extractionDirectory = Path.Combine(temporaryDirectory, $"zip-{inputIndex:D3}");
+                    Directory.CreateDirectory(extractionDirectory);
+                    ZipFile.ExtractToDirectory(path, extractionDirectory);
+                    candidates.AddRange(Directory.EnumerateFiles(extractionDirectory, "*.xls*", SearchOption.AllDirectories)
+                        .Where(x => !Path.GetFileName(x).StartsWith("~$", StringComparison.Ordinal))
+                        .Select(x => (x, Path.GetFileName(x))));
+                }
+                else
+                {
+                    candidates.Add((path, Path.GetFileName(path)));
+                }
             }
 
-            var reviews = new List<PeerReview>();
-            var skipped = new List<ImportSkipReason>();
-            var accepted = 0;
-            foreach (var workbook in workbooks)
+            var files = new List<ReviewFileImportResult>();
+            var acceptedBatches = new List<(string Path, string DisplayName, IReadOnlyList<PeerReview> Reviews, string ReviewerCode, string ReviewerName)>();
+            foreach (var candidate in candidates)
             {
-                var fileName = Path.GetFileName(workbook);
                 try
                 {
-                    var workbookInspection = workbookService.Inspect(workbook);
-                    var inspectionResult = _inspectionValidator.Validate(workbookInspection);
-                    if (!inspectionResult.IsValid)
+                    var reviews = workbookService.ReadPeerReviews(candidate.Path, year, month);
+                    if (reviews.Count == 0)
                     {
-                        ImportSkipLog.Record(skipped, fileName, string.Join("; ", inspectionResult.Errors.Select(e => e.ErrorMessage)));
+                        _logger.LogWarning("Skipped {FileName} while importing peer reviews: no completed rows.", candidate.DisplayName);
+                        files.Add(new ReviewFileImportResult(candidate.DisplayName, false, null, 0, "No completed peer ratings were found."));
                         continue;
                     }
-                }
-                catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-                {
-                    ImportSkipLog.Record(skipped, fileName, $"Workbook could not be opened: {ex.Message}");
-                    continue;
-                }
 
-                IReadOnlyList<PeerReview> fromFile;
-                try { fromFile = workbookService.ReadPeerReviews(workbook, year, month); }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Skipped {FileName} while importing peer reviews: not a review workbook, or unreadable.", Path.GetFileName(workbook));
-                    // Structured skip: this is not a Peer Review sheet, or its shape doesn't parse.
-                    ImportSkipLog.Record(skipped, fileName, $"Not a readable Peer Review sheet: {ex.Message}");
-                    continue;
+                    var reviewer = reviews[0];
+                    acceptedBatches.Add((candidate.Path, candidate.DisplayName, reviews, reviewer.ReviewerCode, reviewer.ReviewerName));
+                    files.Add(new ReviewFileImportResult(candidate.DisplayName, true, reviewer.ReviewerName, reviews.Count, null));
                 }
-                if (fromFile.Count == 0)
+                catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
                 {
-                    ImportSkipLog.Record(skipped, fileName, "Peer Review sheet parsed but contained no completed rows.");
-                    continue;
+                    _logger.LogWarning(exception, "Skipped {FileName} while importing peer reviews: not a review workbook, or unreadable.", candidate.DisplayName);
+                    files.Add(new ReviewFileImportResult(candidate.DisplayName, false, null, 0, exception.Message));
                 }
-                reviews.AddRange(fromFile);
-                accepted++;
             }
 
-            if (accepted == 0)
+            if (acceptedBatches.Count == 0)
             {
-                var detail = skipped.Count > 0
-                    ? " Skipped: " + string.Join(" | ", skipped.Select(s => $"{s.FileName} ({s.Reason})"))
-                    : string.Empty;
-                throw new InvalidDataException("No completed peer review sheets were found. Generate templates on the Templates screen, have engineers fill the Peer Review sheet, then upload the workbooks or a ZIP of them." + detail);
+                var reasons = string.Join(" ", files.Select(x => $"{x.FileName}: {x.Error}"));
+                throw new InvalidDataException($"No completed peer review workbooks were accepted. {reasons}".Trim());
             }
+
+            // One returned workbook is a complete snapshot of that reviewer's contribution.
+            // If the same reviewer appears twice in one selection, the last selected workbook wins.
+            var finalBatches = acceptedBatches
+                .GroupBy(x => x.ReviewerCode, StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.Last())
+                .ToArray();
+            var incoming = finalBatches
+                .SelectMany(x => x.Reviews)
+                .GroupBy(x => (x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant()))
+                .Select(x => x.Last())
+                .ToArray();
 
             await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-            var previousRows = await context.PeerReviews.Where(x => x.Year == year && x.Month == month).ToListAsync(cancellationToken);
-            context.PeerReviews.RemoveRange(previousRows);
-            // Last row wins if the same pair appears twice across workbooks.
-            foreach (var review in reviews
-                .GroupBy(x => (x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant()))
-                .Select(x => x.Last()))
-                context.PeerReviews.Add(review);
+            var existing = await context.PeerReviews
+                .Where(x => x.Year == year && x.Month == month)
+                .ToListAsync(cancellationToken);
+            var incomingReviewers = finalBatches.Select(x => x.ReviewerCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var rowsInScope = mode == ReviewImportMode.ReplaceMonth
+                ? existing
+                : existing.Where(x => incomingReviewers.Contains(x.ReviewerCode)).ToList();
+            var oldKeys = existing
+                .Select(x => (x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant()))
+                .ToHashSet();
+            var incomingKeys = incoming
+                .Select(x => (x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant()))
+                .ToHashSet();
 
-            var inspection = workbookService.Inspect(path);
+            var updated = incoming.Count(x => oldKeys.Contains((x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant())));
+            var added = incoming.Length - updated;
+            var removed = rowsInScope.Count(x => !incomingKeys.Contains((x.ReviewerCode.ToLowerInvariant(), x.SubjectCode.ToLowerInvariant())));
+            context.PeerReviews.RemoveRange(rowsInScope);
+            context.PeerReviews.AddRange(incoming);
+
             var previousFile = await context.ImportedSourceFiles.SingleOrDefaultAsync(
                 x => x.Year == year && x.Month == month && x.ReportType == ReportType.EngineerReviewWorkbook, cancellationToken);
             if (previousFile is not null) context.ImportedSourceFiles.Remove(previousFile);
+
             var storedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance", "Imports", $"{year:D4}-{month:D2}");
             Directory.CreateDirectory(storedDirectory);
-            var storedPath = Path.Combine(storedDirectory, $"{(int)ReportType.EngineerReviewWorkbook}-{Path.GetFileName(path)}");
-            File.Copy(path, storedPath, true);
-            context.ImportedSourceFiles.Add(new ImportedSourceFile(ReportType.EngineerReviewWorkbook, year, month, inspection.FileName, storedPath, accepted));
+            var batchName = paths.Count == 1
+                ? Path.GetFileName(paths[0])
+                : $"Reviews-{year:D4}-{month:D2}-{DateTime.Now:yyyyMMdd-HHmmss}.zip";
+            var storedPath = Path.Combine(storedDirectory, $"{(int)ReportType.EngineerReviewWorkbook}-{batchName}");
+            if (paths.Count == 1)
+            {
+                File.Copy(paths[0], storedPath, true);
+            }
+            else
+            {
+                if (File.Exists(storedPath)) File.Delete(storedPath);
+                using var archive = ZipFile.Open(storedPath, ZipArchiveMode.Create);
+                for (var index = 0; index < acceptedBatches.Count; index++)
+                {
+                    var batch = acceptedBatches[index];
+                    archive.CreateEntryFromFile(batch.Path, $"{index + 1:D2}-{batch.DisplayName}", CompressionLevel.Optimal);
+                }
+            }
+
+            context.ImportedSourceFiles.Add(new ImportedSourceFile(
+                ReportType.EngineerReviewWorkbook, year, month, batchName, storedPath, finalBatches.Length));
             context.ImportAuditEntries.Add(new ImportAuditEntry(
-                ReportType.EngineerReviewWorkbook, year, month, inspection.FileName, accepted, previousFile is not null));
+                ReportType.EngineerReviewWorkbook,
+                year,
+                month,
+                batchName,
+                incoming.Length,
+                mode == ReviewImportMode.ReplaceMonth || updated > 0 || removed > 0));
 
             await context.SaveChangesAsync(cancellationToken);
-            return accepted;
+            var totalReviews = await context.PeerReviews.CountAsync(x => x.Year == year && x.Month == month, cancellationToken);
+            var reviewerCount = await context.PeerReviews
+                .Where(x => x.Year == year && x.Month == month)
+                .Select(x => x.ReviewerCode)
+                .Distinct()
+                .CountAsync(cancellationToken);
+            return new ReviewImportResult(
+                finalBatches.Length, added, updated, removed, totalReviews, reviewerCount, files);
         }
         finally
         {
-            if (temporaryDirectory is not null && Directory.Exists(temporaryDirectory)) Directory.Delete(temporaryDirectory, true);
+            if (Directory.Exists(temporaryDirectory)) Directory.Delete(temporaryDirectory, true);
         }
     }
 
@@ -538,6 +587,7 @@ public sealed class LocalApplicationDatabase(
             ZipFile.ExtractToDirectory(zipPath, temporaryDirectory);
             var imported = 0;
             var skipped = new List<ImportSkipReason>();
+            var reviewFiles = new List<string>();
             foreach (var file in Directory.EnumerateFiles(temporaryDirectory, "*.xls*", SearchOption.AllDirectories))
             {
                 var fileName = Path.GetFileName(file);
@@ -550,8 +600,22 @@ public sealed class LocalApplicationDatabase(
                     ImportSkipLog.Record(skipped, fileName, $"Unrecognized report type: {ex.Message}");
                     continue;
                 }
+                // Review workbooks are batched and imported together via ImportEngineerReviewsAsync
+                // below, not through ImportSourceAsync — that path previously bucketed a review
+                // workbook into whatever month the package's other files described, which is how a
+                // July review workbook once ended up filed as August's peer reviews.
+                if (type == ReportType.EngineerReviewWorkbook)
+                {
+                    reviewFiles.Add(file);
+                    continue;
+                }
                 await ImportSourceAsync(type, year, month, file, cancellationToken);
                 imported++;
+            }
+            if (reviewFiles.Count > 0)
+            {
+                var result = await ImportEngineerReviewsAsync(year, month, reviewFiles, ReviewImportMode.MergeReviewers, cancellationToken);
+                imported += result.AcceptedWorkbooks;
             }
             _logger.LogInformation("Imported package {ZipPath} for {Year:D4}-{Month:D2}: {ImportedCount} files.", zipPath, year, month, imported);
             return imported;

@@ -16,7 +16,7 @@
         </div>
         <div class="workbench-summary">
             <div><span>ERP inputs</span><strong>@State.SystemReadyCount / 3</strong></div>
-            <div><span>Review input</span><strong>@(State.ReviewsUploaded ? "Ready" : "Open")</strong></div>
+            <div><span>Review input</span><strong>@(ReviewReviewerCount == 0 ? "Open" : $"{ReviewReviewerCount} reviewer{(ReviewReviewerCount == 1 ? "" : "s")}")</strong></div>
             <button class="action" @onclick="UploadZipAsync" disabled="@State.Busy">Import package</button>
         </div>
     </header>
@@ -31,6 +31,58 @@
 
     <div class="page-grid imports-grid">
         <section class="primary-pane">
+            <section class="review-intake" aria-labelledby="review-intake-title">
+                <header class="review-intake-head">
+                    <span class="review-intake-badge">REV</span>
+                    <div>
+                        <span class="atlas-section-label">Peer review intake · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+                        <h2 id="review-intake-title">Add returned employee reviews</h2>
+                        <p>Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
+                    </div>
+                    <div class="review-intake-actions">
+                        <button class="action" @onclick="AddReviewsAsync" disabled="@State.Busy">Add review files</button>
+                        <button class="secondary-action" @onclick="BeginReplaceReviews" disabled="@State.Busy">Replace month set</button>
+                    </div>
+                </header>
+
+                <div class="review-intake-stats" aria-label="Loaded review evidence">
+                    <div><span>Reviewers loaded</span><strong>@ReviewReviewerCount</strong></div>
+                    <div><span>Feedback entries</span><strong>@State.PeerReviews.Count</strong></div>
+                    <div><span>People reviewed</span><strong>@ReviewSubjectCount</strong></div>
+                    <div><span>Last review upload</span><strong>@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</strong></div>
+                </div>
+
+                @if (_confirmReplaceReviews)
+                {
+                    <div class="review-replace-confirm" role="alert">
+                        <div><strong>Replace every review for @State.SelectedMonth.ToString("MMMM yyyy")?</strong><span>The files you select next become the complete month set. This cannot affect other months.</span></div>
+                        <button class="danger" @onclick="ReplaceReviewsAsync" disabled="@State.Busy">Choose replacement files</button>
+                        <button class="secondary-action" @onclick="CancelReplaceReviews" disabled="@State.Busy">Cancel</button>
+                    </div>
+                }
+
+                @if (_lastReviewImport is { } result)
+                {
+                    <div class="review-import-result">
+                        <div class="review-result-summary">
+                            <strong>@result.AcceptedWorkbooks workbook(s) accepted</strong>
+                            <span>@result.AddedReviews added · @result.UpdatedReviews updated · @result.RemovedReviews removed · @result.TotalReviews total</span>
+                        </div>
+                        <div class="review-file-results">
+                            @foreach (var file in result.Files)
+                            {
+                                <span class="@(file.Accepted ? "accepted" : "rejected")" title="@(file.Error ?? file.ReviewerName)">
+                                    <b>@(file.Accepted ? "Accepted" : "Rejected")</b>
+                                    <i>@file.FileName</i>
+                                    <em>@(file.Accepted ? $"{file.ReviewerName} · {file.ReviewCount} entries" : file.Error)</em>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <footer><strong>Safe merge</strong><span>Re-uploading one employee’s workbook replaces only that reviewer’s entries for this month.</span></footer>
+            </section>
             <div class="atlas-panel-head">
                 <div><h2>Source register</h2><small>Expected export → detected workbook → accepted reporting period</small></div>
                 <span class="atlas-caption">Replace an input to recalculate the month from the new evidence.</span>
@@ -63,7 +115,16 @@
                         <div class="cell"><span class="filename">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
                         <div class="cell"><span class="filename">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
                         <div class="cell"><span class="source-state @(ready ? "ready" : null)"><i></i>@(ready ? "Accepted" : "Open")</span></div>
-                        <div class="cell"><button class="source-action" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button></div>
+                        <div class="cell">
+                            @if (slot.ReportType == ReportType.EngineerReviewWorkbook)
+                            {
+                                <button class="source-action" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
+                            }
+                            else
+                            {
+                                <button class="source-action" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -99,6 +160,12 @@
 
 @code {
     private IReadOnlyList<ImportHistoryItem> _history = [];
+    private ReviewImportResult? _lastReviewImport;
+    private bool _confirmReplaceReviews;
+
+    private int ReviewReviewerCount => State.PeerReviews.Select(x => x.ReviewerCode).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+    private int ReviewSubjectCount => State.PeerReviews.Select(x => x.SubjectCode).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+    private ImportHistoryItem? LastReviewImport => _history.FirstOrDefault(x => x.ReportType == ReportType.EngineerReviewWorkbook);
 
     protected override async Task OnInitializedAsync()
     {
@@ -121,35 +188,52 @@
 
     private async Task UploadAsync(ReportType type)
     {
-        var path = type == ReportType.EngineerReviewWorkbook ? Dialogs.PickWorkbookOrZip() : Dialogs.PickWorkbook();
+        var path = Dialogs.PickWorkbook();
         if (path is null) return;
         await State.RunAsync(async () =>
         {
-            if (type == ReportType.EngineerReviewWorkbook)
-            {
-                var count = await Database.ImportEngineerReviewsAsync(State.SelectedMonth.Year, State.SelectedMonth.Month, path);
-                await State.RefreshAsync();
-                State.ShowMessage($"Peer feedback read from {count} review workbook(s).");
-            }
-            else
-            {
-                ImportPreview? preview = null;
-                try { preview = await Database.PreviewImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path); }
-                catch (NotSupportedException) { /* preview unavailable on this database implementation — import directly */ }
+            ImportPreview? preview = null;
+            try { preview = await Database.PreviewImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path); }
+            catch (NotSupportedException) { /* preview unavailable on this database implementation — import directly */ }
 
-                if (preview is not null)
-                {
-                    var summary = $"{Path.GetFileName(path)} → {Label(type)}\n\n" +
-                        $"{preview.RowsAdded} row(s) added, {preview.RowsUpdated} updated, {preview.RowsUnchanged} unchanged, {preview.TotalRows} total.\n\n" +
-                        "Proceed with this import?";
-                    var confirmed = await JS.InvokeAsync<bool>("confirm", summary);
-                    if (!confirmed) return;
-                }
-
-                await Database.ImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path);
-                await State.RefreshAsync();
-                State.ShowMessage($"{Path.GetFileName(path)} imported into “{Label(type)}”.");
+            if (preview is not null)
+            {
+                var summary = $"{Path.GetFileName(path)} → {Label(type)}\n\n" +
+                    $"{preview.RowsAdded} row(s) added, {preview.RowsUpdated} updated, {preview.RowsUnchanged} unchanged, {preview.TotalRows} total.\n\n" +
+                    "Proceed with this import?";
+                var confirmed = await JS.InvokeAsync<bool>("confirm", summary);
+                if (!confirmed) return;
             }
+
+            await Database.ImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path);
+            await State.RefreshAsync();
+            State.ShowMessage($"{Path.GetFileName(path)} imported into “{Label(type)}”.");
+        });
+    }
+
+    private Task AddReviewsAsync() => ImportReviewsAsync(ReviewImportMode.MergeReviewers);
+
+    private void BeginReplaceReviews() => _confirmReplaceReviews = true;
+    private void CancelReplaceReviews() => _confirmReplaceReviews = false;
+    private Task ReplaceReviewsAsync() => ImportReviewsAsync(ReviewImportMode.ReplaceMonth);
+
+    private async Task ImportReviewsAsync(ReviewImportMode mode)
+    {
+        var paths = Dialogs.PickReviewWorkbooksOrZip();
+        if (paths.Count == 0) return;
+        _confirmReplaceReviews = false;
+        await State.RunAsync(async () =>
+        {
+            _lastReviewImport = await Database.ImportEngineerReviewsAsync(
+                State.SelectedMonth.Year,
+                State.SelectedMonth.Month,
+                paths,
+                mode);
+            await State.RefreshAsync();
+            var rejected = _lastReviewImport.Files.Count(x => !x.Accepted);
+            var message = $"{_lastReviewImport.AcceptedWorkbooks} review workbook(s) accepted; {_lastReviewImport.TotalReviews} feedback entries now loaded.";
+            if (rejected > 0) message += $" {rejected} file(s) were rejected; see the intake details.";
+            State.ShowMessage(message, rejected > 0);
         });
     }
 
