@@ -168,4 +168,5 @@ lowest-friction "real CI" option that isn't GitHub Actions.
 | Tailwind adoption | 📝 Planned — do after visual-design branch merges |
 | Grid replacement | 📝 Evaluated — **recommendation is no replacement**, keep QuickGrid |
 | CSS consolidation (3 overlapping theme systems) | 📝 Not started — depends on visual-design branch outcome |
-| CI/CD (non-Actions) | 📝 Planned — local script + optional Azure DevOps Pipelines |
+| CI/CD (non-Actions) | ✅ Done — `build/release.ps1` (test → publish → `vpk pack`); see `docs/installer.md` |
+| Installer (Velopack) | ✅ Done — package added, `VelopackApp.Build().Run()` wired in, in-app update check on startup; see `docs/installer.md` |

@@ -1,16 +1,27 @@
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Infrastructure;
 using EngineeringPerformance.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Velopack;
 
 namespace EngineeringPerformance.DesktopHost;
 
 public partial class App : System.Windows.Application
 {
     private readonly IHost _host;
+
+    static App()
+    {
+        // Must run before ANY other app code, per Velopack's WPF integration docs: this handles
+        // Velopack's special install-time/update-time process invocations (e.g. creating shortcuts
+        // during install, running app updates) and exits the process immediately when one of those
+        // is detected, so nothing below the App type's static initializer/constructor may run first.
+        VelopackApp.Build().Run();
+    }
 
     public App()
     {
@@ -37,6 +48,9 @@ public partial class App : System.Windows.Application
             MainWindow = _host.Services.GetRequiredService<MainWindow>();
             MainWindow.Show();
             ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+            // Fire-and-forget: never delay app launch waiting on a network/file-share round trip.
+            _ = CheckForUpdatesAsync();
         }
         catch (Exception exception)
         {
@@ -73,6 +87,50 @@ public partial class App : System.Windows.Application
             // Logging itself must never be why the crash handler crashes.
         }
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Checks the configured Velopack feed (see <see cref="UpdateSettings.FeedUrl"/>) for a newer
+    /// release and, if found, downloads it and offers to restart into it. Runs after the main
+    /// window is already showing and is deliberately best-effort: a missing/unreachable feed (the
+    /// common case until a real feed is configured) is swallowed silently rather than surfaced as
+    /// an error, since "no update source configured yet" isn't a fault.
+    /// </summary>
+    private static async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var updateManager = new UpdateManager(UpdateSettings.FeedUrl);
+            if (!updateManager.IsInstalled)
+            {
+                // Running from source/publish output rather than a Velopack-installed copy; nothing to check.
+                return;
+            }
+
+            var newVersion = await updateManager.CheckForUpdatesAsync();
+            if (newVersion is null)
+            {
+                return;
+            }
+
+            await updateManager.DownloadUpdatesAsync(newVersion);
+
+            var result = MessageBox.Show(
+                $"A new version ({newVersion.TargetFullRelease.Version}) has been downloaded.\n\nRestart now to apply it?",
+                "Update available",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                updateManager.ApplyUpdatesAndRestart(newVersion);
+            }
+        }
+        catch
+        {
+            // Best-effort: no update feed configured yet, feed unreachable, offline, etc. are all
+            // expected/non-fatal states, not something to interrupt the user about.
+        }
     }
 
     protected override async void OnExit(ExitEventArgs e)
