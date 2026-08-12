@@ -108,6 +108,7 @@
         if (_rendered || Item is null) return;
         _rendered = true;
 
+        await JS.InvokeVoidAsync("epaEchartsLoader.ensureLoaded");
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "spotlight-hours", new[] { "Current" }, new object[]
         {
             new { name = "Billable", role = "billable", values = new object[] { Item.BillableHours } },

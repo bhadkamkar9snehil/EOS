@@ -85,6 +85,7 @@
         _signature = signature;
         if (Months.Count == 0) return;
 
+        await JS.InvokeVoidAsync("epaEchartsLoader.ensureLoaded");
         await JS.InvokeVoidAsync("epaCharts.verticalBars", "employee-current-hours",
             new[] { "Compliance", "Entered", "Approved", "Billable", "Non-billable", "Training", "Office", "Punch" },
             new object[]

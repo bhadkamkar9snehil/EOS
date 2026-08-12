@@ -165,8 +165,76 @@ lowest-friction "real CI" option that isn't GitHub Actions.
 | `PublishReadyToRun` | ✅ Done |
 | `PeopleWorkspace` Virtualize allocation | ✅ Done |
 | Script `defer` ordering in `index.html` | ✅ Done (small diff, flagged for conflict risk) |
+| ECharts lazy-loaded on chart routes only | ✅ Done (see below) |
+| Chart glue-script consolidation (`charts.js`/`analytics-charts.js`/`atlas-charts.js`/`realist-runtime.js`) | 📝 Evaluated — **skipped**, see below |
+| CSS `<link>` tags vs files on disk audit | ✅ Done — no dead links, no orphaned files (see below) |
 | Tailwind adoption | 📝 Planned — do after visual-design branch merges |
 | Grid replacement | 📝 Evaluated — **recommendation is no replacement**, keep QuickGrid |
 | CSS consolidation (3 overlapping theme systems) | 📝 Not started — depends on visual-design branch outcome |
 | CI/CD (non-Actions) | ✅ Done — `build/release.ps1` (test → publish → `vpk pack`); see `docs/installer.md` |
 | Installer (Velopack) | ✅ Done — package added, `VelopackApp.Build().Run()` wired in, in-app update check on startup; see `docs/installer.md` |
+
+---
+
+## 4. ECharts lazy-loading (implemented)
+
+`echarts.min.js` (1.1MB) previously loaded unconditionally via a `defer`red `<script>` tag in
+`index.html`, on every route, even though only four pages ever draw a chart. It's now loaded
+on-demand:
+
+- Added `src/EngineeringPerformance.UI/wwwroot/echarts-loader.js`: a small script exposing
+  `window.epaEchartsLoader.ensureLoaded()`, which injects `echarts.min.js` via
+  `document.createElement('script')` the first time it's called and returns a cached Promise
+  (resolves immediately on subsequent calls once `window.echarts` exists).
+- Removed the unconditional `echarts.min.js` `<script>` tag from `index.html`; replaced it with
+  the tiny `echarts-loader.js` (deferred, in the same position in the load order).
+- `charts.js`, `atlas-charts.js`, and `analytics-charts.js` were already safe for this — they only
+  reference the `echarts` global lazily, inside `ensure()`/chart-init functions invoked at
+  chart-draw time, never at parse/load time — so no changes were needed to those files themselves.
+- Added `await JS.InvokeVoidAsync("epaEchartsLoader.ensureLoaded")` immediately before the first
+  chart-drawing JS interop call in each of the four chart-rendering pages' `OnAfterRenderAsync`:
+  `Overview.razor`, `EmployeeDetail.razor`, `EmployeeMetricsExtension.razor`,
+  `EmployeeSpotlight.razor`. (`realist-runtime.js` does not use ECharts at all — it's pure
+  DOM/CSS-variable gauge-needle syncing — so no page needed wiring for it.)
+- Net effect: pages that never render a chart (Reports, Timesheets, Settings, DataBrowser,
+  DataImports, Templates, PeerInsights) no longer pay the 1.1MB download/parse cost at all.
+
+## 5. Chart glue-script consolidation — evaluated, skipped
+
+`charts.js` (238 lines), `atlas-charts.js` (401 lines), and `analytics-charts.js` (55 lines) do
+share a structural *pattern* — a `palette()`/CSS-custom-property reader, an `ensure()`/`dispose()`
+chart-instance + `ResizeObserver` lifecycle, a `roleColor()` switch, and animation/tooltip option
+builders — but the actual implementations differ meaningfully in ways that make shared extraction
+risky for the benefit gained:
+- `charts.js`'s `roleColor` and palette fallbacks cover a different, larger set of semantic roles
+  (billable/non-billable/training/office/punch/underutilized, etc.) than `atlas-charts.js`'s
+  (attendance/timesheet/approval/operational plus an atlas-only `orange()` accent and a
+  `realist()` skin check baked into its palette resolution).
+- `atlas-charts.js` renders entirely different chart shapes (portrait history, sparklines,
+  performance-field scatter/gradient, movement river) with bespoke option structures that don't
+  overlap with `charts.js`'s gauge/radar/scatter/trend/multiline/heatmap/network/bars — there's no
+  shared "chart type" to factor out, only a shared *shape* of boilerplate around unrelated content.
+- `analytics-charts.js` is a thin, single-function file that already depends on `window.epaCharts`
+  (from `charts.js`) for its `ensure`/`roleColor`/`palette` — it's not duplicating that plumbing,
+  it's correctly reusing it.
+- Both `charts.js` and `atlas-charts.js` are written in a dense, minified-style single-expression
+  form (chained ternaries, one-line option objects) specifically so behavior is visible in one
+  place per chart type. Pulling `ensure`/`dispose`/`palette`/`roleColor` out into a shared
+  `chart-interop.js` would require each file to import/attach to that shared module and would
+  touch every function in both files to route through it — a real rewrite of code this sandbox
+  cannot execute or visually verify, for a payoff that's organizational only (no dead code, no
+  behavior change, no bundle-size win since both files load on the same routes today).
+
+Given the instruction to prefer surgical, low-risk changes here and the explicit permission to
+skip if consolidation would be a risky rewrite for little benefit: **skipped**. If a future pass
+wants to revisit this, the safe order would be to extract only the truly identical leaf function —
+none currently qualifies without also touching the code that would need to be behaviorally
+verified in a running browser, e.g. a shared `ensure(id, initOptions)`/`dispose(id)`/`ResizeObserver`
+helper, once both files can be visually diffed against a running app.
+
+## 6. CSS `<link>` audit (implemented)
+
+Compared the 19 `<link rel="stylesheet">` tags in `index.html` against the `.css` files present
+in `src/EngineeringPerformance.UI/wwwroot/`: **exact 1:1 match, no dead links, no orphaned
+files.** (The task brief said "21 `<link>` tags" — the actual current count in `index.html` is 19;
+this may be from an earlier state of the file. No CSS files were touched.)

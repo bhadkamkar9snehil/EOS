@@ -210,6 +210,7 @@
         if (_rendered || Months.Count == 0) return;
         _rendered = true;
         var labels = Months.Select(m => new DateTime(m.Year, m.Month, 1).ToString("MMM yy")).ToArray();
+        await JS.InvokeVoidAsync("epaEchartsLoader.ensureLoaded");
         await JS.InvokeVoidAsync("epaAtlas.portraitHistory", "portrait-history", labels, new object[]
         {
             new { name = "Operational score", role = "operational", values = Months.Select(m => (object)m.OperationalScore).ToArray() },
