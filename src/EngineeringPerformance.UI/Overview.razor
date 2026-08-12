@@ -247,6 +247,7 @@
         if (!_chartsPending || State.Performance.Count == 0) return;
         _chartsPending = false;
         _selfRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("epaEchartsLoader.ensureLoaded");
         await JS.InvokeVoidAsync("epaAtlas.registerDrilldown", _selfRef);
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-attendance", MetricTrend(x => x.AttendanceDisciplineScore, false), "attendance");
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-completion", MetricTrend(x => x.TimesheetCompletionScore, true), "timesheet");

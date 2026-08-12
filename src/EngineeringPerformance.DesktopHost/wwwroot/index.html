@@ -29,7 +29,9 @@
     <script src="_content/EngineeringPerformance.UI/skin.js?v=2"></script>
     <!-- Everything below is not needed for first paint, so it's deferred to let Blazor boot sooner. -->
     <script src="_content/EngineeringPerformance.UI/theme-audit.js?v=2" defer></script>
-    <script src="_content/EngineeringPerformance.UI/echarts.min.js" defer></script>
+    <!-- echarts.min.js (1.1MB) is no longer loaded here: it's lazy-loaded via
+         echarts-loader.js only on the routes that actually render charts. -->
+    <script src="_content/EngineeringPerformance.UI/echarts-loader.js?v=1" defer></script>
     <script src="_content/EngineeringPerformance.UI/charts.js?v=6" defer></script>
     <script src="_content/EngineeringPerformance.UI/analytics-charts.js?v=4" defer></script>
     <script src="_content/EngineeringPerformance.UI/atlas-charts.js?v=7" defer></script>

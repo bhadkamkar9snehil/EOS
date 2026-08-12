@@ -1,6 +1,12 @@
 # EOS Comprehensive Audit: Performance, Tech Modernization, Installer, Logging, Features
 
-Status: **research/planning document — no code changes made**
+Status: **research/planning document.** Update: item 3 in "Recommended fix order" below
+(defer non-critical scripts; lazy-load `echarts.min.js`) is now implemented — see
+`docs/tailwind-grid-ci-plan.md` sections 4-6 for what shipped (ECharts lazy-loading per chart
+route, glue-script consolidation evaluated and skipped with reasons, CSS `<link>` audit found no
+dead/orphaned files). Items 1 (CSS `<link>`/`<script>` blocking) and 4 (CSS consolidation) remain
+as described below except for the defer/lazy-load slice now done; the rest of this document is
+otherwise unchanged findings, not yet acted on.
 Scope: `EngineeringPerformance` solution (Blazor UI hosted in a WPF `BlazorWebView` desktop app), EF Core + SQLite, ClosedXML for Excel I/O.
 
 Product context: EOS is a local-only Windows desktop tool for engineering managers/team leads. It ingests ERP evidence exports (timesheets, attendance, approvals) and peer-review workbooks via Excel import, computes an "operational score" per employee/team, and produces dashboards, peer-collaboration analytics, and Excel report/template exports. Single-user, single-tenant, no server, no multi-tenant auth.
