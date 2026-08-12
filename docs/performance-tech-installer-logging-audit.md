@@ -63,21 +63,42 @@ The app currently hand-rolls its front-end pipeline (raw `<script>`/`<link>` tag
 ### Virtualization/grids
 - **Problem**: hand-rolled `.ToList()` allocation feeding `Virtualize`; `QuickGrid` is already used in places.
 - **Options**: standardize on `Microsoft.AspNetCore.Components.QuickGrid` (already a dependency) everywhere tabular data is virtualized, rather than mixing raw `Virtualize` + manual sorting/filtering logic. QuickGrid gives virtualization, sorting, and paging with far less hand-written code.
+- **Status: ✅ Done.** `PeopleWorkspace.razor`'s `Virtualize` allocation was fixed (materializes a
+  snapshot once per state refresh). A follow-up audit re-checked every remaining non-QuickGrid
+  `.razor` page (`PeerInsights`, `Reports`, `EmployeeDetail`, `EmployeeMetricsExtension`) for
+  hand-rolled tabular rendering that should become QuickGrid — none qualify (a cross-tab matrix, a
+  `<select>` dropdown, a capped single-employee card list, and metric tiles, respectively; no rows
+  of records to grid). `DataBrowserPage.razor`/`Timesheets.razor` remain the only real tables and
+  were already on QuickGrid. See `docs/tailwind-grid-ci-plan.md`'s "Grid standardization audit."
 
 ### Data access / import pipeline
 - **Problem**: manual per-row EF Core lookups (N+1), hand-rolled Excel parsing via ClosedXML with ad-hoc validation.
 - **Options**:
   - Keep EF Core (appropriate for SQLite + this data volume) but adopt **`EFCore.BulkExtensions`** or manual `ToDictionaryAsync` preloads for the import hot paths instead of per-row queries.
   - For Excel import validation, consider **`FluentValidation`** to replace ad-hoc `try/catch { continue; }` swallowing with structured, reportable validation results — directly improves both reliability and the eventual logging/error-reporting story below.
+- **Status:** N+1 reads already fixed via `ToDictionaryAsync` preloads (prior branch). **Bulk
+  writes: ❌ evaluated and skipped** — `EFCore.BulkExtensions.Sqlite` 10.0.1 throws a UNIQUE
+  constraint violation on SQLite for a batch mixing inserts and updates (the real shape
+  `ImportEmployeeRosterAsync` needs), confirmed with a test before reverting; the existing
+  dictionary-preload + `SaveChangesAsync` approach was kept. **FluentValidation: ✅ done** —
+  `ImportEngineerReviewsAsync`/`ImportPackageAsync`'s silent `catch { continue; }` blocks now
+  produce structured `ImportSkipReason` records (workbook shape/readability validated via
+  FluentValidation), logged today through a `Debug.WriteLine` placeholder pending the Serilog work
+  below. See `docs/tailwind-grid-ci-plan.md`'s "Bulk-write evaluation."
 
 ### Logging (see §4 for full design)
-- **`Serilog`** with `Serilog.Sinks.File` (rolling), `Serilog.Sinks.Debug`, and `Microsoft.Extensions.Logging` integration — replaces the two ad-hoc `File.WriteAllTextAsync`/`File.AppendAllText` crash handlers entirely.
+- **`Serilog`** with `Serilog.Sinks.File` (rolling), `Serilog.Sinks.Debug`, and `Microsoft.Extensions.Logging` integration — replaces the two ad-hoc `File.WriteAllTextAsync`/`File.AppendAllText` crash handlers entirely. **Status: not started here** — owned by a separate logging-focused branch/agent; the `ImportSkipReason` structured records above are deliberately left as a `Debug.WriteLine` placeholder for that work to pick up.
 
 ### Installer/deployment (see §3 for full design)
-- **Velopack** (formerly Squirrel.Windows successor) — modern, actively maintained, purpose-built for exactly this scenario (self-contained WPF/.NET desktop app, win-x64, wants installer + auto-update). Strong recommendation over WiX/MSIX for this project's size and team (WiX is powerful but heavyweight to maintain by hand; MSIX has Store/sideloading friction for a niche internal tool).
+- **Velopack** (formerly Squirrel.Windows successor) — modern, actively maintained, purpose-built for exactly this scenario (self-contained WPF/.NET desktop app, win-x64, wants installer + auto-update). Strong recommendation over WiX/MSIX for this project's size and team (WiX is powerful but heavyweight to maintain by hand; MSIX has Store/sideloading friction for a niche internal tool). **Status: not started here** — owned by a separate installer-focused branch/agent.
 
 ### Testing/quality
 - Current test projects only cover `Infrastructure`/`Domain` — no UI/component tests. Consider **`bUnit`** for Blazor component tests (render `Overview.razor`, `PeopleWorkspace.razor` etc. in isolation) to catch regressions from the re-render/virtualization fixes above.
+- **Status: ✅ Done.** New `tests/EngineeringPerformance.UI.Tests` project (bUnit 2.9.0 + xunit,
+  versions matched to `Domain.Tests`) with 8 tests against `ScoringPage.razor` (form
+  validation/persistence, error-state surfacing) and `EmployeeMetricsExtension.razor` (renders
+  nothing without data, shows latest-month metrics, expanded history section) via a
+  `FakeApplicationDatabase` stand-in for `IApplicationDatabase`. All passing.
 
 ### Telemetry (optional, given local-only/no-network posture)
 - If the team ever wants aggregate usage/crash visibility across installs: **Sentry** (self-hostable, has a first-class .NET SDK) is lighter-weight than Application Insights for a desktop app with no existing Azure footprint. Purely optional given the product's local-only design — flagging as a decision point, not a recommendation to adopt.
