@@ -80,6 +80,22 @@ public sealed record BackupResult(string FilePath, long SizeBytes, DateTime Crea
 public sealed record RestoreResult(string SafetyBackupPath, DateTime RestoredUtc, bool RequiresRestart = true);
 public sealed record BackupFileInfo(string FilePath, string FileName, long SizeBytes, DateTime CreatedUtc);
 
+/// <summary>
+/// Named, reusable sets of operational scoring weights (e.g. "Individual Contributor" vs.
+/// "Team Lead"), saved and switched between the same way the live weights themselves are
+/// persisted — a local JSON file next to operational-scoring.json — rather than a new database
+/// table, since applying a preset is just writing new values through the existing
+/// SaveOperationalScoringSettingsAsync path.
+/// </summary>
+public interface IScoringPresetService
+{
+    Task<IReadOnlyList<ScoringPreset>> GetPresetsAsync(CancellationToken cancellationToken = default);
+    Task SavePresetAsync(string name, OperationalScoringSettings settings, CancellationToken cancellationToken = default);
+    Task DeletePresetAsync(string name, CancellationToken cancellationToken = default);
+}
+
+public sealed record ScoringPreset(string Name, OperationalScoringSettings Settings, bool IsBuiltIn = false);
+
 public sealed record EmployeeListItem(
     int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,
     string? Email, bool IsConsultant, bool IsOnProbation, bool? ProbationOverride, bool IsNonBillable,

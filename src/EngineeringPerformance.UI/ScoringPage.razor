@@ -1,7 +1,9 @@
 @page "/scoring"
 @using EngineeringPerformance.Application
 @inject IApplicationDatabase Database
+@inject IScoringPresetService Presets
 @inject AppState State
+@inject IJSRuntime JS
 
 <section class="single-pane wide scoring-page">
     <div class="section-title">
@@ -59,6 +61,38 @@
 
     <div class="section-title scoring-secondary-title">
         <div>
+            <h2>Scoring presets</h2>
+            <p>Save the weights above under a name, then switch between them later. Applying a preset saves and recalculates immediately, the same as “Save &amp; recalculate”.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="operational-weight-list">
+            @foreach (var preset in _presets)
+            {
+                <div class="operational-weight-row">
+                    <span>
+                        <strong>@preset.Name</strong>
+                        <small>@Analytics.Format(preset.Settings.TimesheetCompletionWeight, "0.#")% timesheet · @Analytics.Format(preset.Settings.ApprovalCompletionWeight, "0.#")% approval · @Analytics.Format(preset.Settings.AttendanceDisciplineWeight, "0.#")% attendance</small>
+                    </span>
+                    <span class="weight-input">
+                        <button class="action secondary" @onclick="() => ApplyPresetAsync(preset)" disabled="@State.Busy">Apply</button>
+                        @if (!preset.IsBuiltIn)
+                        {
+                            <button class="action secondary" @onclick="() => DeletePresetAsync(preset.Name)" disabled="@State.Busy">Delete</button>
+                        }
+                    </span>
+                </div>
+            }
+        </div>
+        <div class="scoring-save-row">
+            <input placeholder="New preset name" value="@_newPresetName" @oninput="e => _newPresetName = e.Value?.ToString() ?? string.Empty" />
+            <button class="action" @onclick="SaveCurrentAsPresetAsync" disabled="@(State.Busy || string.IsNullOrWhiteSpace(_newPresetName) || !IsOperationalValid)">Save current weights as preset</button>
+        </div>
+    </div>
+
+    <div class="section-title scoring-secondary-title">
+        <div>
             <h2>Review framework preview</h2>
             <p>These seven category controls remain a planning preview. They do not alter the operational score above.</p>
         </div>
@@ -109,12 +143,50 @@
     private decimal _execution = 25, _ownership = 15, _collaboration = 15, _discipline = 15,
                     _excellence = 10, _improvement = 10, _growth = 10;
 
+    private IReadOnlyList<ScoringPreset> _presets = [];
+    private string _newPresetName = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         var settings = await Database.GetOperationalScoringSettingsAsync();
         _timesheet = settings.TimesheetCompletionWeight;
         _approval = settings.ApprovalCompletionWeight;
         _attendance = settings.AttendanceDisciplineWeight;
+        _presets = await Presets.GetPresetsAsync();
+    }
+
+    private async Task ApplyPresetAsync(ScoringPreset preset)
+    {
+        _timesheet = preset.Settings.TimesheetCompletionWeight;
+        _approval = preset.Settings.ApprovalCompletionWeight;
+        _attendance = preset.Settings.AttendanceDisciplineWeight;
+        await SaveAndRecalculateAsync();
+        State.ShowMessage($"Applied preset “{preset.Name}”.");
+    }
+
+    private async Task SaveCurrentAsPresetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newPresetName)) return;
+        await State.RunAsync(async () =>
+        {
+            var settings = new OperationalScoringSettings(_timesheet, _approval, _attendance);
+            await Presets.SavePresetAsync(_newPresetName, settings);
+            _presets = await Presets.GetPresetsAsync();
+            State.ShowMessage($"Preset “{_newPresetName}” saved.");
+            _newPresetName = string.Empty;
+        });
+    }
+
+    private async Task DeletePresetAsync(string name)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete preset \"{name}\"?");
+        if (!confirmed) return;
+        await State.RunAsync(async () =>
+        {
+            await Presets.DeletePresetAsync(name);
+            _presets = await Presets.GetPresetsAsync();
+            State.ShowMessage($"Preset “{name}” deleted.");
+        });
     }
 
     private decimal OperationalTotal => _timesheet + _approval + _attendance;

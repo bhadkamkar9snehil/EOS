@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
             dataDirectory,
             databasePath));
+        services.AddSingleton<IScoringPresetService>(_ => new ScoringPresetService(dataDirectory));
         return services;
     }
 }
