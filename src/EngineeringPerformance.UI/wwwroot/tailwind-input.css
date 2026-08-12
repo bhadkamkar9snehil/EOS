@@ -843,3 +843,212 @@
     box-shadow: var(--inset-shadow-engraved);
   }
 }
+
+/*
+  ============================================================================
+  READABILITY, ACCESSIBILITY & FINISH
+  ============================================================================
+  These are part of the material system, not a second stylesheet. They are
+  derived only from the tokens above so light/dark/system continue to share one
+  source of truth. This section owns legibility, focus, table scanning and small
+  interaction details that apply across pages.
+*/
+:root {
+  --ui-muted: color-mix(in srgb, var(--color-muted) 64%, var(--color-ink));
+  --ui-chassis-muted: color-mix(in srgb, var(--color-on-chassis-muted) 42%, var(--color-on-chassis-soft));
+  --ui-rim: color-mix(in srgb, var(--color-line) 72%, var(--color-ink-soft));
+  --ui-hairline: color-mix(in srgb, var(--color-line-soft) 84%, var(--color-ink-soft));
+  --ui-well-rim: color-mix(in srgb, var(--color-line-soft) 78%, var(--color-ink-soft));
+  --ui-good-text: color-mix(in srgb, var(--color-good) 70%, var(--color-ink));
+  --ui-warning-text: color-mix(in srgb, var(--color-warning) 70%, var(--color-ink));
+  --ui-serious-text: color-mix(in srgb, var(--color-serious) 70%, var(--color-ink));
+  --ui-critical-text: color-mix(in srgb, var(--color-critical) 70%, var(--color-ink));
+  --ui-info-text: color-mix(in srgb, var(--color-info) 72%, var(--color-ink));
+  --ui-primary-text: color-mix(in srgb, var(--color-primary) 68%, var(--color-ink));
+  --ui-hover: color-mix(in srgb, var(--color-surface-inset) 94%, var(--color-primary-soft));
+  --ui-selected: color-mix(in srgb, var(--color-primary-soft) 82%, var(--color-surface));
+  --ui-focus: color-mix(in srgb, var(--color-primary) 82%, var(--color-ink));
+}
+
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  line-height: 1.45;
+  font-kerning: normal;
+  font-synthesis: none;
+}
+
+/* Preserve density while eliminating the 10px readability floor. */
+.text-3xs,
+.panel-eyebrow,
+.label-instrument,
+.badge,
+.epa-grid thead th {
+  font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
+}
+
+.panel-eyebrow,
+.label-instrument,
+.text-muted {
+  color: var(--ui-muted);
+}
+
+.text-on-chassis-muted { color: var(--ui-chassis-muted); }
+.\!text-on-chassis-muted { color: var(--ui-chassis-muted) !important; }
+
+.panel-title {
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.panel-head {
+  row-gap: 0.25rem;
+  margin-bottom: 0.875rem;
+}
+
+.metric {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.tnum,
+.tabular-nums { font-variant-numeric: tabular-nums lining-nums; }
+
+.text-good { color: var(--ui-good-text); }
+.text-warning { color: var(--ui-warning-text); }
+.text-serious { color: var(--ui-serious-text); }
+.text-critical { color: var(--ui-critical-text); }
+.text-info { color: var(--ui-info-text); }
+
+.segmented > [aria-pressed="true"],
+.segmented > [aria-checked="true"],
+.segmented > .is-active { color: var(--ui-primary-text); }
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-ink);
+}
+
+.plate,
+.card,
+.control,
+.field,
+.floating,
+.glass,
+.btn-secondary { border-color: var(--ui-rim); }
+
+.well {
+  box-shadow: var(--inset-shadow-well), inset 0 0 0 1px var(--ui-well-rim);
+}
+
+.track {
+  box-shadow: var(--inset-shadow-track), inset 0 0 0 1px color-mix(in srgb, var(--ui-well-rim) 72%, transparent);
+}
+
+.field {
+  color: var(--color-ink);
+  caret-color: var(--color-primary);
+}
+
+.field:hover:not(:focus-within) {
+  border-color: color-mix(in srgb, var(--ui-rim) 76%, var(--color-primary));
+}
+
+.field:focus,
+.field:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--inset-shadow-track), 0 0 0 2px var(--color-primary-glow);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+
+.btn { min-height: 2.125rem; }
+.btn:disabled { opacity: 0.58; }
+
+.btn-primary,
+.btn-danger {
+  border: 1px solid color-mix(in srgb, currentColor 18%, var(--color-chassis-deep));
+}
+
+.btn-secondary:hover:not(:disabled),
+.control:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ui-rim) 70%, var(--color-ink-soft));
+}
+
+.epa-grid {
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.epa-grid thead th {
+  color: color-mix(in srgb, var(--color-on-chassis-soft) 76%, var(--color-on-chassis));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-chassis) 68%, var(--color-on-chassis-soft));
+}
+
+.epa-grid tbody td {
+  border-bottom-color: var(--ui-hairline);
+  padding-block: max(var(--density-cell-y), 0.4375rem);
+}
+
+.epa-grid tbody tr:hover td { background-color: var(--ui-hover); }
+.epa-grid tbody tr.row-selected td { background-color: var(--ui-selected); }
+.epa-grid tbody tr.row-selected td:first-child { box-shadow: inset 3px 0 0 0 var(--color-primary); }
+
+:where(button, a[href], input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.chassis :where(button, a[href], input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline-color: var(--color-primary);
+}
+
+button,
+a[href],
+[role="button"] { -webkit-tap-highlight-color: transparent; }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 58%, var(--color-ink-soft)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track { background: transparent; }
+
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-muted) 58%, var(--color-ink-soft));
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-muted) 35%, var(--color-ink));
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
