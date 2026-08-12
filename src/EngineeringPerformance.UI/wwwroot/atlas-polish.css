@@ -15,7 +15,7 @@
 .focus-chip button[title="Clear focus"] { display:none; }
 
 /* Explicit missing-source affordance for the field and worksheet. */
-.atlas-missing-key { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:10.5px; }
+.atlas-missing-key { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:11.5px; }
 .atlas-missing-key::before { content:""; width:9px; height:9px; border:1px dashed var(--missing); border-radius:50%; background:var(--surface-raised); }
 
 /* Theme-derived foregrounds stay readable on score-distribution semantics. */
@@ -24,11 +24,11 @@
 /* The app should use 10.5px only for tertiary metadata; primary operational text is larger. */
 .atlas-page,.workbench-page,.portrait-page,.collaboration-page,
 .route-imports .primary-pane,.route-imports .activity-pane,
-.route-settings .settings-page,.route-scoring .scoring-page { font-size:13px; }
+.route-settings .settings-page,.route-scoring .scoring-page { font-size:14px; }
 .atlas-caption,.pulse-score-meta,.attention-person small,.portrait-evidence-list small,
-.template-contract small,.export-lane > small { font-size:10.75px; }
-.atlas-panel-head h2 { font-size:14.5px; }
-.atlas-panel-head small { font-size:11px; }
+.template-contract small,.export-lane > small { font-size:11.5px; }
+.atlas-panel-head h2 { font-size:15px; }
+.atlas-panel-head small { font-size:12px; }
 
 /* Tables are led by horizontal rhythm, not boxed cells. */
 .timesheet-ledger .epa-grid tbody tr:hover td,
@@ -81,8 +81,8 @@
 
 /* High-density 1080p remains readable without reverting to utility-scale type. */
 @media (min-width:1400px) {
-    .nav-rail button { font-size:13.25px; }
-    .timesheet-ledger .epa-grid tbody td,.route-data .epa-grid tbody td { font-size:12.75px; }
+    .nav-rail button { font-size:14px; }
+    .timesheet-ledger .epa-grid tbody td,.route-data .epa-grid tbody td { font-size:13.5px; }
 }
 
 /* --------------------------------------------------------------------------
@@ -103,14 +103,14 @@
 .atlas-pulse { min-height:184px; grid-template-columns:205px minmax(350px,1.5fr) minmax(310px,1.05fr) 225px 150px; padding-top:24px; padding-bottom:20px; }
 .pulse-score-main strong { font-size:66px; }
 .pulse-score-main span { font-size:38px; }
-.pulse-heading { font-size:11.5px; margin-bottom:16px; }
+.pulse-heading { font-size:12.5px; margin-bottom:16px; }
 .score-axis-dot { width:10px; height:10px; top:24px; }
-.score-bands { font-size:10.5px; }
-.score-bands b { font-size:14px; }
-.trend-mini label { font-size:10.5px; }
+.score-bands { font-size:11.5px; }
+.score-bands b { font-size:14.5px; }
+.trend-mini label { font-size:11.5px; }
 .trend-mini strong { font-size:23px; }
 .atlas-spark { height:36px; }
-.readiness-light span { height:auto; font-size:9px; line-height:1.1; white-space:nowrap; overflow:visible; }
+.readiness-light span { height:auto; font-size:10px; line-height:1.1; white-space:nowrap; overflow:visible; }
 .readiness-light i { width:20px; height:20px; }
 .pulse-pressure strong { font-size:15px; }
 .pressure-bars i { width:6px; }
@@ -120,8 +120,8 @@
 #atlas-field { flex:1 1 auto; min-height:420px; height:auto; }
 .atlas-panel-head { margin-bottom:11px; }
 .atlas-panel-head h2 { font-size:15px; }
-.atlas-panel-head small { font-size:11.5px; }
-.focus-chip { font-size:11px; padding:5px 8px; background:transparent; }
+.atlas-panel-head small { font-size:12.5px; }
+.focus-chip { font-size:12px; padding:5px 8px; background:transparent; }
 
 .attention-lens { padding-left:20px; padding-right:20px; }
 .attention-columns,.attention-row {
@@ -129,10 +129,10 @@
     gap:8px;
     min-height:72px;
 }
-.attention-avatar { width:38px; height:38px; font-size:12px; }
+.attention-avatar { width:38px; height:38px; font-size:13px; }
 .attention-rank { font-size:21px; }
-.attention-person strong { font-size:13.25px; }
-.attention-person small { font-size:10.75px; }
+.attention-person strong { font-size:14px; }
+.attention-person small { font-size:11.5px; }
 .attention-score strong { font-size:23px; color:var(--atlas-petrol); }
 .attention-row:nth-child(1) .attention-score strong { color:var(--critical); }
 .attention-row:nth-child(2) .attention-score strong,
@@ -144,13 +144,13 @@
 
 .atlas-secondary { min-height:330px; }
 #atlas-river { height:272px; }
-.fingerprint-legend { font-size:10.5px; gap:15px; }
-.fingerprint-head { font-size:10.5px; min-height:30px; }
+.fingerprint-legend { font-size:11.5px; gap:15px; }
+.fingerprint-head { font-size:11.5px; min-height:30px; }
 .fingerprint-row { min-height:46px; }
-.fingerprint-row label { font-size:12px; }
-.fingerprint-row strong { font-size:13px; }
+.fingerprint-row label { font-size:13px; }
+.fingerprint-row strong { font-size:14px; }
 .atlas-peer-review { min-height:456px; }
-.peer-review-person strong { font-size:12px; }
+.peer-review-person strong { font-size:13px; }
 .peer-aspect-profile li > button { min-height:54px; }
 
 @media (max-width:1500px) {
@@ -170,20 +170,20 @@
 @media (min-width:1121px) {
     .portrait-page { padding:0 16px 24px; }
     .portrait-command { min-height:68px; grid-template-columns:auto minmax(210px,.78fr) minmax(220px,.68fr) minmax(430px,1.28fr); }
-    .portrait-back { padding-inline:15px; font-size:12px; }
+    .portrait-back { padding-inline:15px; font-size:13px; }
     .portrait-command .portrait-person { padding-inline:16px; }
-    .portrait-person .avatar.big { width:48px; height:48px; font-size:14px; }
+    .portrait-person .avatar.big { width:48px; height:48px; font-size:14.5px; }
     .portrait-person h2 { font-size:19px; }
-    .portrait-person small { font-size:11px; }
+    .portrait-person small { font-size:12px; }
     .portrait-command-score { padding-inline:16px; }
     .portrait-command-score > strong { font-size:43px; }
-    .portrait-command-score > span { font-size:11.5px; }
-    .portrait-command-score small { font-size:10.5px; }
-    .portrait-command-facts span { padding-inline:13px; font-size:10.5px; }
+    .portrait-command-score > span { font-size:12.5px; }
+    .portrait-command-score small { font-size:11.5px; }
+    .portrait-command-facts span { padding-inline:13px; font-size:11.5px; }
     .portrait-command-facts b { font-size:18px; }
 
     .portrait-page .atlas-panel-head h2 { font-size:15px; }
-    .portrait-page .atlas-panel-head small { font-size:10.5px; }
+    .portrait-page .atlas-panel-head small { font-size:11.5px; }
     .portrait-diagnostic-band { min-height:0; grid-template-columns:minmax(0,1.08fr) minmax(440px,.92fr); }
     .portrait-decomposition,
     .portrait-weekly,
@@ -192,11 +192,11 @@
     .portrait-peer-panel,
     .portrait-work-ledger { padding:13px 16px; }
     .portrait-metrics.dense { gap:10px 20px; }
-    .portrait-metric label { font-size:11.5px; }
+    .portrait-metric label { font-size:12.5px; }
     .portrait-metric-track { height:6px; }
     .portrait-source-facts { margin-top:14px; }
     .portrait-source-facts > span { min-height:48px; padding:8px 10px; }
-    .portrait-source-facts small { font-size:9.5px; }
+    .portrait-source-facts small { font-size:10.5px; }
     .portrait-source-facts b { font-size:15px; }
     #portrait-weekly { height:145px; }
 
@@ -204,28 +204,28 @@
     #portrait-history { height:195px; }
     .portrait-evidence-list.compact { max-height:196px; }
     .portrait-evidence-list.compact li { min-height:38px; padding:5px 0; }
-    .portrait-evidence-list strong { font-size:12.5px; }
-    .portrait-evidence-list small { font-size:11px; }
+    .portrait-evidence-list strong { font-size:13.5px; }
+    .portrait-evidence-list small { font-size:12px; }
 
     .portrait-insight-grid { grid-template-columns:minmax(0,1.5fr) minmax(390px,.5fr); }
     .portrait-peer-summary > b { font-size:32px; }
-    .portrait-peer-summary > span { font-size:10px; }
-    .portrait-peer-summary small { font-size:10.5px; }
+    .portrait-peer-summary > span { font-size:11px; }
+    .portrait-peer-summary small { font-size:11.5px; }
     .portrait-peer-layout { min-height:205px; grid-template-columns:270px minmax(0,1fr); }
     #portrait-peer-radar { height:200px; }
     .portrait-peer-aspects { padding:10px 15px; }
     .peer-aspect-comparison { grid-template-columns:155px minmax(0,1fr); min-height:39px; }
-    .peer-aspect-comparison strong { font-size:12px; }
+    .peer-aspect-comparison strong { font-size:13px; }
     .peer-aspect-comparison small,
-    .portrait-peer-aspects p { font-size:10.5px; }
-    .peer-reviewer-head { min-height:30px; font-size:10px; }
+    .portrait-peer-aspects p { font-size:11.5px; }
+    .peer-reviewer-head { min-height:30px; font-size:11px; }
     .peer-reviewer-row { min-height:41px; }
     .peer-reviewer-row > span strong,
-    .peer-reviewer-row > b { font-size:12px; }
-    .peer-reviewer-row > span small { font-size:10.5px; }
-    .peer-reviewer-row > strong { font-size:13px; }
+    .peer-reviewer-row > b { font-size:13px; }
+    .peer-reviewer-row > span small { font-size:11.5px; }
+    .peer-reviewer-row > strong { font-size:14px; }
     .work-mix-stack { gap:9px; padding:6px 0 11px; }
-    .work-ledger-facts span { min-height:48px; font-size:9.5px; }
+    .work-ledger-facts span { min-height:48px; font-size:10.5px; }
     .work-ledger-facts b { font-size:16px; }
     .portrait-evidence-list.ledger li { min-height:40px; padding:6px 0; }
 }
@@ -235,17 +235,17 @@
     .portrait-command { min-height:74px; }
     .portrait-person h2 { font-size:23px; }
     .portrait-person small,
-    .portrait-command-score > span { font-size:12.5px; }
+    .portrait-command-score > span { font-size:13.5px; }
     .portrait-command-score > strong { font-size:50px; }
-    .portrait-command-facts span { font-size:11.5px; }
+    .portrait-command-facts span { font-size:12.5px; }
     .portrait-command-facts b { font-size:22px; }
     .portrait-page .atlas-panel-head h2 { font-size:18px; }
-    .portrait-page .atlas-panel-head small { font-size:12px; }
+    .portrait-page .atlas-panel-head small { font-size:13px; }
     .portrait-metric label,
-    .portrait-evidence-list small { font-size:12.5px; }
-    .portrait-evidence-list strong { font-size:14px; }
+    .portrait-evidence-list small { font-size:13.5px; }
+    .portrait-evidence-list strong { font-size:14.5px; }
     .peer-reviewer-row > span strong,
-    .peer-reviewer-row > b { font-size:13.5px; }
+    .peer-reviewer-row > b { font-size:14.5px; }
 }
 
 /* Employee portrait controls and diagnostic hierarchy. */
@@ -258,13 +258,13 @@
 .portrait-person-selector[aria-expanded="true"] { background:var(--surface-selected); }
 .portrait-person-copy { display:flex; min-width:0; flex:1; flex-direction:column; }
 .portrait-person-copy > strong { overflow:hidden; font-size:19px; line-height:1.15; text-overflow:ellipsis; white-space:nowrap; }
-.portrait-person-copy small { overflow:hidden; margin-top:3px; color:var(--muted); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.portrait-person-copy small { overflow:hidden; margin-top:3px; color:var(--muted); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
 .portrait-person-chevron { flex:none; margin-left:auto; color:var(--atlas-petrol); font-size:19px; line-height:1; transform:translateY(-2px); }
 .portrait-person-menu {
     position:absolute; z-index:40; top:calc(100% - 1px); left:0; width:clamp(320px,30vw,430px); padding:10px;
     border:1px solid var(--atlas-rule); background:var(--atlas-paper); box-shadow:0 14px 28px color-mix(in srgb,var(--ink) 18%,transparent);
 }
-.portrait-person-menu > strong { display:block; padding:3px 6px 9px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+.portrait-person-menu > strong { display:block; padding:3px 6px 9px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
 .portrait-person-options { max-height:360px; overflow:auto; border-top:1px solid var(--atlas-rule); }
 .portrait-person-options > button {
     display:grid; grid-template-columns:34px minmax(0,1fr); gap:10px; align-items:center; width:100%; min-height:48px; padding:6px;
@@ -275,26 +275,26 @@
 .portrait-person-options .avatar { width:30px; height:30px; }
 .portrait-person-options b,
 .portrait-person-options small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.portrait-person-options b { font-size:12px; }
-.portrait-person-options small { margin-top:2px; color:var(--muted); font-size:10px; }
+.portrait-person-options b { font-size:13px; }
+.portrait-person-options small { margin-top:2px; color:var(--muted); font-size:11px; }
 
 .portrait-decomposition .atlas-panel-head { margin-bottom:10px; }
 .portrait-metrics.dense { gap:8px; }
 .portrait-decomposition .portrait-metric {
     min-width:0; padding:8px 10px 9px; border:1px solid var(--atlas-rule-soft); background:color-mix(in srgb,var(--atlas-petrol) 2.5%,var(--atlas-paper));
 }
-.portrait-decomposition .portrait-metric label { align-items:baseline; gap:8px; font-size:11px; }
-.portrait-decomposition .portrait-metric label b { color:var(--ink); font-size:13px; }
+.portrait-decomposition .portrait-metric label { align-items:baseline; gap:8px; font-size:12px; }
+.portrait-decomposition .portrait-metric label b { color:var(--ink); font-size:14px; }
 .portrait-decomposition .portrait-metric-track { height:7px; margin-top:7px; }
 .portrait-decomposition .portrait-metric-track i { min-width:2px; }
 .portrait-source-facts { margin-top:10px; }
 .portrait-source-facts > span { min-height:42px; padding:7px 9px; }
-.portrait-source-facts b { margin-top:3px; font-size:14px; }
+.portrait-source-facts b { margin-top:3px; font-size:14.5px; }
 .portrait-history #portrait-history { margin-top:3px; }
 
 @media (min-width:1900px) and (min-height:1000px) {
     .portrait-person-copy > strong { font-size:23px; }
-    .portrait-decomposition .portrait-metric label { font-size:12px; }
+    .portrait-decomposition .portrait-metric label { font-size:13px; }
 }
 
 @media (max-width:720px) {
@@ -351,25 +351,25 @@
     .workspace { grid-template-rows:48px auto minmax(0,1fr) 28px; }
     .atlas-brand { min-height:78px; height:78px; padding:11px 14px; gap:5px; }
     .atlas-brand strong { font-size:25px; }
-    .atlas-brand small { max-width:112px; font-size:8px; line-height:1.35; letter-spacing:.13em; }
+    .atlas-brand small { max-width:112px; font-size:9px; line-height:1.35; letter-spacing:.13em; }
     .nav-rail nav { padding:4px 0; }
-    .nav-group-label { padding:9px 14px 3px; font-size:8px; }
-    .nav-rail button { height:36px; padding:0 14px; gap:9px; font-size:11.5px; }
+    .nav-group-label { padding:9px 14px 3px; font-size:9px; }
+    .nav-rail button { height:36px; padding:0 14px; gap:9px; font-size:12.5px; }
     .nav-rail button b { width:15px; height:15px; }
     .nav-footer { padding:5px 0 8px; }
-    .nav-footer small { padding:3px 14px 0; font-size:8.5px; }
+    .nav-footer small { padding:3px 14px 0; font-size:9.5px; }
 
     .topbar { grid-template-columns:minmax(180px,1fr) auto; gap:10px; padding:0 16px; }
     .topbar h1 { font-size:19px; }
     .topbar-actions { gap:7px; }
     .month-control { height:32px; grid-template-columns:auto 26px 112px 26px; }
-    .month-control span { padding:0 8px; font-size:9px; }
-    .month-control strong { font-size:10.5px; }
+    .month-control span { padding:0 8px; font-size:10px; }
+    .month-control strong { font-size:11.5px; }
     .icon-button { width:32px; height:32px; }
     .readiness { padding-left:10px; }
-    .readiness span { font-size:8.5px; }
-    .readiness strong { font-size:10.5px; }
-    footer { height:28px; padding:0 16px; font-size:8.5px; }
+    .readiness span { font-size:9.5px; }
+    .readiness strong { font-size:11.5px; }
+    footer { height:28px; padding:0 16px; font-size:9.5px; }
 
     .atlas-page { display:block; min-height:100%; }
     .atlas-pulse {
@@ -383,28 +383,28 @@
     .pulse-readiness,
     .pulse-pressure { padding:0 11px; }
     .pulse-score { padding-right:12px; }
-    .pulse-score .atlas-section-label { margin-bottom:3px; font-size:9.5px; }
+    .pulse-score .atlas-section-label { margin-bottom:3px; font-size:10.5px; }
     .pulse-score-main { gap:10px; }
     .pulse-score-main strong { font-size:40px; }
     .pulse-score-main span { padding-left:9px; font-size:23px; }
-    .pulse-score-meta { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:3px; font-size:9px; }
+    .pulse-score-meta { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:3px; font-size:10px; }
     .pulse-score-meta span:last-child { text-align:right; }
-    .pulse-heading { margin-bottom:4px; font-size:9.5px; }
+    .pulse-heading { margin-bottom:4px; font-size:10.5px; }
     .score-axis { height:40px; padding-top:2px; }
     .score-axis-line { top:18px; }
     .score-axis-dot { top:14px; width:8px; height:8px; }
-    .score-bands { margin-top:23px; font-size:8.5px; }
-    .score-bands b { font-size:11px; }
+    .score-bands { margin-top:23px; font-size:9.5px; }
+    .score-bands b { font-size:12px; }
     .score-band-grid { min-height:52px; }
     .score-band-grid::after { right:5px; bottom:2px; left:5px; height:3px; }
     .score-band { padding:3px 5px 2px; }
-    .score-band-head span { font-size:9px; }
-    .score-band-head strong { font-size:11px; }
+    .score-band-head span { font-size:10px; }
+    .score-band-head strong { font-size:12px; }
     .score-band-head small { display:none; }
     .score-band-plot { height:23px; margin-top:auto; border-bottom-width:3px; }
     .score-band-dot { bottom:calc(3px + var(--dot-lift-compact,0px)); width:9px; height:9px; margin-left:-4px; border-width:1.5px; }
     .trend-triplet { gap:0; }
-    .trend-mini label { font-size:9px; }
+    .trend-mini label { font-size:10px; }
     .trend-mini strong { margin:1px 0; font-size:17px; }
     .trend-mini { padding:2px 7px 1px; }
     .trend-mini-head span,
@@ -412,31 +412,31 @@
     .atlas-spark { height:20px; }
     .readiness-lights { gap:5px 7px; }
     .readiness-light { grid-template-columns:17px minmax(0,1fr); gap:5px; }
-    .readiness-light span { font-size:9px; }
+    .readiness-light span { font-size:10px; }
     .readiness-light i { width:14px; height:14px; }
-    .pulse-pressure strong { margin:1px 0 3px; font-size:12px; }
+    .pulse-pressure strong { margin:1px 0 3px; font-size:13px; }
     .pressure-bars { height:16px; gap:2px; }
     .pressure-bars i { width:4px; height:12px; }
-    .pulse-pressure small { margin-top:2px; font-size:9px; }
+    .pulse-pressure small { margin-top:2px; font-size:10px; }
 
     .atlas-primary { grid-template-columns:minmax(0,1.5fr) minmax(390px,.9fr); min-height:340px; }
     .performance-field,
     .attention-lens { padding:13px 14px 10px; }
     #atlas-field { min-height:276px; height:276px; }
     .atlas-panel-head { margin-bottom:6px; gap:10px; }
-    .atlas-panel-head h2 { font-size:12.5px; }
-    .atlas-panel-head small { font-size:9.25px; line-height:1.4; }
+    .atlas-panel-head h2 { font-size:13.5px; }
+    .atlas-panel-head small { font-size:10px; line-height:1.4; }
     .attention-columns,
     .attention-row { grid-template-columns:16px 28px minmax(118px,1fr) 48px 88px 52px; gap:5px; }
-    .attention-columns { min-height:24px; padding-bottom:4px; font-size:9px; }
+    .attention-columns { min-height:24px; padding-bottom:4px; font-size:10px; }
     .attention-row { min-height:50px; }
     .attention-rank { font-size:15px; }
-    .attention-avatar { width:28px; height:28px; font-size:9px; }
-    .attention-person strong { font-size:11px; }
-    .attention-person small { font-size:9px; }
+    .attention-avatar { width:28px; height:28px; font-size:10px; }
+    .attention-person strong { font-size:12px; }
+    .attention-person small { font-size:10px; }
     .attention-score { gap:3px; }
     .attention-score strong { font-size:19px; }
-    .attention-score small { font-size:9px; }
+    .attention-score small { font-size:10px; }
     .fingerprint-mini { gap:3px; }
     .fingerprint-mini i { height:18px; }
     .rhythm-mini { height:22px; gap:1px; }
@@ -447,12 +447,12 @@
     .operational-fingerprint { padding:12px 14px 10px; }
     #atlas-river { height:184px; }
     .movement-legend,
-    .fingerprint-legend { gap:5px 9px; font-size:8.5px; }
+    .fingerprint-legend { gap:5px 9px; font-size:9.5px; }
     .fingerprint-table { margin-top:8px; }
-    .fingerprint-head { min-height:22px; font-size:8px; }
+    .fingerprint-head { min-height:22px; font-size:9px; }
     .fingerprint-row { min-height:36px; }
-    .fingerprint-row label { font-size:10px; }
-    .fingerprint-row strong { font-size:10px; }
+    .fingerprint-row label { font-size:11px; }
+    .fingerprint-row strong { font-size:11px; }
 
     .workbench-page,
     .collaboration-page,
@@ -463,7 +463,7 @@
     .workbench-header h2,
     .peer-workbench-header h2 { font-size:17px; }
     .workbench-header p,
-    .peer-workbench-header p { font-size:9.5px; }
+    .peer-workbench-header p { font-size:10.5px; }
     .workbench-summary { gap:15px; }
     .workbench-summary strong { font-size:19px; }
     .timesheet-pulse { min-height:78px; grid-template-columns:minmax(155px,1.25fr) repeat(4,minmax(92px,.75fr)); }
@@ -471,7 +471,7 @@
     .timesheet-pulse strong { font-size:21px; }
     .timesheet-ledger { margin-top:10px; }
     .timesheet-ledger .epa-grid tbody td,
-    .route-data .epa-grid tbody td { padding:7px 8px; font-size:10px; }
+    .route-data .epa-grid tbody td { padding:7px 8px; font-size:11px; }
 
     .peer-evidence-grid { min-height:470px; grid-template-columns:minmax(480px,.92fr) minmax(520px,1.08fr); }
     .peer-confidence-panel,
@@ -488,10 +488,10 @@
     .peer-diagnostics-wide { grid-template-columns:180px minmax(340px,.85fr) minmax(420px,1.15fr); }
 
     .portrait-command { min-height:70px; grid-template-columns:auto minmax(190px,.8fr) minmax(190px,.65fr) minmax(330px,1.1fr); }
-    .portrait-person .avatar.big { width:44px; height:44px; font-size:13px; }
+    .portrait-person .avatar.big { width:44px; height:44px; font-size:14px; }
     .portrait-person h2 { font-size:17px; }
     .portrait-command-score > strong { font-size:38px; }
-    .portrait-command-facts b { font-size:14px; }
+    .portrait-command-facts b { font-size:14.5px; }
     .portrait-diagnostic-band { min-height:220px; }
     #portrait-weekly { height:160px; }
     #portrait-history { height:225px; }
@@ -520,7 +520,7 @@
     .atlas-brand { min-height:58px; height:58px; padding:7px 12px; }
     .atlas-brand small { display:none; }
     .nav-group-label { padding:5px 12px 2px; }
-    .nav-rail button { height:31px; padding:0 12px; font-size:10px; }
+    .nav-rail button { height:31px; padding:0 12px; font-size:11px; }
     .nav-footer { padding:3px 0 5px; }
     .atlas-pulse { min-height:126px; padding-top:10px; padding-bottom:9px; }
     .atlas-primary { min-height:340px; }
@@ -593,24 +593,24 @@
     .atlas-brand { min-height:140px; padding:24px 26px; gap:9px; }
     .atlas-brand strong { font-size:36px; }
     .atlas-brand strong i { font-size:26px; }
-    .atlas-brand small { max-width:155px; font-size:12px; line-height:1.5; }
+    .atlas-brand small { max-width:155px; font-size:13px; line-height:1.5; }
     .nav-rail nav { padding:18px 0 14px; }
-    .nav-group-label { padding:20px 26px 8px; font-size:12px!important; }
+    .nav-group-label { padding:20px 26px 8px; font-size:13px!important; }
     .nav-rail button { height:54px; padding:0 25px; gap:14px; font-size:15px; }
     .nav-rail button b { width:20px; height:20px; }
     .nav-footer { padding-bottom:14px; }
-    .nav-footer small { padding-inline:25px; font-size:11px; }
+    .nav-footer small { padding-inline:25px; font-size:12px; }
 
     .topbar { padding:0 30px; gap:20px; }
     .topbar h1 { font-size:28px; }
     .topbar-actions { gap:14px; }
     .month-control { height:44px; grid-template-columns:auto 34px 150px 34px; }
-    .month-control span { font-size:12px; }
-    .month-control strong { font-size:14px; }
+    .month-control span { font-size:13px; }
+    .month-control strong { font-size:14.5px; }
     .icon-button { width:44px; height:44px; }
-    .readiness span { font-size:11.5px; }
-    .readiness strong { font-size:13.5px; }
-    footer { height:38px; padding:0 30px; font-size:11.5px; }
+    .readiness span { font-size:12.5px; }
+    .readiness strong { font-size:14.5px; }
+    footer { height:38px; padding:0 30px; font-size:12.5px; }
 
     .atlas-page { min-height:calc(100vh - 110px); grid-template-rows:auto minmax(560px,1.45fr) minmax(390px,.95fr) auto; }
     .atlas-pulse { min-height:158px; grid-template-columns:235px minmax(430px,1.58fr) minmax(380px,1.1fr) 225px 160px; padding:13px 30px 11px; }
@@ -619,34 +619,34 @@
     .pulse-trends,
     .pulse-readiness,
     .pulse-pressure { padding-inline:22px; }
-    .atlas-section-label { font-size:13px; }
+    .atlas-section-label { font-size:14px; }
     .pulse-score-main strong { font-size:76px; }
     .pulse-score-main span { font-size:44px; }
-    .pulse-score-meta { font-size:12px; }
-    .pulse-heading { margin-bottom:7px; font-size:13px; }
+    .pulse-score-meta { font-size:13px; }
+    .pulse-heading { margin-bottom:7px; font-size:14px; }
     .score-axis-dot { width:12px; height:12px; }
-    .score-bands { font-size:12px; }
+    .score-bands { font-size:13px; }
     .score-bands b { font-size:16px; }
     .score-band-grid { min-height:86px; }
     .score-band-grid::after { right:14px; bottom:7px; left:14px; height:3px; }
     .score-band { padding:8px 14px 7px; }
-    .score-band-head span { font-size:12.5px; }
+    .score-band-head span { font-size:13.5px; }
     .score-band-head strong { font-size:21px; }
-    .score-band-head small { font-size:10.5px; }
+    .score-band-head small { font-size:11.5px; }
     .score-band-plot { height:31px; margin-top:auto; border-bottom-width:3px; }
     .score-band-dot { bottom:calc(5px + var(--dot-lift-large,0px)); width:15px; height:15px; margin-left:-7px; border-width:2px; }
-    .trend-mini label { font-size:12px; }
+    .trend-mini label { font-size:13px; }
     .trend-mini strong { font-size:27px; }
     .trend-mini { padding:12px 18px 10px; }
-    .trend-mini-head span { font-size:10.5px; }
-    .trend-value small { font-size:11px; }
+    .trend-mini-head span { font-size:11.5px; }
+    .trend-value small { font-size:12px; }
     .atlas-spark { height:48px; }
     .readiness-light { grid-template-columns:24px minmax(0,1fr); gap:9px; }
-    .readiness-light span { font-size:10.5px; }
+    .readiness-light span { font-size:11.5px; }
     .readiness-light i { width:22px; height:22px; }
     .pulse-pressure strong { font-size:17px; }
     .pressure-bars i { width:7px; }
-    .pulse-pressure small { font-size:12px; }
+    .pulse-pressure small { font-size:13px; }
 
     .atlas-primary { grid-template-columns:minmax(0,2fr) minmax(500px,1fr); min-height:560px; }
     .performance-field,
@@ -654,20 +654,20 @@
     #atlas-field { min-height:490px; }
     .atlas-panel-head { margin-bottom:14px; }
     .atlas-panel-head h2 { font-size:17px; }
-    .atlas-panel-head small { font-size:12.5px; }
-    .focus-chip { padding:6px 10px; font-size:12.5px; }
-    .team-mode-chip b { font-size:13px; }
-    .team-mode-chip small { font-size:11px; }
+    .atlas-panel-head small { font-size:13.5px; }
+    .focus-chip { padding:6px 10px; font-size:13.5px; }
+    .team-mode-chip b { font-size:14px; }
+    .team-mode-chip small { font-size:12px; }
     .attention-columns,
     .attention-row { grid-template-columns:30px 48px minmax(120px,1fr) 78px 150px 105px; gap:11px; }
-    .attention-columns { min-height:36px; font-size:10.5px; }
+    .attention-columns { min-height:36px; font-size:11.5px; }
     .attention-row { min-height:82px; }
     .attention-rank { font-size:25px; }
-    .attention-avatar { width:44px; height:44px; font-size:14px; }
+    .attention-avatar { width:44px; height:44px; font-size:14.5px; }
     .attention-person strong { font-size:15px; }
-    .attention-person small { font-size:12px; }
+    .attention-person small { font-size:13px; }
     .attention-score strong { font-size:28px; }
-    .attention-score small { font-size:11.5px; }
+    .attention-score small { font-size:12.5px; }
     .fingerprint-mini i { height:28px; }
     .rhythm-mini { height:36px; }
 
@@ -676,24 +676,24 @@
     .operational-fingerprint { padding:22px 28px 18px; }
     #atlas-river { height:315px; }
     .movement-legend,
-    .fingerprint-legend { font-size:11.5px; }
-    .fingerprint-head { min-height:34px; font-size:11.5px; }
+    .fingerprint-legend { font-size:12.5px; }
+    .fingerprint-head { min-height:34px; font-size:12.5px; }
     .fingerprint-row { min-height:52px; }
-    .fingerprint-row label { font-size:13.5px; }
-    .fingerprint-row strong { font-size:14px; }
+    .fingerprint-row label { font-size:14.5px; }
+    .fingerprint-row strong { font-size:14.5px; }
 
     .atlas-peer-review { min-height:540px; grid-template-columns:minmax(0,1.3fr) minmax(600px,.7fr); }
     .peer-network-panel,
     .peer-aspect-profile { padding:22px 28px 20px; }
-    .peer-aspect-switcher button { min-height:38px; padding-inline:15px; font-size:12px; }
+    .peer-aspect-switcher button { min-height:38px; padding-inline:15px; font-size:13px; }
     .peer-network-panel { grid-template-rows:auto auto minmax(390px,1fr) auto; }
     #atlas-peer-network { min-height:390px; }
-    .peer-network-note { padding-top:11px; font-size:11.5px; }
-    .peer-aspect-head { min-height:36px; font-size:10.5px; }
+    .peer-network-note { padding-top:11px; font-size:12.5px; }
+    .peer-aspect-head { min-height:36px; font-size:11.5px; }
     .peer-aspect-profile li > button { min-height:64px; }
-    .peer-review-person strong { font-size:13.5px; }
-    .peer-review-person small { font-size:11px; }
-    .peer-aspect-cell b { font-size:12px; }
+    .peer-review-person strong { font-size:14.5px; }
+    .peer-review-person small { font-size:12px; }
+    .peer-aspect-cell b { font-size:13px; }
 
     .workbench-page,
     .collaboration-page,
@@ -703,19 +703,19 @@
     .workbench-header h2,
     .peer-workbench-header h2 { font-size:25px; }
     .workbench-header p,
-    .peer-workbench-header p { font-size:13.5px; }
+    .peer-workbench-header p { font-size:14.5px; }
     .timesheet-pulse strong { font-size:32px; }
     .timesheet-ledger .epa-grid tbody td,
-    .route-data .epa-grid tbody td { padding:12px 14px; font-size:14px; }
-    .timesheet-ledger .epa-grid thead th { height:46px; font-size:12.5px!important; }
+    .route-data .epa-grid tbody td { padding:12px 14px; font-size:14.5px; }
+    .timesheet-ledger .epa-grid thead th { height:46px; font-size:13.5px!important; }
 
     .peer-confidence-row { min-height:56px; }
-    .peer-confidence-person strong { font-size:13.5px; }
-    .peer-confidence-person small { font-size:10.5px; }
-    .peer-confidence-raw { font-size:13px; }
-    .peer-confidence-floor { font-size:14.5px; }
+    .peer-confidence-person strong { font-size:14.5px; }
+    .peer-confidence-person small { font-size:11.5px; }
+    .peer-confidence-raw { font-size:14px; }
+    .peer-confidence-floor { font-size:15px; }
     .peer-confidence-columns,
-    .peer-confidence-legend { font-size:10.5px; }
+    .peer-confidence-legend { font-size:11.5px; }
 }
 
 /* Final portrait geometry overrides. Keep these after the global compact and
@@ -724,7 +724,7 @@
 @media (min-width:1121px) {
     .portrait-page { padding:10px 16px 24px; }
     .portrait-command { min-height:78px; grid-template-columns:auto minmax(210px,.78fr) minmax(220px,.68fr) minmax(430px,1.28fr); }
-    .portrait-person .avatar.big { width:48px; height:48px; font-size:14px; }
+    .portrait-person .avatar.big { width:48px; height:48px; font-size:14.5px; }
     .portrait-person h2 { font-size:19px; }
     .portrait-command-score > strong { font-size:43px; }
     .portrait-command-facts b { font-size:18px; }

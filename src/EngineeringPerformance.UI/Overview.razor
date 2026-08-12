@@ -221,7 +221,7 @@
         {
             <section class="trend-alerts-section" aria-label="Trend alerts">
                 <div class="atlas-panel-head">
-                    <div><h2>Trend alerts</h2><small>Sharp month-over-month score drops and missing evidence, computed from the current and previous reporting month</small></div>
+                    <div><h2>Trend alerts</h2><small>Score drops and missing evidence vs. last month</small></div>
                     <span class="atlas-caption">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</span>
                 </div>
                 <ul class="portrait-evidence-list">
@@ -337,7 +337,14 @@
             };
         }).ToArray();
         var focusedPreviousHours = FocusedMovement?.PreviousHours ?? 0m;
-        var fieldMax = Math.Max(60m, Math.Max(State.Performance.Max(x => x.PunchHours), focusedPreviousHours) * 1.14m);
+        // Fixed across the loaded fiscal-year-to-date rather than recomputed from just the current
+        // month: a person's horizontal position then means the same thing when you switch reporting
+        // months, so movement across months actually reads as movement instead of the ruler itself
+        // stretching or shrinking. It only grows if a later month's hours exceed everything seen so
+        // far — it never shrinks back down as you page through history.
+        var historyMaxHours = State.History.Count > 0 ? State.History.Max(x => x.PunchHours)
+            : State.Performance.Count > 0 ? State.Performance.Max(x => x.PunchHours) : 0m;
+        var fieldMax = Math.Max(60m, Math.Max(historyMaxHours, focusedPreviousHours) * 1.14m);
         await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)Median(State.Performance.Select(x => x.PunchHours)), _focusName);
 
         var attentionNames = AttentionRows.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);

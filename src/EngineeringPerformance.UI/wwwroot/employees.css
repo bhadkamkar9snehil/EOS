@@ -20,7 +20,7 @@
 .level-editor button:active { background:var(--line); }
 .level-editor input {
     width:44px; height:28px; min-width:0; border:0; border-radius:0; background:var(--surface-raised); color:var(--ink);
-    padding:0; text-align:center; font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums;
+    padding:0; text-align:center; font-size:13.5px; font-weight:700; font-variant-numeric:tabular-nums;
     box-shadow:none; appearance:textfield; -moz-appearance:textfield;
 }
 .level-editor input::-webkit-outer-spin-button,.level-editor input::-webkit-inner-spin-button { margin:0; -webkit-appearance:none; }
@@ -40,7 +40,7 @@
 }
 .row-actions > * { min-width:0; width:100%; }
 .row-actions .action.small,.row-actions .danger {
-    height:30px; padding:0 9px; border-radius:3px; font-size:10.5px; font-weight:650;
+    height:30px; padding:0 9px; border-radius:3px; font-size:11.5px; font-weight:650;
     line-height:1; text-align:center; white-space:nowrap;
 }
 .row-actions .action.secondary { border-color:var(--line-strong); background:var(--surface-raised); color:var(--primary-strong); }

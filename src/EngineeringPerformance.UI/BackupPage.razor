@@ -9,7 +9,6 @@
     <div class="section-title">
         <div>
             <h2>Backup &amp; restore</h2>
-            <p>Export the full local database to a file you control, and restore from a previous export if something goes wrong.</p>
         </div>
     </div>
 
@@ -19,8 +18,7 @@
                 <h2>Create a backup</h2>
                 <small>Database + scoring settings</small>
             </div>
-            <p>Exports a single zip containing the SQLite database and the operational scoring configuration. By default backups are saved to:</p>
-            <p><code>@Backups.DefaultBackupDirectory</code></p>
+            <p>Saved to <code>@Backups.DefaultBackupDirectory</code></p>
             <div class="scoring-save-row">
                 <button class="action secondary" @onclick="ExportToDefaultAsync" disabled="@State.Busy">Backup now</button>
                 <button class="action secondary" @onclick="ExportToChosenFolderAsync" disabled="@State.Busy">Backup to a chosen folder…</button>
@@ -34,7 +32,7 @@
             </div>
             <div class="callout scoring-callout">
                 <strong>This is destructive</strong>
-                <p>Restoring replaces all current data with the contents of the chosen backup. EOS automatically backs up the current database first, so you can undo an accidental restore. The application must be restarted after a restore for the change to fully take effect.</p>
+                <p>Replaces all current data. A safety backup is taken first. Restart EOS afterward.</p>
             </div>
             <div class="scoring-save-row">
                 <button class="action" @onclick="RestoreAsync" disabled="@State.Busy">Choose backup file to restore…</button>
