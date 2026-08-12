@@ -37,10 +37,4 @@
     <PublishSingleFile>false</PublishSingleFile>
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
-  <Target Name="CopyCompatibleWindowsSdkFacadeForBuild" AfterTargets="Build">
-    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.windows.sdk.net.ref\10.0.17763.10\lib\Microsoft.Windows.SDK.NET.dll" DestinationFolder="$(OutDir)" />
-  </Target>
-  <Target Name="CopyCompatibleWindowsSdkFacadeForPublish" AfterTargets="Publish">
-    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.windows.sdk.net.ref\10.0.17763.10\lib\Microsoft.Windows.SDK.NET.dll" DestinationFolder="$(PublishDir)" />
-  </Target>
 </Project>
