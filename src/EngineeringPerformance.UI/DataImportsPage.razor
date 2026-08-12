@@ -8,20 +8,20 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-<div class="workbench-page imports-workbench">
-    <header class="workbench-header">
+<div class="flex flex-col gap-6">
+    <header class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h2>Evidence pipeline</h2>
-            <p>Source evidence for @State.SelectedMonth.ToString("MMMM yyyy").</p>
+            <h2 class="text-xl font-bold text-ink">Evidence pipeline</h2>
+            <p class="mt-1 text-sm text-ink-soft">Source evidence for @State.SelectedMonth.ToString("MMMM yyyy").</p>
         </div>
-        <div class="workbench-summary">
-            <div><span>ERP inputs</span><strong>@State.SystemReadyCount / 3</strong></div>
-            <div><span>Review input</span><strong>@(ReviewReviewerCount == 0 ? "Open" : $"{ReviewReviewerCount} reviewer{(ReviewReviewerCount == 1 ? "" : "s")}")</strong></div>
-            <button class="action" @onclick="UploadZipAsync" disabled="@State.Busy">Import package</button>
+        <div class="flex items-center gap-4">
+            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">ERP inputs</span><strong class="text-lg font-bold text-ink">@State.SystemReadyCount / 3</strong></div>
+            <div class="text-right"><span class="block text-[10px] uppercase tracking-wide text-muted">Review input</span><strong class="text-lg font-bold text-ink">@(ReviewReviewerCount == 0 ? "Open" : $"{ReviewReviewerCount} reviewer{(ReviewReviewerCount == 1 ? "" : "s")}")</strong></div>
+            <button class="btn btn-primary" @onclick="UploadZipAsync" disabled="@State.Busy">Import package</button>
         </div>
     </header>
 
-    <section class="import-pipeline" aria-label="Import workflow">
+    <section class="flex flex-wrap gap-2 rounded-xl border border-line bg-surface p-3" aria-label="Import workflow">
         @PipelineNode(1, "Period", true, State.SelectedMonth.ToString("MMM yy"))
         @PipelineNode(2, "ERP evidence", State.SystemReadyCount >= 3, $"{State.SystemReadyCount}/3")
         @PipelineNode(3, "Normalize", State.Performance.Count > 0, State.Performance.Count == 0 ? "waiting" : $"{State.Performance.Count} people")
@@ -29,129 +29,126 @@
         @PipelineNode(5, "Atlas", State.Performance.Count > 0, State.Performance.Count > 0 ? "ready" : "waiting")
     </section>
 
-    <div class="page-grid imports-grid">
-        <section class="primary-pane">
-            <section class="review-intake" aria-labelledby="review-intake-title">
-                <header class="review-intake-head">
-                    <span class="review-intake-badge">REV</span>
-                    <div>
-                        <span class="atlas-section-label">Peer review intake · @State.SelectedMonth.ToString("MMMM yyyy")</span>
-                        <h2 id="review-intake-title">Add returned employee reviews</h2>
-                        <p>Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
+        <section class="flex flex-col gap-4">
+            <section class="card">
+                <header class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="flex items-start gap-3">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-[11px] font-bold text-primary">REV</span>
+                        <div>
+                            <span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Peer review intake · @State.SelectedMonth.ToString("MMMM yyyy")</span>
+                            <h2 class="text-sm font-bold text-ink">Add returned employee reviews</h2>
+                            <p class="mt-1 max-w-md text-xs text-ink-soft">Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
+                        </div>
                     </div>
-                    <div class="review-intake-actions">
-                        <button class="action" @onclick="AddReviewsAsync" disabled="@State.Busy">Add review files</button>
-                        <button class="secondary-action" @onclick="BeginReplaceReviews" disabled="@State.Busy">Replace month set</button>
+                    <div class="flex shrink-0 gap-2">
+                        <button class="btn btn-primary" @onclick="AddReviewsAsync" disabled="@State.Busy">Add review files</button>
+                        <button class="btn btn-secondary" @onclick="BeginReplaceReviews" disabled="@State.Busy">Replace month set</button>
                     </div>
                 </header>
 
-                <div class="review-intake-stats" aria-label="Loaded review evidence">
-                    <div><span>Reviewers loaded</span><strong>@ReviewReviewerCount</strong></div>
-                    <div><span>Feedback entries</span><strong>@State.PeerReviews.Count</strong></div>
-                    <div><span>People reviewed</span><strong>@ReviewSubjectCount</strong></div>
-                    <div><span>Last review upload</span><strong>@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</strong></div>
+                <div class="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-surface-inset p-3 sm:grid-cols-4" aria-label="Loaded review evidence">
+                    <div><span class="block text-[10px] text-muted">Reviewers loaded</span><strong class="text-base font-bold text-ink">@ReviewReviewerCount</strong></div>
+                    <div><span class="block text-[10px] text-muted">Feedback entries</span><strong class="text-base font-bold text-ink">@State.PeerReviews.Count</strong></div>
+                    <div><span class="block text-[10px] text-muted">People reviewed</span><strong class="text-base font-bold text-ink">@ReviewSubjectCount</strong></div>
+                    <div><span class="block text-[10px] text-muted">Last review upload</span><strong class="text-sm font-bold text-ink">@(LastReviewImport is { } last ? last.ImportedLocal.ToString("dd MMM · HH:mm") : "Not yet")</strong></div>
                 </div>
 
                 @if (_confirmReplaceReviews)
                 {
-                    <div class="review-replace-confirm" role="alert">
-                        <div><strong>Replace every review for @State.SelectedMonth.ToString("MMMM yyyy")?</strong><span>The files you select next become the complete month set. This cannot affect other months.</span></div>
-                        <button class="danger" @onclick="ReplaceReviewsAsync" disabled="@State.Busy">Choose replacement files</button>
-                        <button class="secondary-action" @onclick="CancelReplaceReviews" disabled="@State.Busy">Cancel</button>
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-critical-soft bg-critical-soft p-3" role="alert">
+                        <div><strong class="block text-sm font-semibold text-critical">Replace every review for @State.SelectedMonth.ToString("MMMM yyyy")?</strong><span class="text-xs text-ink-soft">The files you select next become the complete month set. This cannot affect other months.</span></div>
+                        <div class="flex gap-2">
+                            <button class="btn btn-danger" @onclick="ReplaceReviewsAsync" disabled="@State.Busy">Choose replacement files</button>
+                            <button class="btn btn-secondary" @onclick="CancelReplaceReviews" disabled="@State.Busy">Cancel</button>
+                        </div>
                     </div>
                 }
 
                 @if (_lastReviewImport is { } result)
                 {
-                    <div class="review-import-result">
-                        <div class="review-result-summary">
-                            <strong>@result.AcceptedWorkbooks workbook(s) accepted</strong>
-                            <span>@result.AddedReviews added · @result.UpdatedReviews updated · @result.RemovedReviews removed · @result.TotalReviews total</span>
+                    <div class="mt-3 rounded-lg border border-line p-3">
+                        <div class="mb-2">
+                            <strong class="block text-sm font-semibold text-ink">@result.AcceptedWorkbooks workbook(s) accepted</strong>
+                            <span class="text-xs text-muted">@result.AddedReviews added · @result.UpdatedReviews updated · @result.RemovedReviews removed · @result.TotalReviews total</span>
                         </div>
-                        <div class="review-file-results">
+                        <div class="flex flex-col gap-1.5">
                             @foreach (var file in result.Files)
                             {
-                                <span class="@(file.Accepted ? "accepted" : "rejected")" title="@(file.Error ?? file.ReviewerName)">
-                                    <b>@(file.Accepted ? "Accepted" : "Rejected")</b>
-                                    <i>@file.FileName</i>
-                                    <em>@(file.Accepted ? $"{file.ReviewerName} · {file.ReviewCount} entries" : file.Error)</em>
+                                <span class="@($"flex items-center gap-2 rounded-md p-1.5 text-xs {(file.Accepted ? "bg-good-soft" : "bg-critical-soft")}")" title="@(file.Error ?? file.ReviewerName)">
+                                    <b class="@(file.Accepted ? "text-good" : "text-critical")">@(file.Accepted ? "Accepted" : "Rejected")</b>
+                                    <i class="not-italic text-ink-soft">@file.FileName</i>
+                                    <em class="not-italic text-muted">@(file.Accepted ? $"{file.ReviewerName} · {file.ReviewCount} entries" : file.Error)</em>
                                 </span>
                             }
                         </div>
                     </div>
                 }
 
-                <footer><strong>Safe merge</strong><span>Re-uploading one employee’s workbook replaces only that reviewer’s entries for this month.</span></footer>
+                <footer class="mt-3 flex items-center gap-2 text-xs text-muted"><strong class="text-ink-soft">Safe merge</strong><span>Re-uploading one employee's workbook replaces only that reviewer's entries for this month.</span></footer>
             </section>
-            <div class="atlas-panel-head">
-                <div><h2>Source register</h2><small>Expected export → detected workbook → accepted reporting period</small></div>
-                <span class="atlas-caption">Replace an input to recalculate the month from the new evidence.</span>
+
+            <div class="panel-head">
+                <div><h2 class="text-sm font-bold text-ink">Source register</h2><small class="text-[11px] text-muted">Expected export → detected workbook → accepted reporting period</small></div>
+                <span class="ml-auto text-[11px] text-muted">Replace an input to recalculate the month from the new evidence.</span>
             </div>
 
-            <div class="import-table evidence-register">
-                <div class="table-head import-grid">
-                    <span class="cell">Source</span>
-                    <span class="cell">Expected export</span>
-                    <span class="cell">Loaded evidence</span>
-                    <span class="cell">Period</span>
-                    <span class="cell">Imported</span>
-                    <span class="cell">State</span>
-                    <span class="cell">Action</span>
+            <div class="overflow-x-auto rounded-xl border border-line bg-surface">
+                <div class="grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-on-dark">
+                    <span>Source</span><span>Expected export</span><span>Loaded evidence</span><span>Period</span><span>Imported</span><span>State</span><span>Action</span>
                 </div>
                 @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
                 {
                     var ready = slot.Status == SourceStatus.Uploaded;
-                    <div class="import-row import-grid @(ready ? "source-ready" : "source-open")">
-                        <div class="cell">
-                            <div class="input-name">
-                                <i>@Initial(slot.ReportType)</i>
-                                <span><strong>@Label(slot.ReportType)</strong><small>@Description(slot.ReportType)</small></span>
-                            </div>
+                    <div class="@($"grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] items-center gap-2 border-b border-line px-3 py-2.5 text-xs {(ready ? "" : "bg-surface-inset/40")}")">
+                        <div class="flex items-center gap-2">
+                            <i class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-inset text-[10px] font-bold not-italic text-ink-soft">@Initial(slot.ReportType)</i>
+                            <span class="flex flex-col"><strong class="font-medium text-ink">@Label(slot.ReportType)</strong><small class="text-[11px] text-muted">@Description(slot.ReportType)</small></span>
                         </div>
-                        <div class="cell">
-                            <span class="expected"><code title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span>
-                        </div>
-                        <div class="cell"><span class="filename" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
-                        <div class="cell"><span class="filename">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
-                        <div class="cell"><span class="filename">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
-                        <div class="cell"><span class="source-state @(ready ? "ready" : null)"><i></i>@(ready ? "Accepted" : "Open")</span></div>
-                        <div class="cell">
+                        <div><span class="flex flex-col"><code class="truncate text-[11px] text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small class="text-[10px] text-muted" title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span></div>
+                        <div><span class="truncate text-ink-soft" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
+                        <div><span class="text-ink-soft">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
+                        <div><span class="text-ink-soft">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
+                        <div><span class="@($"badge {(ready ? "bg-good-soft text-good" : "bg-surface-inset text-muted")}")">@(ready ? "Accepted" : "Open")</span></div>
+                        <div>
                             @if (slot.ReportType == ReportType.EngineerReviewWorkbook)
                             {
-                                <button class="source-action" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
+                                <button class="btn btn-secondary !px-2.5 !py-1 !text-[11px]" @onclick="AddReviewsAsync" disabled="@State.Busy">Add files</button>
                             }
                             else
                             {
-                                <button class="source-action" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
+                                <button class="btn btn-secondary !px-2.5 !py-1 !text-[11px]" @onclick="() => UploadAsync(slot.ReportType)" disabled="@State.Busy">@(ready ? "Replace" : "Load")</button>
                             }
                         </div>
                     </div>
                 }
             </div>
 
-            <details class="import-method-note">
-                <summary>Reporting-period rules</summary>
-                <div>
+            <details class="rounded-xl border border-line bg-surface p-3 text-xs">
+                <summary class="cursor-pointer font-semibold text-ink-soft">Reporting-period rules</summary>
+                <div class="mt-2 flex flex-col gap-2 text-ink-soft">
                     <p>Attendance and detailed-timesheet rows carry their own dates, so EOS files each row into its actual reporting month.</p>
                     <p>The monthly utilization summary contains one aggregate per employee for the requested ERP period. A file spanning multiple calendar months is rejected rather than estimated. Export one summary per calendar month.</p>
                 </div>
             </details>
         </section>
 
-        <aside class="activity-pane validation-rail">
-            <div class="atlas-panel-head"><div><h2>Pipeline status</h2><small>Evidence checks for this month</small></div></div>
-            @ValidationSignal("Local database", "SQLite available", true, "DB")
-            @ValidationSignal("Roster", State.Employees.Count == 0 ? "No employees configured" : $"{State.Employees.Count} employees", State.Employees.Count > 0, "ID")
-            @ValidationSignal("ERP evidence", $"{State.SystemReadyCount} of 3 required exports", State.SystemReadyCount >= 3, "ERP")
-            @ValidationSignal("Review evidence", State.ReviewsUploaded ? "Review workbooks loaded" : "Not yet collected", State.ReviewsUploaded, "REV", true)
-            @ValidationSignal("Calculated layer", State.Performance.Count == 0 ? "Waiting for valid source rows" : $"{State.Performance.Count} employee rows ready", State.Performance.Count > 0, "FX")
+        <aside class="card h-fit">
+            <div class="panel-head"><div><h2 class="text-sm font-bold text-ink">Pipeline status</h2><small class="text-[11px] text-muted">Evidence checks for this month</small></div></div>
+            <div class="flex flex-col gap-2">
+                @ValidationSignal("Local database", "SQLite available", true, "DB")
+                @ValidationSignal("Roster", State.Employees.Count == 0 ? "No employees configured" : $"{State.Employees.Count} employees", State.Employees.Count > 0, "ID")
+                @ValidationSignal("ERP evidence", $"{State.SystemReadyCount} of 3 required exports", State.SystemReadyCount >= 3, "ERP")
+                @ValidationSignal("Review evidence", State.ReviewsUploaded ? "Review workbooks loaded" : "Not yet collected", State.ReviewsUploaded, "REV", true)
+                @ValidationSignal("Calculated layer", State.Performance.Count == 0 ? "Waiting for valid source rows" : $"{State.Performance.Count} employee rows ready", State.Performance.Count > 0, "FX")
+            </div>
 
             @if (State.Performance.Count > 0)
             {
-                <div class="validation-next">
-                    <span class="atlas-section-label">Next</span>
-                    <strong>Performance Atlas is ready</strong>
-                    <button class="action secondary" @onclick='() => Navigation.NavigateTo("/overview")'>Open team performance →</button>
+                <div class="mt-4 rounded-lg bg-surface-inset p-3">
+                    <span class="text-[10px] font-semibold uppercase tracking-wide text-muted">Next</span>
+                    <strong class="mt-1 block text-sm font-semibold text-ink">Performance Atlas is ready</strong>
+                    <button class="btn btn-secondary mt-2 w-full" @onclick='() => Navigation.NavigateTo("/overview")'>Open team performance →</button>
                 </div>
             }
         </aside>
@@ -178,13 +175,18 @@
     private async Task ReloadHistoryAsync() => _history = await Database.GetImportHistoryAsync(State.SelectedMonth.Year, State.SelectedMonth.Month);
     private DateTime? ImportedAt(ReportType type) => _history.Where(x => x.ReportType == type).Select(x => (DateTime?)x.ImportedLocal).FirstOrDefault();
 
-    private RenderFragment PipelineNode(int number, string label, bool ready, string detail) => @<div class="pipeline-node @(ready ? "ready" : null)">
-        <i>@(ready ? "✓" : number.ToString())</i><span><strong>@label</strong><small>@detail</small></span>
-    </div>;
+    private RenderFragment PipelineNode(int number, string label, bool ready, string detail) =>
+        @<div class="@($"flex items-center gap-2 rounded-lg px-3 py-2 {(ready ? "bg-good-soft" : "bg-surface-inset")}")">
+            <i class="@($"flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold not-italic {(ready ? "bg-good text-white" : "bg-line text-ink-soft")}")">@(ready ? "✓" : number.ToString())</i>
+            <span class="flex flex-col leading-tight"><strong class="text-xs font-semibold text-ink">@label</strong><small class="text-[10px] text-muted">@detail</small></span>
+        </div>;
 
-    private RenderFragment ValidationSignal(string title, string detail, bool good, string badge, bool optional = false) => @<div class="validation-signal @(good ? "good" : optional ? "optional" : "warn")">
-        <i>@badge</i><span><strong>@title</strong><small>@detail</small></span><b>@(good ? "●" : optional ? "○" : "!")</b>
-    </div>;
+    private RenderFragment ValidationSignal(string title, string detail, bool good, string badge, bool optional = false) =>
+        @<div class="flex items-center gap-2 rounded-lg bg-surface-inset p-2">
+            <i class="@($"flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[9px] font-bold not-italic {(good ? "bg-good-soft text-good" : optional ? "bg-warning-soft text-warning" : "bg-critical-soft text-critical")}")">@badge</i>
+            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-xs font-semibold text-ink">@title</strong><small class="truncate text-[10px] text-muted">@detail</small></span>
+            <b class="@(good ? "text-good" : optional ? "text-warning" : "text-critical")">@(good ? "●" : optional ? "○" : "!")</b>
+        </div>;
 
     private async Task UploadAsync(ReportType type)
     {

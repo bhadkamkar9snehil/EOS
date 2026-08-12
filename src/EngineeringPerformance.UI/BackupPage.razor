@@ -5,67 +5,53 @@
 @inject AppState State
 @inject IJSRuntime JS
 
-<section class="single-pane wide backup-page">
-    <div class="section-title">
-        <div>
-            <h2>Backup &amp; restore</h2>
-        </div>
-    </div>
+<section class="flex flex-col gap-6">
+    <h2 class="text-xl font-bold text-ink">Backup &amp; restore</h2>
 
-    <div class="operational-scoring-layout">
-        <div class="card operational-weight-card">
-            <div class="card-head">
-                <h2>Create a backup</h2>
-                <small>Database + scoring settings</small>
-            </div>
-            <p>Saved to <code>@Backups.DefaultBackupDirectory</code></p>
-            <div class="scoring-save-row">
-                <button class="action secondary" @onclick="ExportToDefaultAsync" disabled="@State.Busy">Backup now</button>
-                <button class="action secondary" @onclick="ExportToChosenFolderAsync" disabled="@State.Busy">Backup to a chosen folder…</button>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="card">
+            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Create a backup</h2><small class="text-[11px] text-muted">Database + scoring settings</small></div>
+            <p class="text-sm text-ink-soft">Saved to <code class="text-xs">@Backups.DefaultBackupDirectory</code></p>
+            <div class="mt-4 flex gap-2">
+                <button class="btn btn-secondary" @onclick="ExportToDefaultAsync" disabled="@State.Busy">Backup now</button>
+                <button class="btn btn-secondary" @onclick="ExportToChosenFolderAsync" disabled="@State.Busy">Backup to a chosen folder…</button>
             </div>
         </div>
 
-        <div class="card operational-preview-card">
-            <div class="card-head">
-                <h2>Restore from backup</h2>
-                <small>Replaces the current database</small>
+        <div class="card">
+            <div class="panel-head"><h2 class="text-sm font-bold text-ink">Restore from backup</h2><small class="text-[11px] text-muted">Replaces the current database</small></div>
+            <div class="rounded-lg border border-critical-soft bg-critical-soft p-3">
+                <strong class="block text-sm font-semibold text-critical">This is destructive</strong>
+                <p class="mt-1 text-xs text-ink-soft">Replaces all current data. A safety backup is taken first. Restart EOS afterward.</p>
             </div>
-            <div class="callout scoring-callout">
-                <strong>This is destructive</strong>
-                <p>Replaces all current data. A safety backup is taken first. Restart EOS afterward.</p>
-            </div>
-            <div class="scoring-save-row">
-                <button class="action" @onclick="RestoreAsync" disabled="@State.Busy">Choose backup file to restore…</button>
+            <div class="mt-4 flex gap-2">
+                <button class="btn btn-primary" @onclick="RestoreAsync" disabled="@State.Busy">Choose backup file to restore…</button>
             </div>
         </div>
     </div>
 
-    <div class="section-title scoring-secondary-title">
-        <div>
-            <h2>Recent backups</h2>
-            <p>Most recent first, from the default backup folder.</p>
-        </div>
+    <div>
+        <h2 class="text-lg font-bold text-ink">Recent backups</h2>
+        <p class="mt-1 text-sm text-ink-soft">Most recent first, from the default backup folder.</p>
     </div>
 
     <div class="card">
         @if (_backups.Count == 0)
         {
-            <p>No backups yet. Use “Backup now” above to create the first one.</p>
+            <p class="text-sm text-muted">No backups yet. Use "Backup now" above to create the first one.</p>
         }
         else
         {
-            <div class="data-table">
-                <div class="table-head">
-                    <span class="cell">File</span>
-                    <span class="cell">Created</span>
-                    <span class="cell">Size</span>
+            <div class="flex flex-col divide-y divide-line">
+                <div class="grid grid-cols-[1fr_10rem_6rem] gap-2 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    <span>File</span><span>Created</span><span>Size</span>
                 </div>
                 @foreach (var backup in _backups)
                 {
-                    <div class="table-row">
-                        <span class="cell">@backup.FileName</span>
-                        <span class="cell">@backup.CreatedUtc.ToLocalTime().ToString("g")</span>
-                        <span class="cell">@FormatSize(backup.SizeBytes)</span>
+                    <div class="grid grid-cols-[1fr_10rem_6rem] items-center gap-2 py-2 text-sm">
+                        <span class="truncate text-ink">@backup.FileName</span>
+                        <span class="text-ink-soft">@backup.CreatedUtc.ToLocalTime().ToString("g")</span>
+                        <span class="text-ink-soft">@FormatSize(backup.SizeBytes)</span>
                     </div>
                 }
             </div>

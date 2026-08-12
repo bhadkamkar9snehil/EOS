@@ -7,54 +7,56 @@
 
 <PageTitle>EOS — Engineering Performance</PageTitle>
 
-<div class="app-shell">
-    <aside class="nav-rail">
-        <div class="brand atlas-brand" aria-label="EOS Engineering Performance Analyzer">
-            <strong><i aria-hidden="true">✦</i><span>EOS</span></strong>
-            <small>Engineering performance analyzer</small>
+<div class="flex h-screen min-w-[900px] bg-canvas font-sans text-ink">
+    <aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
+        <div class="flex flex-col gap-1 px-5 pb-5 pt-6" aria-label="EOS Engineering Performance Analyzer">
+            <strong class="flex items-center gap-2 text-lg font-bold text-primary">
+                <i aria-hidden="true" class="not-italic">✦</i><span>EOS</span>
+            </strong>
+            <small class="text-[10px] font-semibold uppercase tracking-wider text-muted">Engineering performance analyzer</small>
         </div>
-        <nav>
-            <span class="nav-group-label">Analyze</span>
+        <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
+            <span class="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Analyze</span>
             @NavButton("overview", "Overview", Icon.Overview)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
 
-            <span class="nav-group-label">Manage</span>
+            <span class="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Manage</span>
             @NavButton("imports", "Data Imports", Icon.Imports)
             @NavButton("data", "Imported Data", Icon.DataBrowser)
             @NavButton("employees", "Employees & Teams", Icon.Employees)
             @NavButton("templates", "Review Templates", Icon.Templates)
 
-            <span class="nav-group-label">Configure</span>
+            <span class="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
             @NavButton("diagnostics", "Diagnostics", Icon.Settings)
             @NavButton("backup", "Backup & Restore", Icon.Settings)
         </nav>
-        <div class="nav-footer">
-            <button class="@(CurrentRoute == "settings" ? "selected" : null)" @onclick='() => Navigation.NavigateTo("/settings")'>
-                <b>@((MarkupString)Icon.Settings)</b><span>Settings</span>
+        <div class="border-t border-line px-3 py-3">
+            <button class="@NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
+                <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)Icon.Settings)</b><span>Settings</span>
             </button>
-            <small>Local analysis · SQLite</small>
+            <small class="mt-2 block px-2 text-[10px] text-muted">Local analysis · SQLite</small>
         </div>
     </aside>
 
-    <section class="workspace">
-        <header class="topbar">
-            <div class="page-heading"><h1>@PageTitleText</h1></div>
+    <section class="flex min-w-0 flex-1 flex-col">
+        <header class="flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-4">
+            <h1 class="text-xl font-bold text-ink">@PageTitleText</h1>
 
-            <div class="topbar-actions">
-                <div class="month-control">
-                    <span>Reporting month</span>
-                    <button title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
-                    <strong>@State.SelectedMonth.ToString("MMMM yyyy")</strong>
-                    <button title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 rounded-full border border-line bg-surface-inset px-3 py-1.5 text-xs">
+                    <span class="text-muted">Reporting month</span>
+                    <button class="rounded px-1 text-ink-soft hover:bg-line-soft disabled:opacity-30" title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
+                    <strong class="font-semibold text-ink">@State.SelectedMonth.ToString("MMMM yyyy")</strong>
+                    <button class="rounded px-1 text-ink-soft hover:bg-line-soft disabled:opacity-30" title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
                 </div>
 
-                <div class="global-search">
+                <div class="relative">
                     <button type="button"
-                            class="icon-button @(_searchOpen ? "selected" : null)"
+                            class="@($"flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-surface-inset {(_searchOpen ? "bg-primary-soft text-primary" : "")}")"
                             title="Search engineers"
                             aria-label="Search engineers"
                             aria-expanded="@_searchOpen"
@@ -63,31 +65,32 @@
                     </button>
                     @if (_searchOpen)
                     {
-                        <div class="global-search-popover">
-                            <div class="global-search-field">
-                                <span>@((MarkupString)Icon.Search)</span>
+                        <div class="absolute right-0 top-11 z-20 w-80 rounded-xl border border-line bg-surface p-2 shadow-lg">
+                            <div class="flex items-center gap-2 rounded-lg border border-line bg-surface-inset px-2.5 py-1.5">
+                                <span class="text-muted">@((MarkupString)Icon.Search)</span>
                                 <input autofocus
+                                       class="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-muted"
                                        value="@_searchQuery"
                                        @oninput="OnSearchInput"
                                        @onkeydown="OnSearchKeyDown"
                                        placeholder="Search engineer or employee code" />
-                                <button type="button" title="Close search" @onclick="CloseSearch">×</button>
+                                <button type="button" class="text-muted hover:text-ink" title="Close search" @onclick="CloseSearch">×</button>
                             </div>
-                            <div class="global-search-results">
+                            <div class="mt-1 max-h-80 overflow-y-auto">
                                 @if (SearchResults.Count == 0)
                                 {
-                                    <p>@(string.IsNullOrWhiteSpace(_searchQuery) ? "Type a name or employee code." : "No matching engineer.")</p>
+                                    <p class="px-2.5 py-3 text-xs text-muted">@(string.IsNullOrWhiteSpace(_searchQuery) ? "Type a name or employee code." : "No matching engineer.")</p>
                                 }
                                 else
                                 {
                                     @foreach (var result in SearchResults)
                                     {
-                                        <button type="button" @onclick="() => OpenEmployee(result.Name)">
-                                            <span class="search-avatar">@Analytics.Initials(result.Name)</span>
-                                            <span class="search-person"><strong>@result.Name</strong><small>@result.EmployeeCode</small></span>
+                                        <button type="button" class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-surface-inset" @onclick="() => OpenEmployee(result.Name)">
+                                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-semibold text-ink-soft">@Analytics.Initials(result.Name)</span>
+                                            <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm font-medium text-ink">@result.Name</strong><small class="text-xs text-muted">@result.EmployeeCode</small></span>
                                             @if (result.Score is not null)
                                             {
-                                                <b class="@Analytics.ScoreBand(result.Score.Value)">@Analytics.Format(result.Score.Value)</b>
+                                                <b class="@($"text-sm font-semibold {Analytics.BandTextClass(Analytics.ScoreBand(result.Score.Value))}")">@Analytics.Format(result.Score.Value)</b>
                                             }
                                         </button>
                                     }
@@ -97,23 +100,26 @@
                     }
                 </div>
 
-                <div class="readiness" title="System and review inputs available for the selected month">
-                    <span>Readiness</span><strong>@State.ReadyCount / 4 inputs</strong>
+                <div class="rounded-full border border-line bg-surface-inset px-3 py-1.5 text-xs" title="System and review inputs available for the selected month">
+                    <span class="text-muted">Readiness</span> <strong class="font-semibold text-ink">@State.ReadyCount / 4 inputs</strong>
                 </div>
             </div>
         </header>
 
-        <div class="toast-slot">
-            @if (!string.IsNullOrEmpty(State.Message))
-            {
-                <div class="toast @(State.IsError ? "error" : "success")">@State.Message<button @onclick="State.ClearMessage">×</button></div>
-            }
-        </div>
+        @if (!string.IsNullOrEmpty(State.Message))
+        {
+            <div class="px-6 pt-3">
+                <div class="@($"flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm {(State.IsError ? "border-critical-soft bg-critical-soft text-critical" : "border-good-soft bg-good-soft text-good")}")">
+                    <span>@State.Message</span>
+                    <button class="ml-3 text-lg leading-none opacity-70 hover:opacity-100" @onclick="State.ClearMessage">×</button>
+                </div>
+            </div>
+        }
 
-        <main class="@($"content route-{CurrentRoute}")">
+        <main class="@($"route-{CurrentRoute} min-w-0 flex-1 overflow-y-auto p-6")">
             @Body
         </main>
-        <footer>
+        <footer class="flex justify-between border-t border-line bg-surface px-6 py-2 text-[10px] text-muted">
             <span>DATA FRESHNESS · refreshed @State.LastRefresh.ToString("h:mm tt")</span>
             <span>Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
             <span>v2.6.1</span>
@@ -281,7 +287,13 @@
     }
 
     private RenderFragment NavButton(string route, string label, string icon) =>
-        @<button class="@(CurrentRoute == route ? "selected" : null)" @onclick="() => GoTo(route)"><b>@((MarkupString)icon)</b><span>@label</span></button>;
+        @<button class="@NavButtonClass(route)" @onclick="() => GoTo(route)">
+            <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)icon)</b><span>@label</span>
+        </button>;
+
+    private string NavButtonClass(string route) => CurrentRoute == route
+        ? "flex items-center gap-3 rounded-lg bg-primary-soft px-3 py-2 text-sm font-semibold text-primary"
+        : "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink-soft hover:bg-surface-inset";
 
     private void GoTo(string route)
     {
@@ -293,7 +305,7 @@
 
     private static class Icon
     {
-        private const string Wrap = "<svg viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">{0}</svg>";
+        private const string Wrap = "<svg viewBox=\"0 0 20 20\" width=\"18\" height=\"18\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">{0}</svg>";
         private static string Svg(string paths) => string.Format(Wrap, paths);
         private const string Stroke = "stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"";
 

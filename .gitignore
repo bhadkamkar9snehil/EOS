@@ -9,6 +9,8 @@ obj/
 .vs/
 build/Releases/
 build/publish/
+.tailwind/
+src/EngineeringPerformance.UI/wwwroot/tailwind.css
 *.user
 TestResults/
 artifacts/
@@ -21,3 +23,4 @@ work/
 *.msix
 *.pfx
 .claude/
+.preview-scratch/

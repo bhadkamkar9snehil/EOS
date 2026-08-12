@@ -1,133 +1,33 @@
 @page "/settings"
-@inject IJSRuntime JS
 @inject AppState State
 @inject NavigationManager Navigation
 
-<section class="single-pane wide settings-page">
-    <div class="section-title settings-title">
-        <div>
-            <h2>Appearance</h2>
-            <p>EOS uses one authoritative Performance Atlas interface with a fixed semantic colour system.</p>
-        </div>
-        <span class="current-theme-label">Interface <strong>Performance Atlas</strong></span>
+<section class="flex flex-col gap-6">
+    <div>
+        <h2 class="text-xl font-bold text-ink">Settings</h2>
+        <p class="mt-1 text-sm text-ink-soft">EOS uses one fixed Performance Atlas interface — there is no theme picker.</p>
     </div>
 
-    <div class="appearance-controls" aria-label="Appearance behaviour">
-        <section class="appearance-control">
-            <span>Colour system</span>
-            <div class="appearance-fixed-value"><b>EOS Instrument</b><small>Graphite · first-light orange · petrol blue · intervention red</small></div>
-            <small>The fixed palette keeps operational meaning consistent across every route.</small>
-        </section>
-
-        <section class="appearance-control">
-            <span>Chart vibrancy</span>
-            <div class="segmented">
-                @foreach (var value in new[] { "restrained", "balanced", "vivid" })
-                {
-                    <button type="button" class="@(_intensity == value ? "selected" : null)" @onclick="() => ApplyIntensityAsync(value)">@Title(value)</button>
-                }
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section class="card">
+            <div class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">◫</span>
+                <div><h3 class="text-sm font-bold text-ink">Local application</h3><p class="text-xs text-ink-soft">All performance data and imported files remain on this computer.</p></div>
             </div>
-            <small>Only categorical chart chroma and selection emphasis change.</small>
-        </section>
-
-        <section class="appearance-control">
-            <span>Interface density</span>
-            <div class="segmented">
-                @foreach (var value in new[] { "comfortable", "compact" })
-                {
-                    <button type="button" class="@(_density == value ? "selected" : null)" @onclick="() => ApplyDensityAsync(value)">@Title(value)</button>
-                }
-            </div>
-            <small>Comfortable is the normal production setting.</small>
-        </section>
-
-        <section class="appearance-control">
-            <span>Motion</span>
-            <div class="segmented">
-                @foreach (var value in new[] { "system", "reduced", "full" })
-                {
-                    <button type="button" class="@(_motion == value ? "selected" : null)" @onclick="() => ApplyMotionAsync(value)">@Title(value)</button>
-                }
-            </div>
-            <small>System honours Windows reduced-motion preference.</small>
-        </section>
-    </div>
-
-    <div class="settings-section-grid">
-        <section class="settings-card">
-            <div class="settings-card-head">
-                <span class="settings-card-icon">◫</span>
-                <div><h3>Local application</h3><p>All performance data and imported files remain on this computer.</p></div>
-            </div>
-            <dl class="settings-list compact-list">
-                <div><dt>Database</dt><dd>%LOCALAPPDATA%\EngineeringPerformance</dd></div>
-                <div><dt>Imported files</dt><dd>%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div>
-                <div><dt>Storage mode</dt><dd>SQLite with WAL</dd></div>
-                <div><dt>Calculation</dt><dd>Immediate, in process</dd></div>
+            <dl class="mt-3 flex flex-col divide-y divide-line">
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Database</dt><dd class="text-right text-ink">%LOCALAPPDATA%\EngineeringPerformance</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Imported files</dt><dd class="text-right text-ink">%LOCALAPPDATA%\EngineeringPerformance\Imports</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Storage mode</dt><dd class="text-right text-ink">SQLite with WAL</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="text-ink-soft">Calculation</dt><dd class="text-right text-ink">Immediate, in process</dd></div>
             </dl>
         </section>
 
-        <section class="settings-card">
-            <div class="settings-card-head">
-                <span class="settings-card-icon">◎</span>
-                <div><h3>Interface contract</h3><p>Performance Atlas uses one data hierarchy, semantic palette, chart vocabulary, accessibility standard and interaction model.</p></div>
+        <section class="card">
+            <div class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-base text-ink-soft">▤</span>
+                <div><h3 class="text-sm font-bold text-ink">Diagnostics</h3><p class="text-xs text-ink-soft">App version, database location, and a log tail for troubleshooting.</p></div>
             </div>
-            <div class="settings-facts">
-                <div><span>Product palette</span><strong>EOS Instrument · fixed</strong></div>
-                <div><span>Interface</span><strong>Performance Atlas · authoritative</strong></div>
-                <div><span>Semantic status palette</span><strong>Fixed throughout EOS</strong></div>
-                <div><span>Generated categorical palette</span><strong>OKLCH · 8 series</strong></div>
-                <div><span>Focus contrast target</span><strong>3:1 minimum</strong></div>
-                <div><span>Operational text floor</span><strong>10.5 px</strong></div>
-                <div><span>Data or scoring impact</span><strong>None</strong></div>
-            </div>
-        </section>
-
-        <section class="settings-card">
-            <div class="settings-card-head">
-                <span class="settings-card-icon">▤</span>
-                <div><h3>Diagnostics</h3><p>App version, database location, and a log tail for troubleshooting.</p></div>
-            </div>
-            <p><button type="button" class="skin-choice" style="display:inline-block;padding:.5rem 1rem;" @onclick='() => Navigation.NavigateTo("/diagnostics")'>Open Diagnostics</button></p>
+            <button type="button" class="btn btn-secondary mt-3" @onclick='() => Navigation.NavigateTo("/diagnostics")'>Open Diagnostics</button>
         </section>
     </div>
 </section>
-
-@code {
-    private string _intensity = "balanced";
-    private string _density = "comfortable";
-    private string _motion = "system";
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-        _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.get");
-        _density = await JS.InvokeAsync<string>("epaTheme.density.get");
-        _motion = await JS.InvokeAsync<string>("epaTheme.motion.get");
-        StateHasChanged();
-    }
-
-    private async Task ApplyIntensityAsync(string value)
-    {
-        _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.apply", value);
-        State.ShowMessage($"Chart vibrancy set to {Title(value)}.");
-    }
-
-    private async Task ApplyDensityAsync(string value)
-    {
-        _density = await JS.InvokeAsync<string>("epaTheme.density.apply", value);
-        State.ShowMessage($"Interface density set to {Title(value)}.");
-    }
-
-    private async Task ApplyMotionAsync(string value)
-    {
-        _motion = await JS.InvokeAsync<string>("epaTheme.motion.apply", value);
-        State.ShowMessage($"Motion preference set to {Title(value)}.");
-    }
-
-    private static string Title(string value) => value switch
-    {
-        "full" => "Full",
-        _ => char.ToUpperInvariant(value[0]) + value[1..]
-    };
-}

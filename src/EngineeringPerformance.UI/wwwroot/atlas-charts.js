@@ -1,30 +1,36 @@
-// EPA Performance Atlas renderers. Data comes from Razor; colour/contrast comes
-// from the resolved theme contract. Keep the option structures deliberately
+// EPA Performance Atlas renderers. Data comes from Razor; every colour is read live from the
+// --color-* custom properties Tailwind's @theme block in wwwroot/tailwind-input.css generates —
+// there is no separate palette to keep in sync. Keep the option structures deliberately
 // conservative: these charts run inside WPF WebView2 as well as normal browsers.
 (() => {
     const instances = new Map(), renderers = new Map(), peerConnectorObservers = new Map();
     let drilldownRef = null;
 
     const css = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-    const fallbackPalette = () => ({
-        series: Array.from({ length: 8 }, (_, i) => css(`--chart-${i + 1}`, '#0f5f7a')),
-        operational: css('--chart-operational', '#0f5f7a'),
-        attendance: css('--chart-attendance', '#16794a'),
-        timesheet: css('--chart-timesheet', '#0f6e9e'),
-        approval: css('--chart-approval', '#7c3aed'),
-        good: css('--good', '#16794a'), warning: css('--warn', '#946200'), serious: css('--serious', '#b45309'), critical: css('--critical', '#b42318'), missing: css('--chart-missing', '#667085'),
-        grid: css('--chart-grid', '#d8dde2'), axis: css('--chart-axis', '#aeb7c1'), ink: css('--chart-ink', '#0f172a'), inkSoft: css('--ink-soft', '#475569'), muted: css('--chart-muted', '#64748b'),
-        surface: css('--chart-surface', '#fff'), tooltip: css('--chart-tooltip', '#0f172a'), tooltipText: css('--on-chart-tooltip', '#fff'),
+    const palette = () => ({
+        series: Array.from({ length: 8 }, (_, i) => css(`--color-chart-${i + 1}`, '#0f5f7a')),
+        operational: css('--color-petrol', '#0f5f7a'),
+        attendance: css('--color-chart-7', '#4f8a5b'),
+        timesheet: css('--color-chart-2', '#2f5fa3'),
+        approval: css('--color-chart-6', '#7c5cbf'),
+        good: css('--color-good', '#2f9e58'), warning: css('--color-warning', '#b08900'), serious: css('--color-serious', '#d97a1f'), critical: css('--color-critical', '#d92d20'), missing: css('--color-missing', '#b7b2a3'),
+        grid: css('--color-line', '#e4dfd0'), axis: css('--color-line', '#e4dfd0'), ink: css('--color-ink', '#1c1c1a'), inkSoft: css('--color-ink-soft', '#55534c'), muted: css('--color-muted', '#918d80'),
+        surface: css('--color-surface', '#fff'), tooltip: css('--color-surface-dark', '#1b2430'), tooltipText: css('--color-on-dark', '#f4f1ea'),
         reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
     });
-    const palette = () => {
-        const fallback = fallbackPalette();
-        const resolved = window.epaTheme?.chartPalette?.() || {};
-        return { ...fallback, ...resolved, series: Array.isArray(resolved.series) && resolved.series.length ? resolved.series : fallback.series };
+    const orange = () => css('--color-primary', '#f26a12');
+    const chartStroke = role => ({ strong: 3, focus: 2, context: 1.5, hairline: 1 }[role] || 1);
+    const hexToRgba = (hex, alpha) => {
+        const clean = hex.replace('#', '').trim();
+        const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+        const int = parseInt(full, 16);
+        if (Number.isNaN(int)) return `rgba(15,95,122,${alpha})`;
+        return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
     };
-    const orange = () => css('--atlas-orange', '#f26a12');
-    const chartStroke = role => parseFloat(css(`--chart-stroke-${role}`, role === 'strong' ? '3px' : role === 'focus' ? '2px' : role === 'context' ? '1.5px' : '1px')) || 1;
-    const zoneFill = role => css(`--chart-zone-${role}`, 'rgba(15,95,122,.035)');
+    const zoneFill = role => {
+        const token = { underused: '--color-info', overloaded: '--color-critical', inconsistent: '--color-warning', balanced: '--color-good' }[role];
+        return token ? hexToRgba(css(token, '#0f5f7a'), .05) : 'transparent';
+    };
     const compactViewport = () => window.innerWidth <= 1600 || window.innerHeight <= 900;
     const largeViewport = () => window.innerWidth >= 1900 && window.innerHeight >= 1000;
 
@@ -735,9 +741,6 @@
             return null;
         }
     };
-
-    window.addEventListener('epa-theme-changed', refresh);
-    window.addEventListener('epa-motion-changed', refresh);
 
     window.epaAtlas = {
         registerDrilldown,

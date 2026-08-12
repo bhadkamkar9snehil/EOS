@@ -5,52 +5,43 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<section class="single-pane wide team-comparison-page">
-    <div class="section-title">
-        <div>
-            <h2>Team comparison</h2>
-            <p>Scorecards for @State.SelectedMonth.ToString("MMMM yyyy").</p>
-        </div>
+<section class="flex flex-col gap-6">
+    <div>
+        <h2 class="text-xl font-bold text-ink">Team comparison</h2>
+        <p class="mt-1 text-sm text-ink-soft">Scorecards for @State.SelectedMonth.ToString("MMMM yyyy").</p>
     </div>
 
     @if (Scorecards.Count == 0)
     {
-        <div class="empty-state">
-            <h2>No teams with scored people yet</h2>
-            <p>Assign employees to teams on the Employees &amp; Teams page, then come back here once performance data is imported.</p>
-            <button class="action" @onclick='() => Navigation.NavigateTo("/employees")'>Go to Employees &amp; Teams</button>
+        <div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-8">
+            <h2 class="text-lg font-bold text-ink">No teams with scored people yet</h2>
+            <p class="text-sm text-ink-soft">Assign employees to teams on the Employees &amp; Teams page, then come back here once performance data is imported.</p>
+            <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/employees")'>Go to Employees &amp; Teams</button>
         </div>
     }
     else
     {
-        <div class="data-table team-comparison-table">
-            <div class="table-head">
-                <span class="cell">Team</span>
-                <span class="cell">People</span>
-                <span class="cell">Avg. operational score</span>
-                <span class="cell">Avg. timesheet completion</span>
-                <span class="cell">Avg. approval completion</span>
-                <span class="cell">Avg. attendance discipline</span>
-                <span class="cell">Timesheet fill rate</span>
-                <span class="cell">Open alerts</span>
+        <div class="overflow-x-auto rounded-xl border border-line bg-surface">
+            <div class="grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] gap-2 border-b border-line bg-surface-dark px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-on-dark">
+                <span>Team</span><span>People</span><span>Avg. operational score</span><span>Avg. timesheet completion</span><span>Avg. approval completion</span><span>Avg. attendance discipline</span><span>Timesheet fill rate</span><span>Open alerts</span>
             </div>
             @foreach (var card in Scorecards)
             {
-                <div class="table-row">
-                    <span class="cell"><strong>@card.TeamName</strong></span>
-                    <span class="cell">@card.MemberCount</span>
-                    <span class="cell"><b class="@Analytics.ScoreBand(card.AverageScore)">@Analytics.Format(card.AverageScore)</b></span>
-                    <span class="cell">@Analytics.Format(card.AverageTimesheet, "0.#")%</span>
-                    <span class="cell">@Analytics.Format(card.AverageApproval, "0.#")%</span>
-                    <span class="cell">@Analytics.Format(card.AverageAttendance, "0.#")%</span>
-                    <span class="cell">@Analytics.Format(card.TimesheetFillRate, "0.#")%</span>
-                    <span class="cell">@card.OpenAlerts</span>
+                <div class="grid grid-cols-[1.2fr_5rem_8rem_8rem_8rem_8rem_8rem_6rem] items-center gap-2 border-b border-line px-3 py-2.5 text-sm">
+                    <span><strong class="font-medium text-ink">@card.TeamName</strong></span>
+                    <span class="text-ink-soft">@card.MemberCount</span>
+                    <span><b class="@Analytics.BandTextClass(Analytics.ScoreBand(card.AverageScore))">@Analytics.Format(card.AverageScore)</b></span>
+                    <span class="text-ink-soft">@Analytics.Format(card.AverageTimesheet, "0.#")%</span>
+                    <span class="text-ink-soft">@Analytics.Format(card.AverageApproval, "0.#")%</span>
+                    <span class="text-ink-soft">@Analytics.Format(card.AverageAttendance, "0.#")%</span>
+                    <span class="text-ink-soft">@Analytics.Format(card.TimesheetFillRate, "0.#")%</span>
+                    <span class="text-ink-soft">@card.OpenAlerts</span>
                 </div>
             }
         </div>
         @if (UnassignedCount > 0)
         {
-            <p class="team-comparison-note"><small>@UnassignedCount employee(s) have no team assigned and are not included in the scorecards above.</small></p>
+            <p class="text-[11px] text-muted">@UnassignedCount employee(s) have no team assigned and are not included in the scorecards above.</p>
         }
     }
 </section>

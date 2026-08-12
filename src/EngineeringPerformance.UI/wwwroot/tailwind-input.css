@@ -1,0 +1,176 @@
+@import "tailwindcss";
+@source "../**/*.razor";
+@source "../**/*.cs";
+
+/*
+  Single source of truth for every color/spacing token EOS uses. Tailwind's
+  @theme block compiles each entry to a real CSS custom property (--color-canvas,
+  etc.) AND generates matching utilities (bg-canvas, text-ink, border-line, ...)
+  from the same declaration — nothing is duplicated as a literal hex value
+  anywhere else. Chart JS (atlas-charts.js) reads these same custom properties
+  via getComputedStyle(document.documentElement) instead of keeping its own
+  palette, so chart colors and UI colors are provably identical.
+
+  Palette derived from the shipped Atlas screenshots: warm cream canvas, white
+  cards, near-black ink, orange primary accent, a petrol/vermilion secondary
+  pair, and a semantic status scale (good/warning/critical) plus an 8-series
+  categorical chart palette.
+*/
+/*
+  "static" (not the bare @theme block) is required here: Tailwind v4 otherwise tree-shakes any
+  theme variable that no utility class in the scanned content currently references. Chart JS reads
+  these --color-* custom properties directly via getComputedStyle, independent of whether any
+  .razor file happens to use the matching utility class yet, so every token must always be emitted.
+*/
+@theme static {
+  /* Surfaces */
+  --color-canvas: #f4f1ea;
+  --color-surface: #ffffff;
+  --color-surface-inset: #f7f5ef;
+  --color-surface-dark: #1b2430;
+
+  /* Text */
+  --color-ink: #1c1c1a;
+  --color-ink-soft: #55534c;
+  --color-muted: #918d80;
+  --color-on-dark: #f4f1ea;
+  --color-on-dark-soft: #b9bdc6;
+
+  /* Structure */
+  --color-line: #e4dfd0;
+  --color-line-soft: #ece8db;
+
+  /* Brand / accent */
+  --color-primary: #f26a12;
+  --color-primary-soft: #fce3cf;
+  --color-vermilion: #d92d20;
+  --color-petrol: #0f5f7a;
+
+  /*
+    Score-band scale: these 4 names (good/warning/serious/critical) match
+    Analytics.ScoreBand()'s exact 4 return values 1:1 — see Analytics.BandTextClass/
+    BandBgClass/BandSoftClass, which are the only place these tokens' class names
+    are constructed, so Tailwind's static scanner always sees the literal strings.
+  */
+  --color-good: #2f9e58;
+  --color-good-soft: #ddf0e3;
+  --color-warning: #b08900;
+  --color-warning-soft: #f6edd0;
+  --color-serious: #d97a1f;
+  --color-serious-soft: #fbe6d2;
+  --color-critical: #d92d20;
+  --color-critical-soft: #fbdfdb;
+
+  /* Other semantic status (not score bands) */
+  --color-info: #2f5fa3;
+  --color-info-soft: #dde6f4;
+  --color-missing: #b7b2a3;
+
+  /* Categorical chart series (8) */
+  --color-chart-1: #f26a12;
+  --color-chart-2: #2f5fa3;
+  --color-chart-3: #0f5f7a;
+  --color-chart-4: #d92d20;
+  --color-chart-5: #b08900;
+  --color-chart-6: #7c5cbf;
+  --color-chart-7: #4f8a5b;
+  --color-chart-8: #a35a8c;
+
+  /* Sequential heat ramp (light to dark) for heatmap magnitude, e.g. peer rating matrices */
+  --color-heat-1: #dde6f4;
+  --color-heat-2: #9fb8dd;
+  --color-heat-3: #5c85c2;
+  --color-heat-4: #2f5fa3;
+  --color-heat-5: #1c3f70;
+
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/*
+  A handful of genuinely repeated structural patterns get a real component class here (composed
+  entirely of theme tokens/utilities, not literal values) rather than being retyped as the same
+  long utility string on every card across every page.
+*/
+@layer components {
+  /* Card header: title + caption on one line, with an optional trailing legend/action pushed
+     right via ml-auto on that child. Used at the top of nearly every panel/card in the app. */
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    column-gap: 1rem;
+    row-gap: 0.375rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /*
+    QuickGrid (Microsoft.AspNetCore.Components.QuickGrid) renders its own <table>/<thead>/<tr>
+    structure — there's no markup to attach utility classes to for the table chrome itself, only
+    for each TemplateColumn's own cell content. This is the one place a real stylesheet rule
+    (rather than a utility class in markup) is the only mechanism available, so it's kept to
+    exactly the QuickGrid chrome and still built entirely from the same design tokens as everywhere
+    else — nothing here is a color/spacing value that doesn't already exist in the @theme block.
+  */
+  .epa-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  .epa-grid thead th {
+    background-color: var(--color-surface-dark);
+    color: var(--color-on-dark);
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .epa-grid thead th:first-child { border-top-left-radius: 0.5rem; border-bottom-left-radius: 0.5rem; }
+  .epa-grid thead th:last-child { border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem; }
+  .epa-grid thead th button {
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .epa-grid tbody tr { border-bottom: 1px solid var(--color-line); }
+  .epa-grid tbody tr:hover { background-color: var(--color-surface-inset); }
+  .epa-grid tbody tr.row-flag { background-color: var(--color-warning-soft); }
+  .epa-grid tbody tr.row-flag-critical { background-color: var(--color-critical-soft); }
+  .epa-grid tbody td { padding: 0.5rem 0.75rem; color: var(--color-ink); vertical-align: middle; }
+
+  .card {
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface);
+    padding: 1rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color .15s, opacity .15s;
+  }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background-color: var(--color-primary); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--color-primary) 88%, black); }
+  .btn-secondary { background-color: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-line); }
+  .btn-secondary:hover:not(:disabled) { background-color: var(--color-surface-inset); }
+  .btn-danger { background-color: var(--color-critical); color: #fff; }
+  .btn-danger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--color-critical) 88%, black); }
+
+  .badge { display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.125rem 0.5rem; font-size: 0.625rem; font-weight: 600; }
+}

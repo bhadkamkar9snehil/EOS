@@ -6,23 +6,23 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<section class="single-pane wide engineering-worksheet">
-    <div class="worksheet-intro">
+<section class="flex flex-col gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h2>Evidence worksheet</h2>
-            <p>Source and calculated fields for @State.SelectedMonth.ToString("MMMM yyyy"), kept visually separate.</p>
+            <h2 class="text-xl font-bold text-ink">Evidence worksheet</h2>
+            <p class="mt-1 text-sm text-ink-soft">Source and calculated fields for @State.SelectedMonth.ToString("MMMM yyyy"), kept visually separate.</p>
         </div>
-        <span class="atlas-caption">@FilteredRows.Count engineer rows · horizontal worksheet</span>
+        <span class="text-[11px] text-muted">@FilteredRows.Count engineer rows · horizontal worksheet</span>
     </div>
 
-    <div class="tab-bar">
-        <button class="tab @(_tab == Tab.Rows ? "selected" : null)" @onclick="() => _tab = Tab.Rows">
-            Evidence rows <span class="tab-count">@FilteredRows.Count</span>
+    <div class="flex items-center gap-2 border-b border-line">
+        <button class="@($"border-b-2 px-3 py-2 text-sm font-medium {(_tab == Tab.Rows ? "border-primary text-primary" : "border-transparent text-ink-soft hover:text-ink")}")" @onclick="() => _tab = Tab.Rows">
+            Evidence rows <span class="ml-1 rounded-full bg-surface-inset px-1.5 py-0.5 text-[10px] text-ink-soft">@FilteredRows.Count</span>
         </button>
-        <button class="tab @(_tab == Tab.History ? "selected" : null)" @onclick="() => _tab = Tab.History">
-            Import ledger <span class="tab-count">@_history.Count</span>
+        <button class="@($"border-b-2 px-3 py-2 text-sm font-medium {(_tab == Tab.History ? "border-primary text-primary" : "border-transparent text-ink-soft hover:text-ink")}")" @onclick="() => _tab = Tab.History">
+            Import ledger <span class="ml-1 rounded-full bg-surface-inset px-1.5 py-0.5 text-[10px] text-ink-soft">@_history.Count</span>
         </button>
-        <label class="tab-scope">
+        <label class="ml-auto flex items-center gap-1.5 pb-2 text-xs text-ink-soft">
             <input type="checkbox" @bind="_allMonths" @bind:after="ReloadHistoryAsync" />
             All months
         </label>
@@ -30,13 +30,13 @@
 
     @if (_tab == Tab.Rows)
     {
-        <div class="imported-data-toolbar">
-            <input class="grid-filter" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or code…" />
-            <span>Calculated groups are marked separately; source gaps remain em dashes rather than zeros.</span>
+        <div class="flex items-center justify-between gap-4">
+            <input class="w-64 rounded-lg border border-line bg-surface-inset px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted focus:border-primary" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or code…" />
+            <span class="text-[11px] text-muted">Calculated groups are marked separately; source gaps remain em dashes rather than zeros.</span>
         </div>
         @if (FilteredRows.Count == 0)
         {
-            <div class="table-empty">
+            <div class="rounded-xl border border-line bg-surface p-8 text-center text-sm text-muted">
                 @(State.Performance.Count == 0
                     ? $"Nothing imported for {State.SelectedMonth:MMMM yyyy} yet."
                     : $"No engineer matches “{_filter}”.")
@@ -44,50 +44,40 @@
         }
         else
         {
-            <div class="wide-grid-scroll worksheet-scroll">
-                <div class="worksheet-bands" aria-hidden="true">
-                    <span>Identity</span>
-                    <span>Code</span>
-                    <span>Calculated performance</span>
-                    <span>Capacity & allocation</span>
-                    <span>Activity evidence</span>
-                    <span>Attendance & reconciliation</span>
-                    <span>Exceptions</span>
-                    <span>Source coverage</span>
-                </div>
-                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid imported-metrics-grid">
-                    <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_byName"><span class="roster-name"><strong>@context.EmployeeName</strong></span></TemplateColumn>
+            <div class="overflow-x-auto rounded-xl border border-line bg-surface">
+                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid">
+                    <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_byName"><strong class="whitespace-nowrap font-medium text-ink">@context.EmployeeName</strong></TemplateColumn>
                     <PropertyColumn Title="Code" Property="@(x => x.EmployeeCode)" Sortable="true" />
-                    <TemplateColumn Title="Operational" Align="Align.Right" Sortable="true" SortBy="@_byScore"><span class="score-cell"><b class="@Analytics.ScoreBand(context.OperationalScore)">@Analytics.Format(context.OperationalScore)</b></span></TemplateColumn>
-                    <TemplateColumn Title="TS score" Align="Align.Right"><span class="num">@Num(context.TimesheetCompletionScore)</span></TemplateColumn>
-                    <TemplateColumn Title="Approval score" Align="Align.Right"><span class="num">@Num(context.ApprovalScore)</span></TemplateColumn>
-                    <TemplateColumn Title="Attendance score" Align="Align.Right"><span class="num">@Num(context.AttendanceDisciplineScore)</span></TemplateColumn>
-                    <TemplateColumn Title="Compliance (h)" Align="Align.Right"><span class="num">@Num(context.ComplianceHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Entered (h)" Align="Align.Right" Sortable="true" SortBy="@_byEntered"><span class="num">@Num(context.EnteredHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Approved (h)" Align="Align.Right" Sortable="true" SortBy="@_byApproved"><span class="num">@Num(context.ApprovedHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Billable (h)" Align="Align.Right" Sortable="true" SortBy="@_byBillable"><span class="num">@Num(context.BillableHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Non-bill (h)" Align="Align.Right"><span class="num">@Num(context.NonBillableHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Training (h)" Align="Align.Right"><span class="num">@Num(context.TrainingHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Office (h)" Align="Align.Right"><span class="num">@Num(context.OfficeHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Detailed (h)" Align="Align.Right"><span class="num">@Num(context.DetailedHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Entries" Align="Align.Right" Sortable="true" SortBy="@_byEntries"><span class="num">@(context.DetailedEntries == 0 ? "—" : context.DetailedEntries.ToString())</span></TemplateColumn>
-                    <TemplateColumn Title="Projects" Align="Align.Right"><span class="num">@(context.UniqueProjects == 0 ? "—" : context.UniqueProjects.ToString())</span></TemplateColumn>
-                    <TemplateColumn Title="Punch (h)" Align="Align.Right" Sortable="true" SortBy="@_byPunch"><span class="num">@Num(context.PunchHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Attendance TS (h)" Align="Align.Right"><span class="num">@Num(context.AttendanceTimesheetHours)</span></TemplateColumn>
-                    <TemplateColumn Title="Variance (h)" Align="Align.Right"><span class="num">@Signed(context.ReconciliationVariance)</span></TemplateColumn>
-                    <TemplateColumn Title="Attend (d)" Align="Align.Right"><span class="num">@Num(context.AttendanceDays)</span></TemplateColumn>
-                    <TemplateColumn Title="Leave (d)" Align="Align.Right"><span class="num">@Num(context.LeaveDays)</span></TemplateColumn>
-                    <TemplateColumn Title="Filled (d)" Align="Align.Right" Sortable="true" SortBy="@_byFilled"><span class="num">@context.TimesheetFilledDays / @context.ExpectedTimesheetDays</span></TemplateColumn>
-                    <TemplateColumn Title="Missing punch" Align="Align.Right"><span class="num">@Count(context.MissingPunchDays)</span></TemplateColumn>
-                    <TemplateColumn Title="Late" Align="Align.Right"><span class="num">@Count(context.LateDays)</span></TemplateColumn>
-                    <TemplateColumn Title="Early" Align="Align.Right"><span class="num">@Count(context.EarlyDays)</span></TemplateColumn>
-                    <TemplateColumn Title="Less duration" Align="Align.Right"><span class="num">@Count(context.LessDurationDays)</span></TemplateColumn>
-                    <TemplateColumn Title="Utilization" Align="Align.Right"><span class="num">@(context.HasSummaryData ? $"{Analytics.Format(context.Utilization)}%" : "—")</span></TemplateColumn>
+                    <TemplateColumn Title="Operational" Align="Align.Right" Sortable="true" SortBy="@_byScore"><b class="@Analytics.BandTextClass(Analytics.ScoreBand(context.OperationalScore))">@Analytics.Format(context.OperationalScore)</b></TemplateColumn>
+                    <TemplateColumn Title="TS score" Align="Align.Right"><span class="tabular-nums">@Num(context.TimesheetCompletionScore)</span></TemplateColumn>
+                    <TemplateColumn Title="Approval score" Align="Align.Right"><span class="tabular-nums">@Num(context.ApprovalScore)</span></TemplateColumn>
+                    <TemplateColumn Title="Attendance score" Align="Align.Right"><span class="tabular-nums">@Num(context.AttendanceDisciplineScore)</span></TemplateColumn>
+                    <TemplateColumn Title="Compliance (h)" Align="Align.Right"><span class="tabular-nums">@Num(context.ComplianceHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Entered (h)" Align="Align.Right" Sortable="true" SortBy="@_byEntered"><span class="tabular-nums">@Num(context.EnteredHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Approved (h)" Align="Align.Right" Sortable="true" SortBy="@_byApproved"><span class="tabular-nums">@Num(context.ApprovedHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Billable (h)" Align="Align.Right" Sortable="true" SortBy="@_byBillable"><span class="tabular-nums">@Num(context.BillableHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Non-bill (h)" Align="Align.Right"><span class="tabular-nums">@Num(context.NonBillableHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Training (h)" Align="Align.Right"><span class="tabular-nums">@Num(context.TrainingHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Office (h)" Align="Align.Right"><span class="tabular-nums">@Num(context.OfficeHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Detailed (h)" Align="Align.Right"><span class="tabular-nums">@Num(context.DetailedHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Entries" Align="Align.Right" Sortable="true" SortBy="@_byEntries"><span class="tabular-nums">@(context.DetailedEntries == 0 ? "—" : context.DetailedEntries.ToString())</span></TemplateColumn>
+                    <TemplateColumn Title="Projects" Align="Align.Right"><span class="tabular-nums">@(context.UniqueProjects == 0 ? "—" : context.UniqueProjects.ToString())</span></TemplateColumn>
+                    <TemplateColumn Title="Punch (h)" Align="Align.Right" Sortable="true" SortBy="@_byPunch"><span class="tabular-nums">@Num(context.PunchHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Attendance TS (h)" Align="Align.Right"><span class="tabular-nums">@Num(context.AttendanceTimesheetHours)</span></TemplateColumn>
+                    <TemplateColumn Title="Variance (h)" Align="Align.Right"><span class="tabular-nums">@Signed(context.ReconciliationVariance)</span></TemplateColumn>
+                    <TemplateColumn Title="Attend (d)" Align="Align.Right"><span class="tabular-nums">@Num(context.AttendanceDays)</span></TemplateColumn>
+                    <TemplateColumn Title="Leave (d)" Align="Align.Right"><span class="tabular-nums">@Num(context.LeaveDays)</span></TemplateColumn>
+                    <TemplateColumn Title="Filled (d)" Align="Align.Right" Sortable="true" SortBy="@_byFilled"><span class="tabular-nums">@context.TimesheetFilledDays / @context.ExpectedTimesheetDays</span></TemplateColumn>
+                    <TemplateColumn Title="Missing punch" Align="Align.Right"><span class="tabular-nums">@Count(context.MissingPunchDays)</span></TemplateColumn>
+                    <TemplateColumn Title="Late" Align="Align.Right"><span class="tabular-nums">@Count(context.LateDays)</span></TemplateColumn>
+                    <TemplateColumn Title="Early" Align="Align.Right"><span class="tabular-nums">@Count(context.EarlyDays)</span></TemplateColumn>
+                    <TemplateColumn Title="Less duration" Align="Align.Right"><span class="tabular-nums">@Count(context.LessDurationDays)</span></TemplateColumn>
+                    <TemplateColumn Title="Utilization" Align="Align.Right"><span class="tabular-nums">@(context.HasSummaryData ? $"{Analytics.Format(context.Utilization)}%" : "—")</span></TemplateColumn>
                     <TemplateColumn Title="Sources">
-                        <span class="tag-row source-tags">
-                            @if (context.ComplianceHours > 0) { <span class="tag muted" title="Monthly utilization summary">MS</span> }
-                            @if (context.DetailedEntries > 0) { <span class="tag muted" title="Detailed timesheet">DT</span> }
-                            @if (context.AttendanceDays > 0 || context.PunchHours > 0) { <span class="tag muted" title="Attendance and leave">AT</span> }
+                        <span class="flex gap-1">
+                            @if (context.ComplianceHours > 0) { <span class="badge bg-surface-inset text-muted" title="Monthly utilization summary">MS</span> }
+                            @if (context.DetailedEntries > 0) { <span class="badge bg-surface-inset text-muted" title="Detailed timesheet">DT</span> }
+                            @if (context.AttendanceDays > 0 || context.PunchHours > 0) { <span class="badge bg-surface-inset text-muted" title="Attendance and leave">AT</span> }
                         </span>
                     </TemplateColumn>
                 </QuickGrid>
@@ -96,27 +86,29 @@
     }
     else
     {
-        <div class="workbench-body import-ledger">
+        <div>
             @if (_history.Count == 0)
             {
-                <div class="table-empty">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
+                <div class="rounded-xl border border-line bg-surface p-8 text-center text-sm text-muted">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
             }
             else
             {
-                <QuickGrid Items="@_history.AsQueryable()" Class="epa-grid">
-                    <TemplateColumn Title="Uploaded"><span class="num-left">@context.ImportedLocal.ToString("dd MMM yyyy, HH:mm")</span></TemplateColumn>
-                    <TemplateColumn Title="Input"><span class="tag-row"><span class="tag muted">@Initial(context.ReportType)</span> @Label(context.ReportType)</span></TemplateColumn>
-                    <TemplateColumn Title="Reporting month">@(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))</TemplateColumn>
-                    <TemplateColumn Title="File"><span class="filename" title="@context.OriginalFileName">@context.OriginalFileName</span></TemplateColumn>
-                    <TemplateColumn Title="Rows" Align="Align.Right"><span class="num">@(context.RowCount == 0 ? "—" : context.RowCount.ToString())</span></TemplateColumn>
-                    <TemplateColumn Title="Effect">
-                        <span class="@(context.ReplacedExisting ? "flag-warning" : null)">
-                            @(context.ReportType == ReportType.EngineerReviewWorkbook
-                                ? context.ReplacedExisting ? "Updated review evidence" : "Added review evidence"
-                                : context.ReplacedExisting ? "Replaced earlier file" : "First upload")
-                        </span>
-                    </TemplateColumn>
-                </QuickGrid>
+                <div class="overflow-x-auto rounded-xl border border-line bg-surface">
+                    <QuickGrid Items="@_history.AsQueryable()" Class="epa-grid">
+                        <TemplateColumn Title="Uploaded"><span class="whitespace-nowrap">@context.ImportedLocal.ToString("dd MMM yyyy, HH:mm")</span></TemplateColumn>
+                        <TemplateColumn Title="Input"><span class="flex items-center gap-1.5"><span class="badge bg-surface-inset text-muted">@Initial(context.ReportType)</span> @Label(context.ReportType)</span></TemplateColumn>
+                        <TemplateColumn Title="Reporting month">@(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))</TemplateColumn>
+                        <TemplateColumn Title="File"><span class="block max-w-xs truncate" title="@context.OriginalFileName">@context.OriginalFileName</span></TemplateColumn>
+                        <TemplateColumn Title="Rows" Align="Align.Right"><span class="tabular-nums">@(context.RowCount == 0 ? "—" : context.RowCount.ToString())</span></TemplateColumn>
+                        <TemplateColumn Title="Effect">
+                            <span class="@(context.ReplacedExisting ? "text-warning" : "text-ink-soft")">
+                                @(context.ReportType == ReportType.EngineerReviewWorkbook
+                                    ? context.ReplacedExisting ? "Updated review evidence" : "Added review evidence"
+                                    : context.ReplacedExisting ? "Replaced earlier file" : "First upload")
+                            </span>
+                        </TemplateColumn>
+                    </QuickGrid>
+                </div>
             }
         </div>
     }

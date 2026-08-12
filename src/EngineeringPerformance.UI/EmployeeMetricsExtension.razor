@@ -7,54 +7,54 @@
 
 @if (Months.Count > 0)
 {
-    <section class="analytics-extension employee-extension">
-        <header class="analytics-section-head">
+    <section class="flex flex-col gap-4">
+        <header class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <span class="analytics-eyebrow">Current operating profile</span>
-                <h2>@LatestLabel in one decision view</h2>
+                <span class="block text-[10px] font-semibold uppercase tracking-wide text-muted">Current operating profile</span>
+                <h2 class="text-lg font-bold text-ink">@LatestLabel in one decision view</h2>
             </div>
-            <button class="action secondary small" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
+            <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
         </header>
 
-        <div class="metric-ribbon employee-ribbon">
-            @Metric("Operational score", Latest.OperationalScore, "", Analytics.ScoreBand(Latest.OperationalScore))
-            @Metric("Utilization", Latest.Utilization, "%", Latest.Utilization >= 75 ? "good" : "warning")
-            @Metric("Timesheet days", Latest.TimesheetFilledDays, $"/ {Latest.ExpectedTimesheetDays}", Latest.TimesheetFilledDays >= Latest.ExpectedTimesheetDays ? "good" : "warning")
-            @Metric("Reconciliation", Latest.ReconciliationVariance, "h", Math.Abs(Latest.ReconciliationVariance) >= 40 ? "risk" : "neutral", true)
-            @Metric("Detailed entries", Latest.DetailedEntries, "", "primary")
-            @Metric("Projects", Latest.UniqueProjects, "", "accent")
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            @Metric("Operational score", Latest.OperationalScore, "", Analytics.BandSoftClass(Analytics.ScoreBand(Latest.OperationalScore)))
+            @Metric("Utilization", Latest.Utilization, "%", Latest.Utilization >= 75 ? "bg-good-soft text-good" : "bg-warning-soft text-warning")
+            @Metric("Timesheet days", Latest.TimesheetFilledDays, $"/ {Latest.ExpectedTimesheetDays}", Latest.TimesheetFilledDays >= Latest.ExpectedTimesheetDays ? "bg-good-soft text-good" : "bg-warning-soft text-warning")
+            @Metric("Reconciliation", Latest.ReconciliationVariance, "h", Math.Abs(Latest.ReconciliationVariance) >= 40 ? "bg-critical-soft text-critical" : "bg-surface-inset text-ink-soft", true)
+            @Metric("Detailed entries", Latest.DetailedEntries, "", "bg-info-soft text-info")
+            @Metric("Projects", Latest.UniqueProjects, "", "bg-primary-soft text-primary")
         </div>
 
-        <div class="employee-current-grid">
-            <section class="card span-7 command-chart">
-                <div class="card-head"><div><h2>Current-month hours profile</h2><small>Imported totals across capacity, timesheet and attendance</small></div></div>
-                <div id="employee-current-hours" class="echart"></div>
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+            <section class="card xl:col-span-7">
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Current-month hours profile</h2><small class="text-[11px] text-muted">Imported totals across capacity, timesheet and attendance</small></div>
+                <div id="employee-current-hours" class="h-[260px]"></div>
             </section>
-            <section class="card span-5 command-chart">
-                <div class="card-head"><div><h2>Attendance exception profile</h2><small>Counts are days, not severity scores</small></div></div>
-                <div id="employee-current-exceptions" class="echart"></div>
+            <section class="card xl:col-span-5">
+                <div class="panel-head"><h2 class="text-sm font-bold text-ink">Attendance exception profile</h2><small class="text-[11px] text-muted">Counts are days, not severity scores</small></div>
+                <div id="employee-current-exceptions" class="h-[260px]"></div>
             </section>
         </div>
 
-        <div class="metric-matrix employee-matrix">
-            <section><h3>Scores</h3>@Value("Operational", Latest.OperationalScore)@Value("Timesheet", Latest.TimesheetCompletionScore, Latest.HasSummaryData)@Value("Approval", Latest.ApprovalScore, Latest.HasSummaryData)@Value("Attendance", Latest.AttendanceDisciplineScore)</section>
-            <section><h3>Capacity & timesheets</h3>@Value("Compliance hours", Latest.ComplianceHours, Latest.HasSummaryData)@Value("Entered hours", Latest.EnteredHours)@Value("Approved hours", Latest.ApprovedHours)@Value("Utilization", Latest.Utilization, Latest.HasSummaryData, "%")</section>
-            <section><h3>Work allocation</h3>@Value("Billable hours", Latest.BillableHours)@Value("Non-billable hours", Latest.NonBillableHours)@Value("Training hours", Latest.TrainingHours)@Value("Office hours", Latest.OfficeHours)</section>
-            <section><h3>Attendance</h3>@Value("Punch hours", Latest.PunchHours)@Value("Attendance TS hours", Latest.AttendanceTimesheetHours)@Value("Variance", Latest.ReconciliationVariance, true, "h", true)@Value("Attendance days", Latest.AttendanceDays)</section>
-            <section><h3>Exceptions</h3>@Count("Missing punch", Latest.MissingPunchDays)@Count("Late", Latest.LateDays)@Count("Early", Latest.EarlyDays)@Count("Less duration", Latest.LessDurationDays)</section>
-            <section><h3>Delivery activity</h3>@Value("Detailed hours", Latest.DetailedHours)@Count("Detailed entries", Latest.DetailedEntries)@Count("Unique projects", Latest.UniqueProjects)@Value("Leave days", Latest.LeaveDays)</section>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <section><h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Scores</h3><div class="mt-1 flex flex-col gap-1">@Value("Operational", Latest.OperationalScore)@Value("Timesheet", Latest.TimesheetCompletionScore, Latest.HasSummaryData)@Value("Approval", Latest.ApprovalScore, Latest.HasSummaryData)@Value("Attendance", Latest.AttendanceDisciplineScore)</div></section>
+            <section><h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Capacity &amp; timesheets</h3><div class="mt-1 flex flex-col gap-1">@Value("Compliance hours", Latest.ComplianceHours, Latest.HasSummaryData)@Value("Entered hours", Latest.EnteredHours)@Value("Approved hours", Latest.ApprovedHours)@Value("Utilization", Latest.Utilization, Latest.HasSummaryData, "%")</div></section>
+            <section><h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Work allocation</h3><div class="mt-1 flex flex-col gap-1">@Value("Billable hours", Latest.BillableHours)@Value("Non-billable hours", Latest.NonBillableHours)@Value("Training hours", Latest.TrainingHours)@Value("Office hours", Latest.OfficeHours)</div></section>
+            <section><h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Attendance</h3><div class="mt-1 flex flex-col gap-1">@Value("Punch hours", Latest.PunchHours)@Value("Attendance TS hours", Latest.AttendanceTimesheetHours)@Value("Variance", Latest.ReconciliationVariance, true, "h", true)@Value("Attendance days", Latest.AttendanceDays)</div></section>
+            <section><h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Exceptions</h3><div class="mt-1 flex flex-col gap-1">@Count("Missing punch", Latest.MissingPunchDays)@Count("Late", Latest.LateDays)@Count("Early", Latest.EarlyDays)@Count("Less duration", Latest.LessDurationDays)</div></section>
+            <section><h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Delivery activity</h3><div class="mt-1 flex flex-col gap-1">@Value("Detailed hours", Latest.DetailedHours)@Count("Detailed entries", Latest.DetailedEntries)@Count("Unique projects", Latest.UniqueProjects)@Value("Leave days", Latest.LeaveDays)</div></section>
         </div>
 
-        <details class="history-expansion" open>
-            <summary>
-                <span><strong>Expanded operational history</strong><small>Allocation, reconciliation, exceptions and delivery over @Months.Count loaded month(s)</small></span>
-                <span class="history-toggle">Show / hide</span>
+        <details class="rounded-xl border border-line bg-surface" open>
+            <summary class="flex cursor-pointer items-center justify-between gap-3 p-4">
+                <span><strong class="text-sm font-semibold text-ink">Expanded operational history</strong><small class="ml-2 text-[11px] text-muted">Allocation, reconciliation, exceptions and delivery over @Months.Count loaded month(s)</small></span>
+                <span class="text-xs font-medium text-primary">Show / hide</span>
             </summary>
-            <div class="extension-grid employee-history-grid">
-                <section class="card span-6"><div class="card-head"><h2>Hours history</h2><small>Allocation and capacity</small></div><div id="employee-hours-history" class="echart tall"></div></section>
-                <section class="card span-6"><div class="card-head"><h2>Attendance reconciliation</h2><small>Punch, timesheet and variance</small></div><div id="employee-attendance-history" class="echart tall"></div></section>
-                <section class="card span-6"><div class="card-head"><h2>Exception history</h2><small>Monthly exception days</small></div><div id="employee-exception-history" class="echart"></div></section>
-                <section class="card span-6"><div class="card-head"><h2>Delivery activity history</h2><small>Detailed hours, entries and projects</small></div><div id="employee-delivery-history" class="echart"></div></section>
+            <div class="grid grid-cols-1 gap-4 border-t border-line p-4 xl:grid-cols-2">
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Hours history</h2><small class="text-[11px] text-muted">Allocation and capacity</small></div><div id="employee-hours-history" class="h-[320px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Attendance reconciliation</h2><small class="text-[11px] text-muted">Punch, timesheet and variance</small></div><div id="employee-attendance-history" class="h-[320px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Exception history</h2><small class="text-[11px] text-muted">Monthly exception days</small></div><div id="employee-exception-history" class="h-[260px]"></div></section>
+                <section class="card"><div class="panel-head"><h2 class="text-sm font-bold text-ink">Delivery activity history</h2><small class="text-[11px] text-muted">Detailed hours, entries and projects</small></div><div id="employee-delivery-history" class="h-[260px]"></div></section>
             </div>
         </details>
     </section>
@@ -158,9 +158,15 @@
         });
     }
 
-    private RenderFragment Value(string label, decimal value, bool available = true, string suffix = "", bool signed = false) => @<div><span>@label</span><b>@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></div>;
-    private RenderFragment Count(string label, int value) => @<div><span>@label</span><b>@value</b></div>;
-    private RenderFragment Metric(string label, decimal value, string suffix, string tone, bool signed = false) => @<div class="metric-tile @tone"><span>@label</span><strong>@(signed && value > 0 ? "+" : "")@Analytics.Format(value)</strong><small>@suffix</small></div>;
+    private RenderFragment Value(string label, decimal value, bool available = true, string suffix = "", bool signed = false) =>
+        @<div class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@(available ? (signed && value > 0 ? "+" : "") + Analytics.Format(value) + (suffix == "" ? "" : " " + suffix) : "—")</b></div>;
+    private RenderFragment Count(string label, int value) => @<div class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="font-semibold text-ink">@value</b></div>;
+    private RenderFragment Metric(string label, decimal value, string suffix, string tone, bool signed = false) =>
+        @<div class="@($"rounded-lg p-3 {tone}")">
+            <span class="block text-[10px] font-medium opacity-80">@label</span>
+            <strong class="text-lg font-bold">@(signed && value > 0 ? "+" : "")@Analytics.Format(value)</strong>
+            <small class="ml-1 text-xs opacity-80">@suffix</small>
+        </div>;
 
     public async ValueTask DisposeAsync()
     {
