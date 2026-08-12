@@ -1,0 +1,127 @@
+@page "/backup"
+@using EngineeringPerformance.Application
+@inject IBackupService Backups
+@inject IFileDialogService Dialogs
+@inject AppState State
+@inject IJSRuntime JS
+
+<section class="single-pane wide backup-page">
+    <div class="section-title">
+        <div>
+            <h2>Backup &amp; restore</h2>
+            <p>Export the full local database to a file you control, and restore from a previous export if something goes wrong.</p>
+        </div>
+    </div>
+
+    <div class="operational-scoring-layout">
+        <div class="card operational-weight-card">
+            <div class="card-head">
+                <h2>Create a backup</h2>
+                <small>Database + scoring settings</small>
+            </div>
+            <p>Exports a single zip containing the SQLite database and the operational scoring configuration. By default backups are saved to:</p>
+            <p><code>@Backups.DefaultBackupDirectory</code></p>
+            <div class="scoring-save-row">
+                <button class="action secondary" @onclick="ExportToDefaultAsync" disabled="@State.Busy">Backup now</button>
+                <button class="action secondary" @onclick="ExportToChosenFolderAsync" disabled="@State.Busy">Backup to a chosen folder…</button>
+            </div>
+        </div>
+
+        <div class="card operational-preview-card">
+            <div class="card-head">
+                <h2>Restore from backup</h2>
+                <small>Replaces the current database</small>
+            </div>
+            <div class="callout scoring-callout">
+                <strong>This is destructive</strong>
+                <p>Restoring replaces all current data with the contents of the chosen backup. EOS automatically backs up the current database first, so you can undo an accidental restore. The application must be restarted after a restore for the change to fully take effect.</p>
+            </div>
+            <div class="scoring-save-row">
+                <button class="action" @onclick="RestoreAsync" disabled="@State.Busy">Choose backup file to restore…</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title scoring-secondary-title">
+        <div>
+            <h2>Recent backups</h2>
+            <p>Most recent first, from the default backup folder.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        @if (_backups.Count == 0)
+        {
+            <p>No backups yet. Use “Backup now” above to create the first one.</p>
+        }
+        else
+        {
+            <div class="data-table">
+                <div class="table-head">
+                    <span class="cell">File</span>
+                    <span class="cell">Created</span>
+                    <span class="cell">Size</span>
+                </div>
+                @foreach (var backup in _backups)
+                {
+                    <div class="table-row">
+                        <span class="cell">@backup.FileName</span>
+                        <span class="cell">@backup.CreatedUtc.ToLocalTime().ToString("g")</span>
+                        <span class="cell">@FormatSize(backup.SizeBytes)</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<BackupFileInfo> _backups = [];
+
+    protected override async Task OnInitializedAsync() => await RefreshListAsync();
+
+    private async Task RefreshListAsync() => _backups = await Backups.ListBackupsAsync();
+
+    private async Task ExportToDefaultAsync()
+    {
+        await State.RunAsync(async () =>
+        {
+            var result = await Backups.ExportBackupAsync();
+            await RefreshListAsync();
+            State.ShowMessage($"Backup created: {Path.GetFileName(result.FilePath)} ({FormatSize(result.SizeBytes)}).");
+        });
+    }
+
+    private async Task ExportToChosenFolderAsync()
+    {
+        var folder = Dialogs.PickFolder("Choose a backup destination folder");
+        if (folder is null) return;
+        await State.RunAsync(async () =>
+        {
+            var result = await Backups.ExportBackupAsync(folder);
+            State.ShowMessage($"Backup created: {result.FilePath} ({FormatSize(result.SizeBytes)}).");
+        });
+    }
+
+    private async Task RestoreAsync()
+    {
+        var file = Dialogs.PickBackupFile();
+        if (file is null) return;
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Restore from {Path.GetFileName(file)}? This replaces all current data. Your current database will be backed up first, but you should still be certain.");
+        if (!confirmed) return;
+        await State.RunAsync(async () =>
+        {
+            var result = await Backups.RestoreBackupAsync(file);
+            await RefreshListAsync();
+            State.ShowMessage($"Restore complete. Previous database saved to {result.SafetyBackupPath}. Please restart EOS now for the restored data to take effect.");
+        });
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+        return $"{bytes / (1024.0 * 1024.0):0.#} MB";
+    }
+}

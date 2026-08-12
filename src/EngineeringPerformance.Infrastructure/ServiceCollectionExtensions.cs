@@ -18,6 +18,10 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
             sp.GetRequiredService<IWorkbookService>(),
             dataDirectory));
+        services.AddSingleton<IBackupService>(sp => new BackupService(
+            sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
+            dataDirectory,
+            databasePath));
         return services;
     }
 }

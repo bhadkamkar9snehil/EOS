@@ -60,7 +60,25 @@ public interface IFileDialogService
     string? PickWorkbook();
     string? PickSaveWorkbook(string suggestedFileName);
     string? PickFolder(string title);
+    string? PickBackupFile() => null;
 }
+
+/// <summary>
+/// One-click export of the SQLite database (plus the operational-scoring config) into a single
+/// zip, and the matching restore flow. Restore always takes a safety backup of the current
+/// database before overwriting it, so an accidental or bad restore is itself recoverable.
+/// </summary>
+public interface IBackupService
+{
+    Task<BackupResult> ExportBackupAsync(string? destinationDirectory = null, CancellationToken cancellationToken = default);
+    Task<RestoreResult> RestoreBackupAsync(string backupFilePath, CancellationToken cancellationToken = default);
+    string DefaultBackupDirectory { get; }
+    Task<IReadOnlyList<BackupFileInfo>> ListBackupsAsync(string? directory = null, CancellationToken cancellationToken = default);
+}
+
+public sealed record BackupResult(string FilePath, long SizeBytes, DateTime CreatedUtc);
+public sealed record RestoreResult(string SafetyBackupPath, DateTime RestoredUtc, bool RequiresRestart = true);
+public sealed record BackupFileInfo(string FilePath, string FileName, long SizeBytes, DateTime CreatedUtc);
 
 public sealed record EmployeeListItem(
     int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,

@@ -28,6 +28,7 @@
 
             <span class="nav-group-label">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
+            @NavButton("backup", "Backup & Restore", Icon.Settings)
         </nav>
         <div class="nav-footer">
             <button class="@(CurrentRoute == "settings" ? "selected" : null)" @onclick='() => Navigation.NavigateTo("/settings")'>
@@ -232,6 +233,7 @@
         "templates" => "Review templates",
         "reports" => "Reports",
         "scoring" => "Scoring",
+        "backup" => "Backup & restore",
         "settings" => "Settings",
         "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee portrait",
         _ => "Team performance"
