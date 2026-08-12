@@ -7,12 +7,17 @@ using EngineeringPerformance.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Velopack;
+using Serilog;
+using Serilog.Events;
+using ILogger = Serilog.ILogger;
 
 namespace EngineeringPerformance.DesktopHost;
 
 public partial class App : System.Windows.Application
 {
     private readonly IHost _host;
+    private readonly string _dataDirectory;
+    private readonly ILogger _log;
 
     static App()
     {
@@ -26,15 +31,40 @@ public partial class App : System.Windows.Application
     public App()
     {
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
+        _dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
+        Directory.CreateDirectory(_dataDirectory);
+
+        var logDirectory = Path.Combine(_dataDirectory, "logs");
+        Directory.CreateDirectory(logDirectory);
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Debug()
+            .WriteTo.File(
+                Path.Combine(logDirectory, "eos-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+        _log = Log.Logger;
+
+        // Catches crashes on background threads (Task.Run, timers, thread-pool work) that never
+        // reach the WPF dispatcher — without this handler they were completely uncaught and lost.
+        AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
+        // Catches exceptions from fire-and-forget/unawaited async Tasks that get garbage collected
+        // without ever being observed — a known pitfall for the app's "await X; await Y" style code.
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
         _host = Host.CreateDefaultBuilder().ConfigureServices(services =>
         {
             services.AddWpfBlazorWebView();
-            services.AddLocalInfrastructure(dataDirectory);
+            services.AddLocalInfrastructure(_dataDirectory);
             services.AddSingleton<IFileDialogService, WindowsFileDialogService>();
             services.AddSingleton<AppState>();
             services.AddSingleton<MainWindow>();
-        }).Build();
+        }).UseSerilog().Build();
     }
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -54,11 +84,10 @@ public partial class App : System.Windows.Application
         }
         catch (Exception exception)
         {
-            var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
-            Directory.CreateDirectory(dataDirectory);
-            var logPath = Path.Combine(dataDirectory, "startup-error.log");
-            await File.WriteAllTextAsync(logPath, exception.ToString());
-            MessageBox.Show($"The application could not start.\n\nDetails were saved to:\n{logPath}", "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Error);
+            _log.Fatal(exception, "The application failed to start.");
+            Log.CloseAndFlush();
+            var logDirectory = Path.Combine(_dataDirectory, "logs");
+            MessageBox.Show($"The application could not start.\n\nDetails were saved to:\n{logDirectory}", "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(-1);
         }
     }
@@ -74,12 +103,10 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
-            Directory.CreateDirectory(dataDirectory);
-            var logPath = Path.Combine(dataDirectory, "runtime-error.log");
-            File.AppendAllText(logPath, $"{DateTime.Now:O}\n{e.Exception}\n\n");
+            _log.Error(e.Exception, "Unhandled exception on the UI dispatcher.");
+            var logDirectory = Path.Combine(_dataDirectory, "logs");
             MessageBox.Show(
-                $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logPath}\n\nYou can keep using the app — try a different page or reload.",
+                $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logDirectory}\n\nYou can keep using the app — try a different page or reload.",
                 "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch
@@ -133,10 +160,40 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private void OnAppDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        try
+        {
+            _log.Fatal(e.ExceptionObject as Exception, "Unhandled exception on a background thread. IsTerminating={IsTerminating}", e.IsTerminating);
+            Log.CloseAndFlush();
+        }
+        catch
+        {
+            // Logging itself must never be why the crash handler crashes.
+        }
+    }
+
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        try
+        {
+            _log.Error(e.Exception, "An unobserved Task exception was raised.");
+        }
+        catch
+        {
+            // Logging itself must never be why the crash handler crashes.
+        }
+        // Without this the finalizer thread rethrows, crashing the process.
+        e.SetObserved();
+    }
+
     protected override async void OnExit(ExitEventArgs e)
     {
+        AppDomain.CurrentDomain.UnhandledException -= OnAppDomainUnhandledException;
+        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
         await _host.StopAsync();
         _host.Dispose();
+        Log.CloseAndFlush();
         base.OnExit(e);
     }
 }

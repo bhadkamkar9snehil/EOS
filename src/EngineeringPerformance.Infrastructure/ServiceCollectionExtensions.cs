@@ -1,6 +1,7 @@
 using EngineeringPerformance.Application;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EngineeringPerformance.Infrastructure;
 
@@ -17,7 +18,8 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<LocalApplicationDatabase>(),
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
             sp.GetRequiredService<IWorkbookService>(),
-            dataDirectory));
+            dataDirectory,
+            sp.GetService<ILogger<ConfigurableApplicationDatabase>>()));
         return services;
     }
 }

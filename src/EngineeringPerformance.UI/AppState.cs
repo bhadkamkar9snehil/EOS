@@ -1,5 +1,7 @@
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Domain;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EngineeringPerformance.UI;
 
@@ -8,8 +10,9 @@ namespace EngineeringPerformance.UI;
 /// performance, history, weekly detail, teams, exclusions, peer reviews — plus the toast message
 /// shown in the shell. Registered once for the app's lifetime.
 /// </summary>
-public sealed class AppState(IApplicationDatabase database)
+public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? logger = null)
 {
+    private readonly ILogger<AppState> _logger = logger ?? NullLogger<AppState>.Instance;
     public DateTime SelectedMonth { get; private set; } = DefaultReportingMonth();
     public DashboardSnapshot? Snapshot { get; private set; }
     public IReadOnlyList<EmployeeListItem> Employees { get; private set; } = [];
@@ -91,7 +94,12 @@ public sealed class AppState(IApplicationDatabase database)
         IsError = false;
         Changed?.Invoke();
         try { await action(); }
-        catch (Exception ex) { Message = ex.Message; IsError = true; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An action run through AppState.RunAsync failed.");
+            Message = ex.Message;
+            IsError = true;
+        }
         finally { Busy = false; Changed?.Invoke(); }
     }
 

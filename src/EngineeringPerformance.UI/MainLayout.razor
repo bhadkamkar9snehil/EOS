@@ -28,6 +28,7 @@
 
             <span class="nav-group-label">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
+            @NavButton("diagnostics", "Diagnostics", Icon.Settings)
         </nav>
         <div class="nav-footer">
             <button class="@(CurrentRoute == "settings" ? "selected" : null)" @onclick='() => Navigation.NavigateTo("/settings")'>
@@ -233,6 +234,7 @@
         "reports" => "Reports",
         "scoring" => "Scoring",
         "settings" => "Settings",
+        "diagnostics" => "Diagnostics",
         "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee portrait",
         _ => "Team performance"
     };

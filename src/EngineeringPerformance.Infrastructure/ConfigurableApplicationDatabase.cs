@@ -2,6 +2,8 @@ using System.Text.Json;
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EngineeringPerformance.Infrastructure;
 
@@ -9,9 +11,11 @@ public sealed class ConfigurableApplicationDatabase(
     LocalApplicationDatabase inner,
     IDbContextFactory<PerformanceDbContext> contextFactory,
     IWorkbookService workbookService,
-    string dataDirectory) : IApplicationDatabase
+    string dataDirectory,
+    ILogger<ConfigurableApplicationDatabase>? logger = null) : IApplicationDatabase
 {
     private readonly string _settingsPath = Path.Combine(dataDirectory, "operational-scoring.json");
+    private readonly ILogger<ConfigurableApplicationDatabase> _logger = logger ?? NullLogger<ConfigurableApplicationDatabase>.Instance;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -39,8 +43,16 @@ public sealed class ConfigurableApplicationDatabase(
     {
         if (!settings.IsValid)
             throw new InvalidOperationException("Operational scoring weights must be non-negative and total exactly 100%.");
+        var previous = await GetOperationalScoringSettingsAsync(cancellationToken);
         await WriteSettingsAsync(settings, cancellationToken);
-        return await RecalculateAllAsync(settings, cancellationToken);
+        var affected = await RecalculateAllAsync(settings, cancellationToken);
+        _logger.LogInformation(
+            "Operational scoring weights changed: Timesheet {OldTimesheet}->{NewTimesheet}, Approval {OldApproval}->{NewApproval}, Attendance {OldAttendance}->{NewAttendance}. {AffectedCount} rows recalculated.",
+            previous.TimesheetCompletionWeight, settings.TimesheetCompletionWeight,
+            previous.ApprovalCompletionWeight, settings.ApprovalCompletionWeight,
+            previous.AttendanceDisciplineWeight, settings.AttendanceDisciplineWeight,
+            affected);
+        return affected;
     }
 
     private async Task WriteSettingsAsync(OperationalScoringSettings settings, CancellationToken cancellationToken)

@@ -1,12 +1,19 @@
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.IO.Compression;
 
 namespace EngineeringPerformance.Infrastructure;
 
-public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbContext> contextFactory, IWorkbookService workbookService) : IApplicationDatabase
+public sealed class LocalApplicationDatabase(
+    IDbContextFactory<PerformanceDbContext> contextFactory,
+    IWorkbookService workbookService,
+    ILogger<LocalApplicationDatabase>? logger = null) : IApplicationDatabase
 {
+    private readonly ILogger<LocalApplicationDatabase> _logger = logger ?? NullLogger<LocalApplicationDatabase>.Instance;
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -265,6 +272,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             }
         }
         await context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Imported employee roster from {FilePath}: {ChangedCount} of {TotalCount} rows changed.", filePath, changed, roster.Count);
         return changed;
     }
 
@@ -309,6 +317,8 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         // recurs many times; codes queued earlier in this batch aren't visible to a database
         // query yet, so they're tracked here to avoid inserting a duplicate employee.
         var queuedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var newRows = 0;
+        var updatedRows = 0;
         foreach (var incoming in performance)
         {
             // Detailed timesheet and attendance rows carry their own real date, which can span many
@@ -321,6 +331,11 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
                 current = new EmployeeMonthlyPerformance { Year = rowYear, Month = rowMonth, EmployeeName = incoming.EmployeeName };
                 context.EmployeeMonthlyPerformances.Add(current);
                 existingPerformance[key] = current;
+                newRows++;
+            }
+            else
+            {
+                updatedRows++;
             }
             Merge(current, incoming, reportType);
             if (reportType == ReportType.AttendanceLeaveUaaTimesheet && !string.IsNullOrWhiteSpace(incoming.EmployeeCode)
@@ -330,6 +345,9 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             }
         }
         await context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation(
+            "Imported {ReportType} for {Year:D4}-{Month:D2} from {FileName}: {NewCount} new rows, {UpdatedCount} updated rows.",
+            reportType, year, month, inspection.FileName, newRows, updatedRows);
     }
 
     public async Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default)
@@ -357,7 +375,11 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             {
                 IReadOnlyList<PeerReview> fromFile;
                 try { fromFile = workbookService.ReadPeerReviews(workbook, year, month); }
-                catch (Exception) { continue; }   // not a review workbook, or unreadable
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Skipped {FileName} while importing peer reviews: not a review workbook, or unreadable.", Path.GetFileName(workbook));
+                    continue;
+                }
                 if (fromFile.Count == 0) continue;
                 reviews.AddRange(fromFile);
                 accepted++;
@@ -419,10 +441,16 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             foreach (var file in Directory.EnumerateFiles(temporaryDirectory, "*.xls*", SearchOption.AllDirectories))
             {
                 ReportType type;
-                try { type = workbookService.DetectReportType(file); } catch (InvalidDataException) { continue; }
+                try { type = workbookService.DetectReportType(file); }
+                catch (InvalidDataException ex)
+                {
+                    _logger.LogWarning(ex, "Skipped {FileName} in package {ZipPath}: not a recognized report type.", Path.GetFileName(file), zipPath);
+                    continue;
+                }
                 await ImportSourceAsync(type, year, month, file, cancellationToken);
                 imported++;
             }
+            _logger.LogInformation("Imported package {ZipPath} for {Year:D4}-{Month:D2}: {ImportedCount} files.", zipPath, year, month, imported);
             return imported;
         }
         finally

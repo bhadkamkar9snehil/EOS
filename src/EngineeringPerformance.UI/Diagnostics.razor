@@ -1,0 +1,168 @@
+@page "/diagnostics"
+@using System.IO.Compression
+@using System.Reflection
+@inject AppState State
+
+<section class="single-pane wide settings-page">
+    <div class="section-title settings-title">
+        <div>
+            <h2>Diagnostics</h2>
+            <p>App version, database and log locations, and a recent log tail — useful information to include when reporting a problem.</p>
+        </div>
+    </div>
+
+    <div class="settings-section-grid">
+        <section class="settings-card">
+            <div class="settings-card-head">
+                <span class="settings-card-icon">◫</span>
+                <div><h3>Application</h3><p>Build and storage details.</p></div>
+            </div>
+            <dl class="settings-list compact-list">
+                <div><dt>Version</dt><dd>@_appVersion</dd></div>
+                <div><dt>Database file</dt><dd>@_dbPath</dd></div>
+                <div><dt>Database size</dt><dd>@_dbSize</dd></div>
+                <div><dt>Log directory</dt><dd>@_logDirectory</dd></div>
+            </dl>
+        </section>
+
+        <section class="settings-card">
+            <div class="settings-card-head">
+                <span class="settings-card-icon">◎</span>
+                <div><h3>Bug report bundle</h3><p>Zips the last few days of logs plus a small info.txt for attaching to a bug report.</p></div>
+            </div>
+            <p>
+                <button type="button" class="skin-choice" style="display:inline-block;padding:.5rem 1rem;" @onclick="CreateBundleAsync" disabled="@_bundling">
+                    @(_bundling ? "Building bundle..." : "Copy diagnostics bundle")
+                </button>
+            </p>
+            @if (!string.IsNullOrEmpty(_bundlePath))
+            {
+                <p>Bundle saved to: <code>@_bundlePath</code></p>
+            }
+        </section>
+    </div>
+
+    <div class="settings-card" style="margin-top:1rem;">
+        <div class="settings-card-head">
+            <span class="settings-card-icon">▤</span>
+            <div><h3>Today's log (last @MaxTailLines lines)</h3><p>@_todayLogPath</p></div>
+        </div>
+        <pre style="max-height:24rem;overflow:auto;white-space:pre-wrap;font-size:.8rem;">@_logTail</pre>
+        <p><button type="button" class="skin-choice" style="display:inline-block;padding:.35rem .8rem;" @onclick="RefreshTailAsync">Refresh</button></p>
+    </div>
+</section>
+
+@code {
+    private const int MaxTailLines = 200;
+
+    private string _appVersion = string.Empty;
+    private string _dbPath = string.Empty;
+    private string _dbSize = string.Empty;
+    private string _logDirectory = string.Empty;
+    private string _todayLogPath = string.Empty;
+    private string _logTail = string.Empty;
+    private string? _bundlePath;
+    private bool _bundling;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
+        var dbPath = Path.Combine(dataDirectory, "engineering-performance.db");
+        _dbPath = dbPath;
+        _dbSize = File.Exists(dbPath) ? FormatSize(new FileInfo(dbPath).Length) : "(not found)";
+        _logDirectory = Path.Combine(dataDirectory, "logs");
+        _appVersion = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetName().Version?.ToString() ?? "unknown";
+
+        await RefreshTailAsync();
+    }
+
+    private Task RefreshTailAsync()
+    {
+        _todayLogPath = Path.Combine(_logDirectory, $"eos-{DateTime.Now:yyyyMMdd}.log");
+        if (!File.Exists(_todayLogPath))
+        {
+            _logTail = "(no log file for today yet)";
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            using var stream = new FileStream(_todayLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            var lines = new List<string>();
+            string? line;
+            while ((line = reader.ReadLine()) is not null) lines.Add(line);
+            _logTail = string.Join(Environment.NewLine, lines.TakeLast(MaxTailLines));
+        }
+        catch (IOException ex)
+        {
+            _logTail = $"(could not read log file: {ex.Message})";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task CreateBundleAsync()
+    {
+        _bundling = true;
+        _bundlePath = null;
+        StateHasChanged();
+        try
+        {
+            await Task.Run(() =>
+            {
+                var outputDirectory = Path.Combine(Path.GetTempPath(), "EngineeringPerformance-Diagnostics");
+                Directory.CreateDirectory(outputDirectory);
+                var zipPath = Path.Combine(outputDirectory, $"eos-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.zip");
+
+                using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+
+                if (Directory.Exists(_logDirectory))
+                {
+                    var cutoff = DateTime.Now.AddDays(-5);
+                    foreach (var file in Directory.EnumerateFiles(_logDirectory, "*.log")
+                        .Where(f => File.GetLastWriteTime(f) >= cutoff))
+                    {
+                        archive.CreateEntryFromFile(file, Path.GetFileName(file));
+                    }
+                }
+
+                var infoEntry = archive.CreateEntry("info.txt");
+                using (var writer = new StreamWriter(infoEntry.Open()))
+                {
+                    writer.WriteLine($"EOS diagnostics bundle");
+                    writer.WriteLine($"Generated: {DateTime.Now:O}");
+                    writer.WriteLine($"App version: {_appVersion}");
+                    writer.WriteLine($"Database path: {_dbPath}");
+                    writer.WriteLine($"Database size: {_dbSize}");
+                }
+
+                _bundlePath = zipPath;
+            });
+
+            State.ShowMessage($"Diagnostics bundle saved to {_bundlePath}");
+        }
+        catch (Exception ex)
+        {
+            State.ShowMessage($"Could not build diagnostics bundle: {ex.Message}", true);
+        }
+        finally
+        {
+            _bundling = false;
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        double size = bytes;
+        string[] units = ["B", "KB", "MB", "GB"];
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return $"{size:0.##} {units[unit]}";
+    }
+}

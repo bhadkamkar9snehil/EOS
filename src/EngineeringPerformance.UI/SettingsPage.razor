@@ -1,6 +1,7 @@
 @page "/settings"
 @inject IJSRuntime JS
 @inject AppState State
+@inject NavigationManager Navigation
 
 <section class="single-pane wide settings-page">
     <div class="section-title settings-title">
@@ -93,6 +94,14 @@
                 <div><span>Operational text floor</span><strong>10.5 px</strong></div>
                 <div><span>Data or scoring impact</span><strong>None</strong></div>
             </div>
+        </section>
+
+        <section class="settings-card">
+            <div class="settings-card-head">
+                <span class="settings-card-icon">▤</span>
+                <div><h3>Diagnostics</h3><p>App version, database location, and a log tail for troubleshooting.</p></div>
+            </div>
+            <p><button type="button" class="skin-choice" style="display:inline-block;padding:.5rem 1rem;" @onclick='() => Navigation.NavigateTo("/diagnostics")'>Open Diagnostics</button></p>
         </section>
     </div>
 </section>
