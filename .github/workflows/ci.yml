@@ -1,14 +1,11 @@
-name: CI
+name: CI (manual fallback)
 
-# This repo is public, so GitHub Actions is free and unbounded here (no minutes cap, standard
-# hosted runners at no cost) — see docs/tailwind-grid-ci-plan.md section 3 for the earlier
-# non-Actions plan this supersedes now that the repo went public.
+# Azure Pipelines (azure-pipelines.yml) is the authoritative push/PR CI path.
+# Keep this workflow as an on-demand cross-platform fallback only; running two
+# automatic CI systems creates duplicate work and conflicting status noise.
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -53,8 +50,5 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      # Confirms the WPF host itself actually builds on real Windows — the one thing the Linux
-      # job above cannot verify. Not published/packed here; that only happens on a version tag
-      # (see release.yml) so ordinary pushes/PRs stay fast and don't produce release artifacts.
       - name: Build DesktopHost
         run: dotnet build src/EngineeringPerformance.DesktopHost/EngineeringPerformance.DesktopHost.csproj --configuration Release --no-restore
