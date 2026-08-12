@@ -30,21 +30,6 @@ public sealed record ReviewImportResult(
     int ReviewerCount,
     IReadOnlyList<ReviewFileImportResult> Files);
 
-public sealed record ExecutionDisciplineSettings(
-    int TimesheetDueHour = 10,
-    int TimesheetDueMinute = 0,
-    int GraceMinutes = 0,
-    decimal RequiredDailyHours = 8m,
-    bool SaturdayIsWorkingDay = true)
-{
-    public bool IsValid => TimesheetDueHour is >= 0 and <= 23 &&
-                           TimesheetDueMinute is >= 0 and <= 59 &&
-                           GraceMinutes is >= 0 and <= 1440 &&
-                           RequiredDailyHours is > 0 and <= 24;
-
-    public static ExecutionDisciplineSettings Default { get; } = new();
-}
-
 public sealed record TimesheetDayEvidence(
     string EmployeeName,
     string? EmployeeCode,
@@ -61,62 +46,26 @@ public sealed record AccountableWorkday(
     decimal ExpectedDayWeight,
     string SourceFileName);
 
-public sealed record DirectiveItem(
-    string Code,
-    string Name,
-    string Trigger,
-    string Deadline,
-    string Evidence,
-    string Source,
-    string Severity,
-    bool FeedAvailable);
-
-public sealed record ObligationItem(
-    string Key,
-    string DirectiveCode,
-    string DirectiveName,
+/// <summary>
+/// Per-employee filing-delay summary for one reporting month, built from the detailed timesheet
+/// export's own "Filled Date" column (when a work-log row was actually submitted) compared against
+/// its "Date" (the work day it covers). Purely descriptive — no due-time/grace-period rule engine;
+/// the manager reads the numbers and judges for themselves.
+/// </summary>
+public sealed record TimesheetFilingRow(
     string EmployeeName,
     string? EmployeeCode,
-    DateTime TriggeredAt,
-    DateTime DueAt,
-    DateTime? CompletedAt,
-    ObligationOutcome Outcome,
-    int? DelayMinutes,
-    int? MinutesRelativeToDeadline,
-    decimal RequiredHours,
-    decimal RecordedHours,
-    int EvidenceRows,
-    string EvidenceSource,
-    string? ExceptionReason = null,
-    DateTime? ExceptionRecordedAt = null);
+    int FiledDays,
+    decimal AverageDelayDays,
+    decimal MaxDelayDays,
+    DateTime WorstDay);
 
-public sealed record ObligationExceptionItem(
-    string ObligationKey,
-    ObligationOutcome Outcome,
-    string Reason,
-    DateTime RecordedAt);
-
-public sealed record ExecutionDisciplineSnapshot(
+public sealed record TimesheetFilingSnapshot(
     int Year,
     int Month,
-    IReadOnlyList<DirectiveItem> Directives,
-    IReadOnlyList<ObligationItem> Obligations,
-    string? Notice)
-{
-    public int Expected => Obligations.Count(IsExpected);
-    public int Completed => Obligations.Count(x => IsExpected(x) && x.CompletedAt is not null);
-    public int OnTime => Obligations.Count(x => x.Outcome == ObligationOutcome.OnTime);
-    public int Late => Obligations.Count(x => x.Outcome == ObligationOutcome.Late);
-    public int Overdue => Obligations.Count(x => x.Outcome == ObligationOutcome.Overdue);
-    public int Pending => Obligations.Count(x => x.Outcome == ObligationOutcome.Pending);
-    public int Exceptions => Obligations.Count(x => x.Outcome is ObligationOutcome.Excused or ObligationOutcome.NotApplicable or ObligationOutcome.Waived);
-    public decimal Participation => Expected == 0 ? 0m : decimal.Round(Completed * 100m / Expected, 1);
-    public decimal OnTimeCompliance => Expected == 0 ? 0m : decimal.Round(OnTime * 100m / Expected, 1);
-    public decimal Punctuality => Completed == 0 ? 0m : decimal.Round(OnTime * 100m / Completed, 1);
-
-    private static bool IsExpected(ObligationItem item) =>
-        item.Outcome is not (ObligationOutcome.Excused or ObligationOutcome.NotApplicable or ObligationOutcome.Waived);
-}
+    IReadOnlyList<TimesheetFilingRow> Rows,
+    decimal AverageDelayDays,
+    string? Notice);
 
 public interface IApplicationDatabase
 {
@@ -145,21 +94,8 @@ public interface IApplicationDatabase
     Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(OperationalScoringSettings.Default);
 
-    Task<ExecutionDisciplineSettings> GetExecutionDisciplineSettingsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(ExecutionDisciplineSettings.Default);
-
-    Task SaveExecutionDisciplineSettingsAsync(ExecutionDisciplineSettings settings, CancellationToken cancellationToken = default) =>
-        Task.FromException(new NotSupportedException("This database implementation does not support execution-discipline settings."));
-
-    Task<ExecutionDisciplineSnapshot> GetExecutionDisciplineAsync(int year, int month, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new ExecutionDisciplineSnapshot(year, month, [], [], "No execution-discipline provider is configured."));
-
-    Task SetObligationExceptionAsync(
-        string obligationKey,
-        ObligationOutcome? outcome,
-        string? reason,
-        CancellationToken cancellationToken = default) =>
-        Task.FromException(new NotSupportedException("This database implementation does not support obligation exceptions."));
+    Task<TimesheetFilingSnapshot> GetTimesheetFilingAsync(int year, int month, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new TimesheetFilingSnapshot(year, month, [], 0m, "No timesheet-filing provider is configured."));
 
     Task<int> SaveOperationalScoringSettingsAsync(OperationalScoringSettings settings, CancellationToken cancellationToken = default) =>
         Task.FromException<int>(new NotSupportedException("This database implementation does not support configurable operational scoring."));

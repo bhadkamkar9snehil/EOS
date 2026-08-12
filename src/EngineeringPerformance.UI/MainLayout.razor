@@ -17,7 +17,6 @@
             <span class="nav-group-label">Analyze</span>
             @NavButton("overview", "Overview", Icon.Overview)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
-            @NavButton("discipline", "Execution Discipline", Icon.Discipline)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
@@ -188,7 +187,6 @@
         "imports" => "Data imports",
         "data" => "Imported data",
         "timesheets" => "Timesheets",
-        "discipline" => "Execution discipline",
         "employees" => "Employees & teams",
         "peer-insights" => "Peer insights",
         "templates" => "Review templates",
@@ -304,7 +302,6 @@
         public static readonly string Imports = Svg($"<path d=\"M10 13V4\" {Stroke}/><path d=\"M6.5 7.5 10 4l3.5 3.5\" {Stroke}/><path d=\"M4 13v3h12v-3\" {Stroke}/>");
         public static readonly string DataBrowser = Svg($"<rect x=\"3.5\" y=\"4.5\" width=\"13\" height=\"11\" rx=\"1.6\" {Stroke}/><path d=\"M3.5 8.2h13M8.2 8.2V15.5M12.6 8.2V15.5\" {Stroke}/>");
         public static readonly string Timesheets = Svg($"<rect x=\"4\" y=\"4\" width=\"12\" height=\"12\" rx=\"2.5\" {Stroke}/><path d=\"M7 10.2 9 12l4-4.2\" {Stroke}/>");
-        public static readonly string Discipline = Svg($"<path d=\"M4 5.5h12M4 10h12M4 14.5h12\" {Stroke}/><circle cx=\"7\" cy=\"5.5\" r=\"1.5\" fill=\"currentColor\"/><circle cx=\"12.5\" cy=\"10\" r=\"1.5\" fill=\"currentColor\"/><circle cx=\"9\" cy=\"14.5\" r=\"1.5\" fill=\"currentColor\"/>");
         public static readonly string Employees = Svg($"<circle cx=\"7.5\" cy=\"7\" r=\"2.4\" {Stroke}/><path d=\"M3.2 16c.5-2.7 2.2-4.2 4.3-4.2s3.8 1.5 4.3 4.2\" {Stroke}/><circle cx=\"14.2\" cy=\"7.6\" r=\"1.9\" {Stroke}/><path d=\"M13 11.9c1.9.2 3.1 1.5 3.6 3.9\" {Stroke}/>");
         public static readonly string PeerInsights = Svg($"<path d=\"M4 6h9l-2.2-2.2\" {Stroke}/><path d=\"M16 14H7l2.2 2.2\" {Stroke}/>");
         public static readonly string Templates = Svg($"<rect x=\"4.5\" y=\"3.5\" width=\"11\" height=\"13\" rx=\"1.6\" {Stroke}/><path d=\"M7 7.5h6M7 10.5h6M7 13.5h3.5\" {Stroke}/>");

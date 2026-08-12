@@ -345,7 +345,12 @@
         var historyMaxHours = State.History.Count > 0 ? State.History.Max(x => x.PunchHours)
             : State.Performance.Count > 0 ? State.Performance.Max(x => x.PunchHours) : 0m;
         var fieldMax = Math.Max(60m, Math.Max(historyMaxHours, focusedPreviousHours) * 1.14m);
-        await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)Median(State.Performance.Select(x => x.PunchHours)), _focusName);
+        // Same reasoning as fieldMax: the BALANCED/INCONSISTENT divider line must also be fixed
+        // across months, not recomputed from the current month's median alone — otherwise the
+        // quadrant boundary itself moves under a person from month to month, and a shift from one
+        // zone to another stops meaning their behavior actually changed.
+        var fieldMedian = State.History.Count > 0 ? Median(State.History.Select(x => x.PunchHours)) : Median(State.Performance.Select(x => x.PunchHours));
+        await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)fieldMedian, _focusName);
 
         var attentionNames = AttentionRows.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var riverSeries = State.Performance.Select((item, index) => new

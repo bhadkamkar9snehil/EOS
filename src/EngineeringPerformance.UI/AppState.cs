@@ -33,7 +33,7 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
     public IReadOnlyList<MonthlyPerformanceItem> Performance { get; private set; } = [];
     public IReadOnlyList<MonthlyPerformanceItem> History { get; private set; } = [];
     public IReadOnlyList<WeeklyPerformanceItem> WeeklyPerformance { get; private set; } = [];
-    public ExecutionDisciplineSnapshot? ExecutionDiscipline { get; private set; }
+    public TimesheetFilingSnapshot? TimesheetFiling { get; private set; }
     public IReadOnlyList<string> ExcludedNames { get; private set; } = [];
     public IReadOnlyList<PeerReviewItem> PeerReviews { get; private set; } = [];
     public IReadOnlyList<TeamItem> Teams { get; private set; } = [];
@@ -91,7 +91,7 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
             Changed?.Invoke();
 
             _ = LoadWeeklyPerformanceAsync(version, year, month);
-            _ = LoadExecutionDisciplineAsync(version, year, month);
+            _ = LoadTimesheetFilingAsync(version, year, month);
         }
         catch (Exception exception)
         {
@@ -119,23 +119,23 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
         }
     }
 
-    private async Task LoadExecutionDisciplineAsync(int version, int year, int month)
+    private async Task LoadTimesheetFilingAsync(int version, int year, int month)
     {
         try
         {
-            var snapshot = await Task.Run(() => database.GetExecutionDisciplineAsync(year, month));
+            var snapshot = await Task.Run(() => database.GetTimesheetFilingAsync(year, month));
             if (version != Volatile.Read(ref _refreshVersion)) return;
-            ExecutionDiscipline = snapshot;
+            TimesheetFiling = snapshot;
             InteractionLog.Write(
-                "discipline.refresh.completed",
-                $"version={version}; month={year:D4}-{month:D2}; obligations={snapshot.Obligations.Count}; onTime={snapshot.OnTime}; late={snapshot.Late}; overdue={snapshot.Overdue}");
+                "timesheet-filing.refresh.completed",
+                $"version={version}; month={year:D4}-{month:D2}; people={snapshot.Rows.Count}; avgDelayDays={snapshot.AverageDelayDays}");
             Changed?.Invoke();
         }
         catch (Exception exception)
         {
             if (version != Volatile.Read(ref _refreshVersion)) return;
-            InteractionLog.Write("discipline.refresh.failed", $"version={version}; month={year:D4}-{month:D2}", exception);
-            Message = $"Execution discipline could not be loaded: {exception.Message}";
+            InteractionLog.Write("timesheet-filing.refresh.failed", $"version={version}; month={year:D4}-{month:D2}", exception);
+            Message = $"Timesheet filing delay could not be loaded: {exception.Message}";
             IsError = true;
             Changed?.Invoke();
         }

@@ -16,16 +16,12 @@ public sealed partial class ConfigurableApplicationDatabase(
 {
     private readonly string _settingsPath = Path.Combine(dataDirectory, "operational-scoring.json");
     private readonly ILogger<ConfigurableApplicationDatabase> _logger = logger ?? NullLogger<ConfigurableApplicationDatabase>.Instance;
-    private readonly string _disciplineSettingsPath = Path.Combine(dataDirectory, "execution-discipline.json");
-    private readonly string _disciplineExceptionsPath = Path.Combine(dataDirectory, "execution-discipline-exceptions.json");
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await inner.InitializeAsync(cancellationToken);
         if (!File.Exists(_settingsPath))
             await WriteSettingsAsync(OperationalScoringSettings.Default, cancellationToken);
-        if (!File.Exists(_disciplineSettingsPath))
-            await WriteDisciplineSettingsAsync(ExecutionDisciplineSettings.Default, cancellationToken);
     }
 
     public async Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default)
@@ -163,6 +159,54 @@ public sealed partial class ConfigurableApplicationDatabase(
             .OrderBy(x => x.WeekStart)
             .ThenBy(x => x.EmployeeName)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Compares each detailed-timesheet row's own "Filled Date" (when it was actually submitted)
+    /// against its "Date" (the work day it covers) to surface filing delay per employee. Reads only
+    /// the detailed-timesheet source already stored by the import pipeline — deliberately does not
+    /// cross-reference the attendance export, since "how late was this filed" only needs the one
+    /// file that carries both dates, and the Timesheets page's Compliance Ledger already covers
+    /// which days went unfilled at all.
+    /// </summary>
+    public async Task<TimesheetFilingSnapshot> GetTimesheetFilingAsync(int year, int month, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var excluded = await ReadExcludedNamesAsync(context, cancellationToken);
+        var source = await context.ImportedSourceFiles
+            .Where(x => x.Year == year && x.Month == month && x.ReportType == ReportType.DetailedTimesheetTransactions)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (source is null || !File.Exists(source.StoredPath))
+            return new TimesheetFilingSnapshot(year, month, [], 0m, "Import the detailed timesheet export to see filing delay.");
+
+        var evidence = workbookService.ReadTimesheetDayEvidence(source.StoredPath, year, month);
+
+        var rows = evidence
+            .Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName)))
+            .GroupBy(x => PersonName.Normalize(x.EmployeeName), StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                var delays = g.Select(x => (Delay: Math.Max(0m, (decimal)(x.LastFilledAt.Date - x.WorkDate.Date).TotalDays), x.EmployeeCode, x.WorkDate)).ToArray();
+                var worst = delays.OrderByDescending(x => x.Delay).ThenByDescending(x => x.WorkDate).First();
+                return new TimesheetFilingRow(
+                    g.Key,
+                    delays.Select(x => x.EmployeeCode).FirstOrDefault(c => c is not null),
+                    delays.Length,
+                    decimal.Round(delays.Average(x => x.Delay), 1),
+                    worst.Delay,
+                    worst.WorkDate);
+            })
+            .OrderByDescending(x => x.AverageDelayDays)
+            .ThenByDescending(x => x.MaxDelayDays)
+            .ToArray();
+
+        var totalFiledDays = rows.Sum(x => x.FiledDays);
+        var overallAverage = totalFiledDays == 0
+            ? 0m
+            : decimal.Round(rows.Sum(x => x.AverageDelayDays * x.FiledDays) / totalFiledDays, 1);
+
+        return new TimesheetFilingSnapshot(year, month, rows, overallAverage, null);
     }
 
     private static async Task<HashSet<string>> ReadExcludedNamesAsync(PerformanceDbContext context, CancellationToken cancellationToken)

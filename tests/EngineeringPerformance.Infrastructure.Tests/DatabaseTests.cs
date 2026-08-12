@@ -474,6 +474,64 @@ public sealed class DatabaseTests
         }
     }
 
+    [Fact]
+    public async Task TimesheetFilingRanksEngineersByAverageFilingDelay()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"epa-filing-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        var databasePath = Path.Combine(folder, "filing-test.db");
+        try
+        {
+            var workbookPath = Path.Combine(folder, "worklog.xlsx");
+            using (var workbook = new ClosedXML.Excel.XLWorkbook())
+            {
+                var sheet = workbook.AddWorksheet("Sheet1");
+                string[] headers = ["Employee", "Project Task Status", "Project No", "Project", "Description", "Filled Date", "Date", "Start Time", "EndTime", "Total work Hours"];
+                for (var column = 0; column < headers.Length; column++) sheet.Cell(1, column + 1).Value = headers[column];
+                // Priyanka: filed same day (0 days) on the 10th, one day late (1 day) on the 11th -> average 0.5.
+                sheet.Cell(2, 1).Value = "Priyanka Makwana";
+                sheet.Cell(2, 6).Value = new DateTime(2026, 8, 10, 18, 0, 0);
+                sheet.Cell(2, 7).Value = new DateTime(2026, 8, 10);
+                sheet.Cell(2, 10).Value = 8m;
+                sheet.Cell(3, 1).Value = "Priyanka Makwana";
+                sheet.Cell(3, 6).Value = new DateTime(2026, 8, 12, 9, 0, 0);
+                sheet.Cell(3, 7).Value = new DateTime(2026, 8, 11);
+                sheet.Cell(3, 10).Value = 8m;
+                // Rohit: filed nine days late once -> the clear worst offender.
+                sheet.Cell(4, 1).Value = "Rohit Sharma";
+                sheet.Cell(4, 6).Value = new DateTime(2026, 8, 20, 10, 0, 0);
+                sheet.Cell(4, 7).Value = new DateTime(2026, 8, 11);
+                sheet.Cell(4, 10).Value = 8m;
+                workbook.SaveAs(workbookPath);
+            }
+
+            var options = new DbContextOptionsBuilder<PerformanceDbContext>().UseSqlite($"Data Source={databasePath}").Options;
+            var factory = new TestContextFactory(options);
+            var inner = new LocalApplicationDatabase(factory, new WorkbookService());
+            var database = new ConfigurableApplicationDatabase(inner, factory, new WorkbookService(), folder);
+            await database.InitializeAsync();
+            await database.ImportSourceAsync(ReportType.DetailedTimesheetTransactions, 2026, 8, workbookPath);
+
+            var snapshot = await database.GetTimesheetFilingAsync(2026, 8);
+
+            Assert.Equal(2, snapshot.Rows.Count);
+            var rohit = snapshot.Rows.Single(x => x.EmployeeName == "Rohit Sharma");
+            var priyanka = snapshot.Rows.Single(x => x.EmployeeName == "Priyanka Makwana");
+            Assert.Equal(9m, rohit.MaxDelayDays);
+            Assert.Equal(9m, rohit.AverageDelayDays);
+            Assert.Equal(1, rohit.FiledDays);
+            Assert.Equal(0.5m, priyanka.AverageDelayDays);
+            Assert.Equal(2, priyanka.FiledDays);
+            // Worst offender ranked first.
+            Assert.Equal("Rohit Sharma", snapshot.Rows[0].EmployeeName);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
     private static void WriteRoster(string path, IReadOnlyList<(string Code, string Name, int Level)> rows)
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();

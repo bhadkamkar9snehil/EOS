@@ -52,6 +52,11 @@
                 <strong>@Probationers</strong>
                 <small>Freshers on probation in ERP roster</small>
             </div>
+            <div>
+                <label>Avg filing delay</label>
+                <strong class="@(AvgFilingDelay > 1 ? "serious" : null)">@Analytics.Format(AvgFilingDelay, "0.0") d</strong>
+                <small>@FilingDays day(s) filed this month</small>
+            </div>
         </section>
 
         <section class="timesheet-ledger">
@@ -115,6 +120,25 @@
                 <p class="chart-note">No engineer matches “@_filter”.</p>
             }
         </section>
+
+        @if (FilingRows.Count > 0)
+        {
+            <section class="timesheet-filing-section" aria-label="Timesheet filing delay">
+                <div class="atlas-panel-head">
+                    <div><h2>Timesheet filing</h2><small>How late each entry was filed after its work date, worst first</small></div>
+                    <span class="atlas-caption">@FilingRows.Count of @Rows.Count engineers with filed entries</span>
+                </div>
+                <ul class="portrait-evidence-list">
+                    @foreach (var row in FilingRows.Take(15))
+                    {
+                        <li>
+                            <strong class="@(row.AverageDelayDays > 1 ? "serious" : null)">@row.EmployeeName — @Analytics.Format(row.AverageDelayDays, "0.0") day(s) avg delay</strong>
+                            <small>Worst @Analytics.Format(row.MaxDelayDays, "0.#") day(s) late, for @row.WorstDay.ToString("dd MMM") · @row.FiledDays entr@(row.FiledDays == 1 ? "y" : "ies") filed</small>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
     }
 </div>
 
@@ -201,4 +225,8 @@
     private decimal FillRate => _totalExpected == 0 ? 0 : decimal.Round(_totalFilled * 100m / _totalExpected, 1);
     private decimal CapacityUsed => _capacityUsed;
     private int Probationers => _probationers;
+
+    private IReadOnlyList<TimesheetFilingRow> FilingRows => State.TimesheetFiling?.Rows ?? [];
+    private decimal AvgFilingDelay => State.TimesheetFiling?.AverageDelayDays ?? 0m;
+    private int FilingDays => FilingRows.Sum(x => x.FiledDays);
 }

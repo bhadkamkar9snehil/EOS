@@ -60,10 +60,10 @@ calendar month from the ERP.
 
 **Optional but important — `Filled Date`**: the timestamp the entry was actually *submitted*, as
 opposed to the work date. This is separate from the four columns above and is **not required** for
-the core operational score, but the **Execution Discipline** page needs it to compute on-time vs.
-late timesheet filing — without it, timesheet-filing compliance can't be evaluated at all. If your
-ERP export omits this column, Execution Discipline's timesheet-filing numbers will not reflect
-reality. Include it if you want that page to mean anything.
+the core operational score, but the **Timesheets page's "Timesheet filing" section** needs it to
+compute filing delay (how many days after the work date the entry was actually filed) — without it,
+that section has nothing to show. If your ERP export omits this column, filing delay simply won't
+be tracked that month; nothing else breaks.
 
 ---
 
