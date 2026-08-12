@@ -10,6 +10,9 @@
          parsed, avoiding a flash of the wrong theme on launch. -->
     <script>(function(){try{var m=localStorage.getItem('epa-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m;}catch(e){}})();</script>
     <link rel="stylesheet" href="_content/EngineeringPerformance.UI/tailwind.css?v=2" />
+    <!-- Token-derived finish layer: improves readability, contrast and interaction polish without
+         introducing a second palette or breaking light/dark/system theme parity. -->
+    <link rel="stylesheet" href="_content/EngineeringPerformance.UI/ui-polish.css?v=1" />
     <!-- echarts.min.js (1.1MB) is lazy-loaded via echarts-loader.js only on chart-rendering routes.
          Confirmed atlas-charts.js's chart set only touches the `echarts` global lazily inside draw
          functions, never at parse time, so this still holds. -->
