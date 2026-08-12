@@ -15,7 +15,7 @@ variables:
 
 jobs:
   - job: windows_ci
-    displayName: Windows build & test
+    displayName: Windows build, test & visual QA
     timeoutInMinutes: 30
     pool:
       name: Default
@@ -25,6 +25,7 @@ jobs:
     steps:
       - checkout: self
         clean: true
+        persistCredentials: true
 
       - powershell: ./build/vm-health.ps1
         displayName: VM / agent preflight
@@ -61,3 +62,30 @@ jobs:
           mergeTestResults: true
           failTaskOnFailedTests: true
           testRunTitle: EOS Windows unit tests
+
+      # Runs the actual WPF + BlazorWebView host against synthetic July fixtures, captures the
+      # rendered WebView2 surface, records DOM overflow diagnostics, and copies the app's Serilog
+      # output. Keep this non-blocking while the capture channel is being hardened; the core build
+      # and tests remain authoritative if a Windows session/WebView2 infrastructure quirk occurs.
+      - powershell: ./scripts/visual-qa.ps1 -OutputDirectory "$(Build.ArtifactStagingDirectory)\visual-qa"
+        displayName: Capture real EOS screens
+        continueOnError: true
+
+      - powershell: New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)\visual-qa" | Out-Null
+        displayName: Ensure visual QA artifact directory
+        condition: always()
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish visual QA screenshots and logs
+        condition: always()
+        inputs:
+          targetPath: '$(Build.ArtifactStagingDirectory)\visual-qa'
+          artifactName: visual-qa
+
+      # The Azure artifact remains the canonical build evidence. This generated branch mirrors only
+      # the latest synthetic-data screenshots/logs so automated reviewers can inspect the PNGs
+      # directly through GitHub without requiring an interactive Azure DevOps browser session.
+      - powershell: ./scripts/publish-visual-qa-branch.ps1 -OutputDirectory "$(Build.ArtifactStagingDirectory)\visual-qa"
+        displayName: Mirror latest visual QA evidence to GitHub
+        condition: always()
+        continueOnError: true
