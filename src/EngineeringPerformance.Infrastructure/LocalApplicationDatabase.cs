@@ -243,15 +243,17 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
     {
         var roster = workbookService.ReadEmployeeRoster(filePath);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var employeesByCode = await context.Employees.ToDictionaryAsync(x => x.EmployeeCode, x => x, cancellationToken);
         var changed = 0;
         foreach (var entry in roster)
         {
-            var existing = await context.Employees.SingleOrDefaultAsync(x => x.EmployeeCode == entry.EmployeeCode, cancellationToken);
+            var existing = employeesByCode.GetValueOrDefault(entry.EmployeeCode);
             if (existing is null)
             {
                 var created = new Employee(entry.EmployeeCode, entry.Name, entry.SeniorityLevel);
                 created.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation, entry.IsUpdown);
                 context.Employees.Add(created);
+                employeesByCode[entry.EmployeeCode] = created;
                 changed++;
             }
             else
@@ -280,11 +282,13 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         // A multi-month export (attendance/detailed timesheet) covers every month it contains data
         // for, not just the UI's currently selected month — recording only the selected month would
         // make the readiness indicator wrong for the other months once weekly re-uploads start.
-        var coveredMonths = performance.Select(x => (x.Year, x.Month)).Distinct().DefaultIfEmpty((year, month)).ToArray();
+        var coveredMonths = performance.Select(x => (Year: x.Year, Month: x.Month)).Distinct().DefaultIfEmpty((Year: year, Month: month)).ToArray();
+        var existingSourceFiles = await context.ImportedSourceFiles
+            .Where(x => x.ReportType == reportType && coveredMonths.Select(m => m.Year).Contains(x.Year))
+            .ToDictionaryAsync(x => (x.Year, x.Month), x => x, cancellationToken);
         foreach (var (coveredYear, coveredMonth) in coveredMonths)
         {
-            var previous = await context.ImportedSourceFiles.SingleOrDefaultAsync(
-                x => x.Year == coveredYear && x.Month == coveredMonth && x.ReportType == reportType, cancellationToken);
+            var previous = existingSourceFiles.GetValueOrDefault((coveredYear, coveredMonth));
             if (previous is not null) context.ImportedSourceFiles.Remove(previous);
             context.ImportedSourceFiles.Add(new ImportedSourceFile(reportType, coveredYear, coveredMonth, inspection.FileName, storedPath, inspection.SheetNames.Count));
             // The slot row above is replaced on every re-upload; this log line is not, so a daily
@@ -293,6 +297,14 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             context.ImportAuditEntries.Add(new ImportAuditEntry(
                 reportType, coveredYear, coveredMonth, inspection.FileName, rowsForMonth, previous is not null));
         }
+
+        var coveredYears = coveredMonths.Select(m => m.Year).Distinct().ToArray();
+        var existingPerformance = await context.EmployeeMonthlyPerformances
+            .Where(x => coveredYears.Contains(x.Year))
+            .ToDictionaryAsync(x => (x.Year, x.Month, x.EmployeeName), x => x, cancellationToken);
+        var existingEmployeeCodes = new HashSet<string>(
+            await context.Employees.Select(x => x.EmployeeCode).ToListAsync(cancellationToken),
+            StringComparer.OrdinalIgnoreCase);
         // A multi-month export yields one row per employee per month, so the same employee code
         // recurs many times; codes queued earlier in this batch aren't visible to a database
         // query yet, so they're tracked here to avoid inserting a duplicate employee.
@@ -303,14 +315,18 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
             // months in one export; each row lands in its own actual month, never the UI's selected one.
             var rowYear = incoming.Year;
             var rowMonth = incoming.Month;
-            var current = await context.EmployeeMonthlyPerformances.SingleOrDefaultAsync(x => x.Year == rowYear && x.Month == rowMonth && x.EmployeeName == incoming.EmployeeName, cancellationToken);
-            if (current is null) { current = new EmployeeMonthlyPerformance { Year = rowYear, Month = rowMonth, EmployeeName = incoming.EmployeeName }; context.EmployeeMonthlyPerformances.Add(current); }
+            var key = (rowYear, rowMonth, incoming.EmployeeName);
+            if (!existingPerformance.TryGetValue(key, out var current))
+            {
+                current = new EmployeeMonthlyPerformance { Year = rowYear, Month = rowMonth, EmployeeName = incoming.EmployeeName };
+                context.EmployeeMonthlyPerformances.Add(current);
+                existingPerformance[key] = current;
+            }
             Merge(current, incoming, reportType);
             if (reportType == ReportType.AttendanceLeaveUaaTimesheet && !string.IsNullOrWhiteSpace(incoming.EmployeeCode)
                 && queuedCodes.Add(incoming.EmployeeCode))
             {
-                var exists = await context.Employees.AnyAsync(x => x.EmployeeCode == incoming.EmployeeCode, cancellationToken);
-                if (!exists) context.Employees.Add(new Employee(incoming.EmployeeCode, incoming.EmployeeName, 1));
+                if (existingEmployeeCodes.Add(incoming.EmployeeCode)) context.Employees.Add(new Employee(incoming.EmployeeCode, incoming.EmployeeName, 1));
             }
         }
         await context.SaveChangesAsync(cancellationToken);
@@ -430,9 +446,11 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         var oldest = newest.AddMonths(-Math.Max(0, monthsBack - 1));
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        // Sargable range filter (year/month compared directly, no computed expression) so the
+        // (Year, Month, EmployeeName) index can be used instead of a full table scan.
         var rows = await context.EmployeeMonthlyPerformances
-            .Where(x => x.Year * 100 + x.Month >= oldest.Year * 100 + oldest.Month
-                     && x.Year * 100 + x.Month <= newest.Year * 100 + newest.Month)
+            .Where(x => (x.Year > oldest.Year || (x.Year == oldest.Year && x.Month >= oldest.Month))
+                     && (x.Year < newest.Year || (x.Year == newest.Year && x.Month <= newest.Month)))
             .OrderBy(x => x.Year).ThenBy(x => x.Month).ThenBy(x => x.EmployeeName).ToListAsync(cancellationToken);
         return rows.Where(x => !excluded.Contains(PersonName.Normalize(x.EmployeeName))).Select(Project).ToArray();
     }
