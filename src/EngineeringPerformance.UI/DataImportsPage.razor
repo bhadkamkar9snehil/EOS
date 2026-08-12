@@ -5,6 +5,7 @@
 @inject IFileDialogService Dialogs
 @inject AppState State
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="workbench-page imports-workbench">
@@ -132,6 +133,19 @@
             }
             else
             {
+                ImportPreview? preview = null;
+                try { preview = await Database.PreviewImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path); }
+                catch (NotSupportedException) { /* preview unavailable on this database implementation — import directly */ }
+
+                if (preview is not null)
+                {
+                    var summary = $"{Path.GetFileName(path)} → {Label(type)}\n\n" +
+                        $"{preview.RowsAdded} row(s) added, {preview.RowsUpdated} updated, {preview.RowsUnchanged} unchanged, {preview.TotalRows} total.\n\n" +
+                        "Proceed with this import?";
+                    var confirmed = await JS.InvokeAsync<bool>("confirm", summary);
+                    if (!confirmed) return;
+                }
+
                 await Database.ImportSourceAsync(type, State.SelectedMonth.Year, State.SelectedMonth.Month, path);
                 await State.RefreshAsync();
                 State.ShowMessage($"{Path.GetFileName(path)} imported into “{Label(type)}”.");

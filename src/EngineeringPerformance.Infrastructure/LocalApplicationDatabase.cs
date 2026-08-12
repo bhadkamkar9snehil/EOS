@@ -332,6 +332,67 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Reads and merges the workbook exactly like ImportSourceAsync, but against a DbContext that
+    /// is never saved — EF's change tracker sees what would have been added or modified, and
+    /// discarding the context afterward is enough to throw all of it away, no explicit rollback
+    /// needed.
+    /// </summary>
+    public async Task<ImportPreview> PreviewImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default)
+    {
+        var detectedType = workbookService.DetectReportType(sourcePath);
+        if (detectedType != reportType) throw new InvalidDataException($"This file is {detectedType}, not {reportType}.");
+        var performance = workbookService.ReadPerformance(sourcePath, reportType, year, month);
+
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var coveredYears = performance.Select(x => x.Year).Distinct().DefaultIfEmpty(year).ToArray();
+        var existingPerformance = await context.EmployeeMonthlyPerformances
+            .Where(x => coveredYears.Contains(x.Year))
+            .ToDictionaryAsync(x => (x.Year, x.Month, x.EmployeeName), x => x, cancellationToken);
+
+        var added = 0;
+        var updated = 0;
+        var unchanged = 0;
+        var sampleAdded = new List<string>();
+        var sampleUpdated = new List<string>();
+
+        foreach (var incoming in performance)
+        {
+            var key = (incoming.Year, incoming.Month, incoming.EmployeeName);
+            if (!existingPerformance.TryGetValue(key, out var current))
+            {
+                current = new EmployeeMonthlyPerformance { Year = incoming.Year, Month = incoming.Month, EmployeeName = incoming.EmployeeName };
+                // Not added to the context — this preview never saves, so tracking it would only
+                // cost memory for no benefit.
+                existingPerformance[key] = current;
+                Merge(current, incoming, reportType);
+                added++;
+                if (sampleAdded.Count < 10) sampleAdded.Add(incoming.EmployeeName);
+                continue;
+            }
+
+            var before = Snapshot(current);
+            Merge(current, incoming, reportType);
+            if (!Snapshot(current).Equals(before))
+            {
+                updated++;
+                if (sampleUpdated.Count < 10) sampleUpdated.Add(incoming.EmployeeName);
+            }
+            else
+            {
+                unchanged++;
+            }
+        }
+
+        return new ImportPreview(reportType, year, month, performance.Count, added, updated, unchanged, sampleAdded, sampleUpdated);
+    }
+
+    private static (decimal, decimal, decimal, decimal, decimal, decimal, decimal, decimal,
+        decimal, int, int, decimal, decimal, decimal, decimal, decimal, decimal, int, int, int, int, string?) Snapshot(EmployeeMonthlyPerformance x) => (
+        x.ComplianceHours, x.EnteredHours, x.ApprovedHours, x.BillableHours, x.NonBillableHours, x.TrainingHours, x.OfficeHours, x.Utilization,
+        x.DetailedHours, x.DetailedEntries, x.UniqueProjects, x.AttendanceDays, x.LeaveDays, x.PunchHours, x.AttendanceTimesheetHours,
+        x.TimesheetFilledDays, x.ExpectedTimesheetDays, x.MissingPunchDays, x.LateDays, x.EarlyDays, x.LessDurationDays, x.EmployeeCode);
+
     public async Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default)
     {
         var isZip = path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
