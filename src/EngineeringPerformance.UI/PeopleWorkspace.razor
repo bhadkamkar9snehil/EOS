@@ -106,7 +106,7 @@
             <span class="cell">Analysis</span>
             <span class="cell">Actions</span>
         </div>
-        <Virtualize TItem="EmployeeListItem" Items="State.Employees.ToList()" Context="employee" ItemSize="58">
+        <Virtualize TItem="EmployeeListItem" Items="_employeesSnapshot" Context="employee" ItemSize="58">
             @{ var editing = _editingEmployeeId == employee.Id; }
             <div class="data-row roster full @(employee.IsExcluded ? "excluded" : null) @(editing ? "roster-editing" : null)">
                 <div class="cell"><code>@employee.EmployeeCode</code></div>
@@ -236,8 +236,21 @@
 </section>
 
 @code {
-    protected override void OnInitialized() => State.Changed += OnStateChanged;
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    // Virtualize requires ICollection<TItem>; materialized once per state refresh here instead of
+    // on every render, since State.Employees (IReadOnlyList) doesn't itself satisfy that constraint.
+    private List<EmployeeListItem> _employeesSnapshot = [];
+
+    protected override void OnInitialized()
+    {
+        _employeesSnapshot = [.. State.Employees];
+        State.Changed += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _employeesSnapshot = [.. State.Employees];
+        InvokeAsync(StateHasChanged);
+    }
     public void Dispose() => State.Changed -= OnStateChanged;
 
     private int? _editingEmployeeId;

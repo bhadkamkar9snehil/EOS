@@ -35,14 +35,29 @@ public sealed class AppState(IApplicationDatabase database)
 
     public async Task RefreshAsync()
     {
-        Snapshot = await database.GetDashboardAsync(SelectedMonth.Year, SelectedMonth.Month);
-        Employees = await database.GetEmployeesAsync();
-        Performance = await database.GetMonthlyPerformanceAsync(SelectedMonth.Year, SelectedMonth.Month);
-        History = await database.GetPerformanceHistoryAsync(SelectedMonth.Year, SelectedMonth.Month, 6);
-        WeeklyPerformance = await database.GetWeeklyPerformanceAsync(SelectedMonth.Year, SelectedMonth.Month);
-        ExcludedNames = await database.GetExcludedNamesAsync();
-        PeerReviews = await database.GetPeerReviewsAsync(SelectedMonth.Year, SelectedMonth.Month);
-        Teams = await database.GetTeamsAsync();
+        var year = SelectedMonth.Year;
+        var month = SelectedMonth.Month;
+
+        var snapshotTask = database.GetDashboardAsync(year, month);
+        var employeesTask = database.GetEmployeesAsync();
+        var performanceTask = database.GetMonthlyPerformanceAsync(year, month);
+        var historyTask = database.GetPerformanceHistoryAsync(year, month, 6);
+        var weeklyTask = database.GetWeeklyPerformanceAsync(year, month);
+        var excludedTask = database.GetExcludedNamesAsync();
+        var peerReviewsTask = database.GetPeerReviewsAsync(year, month);
+        var teamsTask = database.GetTeamsAsync();
+
+        await Task.WhenAll(snapshotTask, employeesTask, performanceTask, historyTask,
+            weeklyTask, excludedTask, peerReviewsTask, teamsTask);
+
+        Snapshot = snapshotTask.Result;
+        Employees = employeesTask.Result;
+        Performance = performanceTask.Result;
+        History = historyTask.Result;
+        WeeklyPerformance = weeklyTask.Result;
+        ExcludedNames = excludedTask.Result;
+        PeerReviews = peerReviewsTask.Result;
+        Teams = teamsTask.Result;
         LastRefresh = DateTime.Now;
         Changed?.Invoke();
     }

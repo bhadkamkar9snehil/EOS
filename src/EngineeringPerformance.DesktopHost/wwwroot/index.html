@@ -24,18 +24,22 @@
     <link rel="stylesheet" href="_content/EngineeringPerformance.UI/realist-shared-v2.css?v=1" />
     <link rel="stylesheet" href="_content/EngineeringPerformance.UI/realist-responsive-v2.css?v=1" />
     <link rel="stylesheet" href="_content/EngineeringPerformance.UI/realist-game-v4.css?v=1" />
+    <!-- theme.js/skin.js run blocking, before first paint, to avoid a flash of the wrong theme. -->
     <script src="_content/EngineeringPerformance.UI/theme.js?v=11"></script>
     <script src="_content/EngineeringPerformance.UI/skin.js?v=2"></script>
-    <script src="_content/EngineeringPerformance.UI/theme-audit.js?v=2"></script>
-    <script src="_content/EngineeringPerformance.UI/echarts.min.js"></script>
-    <script src="_content/EngineeringPerformance.UI/charts.js?v=6"></script>
-    <script src="_content/EngineeringPerformance.UI/analytics-charts.js?v=4"></script>
-    <script src="_content/EngineeringPerformance.UI/atlas-charts.js?v=7"></script>
-    <script src="_content/EngineeringPerformance.UI/realist-runtime.js?v=3"></script>
+    <!-- Everything below is not needed for first paint, so it's deferred to let Blazor boot sooner. -->
+    <script src="_content/EngineeringPerformance.UI/theme-audit.js?v=2" defer></script>
+    <script src="_content/EngineeringPerformance.UI/echarts.min.js" defer></script>
+    <script src="_content/EngineeringPerformance.UI/charts.js?v=6" defer></script>
+    <script src="_content/EngineeringPerformance.UI/analytics-charts.js?v=4" defer></script>
+    <script src="_content/EngineeringPerformance.UI/atlas-charts.js?v=7" defer></script>
+    <script src="_content/EngineeringPerformance.UI/realist-runtime.js?v=3" defer></script>
 </head>
 <body>
     <div id="app">Loading…</div>
     <div id="blazor-error-ui" style="display:none">An unexpected error occurred.</div>
-    <script src="_framework/blazor.webview.js"></script>
+    <!-- defer keeps this after the deferred head scripts above, in document order, so chart/theme
+         globals they define exist before Blazor components can call into them via JS interop. -->
+    <script src="_framework/blazor.webview.js" defer></script>
 </body>
 </html>
