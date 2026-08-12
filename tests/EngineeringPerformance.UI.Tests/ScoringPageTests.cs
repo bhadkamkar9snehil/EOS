@@ -13,6 +13,7 @@ public sealed class ScoringPageTests : BunitContext
         _database = new FakeApplicationDatabase();
         Services.AddSingleton<IApplicationDatabase>(_database);
         Services.AddSingleton(new AppState(_database));
+        Services.AddSingleton<IScoringPresetService>(new FakeScoringPresetService());
         return Render<ScoringPage>();
     }
 
@@ -22,6 +23,7 @@ public sealed class ScoringPageTests : BunitContext
         _database = new FakeApplicationDatabase { ScoringSettings = new OperationalScoringSettings(60m, 10m, 30m) };
         Services.AddSingleton<IApplicationDatabase>(_database);
         Services.AddSingleton(new AppState(_database));
+        Services.AddSingleton<IScoringPresetService>(new FakeScoringPresetService());
 
         var page = Render<ScoringPage>();
 

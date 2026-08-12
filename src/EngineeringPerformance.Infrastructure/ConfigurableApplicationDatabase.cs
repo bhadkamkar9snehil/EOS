@@ -187,6 +187,9 @@ public sealed class ConfigurableApplicationDatabase(
         await RecalculateAfterImportAsync(cancellationToken);
     }
 
+    public Task<ImportPreview> PreviewImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default) =>
+        inner.PreviewImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
+
     public async Task<int> ImportPackageAsync(int year, int month, string zipPath, CancellationToken cancellationToken = default)
     {
         var count = await inner.ImportPackageAsync(year, month, zipPath, cancellationToken);

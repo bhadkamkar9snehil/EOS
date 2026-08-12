@@ -17,6 +17,7 @@ public sealed class WindowsFileDialogService : IFileDialogService
         var dialog = new OpenFolderDialog { Title = title, Multiselect = false };
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
+    public string? PickBackupFile() => Pick("EOS backup files|*.zip|All files|*.*");
 
     private static string? Pick(string filter)
     {

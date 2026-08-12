@@ -29,6 +29,13 @@ public static class Analytics
     public const decimal WorkloadCeiling = 9m;
 
     /// <summary>
+    /// A month-over-month operational score drop at or above this many points fires the
+    /// "Score dropped sharply" trend alert (surfaced on Overview and the employee portrait).
+    /// Adjust this single value to change sensitivity across the whole app.
+    /// </summary>
+    public const decimal ScoreDropAlertThreshold = 10m;
+
+    /// <summary>
     /// Billable-capacity baseline per engineer per month. Used for capacity utilization
     /// (billable hours against this figure), which is a different question from timesheet
     /// utilization (hours entered against the ERP's own compliance-hours figure).
@@ -167,7 +174,7 @@ public static class Analytics
                     "Repeated missing punches",
                     $"{item.MissingPunchDays} days without a punch record out of {item.ExpectedTimesheetDays}."));
 
-            if (previous.TryGetValue(item.EmployeeName, out var was) && was - item.OperationalScore >= 10)
+            if (previous.TryGetValue(item.EmployeeName, out var was) && was - item.OperationalScore >= ScoreDropAlertThreshold)
                 found.Add(new Anomaly(AlertLevel.Warning, item.EmployeeName,
                     "Score dropped sharply",
                     $"Down {Format(was - item.OperationalScore)} points from {Format(was)} last month."));

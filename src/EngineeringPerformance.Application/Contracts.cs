@@ -25,6 +25,14 @@ public interface IApplicationDatabase
     Task UpdateEmployeeAsync(int employeeId, string name, int seniorityLevel, CancellationToken cancellationToken = default);
     Task RemoveEmployeeAsync(int employeeId, CancellationToken cancellationToken = default);
     Task ImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Computes what ImportSourceAsync would change without committing anything, by reading the
+    /// workbook and diffing it against the current database inside a context that is discarded
+    /// instead of saved.
+    /// </summary>
+    Task<ImportPreview> PreviewImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default) =>
+        Task.FromException<ImportPreview>(new NotSupportedException("This database implementation does not support import preview."));
     Task<int> ImportPackageAsync(int year, int month, string zipPath, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MonthlyPerformanceItem>> GetPerformanceHistoryAsync(int year, int month, int monthsBack, CancellationToken cancellationToken = default);
@@ -60,7 +68,46 @@ public interface IFileDialogService
     string? PickWorkbook();
     string? PickSaveWorkbook(string suggestedFileName);
     string? PickFolder(string title);
+    string? PickBackupFile() => null;
 }
+
+/// <summary>
+/// One-click export of the SQLite database (plus the operational-scoring config) into a single
+/// zip, and the matching restore flow. Restore always takes a safety backup of the current
+/// database before overwriting it, so an accidental or bad restore is itself recoverable.
+/// </summary>
+public interface IBackupService
+{
+    Task<BackupResult> ExportBackupAsync(string? destinationDirectory = null, CancellationToken cancellationToken = default);
+    Task<RestoreResult> RestoreBackupAsync(string backupFilePath, CancellationToken cancellationToken = default);
+    string DefaultBackupDirectory { get; }
+    Task<IReadOnlyList<BackupFileInfo>> ListBackupsAsync(string? directory = null, CancellationToken cancellationToken = default);
+}
+
+public sealed record BackupResult(string FilePath, long SizeBytes, DateTime CreatedUtc);
+public sealed record RestoreResult(string SafetyBackupPath, DateTime RestoredUtc, bool RequiresRestart = true);
+public sealed record BackupFileInfo(string FilePath, string FileName, long SizeBytes, DateTime CreatedUtc);
+
+/// <summary>
+/// Named, reusable sets of operational scoring weights (e.g. "Individual Contributor" vs.
+/// "Team Lead"), saved and switched between the same way the live weights themselves are
+/// persisted — a local JSON file next to operational-scoring.json — rather than a new database
+/// table, since applying a preset is just writing new values through the existing
+/// SaveOperationalScoringSettingsAsync path.
+/// </summary>
+public interface IScoringPresetService
+{
+    Task<IReadOnlyList<ScoringPreset>> GetPresetsAsync(CancellationToken cancellationToken = default);
+    Task SavePresetAsync(string name, OperationalScoringSettings settings, CancellationToken cancellationToken = default);
+    Task DeletePresetAsync(string name, CancellationToken cancellationToken = default);
+}
+
+public sealed record ScoringPreset(string Name, OperationalScoringSettings Settings, bool IsBuiltIn = false);
+
+public sealed record ImportPreview(
+    ReportType ReportType, int Year, int Month, int TotalRows,
+    int RowsAdded, int RowsUpdated, int RowsUnchanged,
+    IReadOnlyList<string> SampleAdded, IReadOnlyList<string> SampleUpdated);
 
 public sealed record EmployeeListItem(
     int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,

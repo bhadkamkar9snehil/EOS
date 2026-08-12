@@ -20,6 +20,11 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IWorkbookService>(),
             dataDirectory,
             sp.GetService<ILogger<ConfigurableApplicationDatabase>>()));
+        services.AddSingleton<IBackupService>(sp => new BackupService(
+            sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
+            dataDirectory,
+            databasePath));
+        services.AddSingleton<IScoringPresetService>(_ => new ScoringPresetService(dataDirectory));
         return services;
     }
 }

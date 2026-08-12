@@ -170,28 +170,106 @@ This closes two gaps at once: "proper installer" and "no CI/CD at all" (currentl
 
 Grounded in what the app already does (evidence-based scoring, peer review workbooks, team dashboards, Excel import/export pipeline):
 
+> **Implementation status (2026-08-12):** items 1–5 below were implemented end to end
+> (code + unit tests, 28 new tests total, all passing alongside the pre-existing 8/8+8/8
+> suites). Items 6–8 were investigated but not built — see the notes under each and the
+> honest status write-up at the end of this section for why, and what remains.
+
 **Data & analytics**
-- **Trend alerts**: automatic flagging when an employee's score drops >X points month-over-month, or when timesheet/attendance evidence is missing past a deadline — surfaced on Overview rather than requiring a manager to notice manually.
-- **Team comparison view**: side-by-side team scorecards (the app already models Teams) — currently only single-team/single-employee views exist per the page list.
-- **Export scheduling**: since Reports/Templates already generate Excel workbooks on demand, add a "generate monthly packet automatically on the 1st" scheduled task, dropped into a configured folder — removes a manual step from the monthly review cycle.
-- **Configurable scoring presets**: `ScoringPage` already lets you tune weights; add named presets (e.g. "Individual Contributor," "Team Lead") so different roles can use different scoring formulas without manual reconfiguration each time.
+- ✅ **Trend alerts** — *implemented.* The score-drop (≥10 pts month-over-month, see
+  `Analytics.ScoreDropAlertThreshold`) and missing-evidence anomaly rules already existed in
+  `Analytics.Anomalies` but were only summarized as a count on Overview's "Alert pressure"
+  gauge; they're now also listed by name in a new "Trend alerts" section on Overview
+  (`Overview.razor`), reusing the list markup `EmployeeDetail.razor` already used per-person.
+- ✅ **Team comparison view** — *implemented.* New `/team-comparison` page
+  (`TeamComparison.razor`) aggregates `AppState.Performance`/`AppState.Teams` (already loaded
+  for Overview, not re-fetched) into per-team scorecards: average operational score, the three
+  component scores, timesheet fill rate, and open trend-alert count.
+- ⏳ **Export scheduling** — *not implemented*, see §6 below.
+- ✅ **Configurable scoring presets** — *implemented.* `ScoringPage.razor` now has a presets
+  section: save the current weights under a name, apply a saved preset (saves + recalculates,
+  same as the existing button), delete a saved preset. Ships "Individual Contributor" (55/15/30)
+  and "Team Lead" (35/35/30) as built-in defaults. Persisted as `scoring-presets.json` next to
+  `operational-scoring.json`, matching how the live weights are already stored — no new DB table
+  or migration needed.
 
 **Import/data quality**
-- **Import validation preview**: before committing an import, show a diff/preview (rows added/changed/skipped with reasons) rather than importing directly — pairs with the logging improvements above and reduces "why did my data change" surprises.
-- **Import history/rollback**: since there's already an import ledger, add the ability to revert to a prior import snapshot if a bad file was committed.
+- ✅ **Import validation preview** — *implemented.* `IApplicationDatabase.PreviewImportSourceAsync`
+  reads and diffs a workbook against the current database (rows added/updated/unchanged) inside a
+  `DbContext` that's discarded instead of saved. Wired into `DataImportsPage.razor`'s existing
+  per-slot upload button as a confirmation summary shown before the real import commits.
+- ⏳ **Import history/rollback** — *not implemented.* Partially covered by the new
+  backup/restore feature (a full-database restore undoes a bad import along with everything
+  else), but a per-import, surgical rollback (undo just the last upload for one slot) is a
+  separate, unbuilt feature.
 
 **Peer review workflow**
-- **In-app review status tracking**: `PeerInsights` shows coverage/engagement stats — extend with a "send reminder" action (email/Teams webhook) for reviewers who haven't completed their assigned reviews yet, rather than requiring the manager to cross-reference manually.
-- **Anonymization controls**: if peer reviews are meant to be anonymous, an explicit UI indicator of what's visible to whom would build trust in the tool.
+- ⏳ **In-app review status tracking / reminder nudges** — *not implemented*, see §7 below.
+- ⏳ **Anonymization controls** — *not implemented*, out of scope for this pass.
 
 **Operational**
-- **Auto-update** (from installer section) — surfaces new releases without manual reinstall.
-- **Backup/restore**: one-click "export full SQLite DB + config" and "restore from backup" — currently there's no visible data-portability/backup story for a tool holding a manager's only copy of monthly evidence data.
-- **Multi-profile/multi-team support**: if a manager oversees multiple distinct teams with separate scoring configs, support switching between isolated "workspaces" rather than one global DB.
-- **Dark mode / theme toggle**: given 3 overlapping theme CSS systems already exist, formalizing one of them into a user-facing light/dark toggle would both resolve the CSS cleanup item and add a well-liked feature cheaply.
+- ⏳ **Auto-update** — *not implemented*, out of scope for this pass (installer-owned).
+- ✅ **Backup/restore** — *implemented.* New `/backup` page: one-click export of the SQLite
+  database + operational-scoring/preset config to a timestamped zip (default
+  `Documents/EngineeringPerformance-Backups`, or a chosen folder), and a restore flow that picks
+  a backup file, confirms (destructive — replaces all current data), automatically backs up the
+  *current* database first as a safety net, then restores. A full app restart is recommended
+  after restore for every open connection to pick up the new file cleanly.
+- ⏳ **Multi-profile/multi-team support** — *not implemented*, design sketch only, see §8 below.
+- ❌ **Dark mode / theme toggle** — explicitly excluded from this pass by the user (separate,
+  in-progress local visual-design work).
 
 **Diagnostics**
-- **In-app "Diagnostics" page** — surfaces the Serilog log tail, app version, DB size/location, and a "copy diagnostic bundle" button (zips recent logs + version info) for easy issue reporting, without the user needing to know where `%LocalAppData%` is.
+- ⏳ **In-app "Diagnostics" page** — *not implemented*, out of scope for this pass (logging-owned).
+
+### 6. Export scheduling — feasibility notes (not implemented)
+
+Two realistic approaches for a WPF desktop app that isn't always running:
+1. **Windows Task Scheduler integration** — the installer (or a "Schedule reports" button)
+   registers a scheduled task that launches the exe with a `--generate-monthly-report` CLI flag.
+   Correct even if the app isn't open, but needs installer/elevation work and a headless code
+   path through `App.xaml.cs` that skips `MainWindow.Show()`.
+2. **In-app timer / check-on-launch** — on startup, compare "today" against "last auto-generated
+   month" (a small marker file); if it's a new month past the 1st, generate the packet via the
+   existing `WorkbookService.GenerateTeamReport` and drop it in a configured folder. Simpler, no
+   installer changes, but only fires when the app happens to be opened that day.
+Given the constraints of this pass (time, and "don't touch the installer"), neither was built.
+Approach 2 is the lower-risk one to pick up next — it only touches `App.xaml.cs`.
+
+### 7. Peer-review reminder nudges — feasibility notes (not implemented)
+
+No email/notification channel exists anywhere in the codebase (no SMTP, no webhook client, no
+`System.Net.Mail` usage). Per the task instructions, this should become an **in-app "pending
+reviewers" list/report** rather than actually sending emails/Teams messages — `PeerInsights.razor`
+already computes coverage stats (`Analytics.Peers`), so a "who hasn't submitted yet" view is a
+straightforward addition on top of data already loaded. Not implemented in this pass; flagged
+honestly as untouched rather than half-built.
+
+### 8. Multi-workspace support — design sketch only (not implemented)
+
+This is the most architecturally invasive item and was **not implemented** — it needs dedicated
+planning, not a quick add, per the task instructions. Sketch of the shape it would take:
+- The database path is currently a single fixed file:
+  `%LOCALAPPDATA%\EngineeringPerformance\engineering-performance.db`
+  (`ServiceCollectionExtensions.AddLocalInfrastructure`). Multi-workspace means N such files, one
+  per workspace, e.g. `%LOCALAPPDATA%\EngineeringPerformance\Workspaces\<slug>\engineering-performance.db`.
+- `IDbContextFactory<PerformanceDbContext>` is currently a DI singleton bound to one connection
+  string at host startup. Supporting a workspace switch at runtime (without restarting the app)
+  means either (a) rebuilding the DI container's data layer on switch, or (b) making the
+  connection string resolvable per-request from an `ICurrentWorkspace` service rather than fixed
+  at registration — (b) is architecturally cleaner but touches every `contextFactory.CreateDbContextAsync`
+  call site indirectly through the options builder.
+- `operational-scoring.json` / `scoring-presets.json` / the Imports folder / backup defaults all
+  currently hang off one shared `dataDirectory` — each would need to move under the
+  per-workspace folder too, and the new backup/restore feature built in this pass would need a
+  "which workspace" dimension added to it.
+- UI: a workspace switcher (like the existing month/team selectors in `MainLayout`'s topbar)
+  and a "new workspace" flow, gated so it doesn't force existing single-workspace users through
+  a migration on next launch — the existing single DB should become "the default workspace"
+  transparently.
+- Given the CSS/theme conflict-risk instructions for this task, and that this touches DI wiring,
+  the file layout, and the app shell nav, it's the one item that most needs its own dedicated
+  session rather than being folded into this pass.
 
 ---
 

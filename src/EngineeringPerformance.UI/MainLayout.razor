@@ -19,6 +19,7 @@
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
+            @NavButton("team-comparison", "Team Comparison", Icon.Employees)
 
             <span class="nav-group-label">Manage</span>
             @NavButton("imports", "Data Imports", Icon.Imports)
@@ -29,6 +30,7 @@
             <span class="nav-group-label">Configure</span>
             @NavButton("scoring", "Scoring", Icon.Scoring)
             @NavButton("diagnostics", "Diagnostics", Icon.Settings)
+            @NavButton("backup", "Backup & Restore", Icon.Settings)
         </nav>
         <div class="nav-footer">
             <button class="@(CurrentRoute == "settings" ? "selected" : null)" @onclick='() => Navigation.NavigateTo("/settings")'>
@@ -232,7 +234,9 @@
         "peer-insights" => "Peer insights",
         "templates" => "Review templates",
         "reports" => "Reports",
+        "team-comparison" => "Team comparison",
         "scoring" => "Scoring",
+        "backup" => "Backup & restore",
         "settings" => "Settings",
         "diagnostics" => "Diagnostics",
         "employee" => State.SpotlightName ?? CurrentEmployeeName ?? "Employee portrait",

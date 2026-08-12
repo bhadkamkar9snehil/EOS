@@ -1,0 +1,113 @@
+@page "/team-comparison"
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject AppState State
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<section class="single-pane wide team-comparison-page">
+    <div class="section-title">
+        <div>
+            <h2>Team comparison</h2>
+            <p>Team-level scorecards side by side for @State.SelectedMonth.ToString("MMMM yyyy"), built from the same performance data as Overview.</p>
+        </div>
+    </div>
+
+    @if (Scorecards.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>No teams with scored people yet</h2>
+            <p>Assign employees to teams on the Employees &amp; Teams page, then come back here once performance data is imported.</p>
+            <button class="action" @onclick='() => Navigation.NavigateTo("/employees")'>Go to Employees &amp; Teams</button>
+        </div>
+    }
+    else
+    {
+        <div class="data-table team-comparison-table">
+            <div class="table-head">
+                <span class="cell">Team</span>
+                <span class="cell">People</span>
+                <span class="cell">Avg. operational score</span>
+                <span class="cell">Avg. timesheet completion</span>
+                <span class="cell">Avg. approval completion</span>
+                <span class="cell">Avg. attendance discipline</span>
+                <span class="cell">Timesheet fill rate</span>
+                <span class="cell">Open alerts</span>
+            </div>
+            @foreach (var card in Scorecards)
+            {
+                <div class="table-row">
+                    <span class="cell"><strong>@card.TeamName</strong></span>
+                    <span class="cell">@card.MemberCount</span>
+                    <span class="cell"><b class="@Analytics.ScoreBand(card.AverageScore)">@Analytics.Format(card.AverageScore)</b></span>
+                    <span class="cell">@Analytics.Format(card.AverageTimesheet, "0.#")%</span>
+                    <span class="cell">@Analytics.Format(card.AverageApproval, "0.#")%</span>
+                    <span class="cell">@Analytics.Format(card.AverageAttendance, "0.#")%</span>
+                    <span class="cell">@Analytics.Format(card.TimesheetFillRate, "0.#")%</span>
+                    <span class="cell">@card.OpenAlerts</span>
+                </div>
+            }
+        </div>
+        @if (UnassignedCount > 0)
+        {
+            <p class="team-comparison-note"><small>@UnassignedCount employee(s) have no team assigned and are not included in the scorecards above.</small></p>
+        }
+    }
+</section>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private sealed record TeamScorecard(
+        string TeamName, int MemberCount, decimal AverageScore,
+        decimal AverageTimesheet, decimal AverageApproval, decimal AverageAttendance,
+        decimal TimesheetFillRate, int OpenAlerts);
+
+    private int UnassignedCount => State.Employees.Count(x => x.TeamId is null && !x.IsExcluded);
+
+    private IReadOnlyList<TeamScorecard> Scorecards
+    {
+        get
+        {
+            var previous = State.History
+                .Where(x => x.Year == State.SelectedMonth.AddMonths(-1).Year && x.Month == State.SelectedMonth.AddMonths(-1).Month)
+                .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First().OperationalScore, StringComparer.OrdinalIgnoreCase);
+            var alerts = Analytics.Anomalies(State.Performance, previous);
+
+            var employeesByName = State.Employees
+                .Where(x => !x.IsExcluded)
+                .GroupBy(x => PersonName.Normalize(x.Name), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+
+            return State.Teams
+                .Select(team =>
+                {
+                    var members = State.Performance
+                        .Where(p => employeesByName.TryGetValue(PersonName.Normalize(p.EmployeeName), out var e) && e.TeamId == team.Id)
+                        .ToArray();
+                    if (members.Length == 0) return null;
+
+                    var memberNames = new HashSet<string>(members.Select(x => PersonName.Normalize(x.EmployeeName)), StringComparer.OrdinalIgnoreCase);
+                    var openAlerts = alerts.Count(a => memberNames.Contains(PersonName.Normalize(a.EmployeeName)));
+                    var expectedDays = members.Sum(x => x.ExpectedTimesheetDays);
+                    var filledDays = members.Sum(x => x.TimesheetFilledDays);
+
+                    return new TeamScorecard(
+                        team.Name, members.Length,
+                        decimal.Round(members.Average(x => x.OperationalScore), 1),
+                        decimal.Round(members.Average(x => x.TimesheetCompletionScore), 1),
+                        decimal.Round(members.Average(x => x.ApprovalScore), 1),
+                        decimal.Round(members.Average(x => x.AttendanceDisciplineScore), 1),
+                        expectedDays == 0 ? 0 : decimal.Round(filledDays * 100m / expectedDays, 1),
+                        openAlerts);
+                })
+                .Where(x => x is not null)
+                .Select(x => x!)
+                .OrderByDescending(x => x.AverageScore)
+                .ToArray();
+        }
+    }
+}
