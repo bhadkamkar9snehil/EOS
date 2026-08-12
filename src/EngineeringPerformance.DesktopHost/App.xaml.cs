@@ -18,6 +18,8 @@ public partial class App : System.Windows.Application
     private readonly IHost _host;
     private readonly string _dataDirectory;
     private readonly ILogger _log;
+    private readonly bool _visualCapture;
+    private readonly string? _visualOutputDirectory;
 
     static App()
     {
@@ -31,7 +33,14 @@ public partial class App : System.Windows.Application
     public App()
     {
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        _dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
+        _visualCapture = string.Equals(Environment.GetEnvironmentVariable("EOS_VISUAL_CAPTURE"), "1", StringComparison.Ordinal);
+        _visualOutputDirectory = Environment.GetEnvironmentVariable("EOS_VISUAL_OUTPUT");
+
+        // Visual capture is intentionally isolated from the user's normal LocalApplicationData.
+        // It must never read, mutate or package real employee data just to validate presentation.
+        _dataDirectory = _visualCapture && !string.IsNullOrWhiteSpace(_visualOutputDirectory)
+            ? Path.Combine(_visualOutputDirectory, "appdata")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
         Directory.CreateDirectory(_dataDirectory);
 
         var logDirectory = Path.Combine(_dataDirectory, "logs");
@@ -61,6 +70,12 @@ public partial class App : System.Windows.Application
         {
             services.AddWpfBlazorWebView();
             services.AddLocalInfrastructure(_dataDirectory);
+            if (_visualCapture)
+            {
+                // Register last so single-service resolution uses the synthetic read-only dataset,
+                // while all other infrastructure services remain exactly the production services.
+                services.AddSingleton<IApplicationDatabase, VisualCaptureApplicationDatabase>();
+            }
             services.AddSingleton<IFileDialogService, WindowsFileDialogService>();
             services.AddSingleton<AppState>();
             services.AddSingleton<MainWindow>();
@@ -79,6 +94,16 @@ public partial class App : System.Windows.Application
             MainWindow.Show();
             ShutdownMode = ShutdownMode.OnMainWindowClose;
 
+            if (_visualCapture)
+            {
+                var outputDirectory = string.IsNullOrWhiteSpace(_visualOutputDirectory)
+                    ? Path.Combine(Path.GetTempPath(), "eos-visual-evidence")
+                    : _visualOutputDirectory;
+                var passed = await MainWindow.CaptureVisualEvidenceAsync(outputDirectory);
+                Shutdown(passed ? 0 : 2);
+                return;
+            }
+
             // Fire-and-forget: never delay app launch waiting on a network/file-share round trip.
             _ = CheckForUpdatesAsync();
         }
@@ -87,6 +112,27 @@ public partial class App : System.Windows.Application
             _log.Fatal(exception, "The application failed to start.");
             Log.CloseAndFlush();
             var logDirectory = Path.Combine(_dataDirectory, "logs");
+
+            // CI capture must fail mechanically rather than block forever behind a modal dialog in
+            // a non-interactive build session. Normal interactive launches keep the user-facing UI.
+            if (_visualCapture)
+            {
+                try
+                {
+                    var outputDirectory = string.IsNullOrWhiteSpace(_visualOutputDirectory)
+                        ? Path.Combine(Path.GetTempPath(), "eos-visual-evidence")
+                        : _visualOutputDirectory;
+                    Directory.CreateDirectory(outputDirectory);
+                    await File.WriteAllTextAsync(Path.Combine(outputDirectory, "startup-failure.txt"), exception.ToString());
+                }
+                catch
+                {
+                    // Best effort only; the Serilog file above remains the primary crash record.
+                }
+                Shutdown(-1);
+                return;
+            }
+
             MessageBox.Show($"The application could not start.\n\nDetails were saved to:\n{logDirectory}", "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(-1);
         }
@@ -104,10 +150,13 @@ public partial class App : System.Windows.Application
         try
         {
             _log.Error(e.Exception, "Unhandled exception on the UI dispatcher.");
-            var logDirectory = Path.Combine(_dataDirectory, "logs");
-            MessageBox.Show(
-                $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logDirectory}\n\nYou can keep using the app — try a different page or reload.",
-                "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (!_visualCapture)
+            {
+                var logDirectory = Path.Combine(_dataDirectory, "logs");
+                MessageBox.Show(
+                    $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logDirectory}\n\nYou can keep using the app — try a different page or reload.",
+                    "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         catch
         {
