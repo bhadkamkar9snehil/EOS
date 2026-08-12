@@ -70,7 +70,8 @@ if (-not $Version) {
 if (-not $SkipTests) {
     $testProjects = @(
         (Join-Path $repoRoot "tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj"),
-        (Join-Path $repoRoot "tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj")
+        (Join-Path $repoRoot "tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj"),
+        (Join-Path $repoRoot "tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj")
     )
     foreach ($testProject in $testProjects) {
         Write-Host "==> dotnet test $testProject"

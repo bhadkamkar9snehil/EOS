@@ -8,12 +8,9 @@ namespace EngineeringPerformance.DesktopHost;
 public static class UpdateSettings
 {
     /// <summary>
-    /// PLACEHOLDER — replace with the real update feed before shipping auto-update.
-    /// Examples:
-    ///   Local/network share: @"\\fileserver\EOS-Releases"
-    ///   GitHub Releases:      "https://github.com/your-org/EOS"
-    /// Until this points at a real feed, update checks fail harmlessly and are swallowed
-    /// (see App.xaml.cs's CheckForUpdatesAsync).
+    /// Points at this repo's GitHub Releases, published by .github/workflows/release.yml on every
+    /// "vX.Y.Z" tag push. Until at least one release exists there, update checks fail harmlessly
+    /// and are swallowed (see App.xaml.cs's CheckForUpdatesAsync).
     /// </summary>
-    public const string FeedUrl = "https://example.invalid/eos-update-feed";
+    public const string FeedUrl = "https://github.com/bhadkamkar9snehil/EOS";
 }

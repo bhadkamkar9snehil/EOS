@@ -1,0 +1,60 @@
+name: CI
+
+# This repo is public, so GitHub Actions is free and unbounded here (no minutes cap, standard
+# hosted runners at no cost) — see docs/tailwind-grid-ci-plan.md section 3 for the earlier
+# non-Actions plan this supersedes now that the repo went public.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # DesktopHost (WPF) targets net10.0-windows and can't build on Linux; every other project can.
+      - name: Build Domain / Application / Infrastructure / UI
+        run: |
+          dotnet build src/EngineeringPerformance.Domain/EngineeringPerformance.Domain.csproj --configuration Release --no-restore
+          dotnet build src/EngineeringPerformance.Application/EngineeringPerformance.Application.csproj --configuration Release --no-restore
+          dotnet build src/EngineeringPerformance.Infrastructure/EngineeringPerformance.Infrastructure.csproj --configuration Release --no-restore
+          dotnet build src/EngineeringPerformance.UI/EngineeringPerformance.UI.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: |
+          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration Release --no-restore
+          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration Release --no-restore
+          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration Release --no-restore
+
+  windows-build:
+    name: Windows build (DesktopHost)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # Confirms the WPF host itself actually builds on real Windows — the one thing the Linux
+      # job above cannot verify. Not published/packed here; that only happens on a version tag
+      # (see release.yml) so ordinary pushes/PRs stay fast and don't produce release artifacts.
+      - name: Build DesktopHost
+        run: dotnet build src/EngineeringPerformance.DesktopHost/EngineeringPerformance.DesktopHost.csproj --configuration Release --no-restore
