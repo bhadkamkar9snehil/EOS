@@ -17,7 +17,9 @@ jobs:
     displayName: Windows build & test
     timeoutInMinutes: 30
     pool:
-      vmImage: windows-latest
+      name: Default
+      demands:
+        - Agent.Name -equals EOS
 
     steps:
       - checkout: self
