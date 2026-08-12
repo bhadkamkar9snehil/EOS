@@ -99,6 +99,26 @@
 .route-scoring .scoring-col:first-child { border-right:1px solid var(--atlas-rule); }
 .route-scoring .weight-row { min-height:48px; }
 
+/* Backup & restore: reuses the scoring page's two-card layout classes, so it needs the same
+   route-scoped chrome (border frame, flattened cards) — without this it inherits only the
+   generic base rules (scoring-data.css) and no page padding at all. */
+.route-backup .backup-page { max-width:none; padding:20px 24px 30px; }
+.route-backup .section-title { padding-bottom:14px; border-bottom:1px solid var(--atlas-rule); }
+.route-backup .section-title h2 { font-size:21px; }
+.route-backup .section-title p { font-size:11.5px; }
+.route-backup .operational-scoring-layout { margin-top:16px; grid-template-columns:minmax(360px,1fr) minmax(360px,1fr); gap:0; border:1px solid var(--atlas-rule); }
+.route-backup .operational-scoring-layout > .card { border:0; border-radius:0; background:transparent; padding:20px; }
+.route-backup .operational-scoring-layout > .card:first-child { border-right:1px solid var(--atlas-rule); }
+
+/* Team comparison: same page-shell gap as backup/scoring above — no route-scoped rule means
+   no page padding and the table renders flush against the window edge. */
+.route-team-comparison .team-comparison-page { max-width:none; padding:20px 24px 30px; }
+.route-team-comparison .section-title { padding-bottom:14px; border-bottom:1px solid var(--atlas-rule); }
+.route-team-comparison .section-title h2 { font-size:21px; }
+.route-team-comparison .section-title p { font-size:11.5px; }
+.route-team-comparison .team-comparison-table { margin-top:16px; border:1px solid var(--atlas-rule); }
+.route-team-comparison .team-comparison-note { margin-top:12px; color:var(--muted); font-size:11.5px; }
+
 /* Settings: retain configuration clarity, but align with the editorial shell. */
 .route-settings .settings-title { padding-bottom:14px; border-bottom:1px solid var(--atlas-rule); }
 .route-settings .appearance-controls { gap:0; border:1px solid var(--atlas-rule); }

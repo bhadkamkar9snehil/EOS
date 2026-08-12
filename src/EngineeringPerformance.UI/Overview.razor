@@ -219,7 +219,7 @@
 
         @if (Alerts.Count > 0)
         {
-            <section class="atlas-primary trend-alerts-section" aria-label="Trend alerts">
+            <section class="trend-alerts-section" aria-label="Trend alerts">
                 <div class="atlas-panel-head">
                     <div><h2>Trend alerts</h2><small>Sharp month-over-month score drops and missing evidence, computed from the current and previous reporting month</small></div>
                     <span class="atlas-caption">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</span>

@@ -277,6 +277,15 @@ footer { height:34px; padding:0 26px; border-color:var(--atlas-rule); background
 .peer-aspect-profile li { border-bottom:1px solid var(--atlas-rule-soft); }
 .peer-aspect-profile li:last-child { border-bottom:0; }
 .peer-aspect-profile li > button { width:100%; min-height:52px; padding:4px 0; border:0; background:transparent; color:var(--ink); text-align:left; cursor:pointer; }
+
+/* Single-column panel: unlike atlas-primary/atlas-secondary/atlas-peer-review above, this
+   section holds one list, not a two-panel grid, so it gets its own padding/rule instead of
+   inheriting a 2-column grid layout meant for a different section shape. */
+.trend-alerts-section { padding:18px 26px 16px; border-bottom:1px solid var(--atlas-rule); }
+.trend-alerts-section .portrait-evidence-list { max-height:420px; overflow:auto; }
+.trend-alerts-section .portrait-evidence-list strong.critical { color:var(--critical); }
+.trend-alerts-section .portrait-evidence-list strong.serious { color:var(--atlas-orange); }
+.trend-alerts-section .portrait-evidence-list strong.warning { color:var(--warn); }
 .peer-aspect-profile li > button:hover { background:var(--surface-selected); }
 .peer-review-person { min-width:0; display:flex; flex-direction:column; }
 .peer-review-person strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px; }
