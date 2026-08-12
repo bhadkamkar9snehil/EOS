@@ -119,8 +119,16 @@ block). No grid replacement — the fix is allocation-locality, not the componen
 
 ## 3. CI/CD — GitHub Actions alternatives
 
-GitHub Actions is explicitly off the table. Given this is a small-team/single-maintainer desktop
-app with no existing cloud infrastructure footprint, options in order of recommendation:
+**Update: superseded.** This section was written while GitHub Actions was explicitly off the
+table. The repo is public, and GitHub Actions is free and unbounded on public repos (no minutes
+cap, standard hosted runners including Windows at no cost) — see `docs/ci.md` for what's now
+actually implemented: `.github/workflows/ci.yml` (build/test on every push/PR, Linux + a Windows
+DesktopHost build check) and `.github/workflows/release.yml` (runs `build/release.ps1` on
+`windows-latest` and publishes a GitHub Release on every `vX.Y.Z` tag — this is also what finally
+lets `build/release.ps1`'s Windows-only steps run somewhere, since the sandbox that built most of
+this project has no Windows/virtualization access). The alternatives below are kept for reference
+in case Actions ever needs to be dropped again (e.g. repo goes private and minutes become a real
+constraint).
 
 ### Recommended: local build/release script, no hosted CI
 For a project at this scale (one repo, likely 1-2 active contributors, a desktop installer as the
