@@ -12,11 +12,12 @@ pr:
 
 variables:
   buildConfiguration: Release
+  visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
 
 jobs:
   - job: windows_ci
-    displayName: Windows build & test
-    timeoutInMinutes: 30
+    displayName: Windows build, test & visual validation
+    timeoutInMinutes: 40
     pool:
       name: Default
       demands:
@@ -25,6 +26,7 @@ jobs:
     steps:
       - checkout: self
         clean: true
+        persistCredentials: true
 
       - powershell: ./build/vm-health.ps1
         displayName: VM / agent preflight
@@ -61,3 +63,69 @@ jobs:
           mergeTestResults: true
           failTaskOnFailedTests: true
           testRunTitle: EOS Windows unit tests
+
+      - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
+        displayName: Capture real WPF + WebView2 visual evidence
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish screenshots, browser diagnostics and app logs
+        condition: always()
+        inputs:
+          targetPath: '$(visualEvidenceDirectory)'
+          artifact: visual-evidence
+          publishLocation: pipeline
+
+      # Mirror the latest evidence onto a non-CI GitHub branch so visual-review tooling can inspect
+      # the exact PNGs and logs without a human downloading Azure artifacts. Failure here must not
+      # hide a valid build/capture result; the Azure artifact above remains authoritative evidence.
+      - powershell: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = "$(visualEvidenceDirectory)"
+          if (-not (Test-Path -LiteralPath $evidence)) {
+            Write-Host 'No visual evidence directory exists; skipping GitHub evidence mirror.'
+            exit 0
+          }
+
+          git config user.name "EOS Azure Visual CI"
+          git config user.email "eos-visual-ci@users.noreply.github.com"
+          git fetch origin ci-evidence
+
+          $worktree = Join-Path "$(Agent.TempDirectory)" 'ci-evidence-worktree'
+          if (Test-Path -LiteralPath $worktree) {
+            git worktree remove --force $worktree 2>$null
+            Remove-Item -LiteralPath $worktree -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          git worktree add --force $worktree origin/ci-evidence
+          try {
+            $latest = Join-Path $worktree 'visual-evidence\latest'
+            if (Test-Path -LiteralPath $latest) { Remove-Item -LiteralPath $latest -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $latest | Out-Null
+            Copy-Item -Path (Join-Path $evidence '*') -Destination $latest -Recurse -Force
+
+            [ordered]@{
+              buildId = "$(Build.BuildId)"
+              buildNumber = "$(Build.BuildNumber)"
+              sourceVersion = "$(Build.SourceVersion)"
+              sourceBranch = "$(Build.SourceBranch)"
+              generatedUtc = [DateTime]::UtcNow.ToString('O')
+            } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $latest 'build-info.json') -Encoding UTF8
+
+            Push-Location $worktree
+            try {
+              git add --all visual-evidence/latest
+              git diff --cached --quiet
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host 'Visual evidence is unchanged; nothing to mirror.'
+              } else {
+                git commit -m "[skip ci] Visual evidence for Azure build $(Build.BuildNumber)"
+                git push origin HEAD:ci-evidence
+              }
+            } finally {
+              Pop-Location
+            }
+          } finally {
+            git worktree remove --force $worktree 2>$null
+          }
+        displayName: Mirror latest visual evidence to GitHub
+        condition: always()
+        continueOnError: true
