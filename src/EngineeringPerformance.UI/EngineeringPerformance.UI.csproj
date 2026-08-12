@@ -26,9 +26,8 @@
     Compiles wwwroot/tailwind-input.css (the single design-token source, see that file's own
     header comment) into wwwroot/tailwind.css using the Tailwind standalone CLI binary — no
     Node/npm toolchain, matching the rest of this repo's build. The binary itself is not
-    committed (~100MB); it's fetched into a repo-root .tailwind/ cache on first build, same
-    idea as the existing CopyCompatibleWindowsSdkFacadeForBuild target in DesktopHost.csproj
-    fetching/copying build tooling on demand.
+    committed (~100MB); it's fetched into a repo-root .tailwind/ cache on first build so the
+    styling pipeline is deterministic without introducing a Node package toolchain.
   -->
   <PropertyGroup>
     <TailwindCliPath>$(MSBuildProjectDirectory)\..\..\.tailwind\tailwindcss.exe</TailwindCliPath>
@@ -60,11 +59,11 @@
     chart driven by it rendered nothing for an entire release without a single error surfacing.
     Node's check flag parses each file without executing it, catching that class of bug at build time.
 
-    ContinueOnError + a node-presence check keeps this advisory rather than a hard dependency:
-    the project has no JS toolchain and must still build on a machine without Node installed.
+    IgnoreExitCode + a node-presence check keeps this advisory rather than a hard dependency:
+    the project has no JS toolchain and must still build cleanly on a machine without Node installed.
   -->
   <Target Name="CheckWwwrootJsSyntax" BeforeTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
-    <Exec Command="where node" ContinueOnError="true" StandardOutputImportance="low" StandardErrorImportance="low">
+    <Exec Command="where node" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
       <Output TaskParameter="ExitCode" PropertyName="NodeMissing" />
     </Exec>
     <ItemGroup Condition="'$(NodeMissing)' == '0'">
