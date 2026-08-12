@@ -20,6 +20,12 @@
     });
     const orange = () => css('--color-primary', '#f26a12');
     const chartStroke = role => ({ strong: 3, focus: 2, context: 1.5, hairline: 1 }[role] || 1);
+    const rgbOf = hex => { const c = hex.replace('#', '').trim(); const f = c.length === 3 ? c.split('').map(x => x + x).join('') : c; const n = parseInt(f, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const srgbLinear = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+    const relLuminance = ([r, g, b]) => .2126 * srgbLinear(r) + .7152 * srgbLinear(g) + .0722 * srgbLinear(b);
+    const contrastRatio = (hexA, hexB) => { const a = relLuminance(rgbOf(hexA)), b = relLuminance(rgbOf(hexB)); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };
+    const bestTextColor = fill => contrastRatio(fill, '#ffffff') >= contrastRatio(fill, '#101828') ? '#ffffff' : '#101828';
+    const mixHex = (hexA, hexB, t) => { const [ar, ag, ab] = rgbOf(hexA), [br, bg, bb] = rgbOf(hexB); const m = v => Math.round(v); return `rgb(${m(ar + (br - ar) * t)},${m(ag + (bg - ag) * t)},${m(ab + (bb - ab) * t)})`; };
     const hexToRgba = (hex, alpha) => {
         const clean = hex.replace('#', '').trim();
         const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
@@ -488,10 +494,19 @@
         const people = rows || [];
         const draw = (silent = false) => {
             const p = palette(), compact = compactViewport(), large = largeViewport();
+            const stops = [p.critical, orange(), p.axis, p.operational, p.good];
+            const heatColor = value => {
+                const pos = Math.max(0, Math.min(4, Math.max(1, Math.min(5, value)) - 1));
+                const lower = Math.floor(pos), upper = Math.min(4, lower + 1);
+                return mixHex(stops[lower], stops[upper], pos - lower);
+            };
             const data = [];
             people.forEach((row, y) => (row.values || []).forEach((value, x) => {
                 const raw = +(row.rawValues || [])[x] || +value;
-                if (value != null && +value > 0) data.push({ value: [x, y, +value, raw], name: row.name, received: +row.received || 0, established: !!row.established, adjusted: +row.adjusted || 0, confidence: +row.confidence || 0 });
+                if (value != null && +value > 0) {
+                    const fill = heatColor(+value);
+                    data.push({ value: [x, y, +value, raw], name: row.name, received: +row.received || 0, established: !!row.established, adjusted: +row.adjusted || 0, confidence: +row.confidence || 0, itemStyle: { color: fill }, label: { color: bestTextColor(fill) } });
+                }
             }));
             chart.setOption({
                 ...(silent ? { animation: false } : motion()),
@@ -502,10 +517,9 @@
                 },
                 xAxis: { type: 'category', data: labels, position: 'top', axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false }, axisLabel: { color: p.inkSoft, fontSize: compact ? 9.5 : large ? 12.5 : 10.5, interval: 0 } },
                 yAxis: { type: 'category', data: people.map(x => x.name), inverse: true, axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false }, axisLabel: { color: p.inkSoft, fontSize: compact ? 9.5 : large ? 12.5 : 10.5, width: compact ? 118 : large ? 182 : 150, overflow: 'truncate', formatter: name => { const row = people.find(x => x.name === name); return `${name}  ·  n=${+row?.received || 0}`; } } },
-                visualMap: { show: false, min: 1, max: 5, inRange: { color: [p.critical, orange(), p.axis, p.operational, p.good] } },
                 series: [{
                     type: 'heatmap', data, cursor: 'pointer',
-                    label: { show: true, formatter: item => (+item.value[2]).toFixed(2), color: p.tooltipText, fontSize: compact ? 9 : large ? 12 : 10, fontWeight: 650 },
+                    label: { show: true, formatter: item => (+item.value[2]).toFixed(2), fontSize: compact ? 9 : large ? 12 : 10, fontWeight: 650 },
                     itemStyle: { borderColor: p.surface, borderWidth: 2 },
                     emphasis: { itemStyle: { borderColor: p.ink, borderWidth: 2 } }
                 }]
@@ -683,7 +697,7 @@
             chart.setOption({
                 ...(silent ? { animation: false } : motion()),
                 tooltip: { ...tip(p), trigger: 'item', formatter: item => `<strong>${item.name}</strong><br/>${(aspects || []).map((a, i) => `${a}: <b>${(+item.value[i] || 0).toFixed(1)}</b>`).join('<br/>')}` },
-                radar: { center: ['50%', '52%'], radius: '64%', indicator: indicators, splitNumber: 5, axisName: { color: p.inkSoft, fontSize: 11.5 }, axisLine: { lineStyle: { color: p.grid } }, splitLine: { lineStyle: { color: p.grid } }, splitArea: { areaStyle: { color: ['transparent', 'rgba(0,0,0,.012)'] } } },
+                radar: { center: ['50%', '52%'], radius: '54%', indicator: indicators, splitNumber: 5, axisName: { color: p.inkSoft, fontSize: 11.5 }, axisLine: { lineStyle: { color: p.grid } }, splitLine: { lineStyle: { color: p.grid } }, splitArea: { areaStyle: { color: ['transparent', 'rgba(0,0,0,.012)'] } } },
                 series: [{ type: 'radar', data: reviewerData, emphasis: { focus: 'self' } }]
             }, true);
         };
