@@ -1,45 +1,53 @@
 # Cloud CI and resilient Windows VM operations
 
-This document is deliberately **generic**. It captures the reusable pattern behind EOS so the same setup can be reproduced for another GitHub repository, Azure DevOps project, or Windows build VM without relying on one person's browser history or a one-off token.
+This is the reusable cloud-CI/runbook pattern behind EOS. It is intentionally generic: the same architecture can be recreated for another GitHub repository, Azure DevOps project, or Windows build VM without depending on remembered UI clicks or a one-off token.
 
 ## Architecture to remember
 
-Use four independent layers:
+Use independent layers with different failure domains:
 
 1. **GitHub = source of truth**
-   - source code, branches, pull requests, review history
-   - Azure Pipelines GitHub App connection for repository access and GitHub Checks
-2. **Azure DevOps = CI orchestrator**
-   - YAML pipeline in the GitHub repository
-   - build/test history, test results, pipeline policy, agent pools
-3. **Windows Azure VM = self-hosted build machine**
-   - required for WPF/WebView2/Windows-targeted builds
-   - Azure Pipelines agent runs as a Windows service and survives RDP disconnects/reboots
-4. **Azure control plane = break-glass management path**
-   - Azure Bastion for interactive RDP without exposing 3389 publicly
-   - Azure VM Run Command for remote PowerShell even when RDP is unavailable
-   - Serial Console + Boot Diagnostics if networking/RDP/guest-agent access is broken
+   - source, branches, pull requests, review history
+   - Azure Pipelines GitHub App for repository access and GitHub Checks
+2. **Azure DevOps = orchestration**
+   - YAML pipelines stored with source
+   - build/test history, artifacts, policies, agent pools
+3. **Windows Azure VM = execution lab**
+   - self-hosted agent for Windows-specific builds, tests, installers, WebView2 rendering, screenshots
+   - agent normally runs as a Windows service so CI survives RDP disconnect/reboot
+4. **Azure Resource Manager = independent machine control**
+   - Azure DevOps **server/agentless job** can query/start/restart the VM without the VM's build agent
+   - Azure VM Run Command can execute guest PowerShell through the Azure VM Agent
+5. **Interactive/recovery fallbacks**
+   - Azure Bastion or deliberately enabled RDP for human GUI access
+   - Serial Console + Boot Diagnostics for last-resort recovery
 
-The important design rule is that **CI and VM recovery must not depend on the same channel**. A self-hosted agent is excellent for normal CI, but if that agent is offline it cannot repair itself. Azure Run Command/Bastion/Serial Console provide an independent recovery path.
+The core rule is:
+
+> **Build execution and machine recovery must not depend on the same agent.**
+
+A self-hosted runner is an excellent execution environment, but it cannot repair itself while stopped/offline. The Azure control plane is the escape hatch.
 
 ---
 
-## 1. GitHub -> Azure Pipelines connection
+## 1. Connect GitHub to Azure Pipelines
 
-Microsoft's recommended GitHub authentication for Azure Pipelines CI is the **Azure Pipelines GitHub App**, not a GitHub PAT.
+For ordinary GitHub CI, prefer the **Azure Pipelines GitHub App** rather than a GitHub PAT.
 
 General setup:
 
 1. Create an Azure DevOps organization and project.
-2. In Azure Pipelines, create a new pipeline and choose **GitHub** as the repository source.
-3. Install/authorize the **Azure Pipelines** GitHub App for only the repositories that need CI access.
-4. Select an existing YAML file in the repository, normally `azure-pipelines.yml`.
-5. Save and run once.
-6. Verify that pushes/PRs create an **Azure Pipelines GitHub Check** on the GitHub commit.
+2. Azure DevOps -> **Pipelines -> New pipeline**.
+3. Choose **GitHub** as the source.
+4. Install/authorize the Azure Pipelines GitHub App for only the repository/repositories that need CI.
+5. Select the repository.
+6. Choose an existing YAML file, normally `azure-pipelines.yml`, or create one.
+7. Save/run once.
+8. Confirm that a push/PR produces an Azure Pipelines **Check** on the GitHub commit.
 
-Security rule: grant the GitHub App only the repositories required by the project; do not create a broad GitHub PAT just for ordinary CI.
+Keep the YAML in GitHub. Azure DevOps should orchestrate source-controlled configuration, not become a second hidden copy of build logic.
 
-Official reference:
+Official references:
 
 - https://learn.microsoft.com/azure/devops/pipelines/repos/github
 - https://learn.microsoft.com/azure/devops/pipelines/security/secure-access-to-repos
@@ -48,62 +56,66 @@ Official reference:
 
 ## 2. Provision a Windows self-hosted agent
 
-A Windows Azure VM is useful when the build genuinely requires Windows (WPF, WinUI, COM, native Windows SDK, WebView2, installer tooling, etc.). Do not use a self-hosted VM merely because it exists; use it when the workload benefits from persistent Windows state or cannot run on Linux.
+Use a Windows VM when the workload genuinely benefits from Windows or persistent machine state: WPF/WinUI, WebView2, COM, Windows SDKs, installer/signing tools, GUI capture, heavyweight caches, etc.
 
 ### VM prerequisites
 
 - supported Windows/Windows Server image
 - PowerShell
-- outbound HTTPS access to Azure DevOps/GitHub/tool download endpoints
-- enough disk for source, NuGet packages, build outputs and cached SDK/tooling
-- an administrator available for one-time agent installation
+- outbound HTTPS to Azure DevOps/GitHub/tool/package endpoints
+- enough OS-disk space for source, NuGet/tool caches and artifacts
+- one-time administrator access for agent installation
 
-The Azure Pipelines agent carries its own .NET runtime. Project SDKs should still be installed deterministically by the pipeline (`UseDotNet@2` + `global.json`).
+The Azure Pipelines agent includes its own runtime, but the **project SDK/toolchain should still be deterministic**. For .NET, pin `global.json` and use `UseDotNet@2` in CI rather than trusting whichever SDK happens to be installed.
 
-### Agent install pattern
+### Agent installation pattern
 
-Use a short path with no spaces, for example:
+Use a short path without spaces:
 
 ```powershell
 New-Item -ItemType Directory -Force C:\agents\build01
 Set-Location C:\agents\build01
 ```
 
-Download and extract the current Windows Azure Pipelines agent from Azure DevOps **Organization settings -> Agent pools -> New agent**, then configure it from an elevated PowerShell window:
+Download/extract the current Windows Azure Pipelines agent from:
+
+```text
+Azure DevOps -> Organization settings -> Agent pools -> New agent
+```
+
+Then configure from elevated PowerShell:
 
 ```powershell
 .\config.cmd
 ```
 
-For Azure DevOps Services the server URL is:
+Azure DevOps Services server URL:
 
 ```text
 https://dev.azure.com/<organization>
 ```
 
-Choose the required pool and a stable agent name.
+Choose the desired pool and a stable agent name.
 
 ### Run the agent as a Windows service
 
-Service mode is the preferred CI configuration. It keeps the agent alive when the RDP session closes and starts it again after a reboot.
+Service mode is the normal build configuration. It starts after reboot and continues after RDP disconnect.
 
-During `config.cmd`, choose **run as service**. A built-in low-privilege account such as `NT AUTHORITY\NETWORK SERVICE` is often sufficient for build agents; use a dedicated account only when the workload requires additional local/network permissions.
-
-Useful commands after configuration:
+Useful diagnostics/repair commands:
 
 ```powershell
 Get-Service 'vstsagent*'
 Get-Service 'vstsagent*' | Format-Table Name,Status,StartType
-Restart-Service 'vstsagent*'
+Restart-Service 'vstsagent*' -Force
 ```
 
-Agent diagnostics:
+From the agent directory:
 
 ```powershell
 .\run.cmd --diagnostics
 ```
 
-Agent removal/reconfiguration:
+Remove/reconfigure:
 
 ```powershell
 .\config.cmd remove
@@ -113,26 +125,18 @@ Official reference:
 
 - https://learn.microsoft.com/azure/devops/pipelines/agents/windows-agent
 
-### PAT rule for agent registration
+### Initial registration authentication
 
-A PAT is **not** required for normal agent communication after registration. If PAT authentication is chosen during initial registration, use a short-lived token with only **Agent Pools (read, manage)** scope. Microsoft documents that the PAT is used only during registration, not for subsequent agent communication.
+If a PAT is used during `config.cmd`, use a short-lived token with only the documented agent-registration scope (Agent Pools read/manage), and do not store it in YAML/source/docs. The registered agent subsequently uses its own credentials.
 
-Therefore:
-
-- never store the registration PAT in YAML, source control, screenshots or docs
-- revoke it after successful registration if it is no longer needed
-- prefer device-code or service-principal registration where appropriate
-
-Official reference:
+Official references:
 
 - https://learn.microsoft.com/azure/devops/pipelines/agents/personal-access-token-agent-registration
 - https://learn.microsoft.com/azure/devops/pipelines/agents/agent-authentication-options
 
 ---
 
-## 3. The CI YAML pattern
-
-A minimal Windows self-hosted pipeline looks like this:
+## 3. A robust self-hosted Windows CI YAML
 
 ```yaml
 trigger:
@@ -176,67 +180,97 @@ jobs:
 
 Important details:
 
-- `batch: true` prevents a burst of pushes from creating a long queue of stale CI builds; while one CI run is active, newer commits are coalesced into the next run.
-- PR `autoCancel: true` cancels obsolete PR validation when a newer commit arrives.
-- `checkout.clean: true` is important on persistent self-hosted agents because workspaces survive across jobs.
-- pin the .NET SDK with `global.json` and `UseDotNet@2`; do not rely on whatever SDK happens to be installed on the VM.
-- restore once, build with `--no-restore`, then test with `--no-build --no-restore`.
-- publish TRX/JUnit/etc. using the platform's test-results task so failures are visible as first-class test results rather than buried in console text.
-
-For EOS, `azure-pipelines.yml` is the authoritative CI definition.
+- `batch: true` coalesces rapid pushes rather than queuing obsolete main builds behind a single agent.
+- PR `autoCancel: true` cancels superseded PR validations.
+- `checkout.clean: true` matters because self-hosted workspaces persist between runs.
+- restore once, then build with `--no-restore`, test with `--no-build --no-restore`.
+- publish TRX/JUnit/etc. with Azure's test-result task rather than burying results in console text.
+- publish screenshots, logs, installers and other evidence as Pipeline Artifacts.
+- do not make a person manually watch the pipeline as part of the development protocol; the implementation loop includes reading CI and fixing it.
 
 ---
 
-## 4. Remote management: use a ladder, not one fragile RDP path
+## 4. Normal remote execution while the build agent is healthy
 
-### Level A - Azure Pipelines agent (normal remote execution)
+An online self-hosted agent is already a remote command channel: PowerShell steps execute on the VM under the agent service identity.
 
-If the self-hosted agent is online, the pipeline itself is a remote execution channel. PowerShell steps execute on the VM under the agent service account.
+Use it for:
 
-This is ideal for:
+- SDK/tool inventory
+- cache repair
+- build/test/package work
+- VM diagnostics
+- collecting logs
+- deterministic dependency installation
+- rendering/capturing the Windows product
 
-- checking installed SDKs/tooling
-- repairing caches
-- collecting diagnostics
-- running builds/tests
-- installing deterministic build dependencies
-- updating the repository workspace
+For EOS, `build/vm-health.ps1` is deliberately reusable both from CI and Azure Run Command.
 
-A reusable local/Run-Command health script lives at:
-
-```text
-build/vm-health.ps1
-```
-
-Inspect without modifying:
+Examples:
 
 ```powershell
 .\build\vm-health.ps1
-```
-
-Repair/restart Azure Pipelines agent service:
-
-```powershell
 .\build\vm-health.ps1 -RepairAgent
-```
-
-Enable Windows RDP service/firewall (Azure NSG/Bastion still controls network reachability):
-
-```powershell
 .\build\vm-health.ps1 -EnableRdp
-```
-
-Disable Windows RDP again:
-
-```powershell
 .\build\vm-health.ps1 -DisableRdp
 ```
 
-### Level B - Azure VM Run Command (break-glass PowerShell)
+This path is **normal operations**, not the recovery path. If the agent is unavailable, move to Azure Resource Manager.
 
-Run Command uses the **Azure VM Agent**, not the Azure Pipelines agent. This is exactly what we want when CI is offline.
+---
 
-Typical Azure CLI operations:
+## 5. Preferred out-of-band recovery: Azure DevOps server job -> Azure Resource Manager
+
+This is the strongest improvement to the basic self-hosted-agent design.
+
+Azure Pipelines supports **server jobs**:
+
+```yaml
+jobs:
+- job: control_vm
+  pool: server
+```
+
+A server job executes on Azure DevOps itself. It requires **no build agent and no target computer**. The built-in `InvokeRESTAPI@1` task is agentless and can use an **Azure Resource Manager** service connection.
+
+Create one Azure Resource Manager service connection using **Workload Identity Federation**, scoped as narrowly as practical (usually the VM's resource group). This gives Azure DevOps an Azure control-plane identity without storing a client secret.
+
+Then an agentless pipeline can:
+
+- query VM instance/power/VM-Agent state
+- request VM start
+- request VM restart
+- call Azure VM Run Command to inspect/repair the self-hosted agent
+- enable/disable guest RDP configuration if human access is actually needed
+
+Example shape:
+
+```yaml
+- task: InvokeRESTAPI@1
+  inputs:
+    connectionType: connectedServiceNameARM
+    azureServiceConnection: '<wif-service-connection>'
+    method: GET
+    urlSuffix: '/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/instanceView?api-version=2026-03-01'
+    waitForCompletion: false
+```
+
+The repository's concrete manual control pipeline is `azure-vm-control.yml`. The complete reusable design is documented in `docs/agentless-azure-vm-control.md`.
+
+Official references:
+
+- https://learn.microsoft.com/azure/devops/pipelines/process/phases
+- https://learn.microsoft.com/azure/devops/pipelines/tasks/reference/invoke-rest-api-v1
+- https://learn.microsoft.com/azure/devops/pipelines/library/connect-to-azure
+- https://learn.microsoft.com/azure/devops/pipelines/release/configure-workload-identity
+
+---
+
+## 6. Azure VM Run Command: guest PowerShell without inbound management ports
+
+Azure Run Command uses the **Azure VM Agent**, not the Azure Pipelines agent. It is designed for machine/application management and can be used when RDP or SSH is unavailable.
+
+Azure CLI examples from any authenticated control environment:
 
 ```powershell
 az vm run-command invoke `
@@ -246,27 +280,44 @@ az vm run-command invoke `
   --scripts "Get-Service 'vstsagent*' | Format-Table Name,Status,StartType"
 ```
 
-Restart a stopped Azure Pipelines agent:
+Repair agent:
 
 ```powershell
 az vm run-command invoke `
   --resource-group <resource-group> `
   --name <vm-name> `
   --command-id RunPowerShellScript `
-  --scripts "Get-Service 'vstsagent*' | Start-Service"
+  --scripts "Get-Service 'vstsagent*' | Set-Service -StartupType Automatic; Get-Service 'vstsagent*' | Start-Service"
 ```
 
-Or, if the repository already exists on the VM, invoke the reusable recovery script:
+REST shape for agentless Azure DevOps use:
 
-```powershell
-az vm run-command invoke `
-  --resource-group <resource-group> `
-  --name <vm-name> `
-  --command-id RunPowerShellScript `
-  --scripts "& '<repo-path>\build\vm-health.ps1' -RepairAgent"
+```text
+POST /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/runCommand?api-version=2026-03-01
 ```
 
-VM lifecycle commands:
+with body:
+
+```json
+{
+  "commandId": "RunPowerShellScript",
+  "script": ["Get-Service 'vstsagent*'"]
+}
+```
+
+Run Command does not depend on inbound 22/3389/5985/5986. It does require the Azure VM Agent to be healthy and able to communicate with Azure.
+
+Official references:
+
+- https://learn.microsoft.com/azure/virtual-machines/run-command-overview
+- https://learn.microsoft.com/azure/virtual-machines/windows/run-command
+- https://learn.microsoft.com/rest/api/compute/virtual-machines/run-command
+
+---
+
+## 7. VM lifecycle operations
+
+From Azure CLI:
 
 ```powershell
 az vm start      --resource-group <resource-group> --name <vm-name>
@@ -274,156 +325,151 @@ az vm restart    --resource-group <resource-group> --name <vm-name>
 az vm deallocate --resource-group <resource-group> --name <vm-name>
 ```
 
+From an agentless ARM task, call the equivalent Azure Compute REST operations.
+
+Start:
+
+```text
+POST /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/start?api-version=2026-03-01
+```
+
+Restart:
+
+```text
+POST /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/restart?api-version=2026-03-01
+```
+
+These may return `202 Accepted` because Azure fabric work continues asynchronously.
+
+---
+
+## 8. Spot VM behavior must be designed for, not treated as a surprise
+
+Spot is suitable for interruptible dev/test/CI workloads, but Azure can evict the VM. With `Deallocate` eviction policy, the VM becomes stopped/deallocated and **does not automatically restart** later. A later start succeeds only if capacity/quota are available.
+
+That means this can be a legitimate state:
+
+```text
+push -> pipeline queued -> no matching self-hosted agent
+```
+
+The correct reaction is not to debug application code first. Query Azure instance view through the **agentless control pipeline**. If the VM is deallocated, request a start. If Azure cannot allocate Spot capacity, the blocker is infrastructure/capacity rather than source code.
+
 Official reference:
 
-- https://learn.microsoft.com/azure/virtual-machines/run-command-overview
-- https://learn.microsoft.com/azure/virtual-machines/windows/run-command
+- https://learn.microsoft.com/azure/virtual-machines/spot-vms
 
-### Level C - Azure Bastion Developer (interactive RDP without public 3389)
+---
 
-For a dev/test Windows VM in a supported region, **Azure Bastion Developer is free** and provides browser-based RDP over the Azure control plane. It does not require the VM to have a public IP. It supports one VM connection at a time and is intentionally limited compared with paid Bastion SKUs.
+## 9. Interactive Windows access: separate GUI access from automation
 
-Current supported India regions include **Central India** and **South India**.
+Remote **management** does not require RDP. Use the Azure control plane for automation; use RDP/Bastion only when a human actually needs to see/control the desktop.
 
-Preferred interactive-access pattern:
+Preferred ladder:
 
-1. VM -> **Connect -> Bastion** in Azure portal.
-2. Use **Bastion Developer** if the VNet/region supports it.
-3. Connect through the browser using the VM's private network path.
-4. Do not leave public TCP/3389 open to the Internet.
+1. **Azure Bastion** when appropriate.
+2. Deliberately enabled/scoped direct RDP as a fallback.
+3. **Serial Console + Boot Diagnostics** when ordinary guest/network paths are broken.
 
-Official reference:
+Bastion Developer is free for dev/test and supports one VM connection at a time, but only in supported regions. Check the current region list before building around it; regional support changes over time.
+
+Official references:
 
 - https://learn.microsoft.com/azure/bastion/quickstart-developer
 - https://learn.microsoft.com/azure/bastion/bastion-sku-comparison
-
-### Level D - Serial Console + Boot Diagnostics
-
-If RDP is broken and Azure VM Run Command cannot recover the machine, use Azure Serial Console / Boot Diagnostics.
-
-Boot diagnostics gives hypervisor screenshots and console information. Serial Console can provide a Windows SAC command channel on supported Windows Server images and is useful for repairing RDP/network configuration.
-
-Official reference:
-
 - https://learn.microsoft.com/troubleshoot/azure/virtual-machines/windows/boot-diagnostics
 - https://learn.microsoft.com/troubleshoot/azure/virtual-machines/windows/serial-console-windows
 
 ---
 
-## 5. Make Azure itself capable of repairing the build VM
+## 10. Useful Azure additions
 
-The strongest long-term setup is a **second Azure DevOps control-plane pipeline** that does **not** run on the target VM.
+### Azure Automation
 
-Create an **Azure Resource Manager service connection using Workload Identity Federation**. This gives Azure Pipelines access to the resource group/VM without storing a client secret.
+Use for independent scheduled/operational workflows such as:
 
-Recommended scope: grant only the minimum role required on the resource group containing the CI VM, not the entire subscription unless necessary.
+- start before a known CI window
+- deallocate after a quiet period
+- service repair
+- housekeeping/log collection
 
-Then a Microsoft-hosted/control agent can execute commands such as:
+Extension-based Hybrid Runbook Worker is useful when a runbook should execute locally on the Windows machine.
 
-```yaml
-- task: AzureCLI@2
-  inputs:
-    azureSubscription: '<workload-identity-service-connection>'
-    scriptType: pscore
-    scriptLocation: inlineScript
-    inlineScript: |
-      az vm run-command invoke `
-        --resource-group '<resource-group>' `
-        --name '<vm-name>' `
-        --command-id RunPowerShellScript `
-        --scripts "Get-Service 'vstsagent*' | Start-Service"
-```
+### Azure Monitor / VM Insights
 
-That produces two independent paths:
-
-```text
-GitHub -> Azure Pipelines -> self-hosted agent -> VM          (normal CI)
-Azure Pipelines control job -> Azure Resource Manager -> VM   (recovery)
-```
-
-If the first path fails because the agent is offline, the second path can start/restart it.
-
-Microsoft recommends workload identity federation for Azure Resource Manager service connections because it avoids stored secrets.
-
-Official reference:
-
-- https://learn.microsoft.com/azure/devops/pipelines/library/connect-to-azure
-- https://learn.microsoft.com/azure/devops/pipelines/release/configure-workload-identity
-
----
-
-## 6. Useful Azure additions
-
-### Azure Monitor + VM Insights
-
-Install Azure Monitor Agent and a Data Collection Rule when VM telemetry becomes useful. At minimum, monitor:
+Add Azure Monitor Agent + a Data Collection Rule when ongoing telemetry is worth the cost/complexity. Useful signals:
 
 - VM heartbeat
 - CPU/memory/disk pressure
 - Windows event/service failures
-- Azure Pipelines agent service failures if collected
+- agent service failures
 
-Use alerts only for conditions that require action; avoid noisy dashboards for a single dev VM.
-
-### Auto-shutdown
-
-For a CI/dev VM that does not need to stay online 24/7, Azure VM auto-shutdown can reduce cost. If scheduled CI is required, pair shutdown with a start mechanism before the build window.
-
-Official reference:
-
-- https://learn.microsoft.com/azure/virtual-machines/auto-shutdown-vm
+Alerts should be actionable, not a noisy dashboard for its own sake.
 
 ### Key Vault
 
-Put long-lived deployment secrets, signing material and feed credentials in Azure Key Vault rather than repository variables. Prefer workload identities so many workflows need no secret at all.
+Keep long-lived deployment secrets/signing material/feed credentials in Key Vault. Prefer workload identity so workflows need fewer secrets at all.
 
-### Azure Storage as an installer/update feed
+### Blob Storage / artifact feed
 
-For desktop releases, Azure Blob Storage can become a stable artifact/update feed. A release pipeline can publish the Velopack packages to a versioned container while GitHub remains the source repository. This cleanly separates source hosting from binary distribution.
+Azure Blob Storage can be a stable installer/update feed while GitHub remains source control. A release pipeline can publish versioned Velopack/install packages there.
 
-### Pipeline artifacts/test history
+### Pipeline artifacts
 
-Publish installers, logs, screenshots and test results as pipeline artifacts. Keep source-controlled files deterministic and keep generated build outputs out of Git.
+Publish generated evidence rather than committing normal build outputs:
+
+- test reports
+- installers
+- logs
+- screenshots
+- diagnostics
+
+A small dedicated evidence branch can be useful only when another automated system needs repository-level access to latest rendered evidence; it should not become the canonical artifact store.
 
 ---
 
-## 7. Troubleshooting matrix
+## 11. Troubleshooting matrix
 
-| Symptom | First check | Independent recovery path |
+| Symptom | First question | Recovery path |
 |---|---|---|
-| Build is queued indefinitely | Agent online/enabled? Exact `demands` match? Parallel job available? | VM Run Command -> inspect/restart `vstsagent*` |
-| Agent service exists but CI cannot connect | Agent diagnostics, outbound HTTPS/DNS, service account | Azure Run Command / Bastion |
-| RDP fails | `TermService`, `fDenyTSConnections`, Windows Firewall, NSG | Azure Run Command -> `vm-health.ps1 -EnableRdp` |
-| RDP port should not be public | Remove public NSG rule | Bastion Developer |
-| VM networking is broken | Boot diagnostics / effective NSG rules | Serial Console |
-| VM does not boot cleanly | Boot Diagnostics screenshot/logs | Serial Console / disk repair |
-| Multiple commits create stale queued builds | Enable `trigger.batch: true` | N/A |
-| CI depends on an expired token | Replace token-backed connection | GitHub App / workload identity federation |
+| Pipeline queued indefinitely | Is the VM/agent available? | Agentless `status`; if deallocated -> `start` |
+| VM running but agent offline | Is `vstsagent*` healthy? | Agentless Run Command -> `repair-agent` |
+| RDP fails | Guest RDP service/firewall or Azure network? | Run Command -> enable guest RDP, then inspect NSG/Bastion |
+| No inbound ports reachable | Is Azure VM Agent healthy? | Run Command; inbound ports are not required |
+| Azure VM Agent unhealthy | Is VM/network/boot healthy? | Boot Diagnostics / Serial Console / redeploy investigation |
+| Spot VM disappeared from CI | Was it evicted/deallocated? | Agentless instance view -> start when capacity permits |
+| Rapid commits create stale queue | Are triggers batched? | `trigger.batch: true`, PR `autoCancel: true` |
+| CI auth requires rotating token | Can it use app/WIF instead? | GitHub App + Azure Resource Manager WIF |
 
 ---
 
-## 8. Security baseline
+## 12. Security baseline
 
-- Do not publish PATs, VM passwords, client secrets or signing keys.
-- A token accidentally pasted into chat/logs/screenshots should be treated as exposed and revoked.
-- A self-hosted build agent executes repository-controlled code. Restrict who can modify pipeline YAML and who can administer its machine/pool.
-- Keep the agent installation/work folders writable only by administrators and the agent identity.
-- Avoid a permanent Internet-facing RDP rule. Prefer Bastion or tightly scoped JIT access.
-- Scope Azure service connections to the smallest practical resource scope and explicitly authorize only the pipelines that need them.
-- Prefer workload identity federation over stored service-principal secrets.
+- Do not commit PATs, VM passwords, client secrets, signing keys or bearer tokens.
+- Prefer GitHub App authentication for source integration.
+- Prefer Azure Resource Manager Workload Identity Federation for Azure access.
+- Scope Azure roles/service connections to the smallest practical resource scope.
+- Authorize the recovery connection only for the control pipeline(s) that need it.
+- A self-hosted agent executes repository-controlled code: protect pipeline YAML and agent administration.
+- Keep agent install/work directories writable only by appropriate identities.
+- Do not treat a globally exposed RDP port as the automation API.
+- Keep recovery operations bounded and source-controlled rather than exposing unrestricted arbitrary PowerShell through a pipeline UI.
 
 ---
 
-## 9. What 'done' looks like
+## 13. What “done” looks like
 
-A resilient setup is complete when all of these are true:
+A resilient cloud CI setup is complete when:
 
-- a GitHub push/PR automatically creates an Azure Pipelines run
-- the Windows build is reproducible from `global.json` + repository files
-- the self-hosted agent runs as a service and survives RDP disconnect/reboot
-- stale commits are batched/cancelled rather than filling the queue
-- there is a non-RDP recovery path (`az vm run-command`)
-- there is a secure interactive path (preferably Bastion Developer for dev/test)
-- Boot Diagnostics/Serial Console are available as last-resort tools
-- Azure credentials are federated or stored in Key Vault, not committed
-- the process is documented well enough to recreate without remembering one-off UI clicks
+- GitHub push/PR automatically creates Azure Pipelines validation
+- build environment is reproducible from repository/toolchain manifests
+- Windows-specific code actually builds/tests on Windows
+- self-hosted agent survives RDP disconnects and reboots
+- stale builds are batched/cancelled
+- tests/artifacts/logs/screenshots are first-class pipeline evidence
+- there is an **agentless Azure control path** that works when the build agent does not
+- VM state can be queried without RDP
+- VM can be started/restarted through ARM
+- guest services can be repaired through Run Command
+- human GUI access is a fallback, not a prerequisite for automation
+- the whole setup is documented well enough to recreate without relying on memory

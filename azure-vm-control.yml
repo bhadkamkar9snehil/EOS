@@ -1,0 +1,191 @@
+# Manual, agentless control plane for the Windows CI VM.
+#
+# IMPORTANT: this pipeline runs on Azure DevOps itself (`pool: server`), not on the EOS VM and not
+# on a Microsoft-hosted runner. It therefore remains usable when the self-hosted agent is offline.
+#
+# One-time project setup:
+#   1. Create an Azure Resource Manager service connection using Workload Identity Federation.
+#   2. Create an Azure DevOps variable group named `eos-vm-control` containing:
+#        AZURE_VM_SERVICE_CONNECTION   service-connection name
+#        AZURE_SUBSCRIPTION_ID         Azure subscription GUID
+#        AZURE_RESOURCE_GROUP          resource group containing the VM
+#        AZURE_VM_NAME                 VM resource name
+#      These are identifiers, not passwords. The service connection owns authentication.
+#
+# This is deliberately manual-only. Normal build/test/visual CI lives in azure-pipelines.yml.
+
+trigger: none
+pr: none
+
+parameters:
+  - name: operation
+    displayName: VM operation
+    type: string
+    default: status
+    values:
+      - status
+      - start
+      - restart
+      - health
+      - repair-agent
+      - enable-rdp
+      - disable-rdp
+
+variables:
+  - group: eos-vm-control
+  - name: computeApiVersion
+    value: '2026-03-01'
+
+jobs:
+  - job: azure_control
+    displayName: Azure control plane · ${{ parameters.operation }}
+    pool: server
+    timeoutInMinutes: 20
+
+    steps:
+      # This operation is pure ARM control-plane state; it does not require the guest OS or Azure
+      # VM Agent to be healthy. The response includes VM and VM-Agent instance-view information.
+      - ${{ if eq(parameters.operation, 'status') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Read VM instance view
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: GET
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/instanceView?api-version=$(computeApiVersion)'
+            waitForCompletion: false
+
+      - ${{ if eq(parameters.operation, 'start') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Start VM
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: POST
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/start?api-version=$(computeApiVersion)'
+            headers: |
+              {
+                "Content-Type": "application/json"
+              }
+            body: '{}'
+            waitForCompletion: false
+
+      - ${{ if eq(parameters.operation, 'restart') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Restart VM
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: POST
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/restart?api-version=$(computeApiVersion)'
+            headers: |
+              {
+                "Content-Type": "application/json"
+              }
+            body: '{}'
+            waitForCompletion: false
+
+      # The remaining operations use Azure VM Run Command. Authentication and ingress happen
+      # through Azure Resource Manager + the Azure VM Agent, not through RDP/SSH/WinRM.
+      - ${{ if eq(parameters.operation, 'health') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Collect guest health
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: POST
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
+            headers: |
+              {
+                "Content-Type": "application/json"
+              }
+            body: |
+              {
+                "commandId": "RunPowerShellScript",
+                "script": [
+                  "$ErrorActionPreference = 'Continue'",
+                  "Write-Output ('COMPUTER=' + $env:COMPUTERNAME)",
+                  "Write-Output ('UTC=' + [DateTime]::UtcNow.ToString('O'))",
+                  "Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,LastBootUpTime | Format-List | Out-String | Write-Output",
+                  "Get-Service -Name 'vstsagent*',TermService,WinRM,sshd -ErrorAction SilentlyContinue | Select-Object Name,Status,StartType | Format-Table -AutoSize | Out-String | Write-Output",
+                  "Get-PSDrive -PSProvider FileSystem | Select-Object Name,@{n='FreeGB';e={[math]::Round($_.Free/1GB,2)}} | Format-Table -AutoSize | Out-String | Write-Output",
+                  "& quser.exe 2>&1 | Out-String | Write-Output",
+                  "Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 22,3389,443,5985,5986 } | Select-Object LocalAddress,LocalPort,OwningProcess | Format-Table -AutoSize | Out-String | Write-Output"
+                ]
+              }
+            waitForCompletion: false
+
+      - ${{ if eq(parameters.operation, 'repair-agent') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Repair Azure Pipelines agent service
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: POST
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
+            headers: |
+              {
+                "Content-Type": "application/json"
+              }
+            body: |
+              {
+                "commandId": "RunPowerShellScript",
+                "script": [
+                  "$ErrorActionPreference = 'Stop'",
+                  "$services = @(Get-Service -Name 'vstsagent*' -ErrorAction Stop)",
+                  "if ($services.Count -eq 0) { throw 'No Azure Pipelines agent service is installed.' }",
+                  "foreach ($service in $services) { Set-Service -Name $service.Name -StartupType Automatic; if ($service.Status -eq 'Running') { Restart-Service -Name $service.Name -Force } else { Start-Service -Name $service.Name } }",
+                  "Get-Service -Name 'vstsagent*' | Select-Object Name,Status,StartType | Format-Table -AutoSize | Out-String | Write-Output"
+                ]
+              }
+            waitForCompletion: false
+
+      - ${{ if eq(parameters.operation, 'enable-rdp') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Enable Windows RDP service/firewall
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: POST
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
+            headers: |
+              {
+                "Content-Type": "application/json"
+              }
+            body: |
+              {
+                "commandId": "RunPowerShellScript",
+                "script": [
+                  "$ErrorActionPreference = 'Stop'",
+                  "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server' -Name fDenyTSConnections -Value 0",
+                  "Set-Service -Name TermService -StartupType Automatic",
+                  "Start-Service -Name TermService",
+                  "Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue",
+                  "Get-Service TermService | Select-Object Name,Status,StartType | Format-Table -AutoSize | Out-String | Write-Output"
+                ]
+              }
+            waitForCompletion: false
+
+      - ${{ if eq(parameters.operation, 'disable-rdp') }}:
+        - task: InvokeRESTAPI@1
+          displayName: Disable Windows RDP service/firewall
+          inputs:
+            connectionType: connectedServiceNameARM
+            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            method: POST
+            urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
+            headers: |
+              {
+                "Content-Type": "application/json"
+              }
+            body: |
+              {
+                "commandId": "RunPowerShellScript",
+                "script": [
+                  "$ErrorActionPreference = 'Stop'",
+                  "Disable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue",
+                  "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server' -Name fDenyTSConnections -Value 1",
+                  "Write-Output 'Windows guest RDP has been disabled.'"
+                ]
+              }
+            waitForCompletion: false
