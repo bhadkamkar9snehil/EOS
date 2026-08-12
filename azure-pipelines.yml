@@ -1,0 +1,78 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - main
+
+variables:
+  buildConfiguration: Release
+
+jobs:
+  - job: build_test
+    displayName: Build & test
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - checkout: self
+        clean: true
+
+      - task: UseDotNet@2
+        displayName: Use .NET SDK from global.json
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+          workingDirectory: $(Build.SourcesDirectory)
+
+      - script: dotnet restore
+        displayName: Restore
+
+      # DesktopHost targets net10.0-windows and is validated separately below.
+      - script: |
+          dotnet build src/EngineeringPerformance.Domain/EngineeringPerformance.Domain.csproj --configuration $(buildConfiguration) --no-restore
+          dotnet build src/EngineeringPerformance.Application/EngineeringPerformance.Application.csproj --configuration $(buildConfiguration) --no-restore
+          dotnet build src/EngineeringPerformance.Infrastructure/EngineeringPerformance.Infrastructure.csproj --configuration $(buildConfiguration) --no-restore
+          dotnet build src/EngineeringPerformance.UI/EngineeringPerformance.UI.csproj --configuration $(buildConfiguration) --no-restore
+        displayName: Build cross-platform projects
+
+      - script: |
+          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-restore --logger trx
+          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-restore --logger trx
+          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-restore --logger trx
+        displayName: Test
+
+      - task: PublishTestResults@2
+        displayName: Publish test results
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: '**/*.trx'
+          searchFolder: $(System.DefaultWorkingDirectory)
+          mergeTestResults: true
+          failTaskOnFailedTests: true
+          testRunTitle: EOS unit tests
+
+  - job: windows_build
+    displayName: Windows build (DesktopHost)
+    pool:
+      vmImage: windows-latest
+    steps:
+      - checkout: self
+        clean: true
+
+      - task: UseDotNet@2
+        displayName: Use .NET SDK from global.json
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+          workingDirectory: $(Build.SourcesDirectory)
+
+      - script: dotnet restore
+        displayName: Restore
+
+      - script: dotnet build src/EngineeringPerformance.DesktopHost/EngineeringPerformance.DesktopHost.csproj --configuration $(buildConfiguration) --no-restore
+        displayName: Build DesktopHost
