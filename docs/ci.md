@@ -32,17 +32,31 @@ The push trigger uses `batch: true`, so a burst of commits is coalesced instead 
 
 The VM itself is probed at the start of CI with `build/vm-health.ps1`, which reports machine, storage, agent-service, .NET and RDP state without mutating the system.
 
+## Independent VM recovery
+
+Normal CI and machine recovery are deliberately different channels.
+
+`azure-vm-control.yml` is a **manual-only Azure DevOps server/agentless pipeline**. Once its one-time Azure Resource Manager Workload Identity Federation service connection + variable group are configured, it can query/start/restart the VM and use Azure VM Run Command to repair the self-hosted agent without requiring that agent or a Microsoft-hosted runner.
+
+```text
+normal:   GitHub -> Azure Pipelines -> EOS Windows agent -> build/test
+recovery: Azure DevOps server job -> Azure Resource Manager -> EOS VM
+```
+
+That removes the circular failure mode where a stopped VM would otherwise need its own stopped agent to fix it.
+
+See:
+
+- `docs/agentless-azure-vm-control.md`
+- `docs/cloud-ci-remote-management.md`
+
 ## Why this is preferable for EOS
 
 - Windows-targeted desktop code is built on actual Windows.
 - The self-hosted VM can retain heavyweight caches/tooling between runs.
 - `global.json` + `UseDotNet@2` still keep the SDK deterministic rather than trusting machine state.
 - Azure DevOps keeps build history and test results while GitHub stays the source/review system.
-- The same Azure account can provide independent VM recovery through Run Command/Bastion instead of making CI depend on RDP.
-
-The complete reusable setup and remote-management runbook is in:
-
-- `docs/cloud-ci-remote-management.md`
+- Azure Resource Manager provides an independent control plane instead of making CI depend on RDP or on the build agent being alive.
 
 ## GitHub Actions
 
