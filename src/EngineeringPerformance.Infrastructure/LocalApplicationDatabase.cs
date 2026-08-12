@@ -282,7 +282,7 @@ public sealed class LocalApplicationDatabase(IDbContextFactory<PerformanceDbCont
         // A multi-month export (attendance/detailed timesheet) covers every month it contains data
         // for, not just the UI's currently selected month — recording only the selected month would
         // make the readiness indicator wrong for the other months once weekly re-uploads start.
-        var coveredMonths = performance.Select(x => (x.Year, x.Month)).Distinct().DefaultIfEmpty((year, month)).ToArray();
+        var coveredMonths = performance.Select(x => (Year: x.Year, Month: x.Month)).Distinct().DefaultIfEmpty((Year: year, Month: month)).ToArray();
         var existingSourceFiles = await context.ImportedSourceFiles
             .Where(x => x.ReportType == reportType && coveredMonths.Select(m => m.Year).Contains(x.Year))
             .ToDictionaryAsync(x => (x.Year, x.Month), x => x, cancellationToken);
