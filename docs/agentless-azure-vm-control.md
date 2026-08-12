@@ -1,60 +1,66 @@
 # Agentless Azure VM control from Azure DevOps
 
-This is the preferred out-of-band recovery pattern for a self-hosted Azure Pipelines VM.
+This document captures the reusable out-of-band management pattern for a Windows Azure VM that also hosts a self-hosted Azure Pipelines agent.
 
-The problem with a normal self-hosted pipeline is circular: if the VM is stopped or its Azure Pipelines agent is broken, a job scheduled to that same agent cannot repair it. A Microsoft-hosted runner is one possible escape path, but it is not required.
+The key problem is circular dependency: if the VM is stopped or its build-agent service is broken, a pipeline job scheduled to that same VM cannot repair it. The recovery channel must therefore run somewhere else.
 
-Azure Pipelines supports **server (agentless) jobs**. These tasks execute in Azure DevOps itself and do not consume or depend on a build agent. The built-in `InvokeRESTAPI@1` task supports an **Azure Resource Manager** service connection, so a server job can call Azure management APIs directly.
+Azure Pipelines provides **server jobs** (`pool: server`). They execute on Azure DevOps itself and require neither a self-hosted agent nor a Microsoft-hosted runner. The built-in `InvokeRESTAPI@1` task can authenticate to Azure Resource Manager through an Azure Resource Manager service connection. With Workload Identity Federation, this is also a zero-secret control plane.
 
-That gives two independent control paths:
+The resulting architecture is:
 
 ```text
-GitHub -> Azure Pipelines -> Windows self-hosted agent -> build/test/capture
+NORMAL DEVELOPMENT
+GitHub -> Azure Pipelines -> self-hosted Windows agent -> build/test/render
 
-Azure DevOps server job -> Azure Resource Manager -> VM lifecycle / Run Command
+OUT-OF-BAND RECOVERY
+Azure DevOps server job -> Azure Resource Manager -> VM start/restart/Run Command
 ```
 
-If the first path is unavailable, the second still exists.
+If the first path is unavailable, the second path remains independent.
 
-## One-time prerequisite: secretless Azure Resource Manager service connection
+---
 
-Create an **Azure Resource Manager** service connection in Azure DevOps using **Workload Identity Federation**. Prefer the current Microsoft Entra issuer flow; do not create a long-lived client secret.
+## 1. One-time Azure Resource Manager connection
 
-General setup:
+In Azure DevOps:
 
-1. Azure DevOps project -> **Project settings -> Service connections -> New service connection**.
-2. Choose **Azure Resource Manager**.
-3. Choose a Workload Identity Federation option using either an app registration or managed identity.
-4. Scope the identity to the smallest useful Azure scope — ideally the resource group containing the CI VM, rather than the whole subscription.
-5. Give the identity only the Azure role(s) required for VM lifecycle and Run Command operations.
-6. Do **not** grant the connection to every pipeline. Explicitly authorize only the recovery/control pipeline.
-7. Record the service-connection name in pipeline configuration; no secret is stored in Git.
+1. Open the project.
+2. Go to **Project settings -> Service connections -> New service connection**.
+3. Choose **Azure Resource Manager**.
+4. Prefer **App registration (automatic) + Workload identity federation** when available. A managed-identity WIF connection is also valid when that better matches the Azure tenant/permissions model.
+5. Scope the connection to the smallest useful Azure scope, normally the resource group containing the CI/dev VM rather than the entire subscription.
+6. Give the identity only the role/permissions required for VM lifecycle and Run Command operations.
+7. Do not enable unrestricted "Grant access permission to all pipelines" unless that is genuinely intended. Authorize the dedicated control pipeline explicitly.
 
-Microsoft recommends workload identity federation for Azure Resource Manager service connections because it avoids storing and rotating service-principal secrets.
+Workload Identity Federation avoids client secrets/certificates that need storage and rotation. Microsoft currently recommends the Microsoft Entra issuer flow for Resource Manager WIF service connections; the older Azure DevOps issuer form is being deprecated.
 
 Official references:
 
+- https://learn.microsoft.com/azure/devops/pipelines/library/connect-to-azure
 - https://learn.microsoft.com/azure/devops/pipelines/release/configure-workload-identity
-- https://learn.microsoft.com/azure/devops/pipelines/release/azure-rm-endpoint
-- https://learn.microsoft.com/azure/devops/pipelines/tasks/reference/invoke-rest-api-v1
-- https://learn.microsoft.com/azure/devops/pipelines/process/phases
 
-## Required Azure identifiers
+---
 
-Keep these as Azure DevOps variables or variable-group values, not hard-coded into reusable templates:
+## 2. Store identifiers, not secrets
+
+Create one Azure DevOps variable group for the target VM. For the EOS implementation the expected group is named `eos-vm-control`, but the pattern is generic.
+
+Store:
 
 ```text
-AZURE_SUBSCRIPTION_ID
-AZURE_RESOURCE_GROUP
-AZURE_VM_NAME
-AZURE_VM_SERVICE_CONNECTION
+AZURE_VM_SERVICE_CONNECTION   Azure DevOps service-connection name
+AZURE_SUBSCRIPTION_ID         subscription GUID
+AZURE_RESOURCE_GROUP          resource group containing the VM
+AZURE_VM_NAME                 Azure VM resource name
 ```
 
-None of these values is a password or bearer token.
+These are resource identifiers, not credentials. Authentication stays in the Workload Identity Federation service connection.
 
-## Agentless server-job syntax
+---
 
-A server job is selected with the reserved pool value `server`:
+## 3. Why `pool: server` matters
+
+A normal YAML job needs an agent. A server job does not:
 
 ```yaml
 jobs:
@@ -64,59 +70,50 @@ jobs:
   - task: InvokeRESTAPI@1
     inputs:
       connectionType: connectedServiceNameARM
-      azureServiceConnection: '<service-connection-name>'
-      method: POST
-      urlSuffix: '<Azure Resource Manager path>'
+      azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+      method: GET
+      urlSuffix: '<resource-manager-path>'
       waitForCompletion: false
 ```
 
-`InvokeRESTAPI@1` is intentionally an agentless-only task. For Azure Resource Manager connections it uses the selected Azure environment's Resource Manager endpoint (normally `https://management.azure.com`) and authenticates through the service connection.
+Azure DevOps documents server jobs as executing on the server without an agent or target computer. `InvokeRESTAPI@1` is one of the built-in agentless tasks and supports an Azure Resource Manager service connection.
 
-## Start a stopped/deallocated VM
+Official references:
 
-Azure Compute exposes VM lifecycle operations through Resource Manager. A start request is:
+- https://learn.microsoft.com/azure/devops/pipelines/process/phases
+- https://learn.microsoft.com/azure/devops/pipelines/tasks/reference/invoke-rest-api-v1
+
+---
+
+## 4. VM power-state and lifecycle operations
+
+The Azure Compute REST API exposes lifecycle operations through Azure Resource Manager.
+
+Current API shape:
 
 ```text
-POST /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Compute/virtualMachines/<vm-name>/start?api-version=2025-11-01
+GET  /subscriptions/<subscription>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/instanceView?api-version=2026-03-01
+POST /subscriptions/<subscription>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/start?api-version=2026-03-01
+POST /subscriptions/<subscription>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/restart?api-version=2026-03-01
 ```
 
-Agentless pipeline pattern:
+The start/restart calls can return `202 Accepted`, because the actual Azure fabric operation may continue asynchronously.
 
-```yaml
-- task: InvokeRESTAPI@1
-  displayName: Start VM
-  inputs:
-    connectionType: connectedServiceNameARM
-    azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
-    method: POST
-    urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/start?api-version=2025-11-01'
-    waitForCompletion: false
-```
-
-A successful lifecycle request can be asynchronous (`202 Accepted`). The VM may need time to boot and for the Azure VM Agent / Azure Pipelines service to become healthy afterward.
-
-Official REST reference:
+Official references:
 
 - https://learn.microsoft.com/rest/api/compute/virtual-machines/start
-
-## Restart a VM
-
-```text
-POST /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Compute/virtualMachines/<vm-name>/restart?api-version=2025-11-01
-```
-
-Official REST reference:
-
 - https://learn.microsoft.com/rest/api/compute/virtual-machines/restart
 
-## Repair the guest without RDP: Azure Run Command
+---
 
-Once the VM is running and its Azure VM Agent is healthy, Azure Run Command can execute PowerShell inside Windows even if RDP, SSH, WinRM or the Azure Pipelines agent is unavailable.
+## 5. Guest PowerShell without RDP, SSH or WinRM
+
+Azure **Run Command** uses the Azure VM Agent to run PowerShell inside a Windows VM. It is specifically useful for diagnosis/recovery when the guest is not reachable through ordinary management ports.
 
 REST shape:
 
 ```text
-POST /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Compute/virtualMachines/<vm-name>/runCommand?api-version=2025-04-01
+POST /subscriptions/<subscription>/resourceGroups/<rg>/providers/Microsoft.Compute/virtualMachines/<vm>/runCommand?api-version=2026-03-01
 ```
 
 Body:
@@ -132,89 +129,128 @@ Body:
 }
 ```
 
-Agentless task pattern:
+This path does **not** require inbound RDP/SSH/WinRM. It does require the Azure VM Agent to be healthy and able to communicate with Azure.
 
-```yaml
-- task: InvokeRESTAPI@1
-  displayName: Repair Azure Pipelines agent
-  inputs:
-    connectionType: connectedServiceNameARM
-    azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
-    method: POST
-    urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=2025-04-01'
-    headers: |
-      {
-        "Content-Type": "application/json"
-      }
-    body: |
-      {
-        "commandId": "RunPowerShellScript",
-        "script": [
-          "Get-Service 'vstsagent*' | Set-Service -StartupType Automatic",
-          "Get-Service 'vstsagent*' | Start-Service"
-        ]
-      }
-    waitForCompletion: false
+Useful recovery commands include:
+
+```powershell
+Get-Service 'vstsagent*'
+Get-Service 'vstsagent*' | Set-Service -StartupType Automatic
+Get-Service 'vstsagent*' | Start-Service
+Get-Service 'vstsagent*' | Restart-Service -Force
+```
+
+RDP guest-side recovery:
+
+```powershell
+Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections -Value 0
+Set-Service TermService -StartupType Automatic
+Start-Service TermService
+Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
 ```
 
 Official references:
 
 - https://learn.microsoft.com/azure/virtual-machines/run-command-overview
+- https://learn.microsoft.com/azure/virtual-machines/windows/run-command
 - https://learn.microsoft.com/rest/api/compute/virtual-machines/run-command
 
-## Why this is stronger than public WinRM/SSH
+---
 
-This pattern does not require inbound TCP access from the orchestration environment. The Azure control plane authenticates the request and the VM Agent performs guest execution. It therefore still works when:
+## 6. Repository implementation
 
-- port 3389 is closed
-- SSH/WinRM is disabled
-- NSG rules reject inbound management traffic
-- the self-hosted Azure Pipelines service has stopped
+`azure-vm-control.yml` is the manual-only agentless control pipeline.
 
-For a dev VM, public RDP can remain an optional human fallback rather than the automation backbone.
+It exposes bounded operations:
 
-## Recommended recovery pipeline operations
+```text
+status
+start
+restart
+health
+repair-agent
+enable-rdp
+disable-rdp
+```
 
-A small manual/parameterized control pipeline should expose only bounded operations such as:
+It deliberately does **not** expose arbitrary user-supplied PowerShell. Normal maintenance logic should live in reviewed source-controlled scripts; the recovery pipeline should remain a small, constrained control surface.
 
-- `start`
-- `restart`
-- `repair-agent`
-- `enable-rdp`
-- `disable-rdp`
-- `health`
+`status` is special: it is pure Azure control-plane state and works even if the guest OS or Azure VM Agent is unhealthy.
 
-Do not turn an agentless pipeline into an unrestricted arbitrary-command endpoint. Keep normal maintenance scripts in source control and make the recovery pipeline invoke known operations.
+`health`, `repair-agent`, `enable-rdp`, and `disable-rdp` use Azure Run Command, so they require the Azure VM Agent.
 
-## Additional independent Azure control plane
+---
 
-Azure Automation is another useful layer. A cloud runbook can start the VM and call VM Run Command, and an extension-based Hybrid Runbook Worker can run operational runbooks directly on a running Windows machine. The current extension-based worker is the supported path; the older agent-based User Hybrid Runbook Worker has retired.
+## 7. Spot VM consideration
 
-Azure Automation is useful for:
+A Spot VM is appropriate for interruptible dev/test/CI work, but Azure can evict it when capacity is required. With `Deallocate` eviction policy, an evicted VM becomes stopped/deallocated and is **not automatically restarted** later. A later start is possible only when capacity/quota are available.
 
-- scheduled start/stop
-- periodic housekeeping
-- service repair
-- log collection
-- webhook-triggered operational jobs
-- jobs that should exist independently of the source-build pipeline
+That means a Spot-backed self-hosted CI system should assume this state can occur:
+
+```text
+GitHub push -> Azure pipeline queued -> no self-hosted agent available
+```
+
+The agentless control pipeline gives us a way to query the VM state and request a start without relying on the missing agent. If Azure cannot allocate Spot capacity, that failure is a real infrastructure constraint rather than a pipeline-code failure.
+
+Official reference:
+
+- https://learn.microsoft.com/azure/virtual-machines/spot-vms
+
+---
+
+## 8. Interactive Windows access
+
+Azure Run Command solves **remote management**; it is not a graphical RDP session.
+
+For occasional human GUI access, use this hierarchy:
+
+1. Azure Bastion when available/appropriate.
+2. Direct RDP only when deliberately enabled and network-scoped.
+3. Serial Console + Boot Diagnostics for last-resort recovery.
+
+Bastion Developer is a free dev/test SKU in supported regions and allows one VM connection at a time. Regional availability is limited, so check the current supported-region list before designing around it.
 
 Official references:
 
-- https://learn.microsoft.com/azure/automation/extension-based-hybrid-runbook-worker-install
-- https://learn.microsoft.com/azure/automation/automation-hrw-run-runbooks
+- https://learn.microsoft.com/azure/bastion/quickstart-developer
+- https://learn.microsoft.com/azure/bastion/bastion-sku-comparison
 
-## Interactive fallback
+---
 
-Automation and Run Command solve remote **management**, not human GUI interaction. For interactive Windows access, prefer Azure Bastion rather than depending on a globally exposed RDP port. Bastion Developer is free for dev/test but only available in supported regions and supports one VM connection at a time.
+## 9. Optional next Azure layer: Automation
 
-This gives a clean hierarchy:
+Azure Automation can host cloud runbooks for scheduled operations and extension-based Hybrid Runbook Workers for scripts that should run locally on a machine.
+
+Useful cases:
+
+- scheduled start before a known CI window
+- scheduled deallocation after a quiet period
+- periodic service health/repair
+- log collection/housekeeping
+- independent operational runbooks that should not be coupled to source builds
+
+Do not use scheduled jobs as a substitute for event-driven CI, but they are useful for cost and maintenance policy.
+
+---
+
+## 10. Recovery decision tree
 
 ```text
-1. Azure Pipelines self-hosted agent      normal build/development automation
-2. Azure DevOps agentless ARM job         start/restart/repair when agent is unavailable
-3. Azure VM Run Command                   guest PowerShell through Azure VM Agent
-4. Azure Automation                       scheduled/independent operational workflows
-5. Azure Bastion                          interactive human RDP fallback
-6. Serial Console + Boot Diagnostics      last-resort recovery
+Pipeline queued / agent unavailable
+        |
+        v
+agentless STATUS (Azure instance view)
+        |
+        +-- VM deallocated --> START
+        |
+        +-- VM running ------> guest HEALTH via Run Command
+                                   |
+                                   +-- vstsagent stopped --> REPAIR-AGENT
+                                   |
+                                   +-- RDP broken --------> ENABLE-RDP if human GUI is actually needed
+                                   |
+                                   +-- VM Agent unhealthy -> Boot Diagnostics / Serial Console / redeploy path
 ```
+
+This is the key operating principle: **build execution and machine recovery must not depend on the same agent.**
