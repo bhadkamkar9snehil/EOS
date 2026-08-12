@@ -157,21 +157,15 @@ public partial class MainWindow : Window
                 if (parseFloat(s.fontSize) < 11) tinyText++;
               }
               return JSON.stringify({
-                path: location.pathname,
-                title: document.title,
-                theme: document.documentElement.dataset.theme || 'system',
-                innerWidth,
-                innerHeight,
-                devicePixelRatio,
-                scrollWidth: root.scrollWidth,
-                scrollHeight: root.scrollHeight,
-                horizontalOverflow: root.scrollWidth > innerWidth + 1,
-                clippedPlateCount: clipped,
-                canvasCount: document.querySelectorAll('canvas').length,
-                svgCount: document.querySelectorAll('svg').length,
-                tinyTextCount: tinyText,
-                errors: window.__eosVisualErrors || [],
-                tokens: {
+                InnerWidth: innerWidth,
+                InnerHeight: innerHeight,
+                HorizontalOverflow: root.scrollWidth > innerWidth + 1,
+                ClippedPlateCount: clipped,
+                CanvasCount: document.querySelectorAll('canvas').length,
+                SvgCount: document.querySelectorAll('svg').length,
+                TinyTextCount: tinyText,
+                Errors: window.__eosVisualErrors || [],
+                Tokens: {
                   canvas: style.getPropertyValue('--color-canvas').trim(),
                   chassis: style.getPropertyValue('--color-chassis').trim(),
                   surface: style.getPropertyValue('--color-surface').trim(),
