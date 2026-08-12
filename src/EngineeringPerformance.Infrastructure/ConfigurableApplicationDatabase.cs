@@ -37,8 +37,9 @@ public sealed partial class ConfigurableApplicationDatabase(
             return await JsonSerializer.DeserializeAsync<OperationalScoringSettings>(stream, cancellationToken: cancellationToken)
                    ?? OperationalScoringSettings.Default;
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
+            _logger.LogWarning(exception, "Could not read {SettingsPath}; falling back to default operational scoring weights.", _settingsPath);
             return OperationalScoringSettings.Default;
         }
     }

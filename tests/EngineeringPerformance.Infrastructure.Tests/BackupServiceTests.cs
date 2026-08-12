@@ -21,7 +21,10 @@ public sealed class BackupServiceTests
         using (var context = factory.CreateDbContext())
             context.Database.EnsureCreated();
 
-        var service = new BackupService(factory, dataDirectory, dbPath);
+        // Must be explicit: BackupService's default backup directory otherwise falls back to the
+        // real user's Documents folder, which a test must never write into.
+        var defaultBackupDirectory = Path.Combine(dataDirectory, "default-backups");
+        var service = new BackupService(factory, dataDirectory, dbPath, defaultBackupDirectory);
         return (service, dataDirectory, dbPath, provider);
     }
 
@@ -42,6 +45,10 @@ public sealed class BackupServiceTests
         finally
         {
             provider.Dispose();
+            // Disposing the provider doesn't release Microsoft.Data.Sqlite's own native connection
+            // pool (keyed by connection string, independent of EF's pool) — without this, the
+            // directory delete below fails on Windows with a sharing violation on the .db file.
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, true);
         }
     }
@@ -61,6 +68,10 @@ public sealed class BackupServiceTests
         finally
         {
             provider.Dispose();
+            // Disposing the provider doesn't release Microsoft.Data.Sqlite's own native connection
+            // pool (keyed by connection string, independent of EF's pool) — without this, the
+            // directory delete below fails on Windows with a sharing violation on the .db file.
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, true);
         }
     }
@@ -107,6 +118,10 @@ public sealed class BackupServiceTests
         finally
         {
             provider.Dispose();
+            // Disposing the provider doesn't release Microsoft.Data.Sqlite's own native connection
+            // pool (keyed by connection string, independent of EF's pool) — without this, the
+            // directory delete below fails on Windows with a sharing violation on the .db file.
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, true);
         }
     }
@@ -126,6 +141,10 @@ public sealed class BackupServiceTests
         finally
         {
             provider.Dispose();
+            // Disposing the provider doesn't release Microsoft.Data.Sqlite's own native connection
+            // pool (keyed by connection string, independent of EF's pool) — without this, the
+            // directory delete below fails on Windows with a sharing violation on the .db file.
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, true);
         }
     }

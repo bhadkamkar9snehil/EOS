@@ -7,6 +7,8 @@ Reviews_*/
 bin/
 obj/
 .vs/
+build/Releases/
+build/publish/
 *.user
 TestResults/
 artifacts/

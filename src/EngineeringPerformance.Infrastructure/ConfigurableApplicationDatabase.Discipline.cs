@@ -2,6 +2,7 @@ using System.Text.Json;
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EngineeringPerformance.Infrastructure;
 
@@ -36,8 +37,9 @@ public sealed partial class ConfigurableApplicationDatabase
             var settings = await JsonSerializer.DeserializeAsync<ExecutionDisciplineSettings>(stream, cancellationToken: cancellationToken);
             return settings?.IsValid == true ? settings : ExecutionDisciplineSettings.Default;
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
+            _logger.LogWarning(exception, "Could not read {SettingsPath}; falling back to default execution-discipline settings.", _disciplineSettingsPath);
             return ExecutionDisciplineSettings.Default;
         }
     }
@@ -91,8 +93,9 @@ public sealed partial class ConfigurableApplicationDatabase
             await using var stream = File.OpenRead(_disciplineExceptionsPath);
             return await JsonSerializer.DeserializeAsync<ObligationExceptionItem[]>(stream, cancellationToken: cancellationToken) ?? [];
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
+            _logger.LogWarning(exception, "Could not read {ExceptionsPath}; treating as no recorded obligation exceptions.", _disciplineExceptionsPath);
             return [];
         }
     }

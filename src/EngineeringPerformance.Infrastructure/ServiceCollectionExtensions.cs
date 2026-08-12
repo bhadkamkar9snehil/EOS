@@ -23,8 +23,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IBackupService>(sp => new BackupService(
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
             dataDirectory,
-            databasePath));
-        services.AddSingleton<IScoringPresetService>(_ => new ScoringPresetService(dataDirectory));
+            databasePath,
+            defaultBackupDirectory: null,
+            sp.GetService<ILogger<BackupService>>()));
+        services.AddSingleton<IScoringPresetService>(sp => new ScoringPresetService(dataDirectory, sp.GetService<ILogger<ScoringPresetService>>()));
         return services;
     }
 }

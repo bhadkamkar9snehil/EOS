@@ -1,5 +1,7 @@
 using System.Text.Json;
 using EngineeringPerformance.Application;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EngineeringPerformance.Infrastructure;
 
@@ -9,9 +11,10 @@ namespace EngineeringPerformance.Infrastructure;
 /// Two built-in presets ship as fallback defaults (not written to disk) so the picker is never
 /// empty on a fresh install; saving a user preset under the same name as a built-in shadows it.
 /// </summary>
-public sealed class ScoringPresetService(string dataDirectory) : IScoringPresetService
+public sealed class ScoringPresetService(string dataDirectory, ILogger<ScoringPresetService>? logger = null) : IScoringPresetService
 {
     private readonly string _presetsPath = Path.Combine(dataDirectory, "scoring-presets.json");
+    private readonly ILogger<ScoringPresetService> _logger = logger ?? NullLogger<ScoringPresetService>.Instance;
 
     public static readonly IReadOnlyList<ScoringPreset> BuiltInPresets =
     [
@@ -58,8 +61,9 @@ public sealed class ScoringPresetService(string dataDirectory) : IScoringPresetS
             var presets = await JsonSerializer.DeserializeAsync<List<ScoringPreset>>(stream, cancellationToken: cancellationToken);
             return presets ?? [];
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
+            _logger.LogWarning(exception, "Could not read {PresetsPath}; falling back to no saved presets (built-ins still available).", _presetsPath);
             return [];
         }
     }

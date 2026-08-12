@@ -1,9 +1,11 @@
 @page "/templates"
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
+@using Microsoft.Extensions.Logging
 @inject IFileDialogService Dialogs
 @inject IWorkbookService Workbooks
 @inject AppState State
+@inject ILogger<TemplatesPage> Logger
 @implements IDisposable
 
 <div class="workbench-page template-workbench">
@@ -73,7 +75,11 @@
             Workbooks.GenerateEngineerTemplate(destination, new Employee(employee.EmployeeCode, employee.Name, employee.SeniorityLevel), State.SelectedMonth.Year, State.SelectedMonth.Month);
             State.ShowMessage($"Template generated for {employee.Name}.");
         }
-        catch (Exception ex) { State.ShowMessage(ex.Message, true); }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to generate a review template for {EmployeeName} ({Year:D4}-{Month:D2}).", employee.Name, State.SelectedMonth.Year, State.SelectedMonth.Month);
+            State.ShowMessage(ex.Message, true);
+        }
     }
 
     private void GenerateAllTemplates()
@@ -87,7 +93,12 @@
             var employees = State.Employees.Select(x => new Employee(x.EmployeeCode, x.Name, x.SeniorityLevel)).ToArray();
             var generated = Workbooks.GenerateEngineerTemplates(target, employees, State.SelectedMonth.Year, State.SelectedMonth.Month);
             State.ShowMessage($"{generated.Count} review workbook(s) written to {target}.");
+            Logger.LogInformation("Generated {Count} review workbook(s) into {Target} for {Year:D4}-{Month:D2}.", generated.Count, target, State.SelectedMonth.Year, State.SelectedMonth.Month);
         }
-        catch (Exception ex) { State.ShowMessage(ex.Message, true); }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to generate review workbooks for {Year:D4}-{Month:D2}.", State.SelectedMonth.Year, State.SelectedMonth.Month);
+            State.ShowMessage(ex.Message, true);
+        }
     }
 }
