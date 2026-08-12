@@ -9,9 +9,8 @@ Visual work is not considered validated by code review, build success, or genera
 ## Required loop
 
 1. Build or update the UI implementation.
-2. Render the actual HTML/CSS/SVG/JS surface with deterministic dummy data when production data is not required.
-3. Use Chromium controlled programmatically through Playwright in the ChatGPT runtime whenever available.
-4. Capture fixed desktop screenshots at minimum:
+2. Run the compiled WPF + Blazor/WebView2 desktop application against local application data.
+3. Capture screenshots from the actual desktop window at minimum:
    - 1536 x 1024
    - 1280 x 800
 5. Inspect screenshots for:
@@ -24,27 +23,20 @@ Visual work is not considered validated by code review, build success, or genera
    - missing assets or browser console errors
 6. Compare against the active benchmark/reference image, not against the previous implementation.
 7. Make corrections, rerender, and repeat until the visual pass is acceptable.
-8. Only after browser evidence exists should a visual implementation be described as validated.
+8. Only after real desktop-host evidence exists should a visual implementation be described as validated.
 
 ## Rendering hierarchy
 
 Preferred order:
 
-1. Local ChatGPT runtime: Chromium + Playwright, rendering the Visual Lab directly.
-2. Vercel preview hosting for a stable public render target.
-3. Cloudflare Browser Rendering / Pages as a secondary remote rendering path when available.
-4. Self-hosted Windows runner only when local/remote cloud rendering cannot reproduce the target environment.
-
-## Visual Lab
-
-The `visual-lab/` harness exists to provide deterministic, browser-hosted rendering of the actual EPA stylesheet/DOM contract without requiring local SQLite data or the WPF/WebView2 host.
-
-The harness should stay structurally aligned with the production Razor markup and load the same relevant stylesheet stack. It is a visual QA surface, not a separate design implementation.
+1. Compiled Windows desktop host with its embedded WebView2 surface.
+2. Screenshots supplied from the running application at the target display sizes.
+3. Browser-only rendering may be used for isolated diagnostics, but is not acceptance evidence for the desktop product.
 
 ## Evidence rules
 
 - Do not use image generation as evidence of implemented UI quality.
-- Do not claim browser validation from compilation alone.
+- Do not claim desktop visual validation from compilation alone.
 - Do not claim responsive quality without checking at least the required viewport sizes.
 - Record visible defects before changing the benchmark interpretation.
 - Preserve screenshots when they are useful for before/after comparison.

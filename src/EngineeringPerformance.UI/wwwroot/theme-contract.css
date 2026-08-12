@@ -114,6 +114,15 @@
     --chart-missing:#667085;
     --chart-missing-surface:#eef1f5;
     --chart-na-surface:#f6f8fa;
+    --chart-stroke-hairline:1px;
+    --chart-stroke-context:1.5px;
+    --chart-stroke-focus:2px;
+    --chart-stroke-strong:3px;
+    --chart-mark-size:10px;
+    --chart-zone-underused:color-mix(in srgb,var(--warn) 4%,transparent);
+    --chart-zone-overloaded:color-mix(in srgb,var(--serious) 4%,transparent);
+    --chart-zone-inconsistent:color-mix(in srgb,var(--critical) 3%,transparent);
+    --chart-zone-balanced:color-mix(in srgb,var(--good) 4%,transparent);
     --chart-heat-1:#eff6ff;
     --chart-heat-2:#c9ddff;
     --chart-heat-3:#84b1f7;

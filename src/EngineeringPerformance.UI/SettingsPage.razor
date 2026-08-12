@@ -6,29 +6,16 @@
     <div class="section-title settings-title">
         <div>
             <h2>Appearance</h2>
-            <p>EOS now uses one fixed product colour system with two physical renderings. Minimal is the precision editorial Atlas. Realist is the fully tactile skeuomorphic instrument console.</p>
+            <p>EOS uses one authoritative Performance Atlas interface with a fixed semantic colour system.</p>
         </div>
-        <span class="current-theme-label">Interface <strong>@Title(_skin)</strong></span>
-    </div>
-
-    <div class="skin-choices" role="radiogroup" aria-label="Interface style">
-        <button type="button" class="skin-choice @(_skin == "minimal" ? "selected" : null)" aria-pressed="@(_skin == "minimal")" @onclick='() => ApplySkinAsync("minimal")'>
-            <span class="skin-choice-preview minimal" aria-hidden="true"></span>
-            <strong>Minimal</strong>
-            <small>The current Performance Atlas: flat editorial plates, calibrated rules, restrained depth and the same EOS orange / petrol / graphite semantics.</small>
-        </button>
-        <button type="button" class="skin-choice @(_skin == "realist" ? "selected" : null)" aria-pressed="@(_skin == "realist")" @onclick='() => ApplySkinAsync("realist")'>
-            <span class="skin-choice-preview realist" aria-hidden="true"></span>
-            <strong>Realist</strong>
-            <small>Full skeuomorphism: forged chassis, ivory instrument plates, screws, bevels, recessed controls, indicator lamps and physically tactile buttons.</small>
-        </button>
+        <span class="current-theme-label">Interface <strong>Performance Atlas</strong></span>
     </div>
 
     <div class="appearance-controls" aria-label="Appearance behaviour">
         <section class="appearance-control">
             <span>Colour system</span>
             <div class="appearance-fixed-value"><b>EOS Instrument</b><small>Graphite · first-light orange · petrol blue · intervention red</small></div>
-            <small>One palette is shared by Minimal and Realist so meaning never changes with rendering style.</small>
+            <small>The fixed palette keeps operational meaning consistent across every route.</small>
         </section>
 
         <section class="appearance-control">
@@ -82,12 +69,12 @@
         <section class="settings-card">
             <div class="settings-card-head">
                 <span class="settings-card-icon">◎</span>
-                <div><h3>Rendering contract</h3><p>Minimal and Realist share the same data hierarchy, semantic palette, chart roles, accessibility rules and interaction state.</p></div>
+                <div><h3>Interface contract</h3><p>Performance Atlas uses one data hierarchy, semantic palette, chart vocabulary, accessibility standard and interaction model.</p></div>
             </div>
             <div class="settings-facts">
                 <div><span>Product palette</span><strong>EOS Instrument · fixed</strong></div>
-                <div><span>Interface renderings</span><strong>Minimal · Realist</strong></div>
-                <div><span>Semantic status palette</span><strong>Stable across both looks</strong></div>
+                <div><span>Interface</span><strong>Performance Atlas · authoritative</strong></div>
+                <div><span>Semantic status palette</span><strong>Fixed throughout EOS</strong></div>
                 <div><span>Generated categorical palette</span><strong>OKLCH · 8 series</strong></div>
                 <div><span>Focus contrast target</span><strong>3:1 minimum</strong></div>
                 <div><span>Operational text floor</span><strong>10.5 px</strong></div>
@@ -98,7 +85,6 @@
 </section>
 
 @code {
-    private string _skin = "minimal";
     private string _intensity = "balanced";
     private string _density = "comfortable";
     private string _motion = "system";
@@ -106,17 +92,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _skin = await JS.InvokeAsync<string>("epaSkin.get");
         _intensity = await JS.InvokeAsync<string>("epaTheme.intensity.get");
         _density = await JS.InvokeAsync<string>("epaTheme.density.get");
         _motion = await JS.InvokeAsync<string>("epaTheme.motion.get");
         StateHasChanged();
-    }
-
-    private async Task ApplySkinAsync(string value)
-    {
-        _skin = await JS.InvokeAsync<string>("epaSkin.apply", value);
-        State.ShowMessage($"Interface style set to {Title(_skin)}.");
     }
 
     private async Task ApplyIntensityAsync(string value)

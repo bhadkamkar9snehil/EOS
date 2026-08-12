@@ -1,0 +1,237 @@
+@using System.Globalization
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<section class="peer-relationship-explorer" aria-label="Peer rating network">
+    <header class="prx-header">
+        <div>
+            <h2>Peer rating network</h2>
+            <small>Arrow: reviewer → colleague · line strength: selected rating</small>
+        </div>
+        @if (ShowAtlasButton)
+        {
+            <button type="button" class="peer-review-open" @onclick='() => Navigation.NavigateTo("/peer-insights")'>Open collaboration atlas</button>
+        }
+    </header>
+
+    <div class="prx-tabs-row">
+        <div class="peer-aspect-switcher prx-aspect-tabs" role="group" aria-label="Peer rating aspect">
+            @foreach (var aspect in Aspects)
+            {
+                <button type="button" class="@(_aspect == aspect.Key ? "selected" : null)" aria-pressed="@(_aspect == aspect.Key)" @onclick="() => SelectAspect(aspect.Key)">@aspect.Label</button>
+            }
+        </div>
+        <div class="prx-period"><span>As of @DateTime.Today.ToString("yyyy-MM-dd")</span><span>Reporting period: <b>@SelectedMonth.ToString("MMMM yyyy")</b></span></div>
+    </div>
+
+    <div class="prx-command-row">
+        <div class="prx-search">
+            <input value="@_search" @oninput="OnSearch" @onfocus="OpenSearch" placeholder="Search people" aria-label="Search people" />
+            @if (_searchOpen && SearchResults.Count > 0)
+            {
+                <div class="prx-search-results">
+                    @foreach (var person in SearchResults)
+                    {
+                        <button type="button" @onclick="() => FocusPerson(person)"><span>@Analytics.Initials(person)</span><b>@person</b></button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="prx-focus-nav" aria-label="Focused employee navigation">
+            <button type="button" title="Previous person" @onclick="PreviousPerson">‹</button>
+            <span>Previous: <b>@PreviousName</b></span>
+            <strong>Focused: @_focusName</strong>
+            <span>Next: <b>@NextName</b></span>
+            <button type="button" title="Next person" @onclick="NextPerson">›</button>
+        </div>
+
+        <div class="prx-mode-and-coverage">
+            <div class="prx-direction-tabs" role="group" aria-label="Connection emphasis">
+                @foreach (var option in Directions)
+                {
+                    <button type="button" class="@(_direction == option.Key ? "selected" : null)" aria-pressed="@(_direction == option.Key)" @onclick="() => SelectDirection(option.Key)">@option.Label</button>
+                }
+            </div>
+            <div class="prx-coverage"><span>Coverage</span><b>@Analytics.Format(FocusCoverage, "0")%</b><progress max="100" value="@FocusCoverage">@FocusCoverage%</progress></div>
+        </div>
+    </div>
+
+    <div class="prx-map" id="@_mapId">
+        <canvas aria-hidden="true"></canvas>
+
+        <div class="prx-side prx-inbound">
+            <h3>People who rated @_focusFirstName <span>(Inbound)</span></h3>
+            <div class="prx-rating-head"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span><span>Tech help</span></div>
+            <div class="prx-relationship-list">
+                @if (Inbound.Count == 0)
+                {
+                    <div class="prx-no-evidence">No inbound ratings for this period.</div>
+                }
+                @foreach (var relationship in Inbound)
+                {
+                    @RelationshipRow(relationship, true)
+                }
+            </div>
+        </div>
+
+        <div class="prx-focus-card">
+            <span>@Analytics.Initials(_focusName)</span>
+            <strong>@_focusName</strong>
+            <b>@Analytics.Format(FocusAverage, "0.0")</b>
+        </div>
+
+        <div class="prx-side prx-outbound">
+            <h3>People @_focusFirstName rated <span>(Outbound)</span></h3>
+            <div class="prx-rating-head outbound"><span></span><b>Overall</b><span>Collab</span><span>Comm</span><span>Reliab</span><span>Tech help</span><span>Reciprocal?</span></div>
+            <div class="prx-relationship-list">
+                @if (Outbound.Count == 0)
+                {
+                    <div class="prx-no-evidence">No outbound ratings for this period.</div>
+                }
+                @foreach (var relationship in Outbound)
+                {
+                    @RelationshipRow(relationship, false)
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (SelectedRelationship is not null)
+    {
+        var selected = SelectedRelationship;
+        var reciprocal = ReciprocalOf(selected);
+        <div class="prx-detail">
+            <div class="prx-detail-title">
+                <span>Selected relationship: <b>@selected.Reviewer</b> → <strong>@selected.Subject</strong></span>
+                <span>Feedback count: <b>@selected.Count</b></span>
+                <span>Reciprocal: <b>@(reciprocal is null ? "No" : "Yes")</b></span>
+                <button type="button" title="Close relationship details" @onclick="ClearRelationship">×</button>
+            </div>
+            <div class="prx-detail-grid">
+                @PersonDetail("Reviewer", selected.Reviewer)
+                @PersonDetail("Recipient", selected.Subject)
+                @MetricDetail("Overall rating", selected.Overall, reciprocal?.Overall)
+                <div class="prx-detail-aspects">
+                    <label>Four aspects (out of 5)</label>
+                    <div>
+                        @AspectDetail("Collaboration", selected.Collaboration, reciprocal?.Collaboration)
+                        @AspectDetail("Communication", selected.Communication, reciprocal?.Communication)
+                        @AspectDetail("Reliability", selected.Reliability, reciprocal?.Reliability)
+                        @AspectDetail("Technical help", selected.TechnicalHelp, reciprocal?.TechnicalHelp)
+                    </div>
+                </div>
+                <div class="prx-gap"><label>Rating gap <small>(Reviewer - Recipient)</small></label><strong>@Gap(selected.Overall, reciprocal?.Overall)</strong></div>
+                <div class="prx-count"><label>Feedback count <small>(This relationship)</small></label><strong>@selected.Count</strong></div>
+                <div class="prx-reciprocal"><label>Reciprocal</label><strong>@(reciprocal is null ? "No" : "Yes")</strong><small>@(reciprocal is null ? $"{selected.Subject} has not rated {selected.Reviewer}" : $"{selected.Subject} rated {selected.Reviewer}")</small></div>
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PeerReviewItem> Reviews { get; set; } = [];
+    [Parameter, EditorRequired] public DateTime SelectedMonth { get; set; }
+    [Parameter] public bool ShowAtlasButton { get; set; }
+    [Parameter] public string? InitialFocusName { get; set; }
+
+    private static readonly Option[] Aspects = [new("overall", "Overall"), new("collaboration", "Collaboration"), new("communication", "Communication"), new("reliability", "Reliability"), new("technicalHelp", "Technical help")];
+    private static readonly Option[] Directions = [new("inbound", "Inbound"), new("outbound", "Outbound"), new("both", "Both")];
+    private readonly string _mapId = $"peer-relationship-map-{Guid.NewGuid():N}";
+    private string _aspect = "overall";
+    private string _direction = "both";
+    private string _focusName = string.Empty;
+    private string _search = string.Empty;
+    private bool _searchOpen;
+    private bool _connectorsPending = true;
+    private string? _selectedKey;
+
+    private string[] People => Reviews.SelectMany(x => new[] { x.ReviewerName, x.SubjectName }).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+    private string _focusFirstName => string.IsNullOrWhiteSpace(_focusName) ? "this person" : _focusName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? _focusName;
+    private int FocusIndex => Math.Max(0, Array.FindIndex(People, x => PersonName.Matches(x, _focusName)));
+    private string PreviousName => People.Length < 2 ? "—" : People[(FocusIndex - 1 + People.Length) % People.Length];
+    private string NextName => People.Length < 2 ? "—" : People[(FocusIndex + 1) % People.Length];
+    private IReadOnlyList<string> SearchResults => string.IsNullOrWhiteSpace(_search) ? [] : People.Where(x => x.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)).Take(7).ToArray();
+    private IReadOnlyList<Relationship> Relationships => Reviews.GroupBy(x => (Reviewer: PersonName.Normalize(x.ReviewerName), Subject: PersonName.Normalize(x.SubjectName))).Select(group => new Relationship(
+        group.Key.Reviewer, group.Key.Subject, group.Count(),
+        decimal.Round(group.Average(x => x.Average), 2), decimal.Round(group.Average(x => x.Collaboration), 2),
+        decimal.Round(group.Average(x => x.Communication), 2), decimal.Round(group.Average(x => x.Reliability), 2),
+        decimal.Round(group.Average(x => x.TechnicalHelp), 2))).ToArray();
+    private IReadOnlyList<Relationship> Inbound => Relationships.Where(x => PersonName.Matches(x.Subject, _focusName)).OrderByDescending(AspectValue).ThenBy(x => x.Reviewer).ToArray();
+    private IReadOnlyList<Relationship> Outbound => Relationships.Where(x => PersonName.Matches(x.Reviewer, _focusName)).OrderByDescending(AspectValue).ThenBy(x => x.Subject).ToArray();
+    private Relationship? SelectedRelationship => Relationships.FirstOrDefault(x => x.Key == _selectedKey);
+    private decimal FocusAverage
+    {
+        get
+        {
+            var values = Inbound.Select(AspectValue).Where(x => x > 0).ToArray();
+            return values.Length == 0 ? 0 : decimal.Round(values.Average(), 1);
+        }
+    }
+    private decimal FocusCoverage => People.Length <= 1 ? 0 : decimal.Round((Inbound.Count + Outbound.Count) * 100m / ((People.Length - 1) * 2m), 0);
+
+    protected override void OnParametersSet()
+    {
+        if (People.Length == 0) { _focusName = string.Empty; return; }
+        if (!string.IsNullOrWhiteSpace(InitialFocusName) && People.Any(x => PersonName.Matches(x, InitialFocusName!))) _focusName = People.First(x => PersonName.Matches(x, InitialFocusName!));
+        if (string.IsNullOrWhiteSpace(_focusName) || !People.Any(x => PersonName.Matches(x, _focusName)))
+            _focusName = Reviews.GroupBy(x => x.SubjectName, StringComparer.OrdinalIgnoreCase).OrderByDescending(x => x.Count()).ThenBy(x => x.Key).First().Key;
+        if (_selectedKey is not null && Relationships.All(x => x.Key != _selectedKey)) _selectedKey = null;
+        _connectorsPending = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_connectorsPending || string.IsNullOrWhiteSpace(_focusName)) return;
+        _connectorsPending = false;
+        var inbound = Inbound.Select(x => new { id = RowId(x), rating = (double)AspectValue(x), selected = x.Key == _selectedKey }).ToArray();
+        var outbound = Outbound.Select(x => new { id = RowId(x), rating = (double)AspectValue(x), selected = x.Key == _selectedKey, reciprocal = ReciprocalOf(x) is not null }).ToArray();
+        await JS.InvokeVoidAsync("epaAtlas.peerRelationshipConnectors", _mapId, inbound, outbound, _direction);
+    }
+
+    private RenderFragment RelationshipRow(Relationship relationship, bool inbound) => @<button id="@RowId(relationship)" type="button" class="prx-relationship-row @(relationship.Key == _selectedKey ? "selected" : null) @(DirectionMuted(inbound) ? "muted" : null)" @onclick="() => SelectRelationship(relationship)">
+        <span class="prx-person"><i>@Analytics.Initials(inbound ? relationship.Reviewer : relationship.Subject)</i><b>@(inbound ? relationship.Reviewer : relationship.Subject)</b></span>
+        <strong class="@RatingClass(AspectValue(relationship))">@Analytics.Format(AspectValue(relationship), "0.0")</strong>
+        @RatingCell(relationship.Collaboration)
+        @RatingCell(relationship.Communication)
+        @RatingCell(relationship.Reliability)
+        @RatingCell(relationship.TechnicalHelp)
+        @if (!inbound) { <em class="@(ReciprocalOf(relationship) is null ? "no" : "yes")">@(ReciprocalOf(relationship) is null ? "No" : "Yes")</em> }
+    </button>;
+
+    private RenderFragment RatingCell(decimal value) => @<span class="prx-rating-cell"><b>@Analytics.Format(value, "0.0")</b><progress max="5" value="@value">@value</progress></span>;
+    private RenderFragment PersonDetail(string label, string name) => @<div class="prx-detail-person"><label>@label</label><span><i>@Analytics.Initials(name)</i><b>@name</b></span></div>;
+    private RenderFragment MetricDetail(string label, decimal value, decimal? reciprocal) => @<div class="prx-detail-metric"><label>@label</label><strong>@Analytics.Format(value, "0.0")</strong>@if (reciprocal.HasValue) { <b>@Analytics.Format(reciprocal.Value, "0.0")</b> }</div>;
+    private RenderFragment AspectDetail(string label, decimal value, decimal? reciprocal) => @<span><label>@label</label><b>@Analytics.Format(value, "0.0")</b>@if (reciprocal.HasValue) { <small>@Analytics.Format(reciprocal.Value, "0.0")</small> }</span>;
+
+    private void OnSearch(ChangeEventArgs args) { _search = args.Value?.ToString() ?? string.Empty; _searchOpen = true; }
+    private void OpenSearch(FocusEventArgs _) => _searchOpen = true;
+    private void FocusPerson(string name) { _focusName = name; _search = string.Empty; _searchOpen = false; _selectedKey = null; _connectorsPending = true; }
+    private void PreviousPerson() => FocusPerson(PreviousName);
+    private void NextPerson() => FocusPerson(NextName);
+    private void SelectAspect(string aspect) { _aspect = aspect; _connectorsPending = true; }
+    private void SelectDirection(string direction) { _direction = direction; _connectorsPending = true; }
+    private void SelectRelationship(Relationship relationship) { _selectedKey = relationship.Key; _connectorsPending = true; }
+    private void ClearRelationship() { _selectedKey = null; _connectorsPending = true; }
+    private bool DirectionMuted(bool inbound) => _direction != "both" && ((_direction == "inbound") != inbound);
+    private Relationship? ReciprocalOf(Relationship relationship) => Relationships.FirstOrDefault(x => PersonName.Matches(x.Reviewer, relationship.Subject) && PersonName.Matches(x.Subject, relationship.Reviewer));
+    private decimal AspectValue(Relationship x) => _aspect switch { "collaboration" => x.Collaboration, "communication" => x.Communication, "reliability" => x.Reliability, "technicalHelp" => x.TechnicalHelp, _ => x.Overall };
+    private string RatingClass(decimal value) => value < 3m ? "low" : value >= 4m ? "high" : "";
+    private static string Gap(decimal value, decimal? reciprocal) => reciprocal.HasValue ? (value - reciprocal.Value).ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture) : "—";
+    private string RowId(Relationship relationship) => $"{_mapId}-{Math.Abs(StringComparer.OrdinalIgnoreCase.GetHashCode(relationship.Key)):x}";
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("epaAtlas.disposePeerRelationshipConnectors", _mapId); }
+        catch (JSDisconnectedException) { }
+    }
+
+    private sealed record Option(string Key, string Label);
+    private sealed record Relationship(string Reviewer, string Subject, int Count, decimal Overall, decimal Collaboration, decimal Communication, decimal Reliability, decimal TechnicalHelp)
+    {
+        public string Key => $"{Reviewer}|{Subject}";
+    }
+}

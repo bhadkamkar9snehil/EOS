@@ -5,19 +5,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EngineeringPerformance.Infrastructure;
 
-public sealed class ConfigurableApplicationDatabase(
+public sealed partial class ConfigurableApplicationDatabase(
     LocalApplicationDatabase inner,
     IDbContextFactory<PerformanceDbContext> contextFactory,
     IWorkbookService workbookService,
     string dataDirectory) : IApplicationDatabase
 {
     private readonly string _settingsPath = Path.Combine(dataDirectory, "operational-scoring.json");
+    private readonly string _disciplineSettingsPath = Path.Combine(dataDirectory, "execution-discipline.json");
+    private readonly string _disciplineExceptionsPath = Path.Combine(dataDirectory, "execution-discipline-exceptions.json");
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await inner.InitializeAsync(cancellationToken);
         if (!File.Exists(_settingsPath))
             await WriteSettingsAsync(OperationalScoringSettings.Default, cancellationToken);
+        if (!File.Exists(_disciplineSettingsPath))
+            await WriteDisciplineSettingsAsync(ExecutionDisciplineSettings.Default, cancellationToken);
     }
 
     public async Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default)
@@ -182,7 +186,8 @@ public sealed class ConfigurableApplicationDatabase(
         return count;
     }
 
-    public Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default) => inner.ImportEngineerReviewsAsync(year, month, path, cancellationToken);
+    public Task<ReviewImportResult> ImportEngineerReviewsAsync(int year, int month, IReadOnlyList<string> paths, ReviewImportMode mode = ReviewImportMode.MergeReviewers, CancellationToken cancellationToken = default) =>
+        inner.ImportEngineerReviewsAsync(year, month, paths, mode, cancellationToken);
     public Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default) => inner.GetPeerReviewsAsync(year, month, cancellationToken);
     public Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default) => inner.GetExcludedNamesAsync(cancellationToken);
     public Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default) => inner.SetExclusionAsync(employeeName, excluded, cancellationToken);

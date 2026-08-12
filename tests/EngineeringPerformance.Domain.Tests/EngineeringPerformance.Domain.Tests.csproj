@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EngineeringPerformance.Domain\EngineeringPerformance.Domain.csproj" />
+    <ProjectReference Include="..\..\src\EngineeringPerformance.Application\EngineeringPerformance.Application.csproj" />
+    <ProjectReference Include="..\..\src\EngineeringPerformance.UI\EngineeringPerformance.UI.csproj" />
   </ItemGroup>
 
 </Project>

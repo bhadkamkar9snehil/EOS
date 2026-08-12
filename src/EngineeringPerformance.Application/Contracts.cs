@@ -16,6 +16,108 @@ public sealed record OperationalScoringSettings(
     public static OperationalScoringSettings Default { get; } = new();
 }
 
+public enum ReviewImportMode { MergeReviewers = 0, ReplaceMonth = 1 }
+
+public sealed record ReviewFileImportResult(
+    string FileName, bool Accepted, string? ReviewerName, int ReviewCount, string? Error);
+
+public sealed record ReviewImportResult(
+    int AcceptedWorkbooks,
+    int AddedReviews,
+    int UpdatedReviews,
+    int RemovedReviews,
+    int TotalReviews,
+    int ReviewerCount,
+    IReadOnlyList<ReviewFileImportResult> Files);
+
+public sealed record ExecutionDisciplineSettings(
+    int TimesheetDueHour = 10,
+    int TimesheetDueMinute = 0,
+    int GraceMinutes = 0,
+    decimal RequiredDailyHours = 8m,
+    bool SaturdayIsWorkingDay = true)
+{
+    public bool IsValid => TimesheetDueHour is >= 0 and <= 23 &&
+                           TimesheetDueMinute is >= 0 and <= 59 &&
+                           GraceMinutes is >= 0 and <= 1440 &&
+                           RequiredDailyHours is > 0 and <= 24;
+
+    public static ExecutionDisciplineSettings Default { get; } = new();
+}
+
+public sealed record TimesheetDayEvidence(
+    string EmployeeName,
+    string? EmployeeCode,
+    DateTime WorkDate,
+    DateTime LastFilledAt,
+    decimal RecordedHours,
+    int EntryCount,
+    string SourceFileName);
+
+public sealed record AccountableWorkday(
+    string EmployeeName,
+    string? EmployeeCode,
+    DateTime WorkDate,
+    decimal ExpectedDayWeight,
+    string SourceFileName);
+
+public sealed record DirectiveItem(
+    string Code,
+    string Name,
+    string Trigger,
+    string Deadline,
+    string Evidence,
+    string Source,
+    string Severity,
+    bool FeedAvailable);
+
+public sealed record ObligationItem(
+    string Key,
+    string DirectiveCode,
+    string DirectiveName,
+    string EmployeeName,
+    string? EmployeeCode,
+    DateTime TriggeredAt,
+    DateTime DueAt,
+    DateTime? CompletedAt,
+    ObligationOutcome Outcome,
+    int? DelayMinutes,
+    int? MinutesRelativeToDeadline,
+    decimal RequiredHours,
+    decimal RecordedHours,
+    int EvidenceRows,
+    string EvidenceSource,
+    string? ExceptionReason = null,
+    DateTime? ExceptionRecordedAt = null);
+
+public sealed record ObligationExceptionItem(
+    string ObligationKey,
+    ObligationOutcome Outcome,
+    string Reason,
+    DateTime RecordedAt);
+
+public sealed record ExecutionDisciplineSnapshot(
+    int Year,
+    int Month,
+    IReadOnlyList<DirectiveItem> Directives,
+    IReadOnlyList<ObligationItem> Obligations,
+    string? Notice)
+{
+    public int Expected => Obligations.Count(IsExpected);
+    public int Completed => Obligations.Count(x => IsExpected(x) && x.CompletedAt is not null);
+    public int OnTime => Obligations.Count(x => x.Outcome == ObligationOutcome.OnTime);
+    public int Late => Obligations.Count(x => x.Outcome == ObligationOutcome.Late);
+    public int Overdue => Obligations.Count(x => x.Outcome == ObligationOutcome.Overdue);
+    public int Pending => Obligations.Count(x => x.Outcome == ObligationOutcome.Pending);
+    public int Exceptions => Obligations.Count(x => x.Outcome is ObligationOutcome.Excused or ObligationOutcome.NotApplicable or ObligationOutcome.Waived);
+    public decimal Participation => Expected == 0 ? 0m : decimal.Round(Completed * 100m / Expected, 1);
+    public decimal OnTimeCompliance => Expected == 0 ? 0m : decimal.Round(OnTime * 100m / Expected, 1);
+    public decimal Punctuality => Completed == 0 ? 0m : decimal.Round(OnTime * 100m / Completed, 1);
+
+    private static bool IsExpected(ObligationItem item) =>
+        item.Outcome is not (ObligationOutcome.Excused or ObligationOutcome.NotApplicable or ObligationOutcome.Waived);
+}
+
 public interface IApplicationDatabase
 {
     Task InitializeAsync(CancellationToken cancellationToken = default);
@@ -35,10 +137,31 @@ public interface IApplicationDatabase
     Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(OperationalScoringSettings.Default);
 
+    Task<ExecutionDisciplineSettings> GetExecutionDisciplineSettingsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(ExecutionDisciplineSettings.Default);
+
+    Task SaveExecutionDisciplineSettingsAsync(ExecutionDisciplineSettings settings, CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("This database implementation does not support execution-discipline settings."));
+
+    Task<ExecutionDisciplineSnapshot> GetExecutionDisciplineAsync(int year, int month, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ExecutionDisciplineSnapshot(year, month, [], [], "No execution-discipline provider is configured."));
+
+    Task SetObligationExceptionAsync(
+        string obligationKey,
+        ObligationOutcome? outcome,
+        string? reason,
+        CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("This database implementation does not support obligation exceptions."));
+
     Task<int> SaveOperationalScoringSettingsAsync(OperationalScoringSettings settings, CancellationToken cancellationToken = default) =>
         Task.FromException<int>(new NotSupportedException("This database implementation does not support configurable operational scoring."));
 
-    Task<int> ImportEngineerReviewsAsync(int year, int month, string path, CancellationToken cancellationToken = default);
+    Task<ReviewImportResult> ImportEngineerReviewsAsync(
+        int year,
+        int month,
+        IReadOnlyList<string> paths,
+        ReviewImportMode mode = ReviewImportMode.MergeReviewers,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PeerReviewItem>> GetPeerReviewsAsync(int year, int month, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default);
     Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default);
@@ -57,6 +180,7 @@ public interface IApplicationDatabase
 public interface IFileDialogService
 {
     string? PickWorkbookOrZip();
+    IReadOnlyList<string> PickReviewWorkbooksOrZip();
     string? PickWorkbook();
     string? PickSaveWorkbook(string suggestedFileName);
     string? PickFolder(string title);
@@ -154,6 +278,8 @@ public interface IWorkbookService
     ReportType DetectReportType(string filePath);
     IReadOnlyList<EmployeeMonthlyPerformance> ReadPerformance(string filePath, ReportType reportType, int year, int month);
     IReadOnlyList<WeeklyPerformanceItem> ReadWeeklyPerformance(string filePath, ReportType reportType, int year, int month);
+    IReadOnlyList<TimesheetDayEvidence> ReadTimesheetDayEvidence(string filePath, int year, int month);
+    IReadOnlyList<AccountableWorkday> ReadAccountableWorkdays(string filePath, int year, int month);
     IReadOnlyList<PeerReview> ReadPeerReviews(string filePath, int year, int month);
     IReadOnlyList<RosterEntry> ReadEmployeeRoster(string filePath);
     void GenerateEngineerTemplate(string destinationPath, Employee employee, int year, int month, IReadOnlyList<Employee>? peers = null);
