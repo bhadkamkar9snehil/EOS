@@ -1,7 +1,7 @@
 @page "/diagnostics"
-@using System.IO.Compression
-@using System.Reflection
+@using EngineeringPerformance.Application
 @inject AppState State
+@inject IApplicationDiagnostics Diagnostics
 
 <section class="flex flex-col gap-6">
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -35,9 +35,9 @@
                     <span class="label-instrument">@(_bundling ? "Building" : _bundlePath is not null ? "Ready" : "Idle")</span>
                 </span>
             </div>
-            <p class="text-xs text-ink-soft">Zips the last few days of logs plus a small info.txt for attaching to a bug report.</p>
+            <p class="text-xs text-ink-soft">Zips recent EOS logs and runtime information for attaching to a bug report.</p>
             <button type="button" class="btn btn-secondary mt-3" @onclick="CreateBundleAsync" disabled="@_bundling">
-                @(_bundling ? "Building bundle..." : "Copy diagnostics bundle")
+                @(_bundling ? "Building bundle..." : "Create diagnostics bundle")
             </button>
             @if (!string.IsNullOrEmpty(_bundlePath))
             {
@@ -46,7 +46,6 @@
         </section>
     </div>
 
-    @* The log tail is a recessed readout bay machined into the plate, not another card. *@
     <div class="plate p-4">
         <div class="panel-head">
             <div>
@@ -74,41 +73,24 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
-        var dbPath = Path.Combine(dataDirectory, "engineering-performance.db");
-        _dbPath = dbPath;
-        _dbSize = File.Exists(dbPath) ? FormatSize(new FileInfo(dbPath).Length) : "(not found)";
-        _logDirectory = Path.Combine(dataDirectory, "logs");
-        _appVersion = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
-            .GetName().Version?.ToString() ?? "unknown";
-
+        LoadInfo();
         await RefreshTailAsync();
     }
 
-    private Task RefreshTailAsync()
+    private void LoadInfo()
     {
-        _todayLogPath = Path.Combine(_logDirectory, $"eos-{DateTime.Now:yyyyMMdd}.log");
-        if (!File.Exists(_todayLogPath))
-        {
-            _logTail = "(no log file for today yet)";
-            return Task.CompletedTask;
-        }
+        var info = Diagnostics.GetInfo();
+        _appVersion = info.ApplicationVersion;
+        _dbPath = info.DatabasePath;
+        _dbSize = info.DatabaseSize;
+        _logDirectory = info.LogDirectory;
+        _todayLogPath = info.CurrentLogPath;
+    }
 
-        try
-        {
-            using var stream = new FileStream(_todayLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(stream);
-            var lines = new List<string>();
-            string? line;
-            while ((line = reader.ReadLine()) is not null) lines.Add(line);
-            _logTail = string.Join(Environment.NewLine, lines.TakeLast(MaxTailLines));
-        }
-        catch (IOException ex)
-        {
-            _logTail = $"(could not read log file: {ex.Message})";
-        }
-
-        return Task.CompletedTask;
+    private async Task RefreshTailAsync()
+    {
+        LoadInfo();
+        _logTail = await Diagnostics.ReadRecentLogAsync(MaxTailLines);
     }
 
     private async Task CreateBundleAsync()
@@ -116,39 +98,10 @@
         _bundling = true;
         _bundlePath = null;
         StateHasChanged();
+
         try
         {
-            await Task.Run(() =>
-            {
-                var outputDirectory = Path.Combine(Path.GetTempPath(), "EngineeringPerformance-Diagnostics");
-                Directory.CreateDirectory(outputDirectory);
-                var zipPath = Path.Combine(outputDirectory, $"eos-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.zip");
-
-                using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-
-                if (Directory.Exists(_logDirectory))
-                {
-                    var cutoff = DateTime.Now.AddDays(-5);
-                    foreach (var file in Directory.EnumerateFiles(_logDirectory, "*.log")
-                        .Where(f => File.GetLastWriteTime(f) >= cutoff))
-                    {
-                        archive.CreateEntryFromFile(file, Path.GetFileName(file));
-                    }
-                }
-
-                var infoEntry = archive.CreateEntry("info.txt");
-                using (var writer = new StreamWriter(infoEntry.Open()))
-                {
-                    writer.WriteLine($"EOS diagnostics bundle");
-                    writer.WriteLine($"Generated: {DateTime.Now:O}");
-                    writer.WriteLine($"App version: {_appVersion}");
-                    writer.WriteLine($"Database path: {_dbPath}");
-                    writer.WriteLine($"Database size: {_dbSize}");
-                }
-
-                _bundlePath = zipPath;
-            });
-
+            _bundlePath = await Diagnostics.CreateBundleAsync();
             State.ShowMessage($"Diagnostics bundle saved to {_bundlePath}");
         }
         catch (Exception ex)
@@ -159,18 +112,5 @@
         {
             _bundling = false;
         }
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        double size = bytes;
-        string[] units = ["B", "KB", "MB", "GB"];
-        var unit = 0;
-        while (size >= 1024 && unit < units.Length - 1)
-        {
-            size /= 1024;
-            unit++;
-        }
-        return $"{size:0.##} {units[unit]}";
     }
 }
