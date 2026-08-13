@@ -767,8 +767,17 @@
   /* Preserve numeric column separation in the dense timesheet ledger. At narrower desktop
      widths the containing well scrolls horizontally instead of allowing adjacent hour values
      to collide and become ambiguous. */
-  .timesheet-ledger-grid thead th,
-  .timesheet-ledger-grid tbody td { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .timesheet-ledger-grid { table-layout: fixed; min-width: 68rem; }
+  .timesheet-ledger-grid th:nth-child(1) { width: 15%; }
+  .timesheet-ledger-grid th:nth-child(2) { width: 12%; }
+  .timesheet-ledger-grid th:nth-child(3) { width: 9%; }
+  .timesheet-ledger-grid th:nth-child(4) { width: 11%; }
+  .timesheet-ledger-grid th:nth-child(5) { width: 9%; }
+  .timesheet-ledger-grid th:nth-child(6) { width: 12%; }
+  .timesheet-ledger-grid th:nth-child(7),
+  .timesheet-ledger-grid th:nth-child(8),
+  .timesheet-ledger-grid th:nth-child(9),
+  .timesheet-ledger-grid th:nth-child(10) { width: 8%; }
   .timesheet-ledger-grid tbody td { white-space: nowrap; }
 
   /*

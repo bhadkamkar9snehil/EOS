@@ -114,12 +114,9 @@
                     <TemplateColumn Title="Entered" Align="Align.Right" Sortable="true" SortBy="@_sortByEntered">
                         <span class="tabular-nums text-ink">@Hours(context.EnteredHours)</span>
                     </TemplateColumn>
-                    @if (AnyPendingApproval)
-                    {
-                        <TemplateColumn Title="Awaiting" Align="Align.Right" Sortable="true" SortBy="@_sortByPending">
-                            <span class="@($"tabular-nums {(context.HasPendingApproval ? "text-warning font-semibold" : "text-ink")}")">@Hours(context.PendingApprovalHours)</span>
-                        </TemplateColumn>
-                    }
+                    <TemplateColumn Title="Awaiting" Align="Align.Right" Sortable="true" SortBy="@_sortByPending">
+                        <span class="@($"tabular-nums {(context.HasPendingApproval ? "text-warning font-semibold" : "text-ink")}")">@Hours(context.PendingApprovalHours)</span>
+                    </TemplateColumn>
                     <TemplateColumn Title="Billable" Align="Align.Right" Sortable="true" SortBy="@_sortByBillable">
                         <span class="tabular-nums text-ink">@Hours(context.BillableHours)</span>
                     </TemplateColumn>
@@ -199,8 +196,6 @@
             return _filterCache;
         }
     }
-
-    private bool AnyPendingApproval => _awaitingApproval > 0;
 
     private static string MissingSeverityClass(decimal missingDays) => missingDays switch
     {
