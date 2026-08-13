@@ -90,8 +90,6 @@ function Ensure-WorkItem {
         Write-Host "Reusing $Type #$($item.id): $Title"
     }
 
-    # az boards work-item update is scoped by work-item ID + organization and does not
-    # accept --project in the current azure-devops CLI extension.
     $updateRaw = & az boards work-item update `
         --id ([int]$item.id) `
         --state $State `
@@ -110,7 +108,7 @@ function Ensure-Parent {
         [Parameter(Mandatory)][int]$ParentId
     )
 
-    $itemUri = "$OrganizationUrl/$ProjectName/_apis/wit/workitems/$ChildId?`$expand=relations&api-version=7.1"
+    $itemUri = "$OrganizationUrl/$ProjectName/_apis/wit/workitems/${ChildId}?`$expand=relations&api-version=7.1"
     $item = Invoke-AdoRest -Method GET -Uri $itemUri
     $targetSuffix = "/$ParentId"
     $alreadyLinked = @($item.relations | Where-Object {
@@ -137,14 +135,14 @@ function Ensure-SharedQuery {
         [Parameter(Mandatory)][string]$Wiql
     )
 
-    $folder = Invoke-AdoRest -Method GET -Uri "$OrganizationUrl/$ProjectName/_apis/wit/queries/$FolderId?`$depth=2&api-version=7.1"
+    $folder = Invoke-AdoRest -Method GET -Uri "$OrganizationUrl/$ProjectName/_apis/wit/queries/${FolderId}?`$depth=2&api-version=7.1"
     $existing = @($folder.children | Where-Object { $_.name -eq $Name }) | Select-Object -First 1
     if ($null -ne $existing) {
         Write-Host "Reusing shared query: $Name"
         return $existing
     }
 
-    $created = Invoke-AdoRest -Method POST -Uri "$OrganizationUrl/$ProjectName/_apis/wit/queries/$FolderId?api-version=7.1" -Body ([ordered]@{
+    $created = Invoke-AdoRest -Method POST -Uri "$OrganizationUrl/$ProjectName/_apis/wit/queries/${FolderId}?api-version=7.1" -Body ([ordered]@{
         name = $Name
         wiql = $Wiql
     })
