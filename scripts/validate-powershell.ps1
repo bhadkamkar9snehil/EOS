@@ -24,7 +24,7 @@ $projectBootstrap = Join-Path $repoRoot 'scripts/bootstrap-azure-devops-project.
 if (Test-Path $projectBootstrap) {
     $content = Get-Content $projectBootstrap -Raw
 
-    if ($content -match "-ApiVersion\s+['\"]\d+\.\d+-preview\.\d+['\"]") {
+    if ($content -match '-ApiVersion\s+[''"]\d+\.\d+-preview\.\d+[''"]') {
         $failures.Add('bootstrap-azure-devops-project.ps1: az devops invoke must not receive preview revision suffixes (for example 7.1-preview.3); the extension parser cannot parse them.')
     }
     if ($content -match '(?i)Invoke-RestMethod') {
