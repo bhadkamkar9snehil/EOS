@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<section class="flex flex-col gap-4">
+<section class="flex flex-col gap-6">
     <header class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <div class="panel-eyebrow">Roster</div>
@@ -221,7 +221,7 @@
         </Virtualize>
         @if (State.Employees.Count == 0)
         {
-            <div class="p-8 text-center text-sm text-muted">No employees</div>
+            <div class="empty-slot">No employees</div>
         }
     </div>
 </section>

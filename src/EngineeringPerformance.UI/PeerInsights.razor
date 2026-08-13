@@ -10,7 +10,7 @@
 <div class="flex flex-col gap-6">
     @if (Summary.TotalFeedback == 0)
     {
-        <div class="plate flex flex-col items-start gap-3 p-8">
+        <div class="plate empty-bay">
             <div class="panel-eyebrow">Peer evidence</div>
             <h2 class="panel-title">No peer feedback for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span></h2>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/templates")'>Go to review templates</button>
@@ -75,7 +75,7 @@
                     <span class="label-instrument ml-auto">Evidence-adjusted · ordered by reliable signal</span>
                 </div>
                 <div class="well p-3">
-                    <div id="peer-aspect-landscape" class="h-[420px]" aria-label="Peer aspect comparison heatmap"></div>
+                    <div id="peer-aspect-landscape" class="chart-bay chart-bay-xl" aria-label="Peer aspect comparison heatmap"></div>
                 </div>
             </div>
         </section>

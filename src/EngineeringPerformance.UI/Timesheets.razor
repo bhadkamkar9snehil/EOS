@@ -7,7 +7,7 @@
 <div class="flex flex-col gap-6">
     @if (Rows.Count == 0)
     {
-        <div class="plate flex flex-col items-start gap-3 p-8">
+        <div class="plate empty-bay">
             <div class="panel-eyebrow">Timesheets</div>
             <h2 class="panel-title">No timesheet data for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span></h2>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>

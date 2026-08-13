@@ -9,7 +9,7 @@
 <div class="flex flex-col gap-6">
     @if (Months.Count == 0)
     {
-        <div class="plate flex flex-col items-start gap-3 p-8">
+        <div class="plate empty-bay">
             <div>
                 <div class="panel-eyebrow">Portrait</div>
                 <h2 class="panel-title">No history for @Name</h2>
@@ -19,7 +19,7 @@
     }
     else
     {
-        <header class="plate flex flex-wrap items-center gap-5 p-4">
+        <header class="plate flex flex-wrap items-center gap-4 p-4">
             <button type="button" class="control px-2.5 py-1.5 text-sm font-medium text-ink-soft hover:control-hover active:control-pressed" @onclick='() => Navigation.NavigateTo("/overview")'>← Team performance</button>
             <div class="relative">
                 <button type="button" class="group flex items-center gap-2.5 rounded-md px-2 py-1 transition-colors duration-150 ease-press hover:bg-surface-inset" aria-haspopup="listbox" aria-expanded="@_personPickerOpen" @onclick="TogglePersonPicker">
@@ -48,7 +48,7 @@
                 <span class="metric-delta mt-1 text-ink-soft">@ScoreMovement</span>
                 <span class="label-instrument mt-0.5">Operational score · <span class="tabular-nums">@LatestLabel</span></span>
             </div>
-            <div class="ml-auto flex flex-wrap gap-5">
+            <div class="ml-auto flex flex-wrap gap-4">
                 <span class="flex flex-col"><b class="metric text-metric-sm">@Analytics.Format(Latest.Workload(), "0.0")</b><small class="label-instrument mt-1">Hours / day</small></span>
                 <span class="flex flex-col"><b class="metric text-metric-sm">@Analytics.Format(Latest.Utilization, "0")%</b><small class="label-instrument mt-1">Utilization</small></span>
                 <span class="flex flex-col"><b class="metric text-metric-sm">@ExceptionTotal</b><small class="label-instrument mt-1">Exception days</small></span>
@@ -91,7 +91,7 @@
                     <span class="label-instrument ml-auto">Hours · coverage · discipline</span>
                 </div>
                 <div class="well p-2">
-                    <div id="portrait-weekly" class="h-[260px]"></div>
+                    <div id="portrait-weekly" class="chart-bay chart-bay-md"></div>
                 </div>
             </div>
         </section>
@@ -106,7 +106,7 @@
                     <span class="label-instrument ml-auto">Score and its three weighted inputs</span>
                 </div>
                 <div class="well p-2">
-                    <div id="portrait-history" class="h-[260px]"></div>
+                    <div id="portrait-history" class="chart-bay chart-bay-md"></div>
                 </div>
             </div>
             <aside class="plate p-4">
@@ -155,7 +155,7 @@
                 {
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
                         <div class="well p-2">
-                            <div id="portrait-peer-radar" class="h-[260px]" aria-label="Employee peer aspect profile"></div>
+                            <div id="portrait-peer-radar" class="chart-bay chart-bay-md" aria-label="Employee peer aspect profile"></div>
                         </div>
                         <div class="flex flex-col gap-2">
                             @PeerAspect("Collaboration", Peer.Collaboration, TeamPeerAverage(x => x.Collaboration))

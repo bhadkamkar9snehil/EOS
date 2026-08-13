@@ -6,7 +6,7 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<section class="flex flex-col gap-4">
+<section class="flex flex-col gap-6">
     @if (!Embedded)
     {
     <div class="flex flex-wrap items-end justify-between gap-4">
@@ -53,7 +53,7 @@
         </div>
         @if (FilteredRows.Count == 0)
         {
-            <div class="well bg-well-deep p-8 text-center text-sm text-muted">
+            <div class="empty-slot">
                 @(State.Performance.Count == 0
                     ? $"Nothing imported for {State.SelectedMonth:MMMM yyyy} yet."
                     : $"No engineer matches “{_filter}”.")
@@ -115,7 +115,7 @@
             }
             @if (_history.Count == 0)
             {
-                <div class="well bg-well-deep p-8 text-center text-sm text-muted">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
+                <div class="empty-slot">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
             }
             else
             {

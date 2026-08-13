@@ -222,12 +222,28 @@
   --font-display: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI", sans-serif;
   --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
 
+  --text-4xs: 0.5rem;        --text-4xs--line-height: 0.625rem;
   --text-3xs: 0.625rem;      --text-3xs--line-height: 0.75rem;
   --text-2xs: 0.6875rem;     --text-2xs--line-height: 0.875rem;
   /* Display metrics: tight leading, because a number this size is a graphic. */
   --text-metric-sm: 1.375rem; --text-metric-sm--line-height: 1.05;
   --text-metric: 2rem;        --text-metric--line-height: 1;
   --text-metric-lg: 2.75rem;  --text-metric-lg--line-height: 0.95;
+
+  /* ------------------------------------------------------------- CHART BAYS
+     Chart heights were previously 7 ad-hoc pixel values chosen per call site
+     (160/200/240/260/300/320/420), with no rule connecting height to chart
+     type — two radars differed by 20px, two time-series by 20px. These are the
+     four sizes that actually exist, named by role.
+
+     They are clamp()ed against viewport height rather than fixed, because the
+     old pixel heights never adapted: a maximized 1440p window showed the exact
+     same 420px scatter as a 900px laptop. Width already reflowed (both chart
+     modules attach a ResizeObserver); this gives height the same treatment. */
+  --size-bay-sm: clamp(9rem, 18vh, 12.5rem);
+  --size-bay-md: clamp(13rem, 26vh, 18rem);
+  --size-bay-lg: clamp(16rem, 32vh, 22rem);
+  --size-bay-xl: clamp(20rem, 42vh, 30rem);
 
   /* ----------------------------------------------------------------- MOTION
      Heavier objects move slower. A switch snaps; a drawer settles. Using one
@@ -868,6 +884,75 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /*
+    The same machine-voice role one step smaller, for captions that annotate a
+    graphic rather than label a region — the single-letter captions under the
+    Attention Lens fingerprint bars, the "Rhythm" tag under its sparkline. This
+    exists because those sites were written as `text-[8px] font-semibold
+    uppercase leading-none text-muted`, a five-utility string below the smallest
+    token, repeated verbatim. Do not reach for it for anything a reader has to
+    read a sentence of.
+  */
+  .label-micro {
+    font-family: var(--font-display);
+    font-size: var(--text-4xs);
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /*
+    A chart bay: the recessed cavity a chart is machined into, at one of four
+    named sizes. Combines `well` with a clamped height so every chart of the
+    same role is the same size in every window, and all of them grow on a taller
+    display instead of staying pinned to a pixel value.
+  */
+  /* The sidebar nav icon box. 18px sits between Tailwind's size-4 (16px) and size-5
+     (20px), so it is a legitimate arbitrary value — it just needs to be stated once
+     rather than written out at each nav item. */
+  .nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    width: 18px;
+  }
+
+  .chart-bay { position: relative; }
+  .chart-bay > :where(div[id]) { height: 100%; }
+  .chart-bay-sm { height: var(--size-bay-sm); }
+  .chart-bay-md { height: var(--size-bay-md); }
+  .chart-bay-lg { height: var(--size-bay-lg); }
+  .chart-bay-xl { height: var(--size-bay-xl); }
+
+  /*
+    The full-page "nothing loaded yet" bay. Four pages had independently
+    copy-pasted the same four-utility string for this, and two more (Overview,
+    the Spotlight drawer) had each invented their own variation — six states,
+    four treatments. One class instead.
+  */
+  .empty-bay {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 2rem;
+  }
+  /* The inline variant: a recessed slot where a table or list would have been.
+     Only 2 of 12 inline empty states used this treatment; the other 10 were bare
+     muted text with seven different padding/size combinations between them. */
+  .empty-slot {
+    background-color: var(--color-well-deep);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--inset-shadow-track);
+    padding: 2rem;
+    text-align: center;
+    font-size: 0.875rem;
     color: var(--color-muted);
   }
 

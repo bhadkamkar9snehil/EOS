@@ -31,20 +31,20 @@
                     @Kpi("Utilization", Item.Utilization, Item.HasSummaryData)
                 </div>
 
-                <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-6">
                     <section class="plate p-4">
                         <div class="panel-head"><div><div class="panel-eyebrow">Allocation</div><h3 class="panel-title">Hours allocation</h3></div><span class="label-instrument ml-auto tabular-nums">@Month.ToString("MMM yyyy")</span></div>
-                        <div class="well p-2"><div id="spotlight-hours" class="h-[200px]"></div></div>
+                        <div class="well p-2"><div id="spotlight-hours" class="chart-bay chart-bay-sm"></div></div>
                     </section>
                     <section class="plate p-4">
                         <div class="panel-head"><div><div class="panel-eyebrow">Attendance</div><h3 class="panel-title">Attendance and reconciliation</h3></div></div>
-                        <div class="well p-2"><div id="spotlight-attendance" class="h-[160px]"></div></div>
+                        <div class="well p-2"><div id="spotlight-attendance" class="chart-bay chart-bay-sm"></div></div>
                     </section>
                     @if (TrendValues.Count >= 2)
                     {
                         <section class="plate p-4">
                             <div class="panel-head"><div><div class="panel-eyebrow">Trajectory</div><h3 class="panel-title">Score trend</h3></div><span class="label-instrument ml-auto tabular-nums">@TrendValues.Count months</span></div>
-                            <div class="well p-2"><div id="spotlight-trend" class="h-[200px]"></div></div>
+                            <div class="well p-2"><div id="spotlight-trend" class="chart-bay chart-bay-sm"></div></div>
                         </section>
                     }
 
@@ -62,7 +62,7 @@
 
                     <section class="plate p-4">
                         <div class="panel-head"><div><div class="panel-eyebrow">Profile</div><h3 class="panel-title">Category performance</h3></div><span class="label-instrument ml-auto">Against team average</span></div>
-                        <div class="well p-2"><div id="spotlight-radar" class="h-[240px]"></div></div>
+                        <div class="well p-2"><div id="spotlight-radar" class="chart-bay chart-bay-md"></div></div>
                     </section>
 
                     <section class="plate p-4">

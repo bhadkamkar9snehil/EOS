@@ -41,7 +41,7 @@
         </nav>
         <div class="border-t border-chassis-deep px-3 py-3">
             <button class="w-full @NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
-                <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)Icon.Settings)</b><span>Settings</span>
+                <b class="nav-icon">@((MarkupString)Icon.Settings)</b><span>Settings</span>
             </button>
             <small class="mt-2 block px-2 text-3xs text-on-chassis-muted">Local analysis · SQLite</small>
         </div>
@@ -369,7 +369,7 @@
 
     private RenderFragment NavButton(string route, string label, string icon) =>
         @<button class="@NavButtonClass(route)" @onclick="() => GoTo(route)">
-            <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)icon)</b><span>@label</span>
+            <b class="nav-icon">@((MarkupString)icon)</b><span>@label</span>
         </button>;
 
     // Selected nav reads as a switch pressed *into* the chassis — recessed, brighter text —

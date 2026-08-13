@@ -8,7 +8,7 @@
 <section class="flex flex-col gap-6">
     @if (Scorecards.Count == 0)
     {
-        <div class="plate flex flex-col items-start gap-3 p-8">
+        <div class="plate empty-bay">
             <div class="panel-eyebrow">Team comparison</div>
             <h2 class="panel-title">No teams with scored people yet</h2>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/employees")'>Go to Employees &amp; Teams</button>
