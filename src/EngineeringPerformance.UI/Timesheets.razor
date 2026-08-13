@@ -25,35 +25,33 @@
                 <span class="label-instrument ml-auto"><span class="tabular-nums">@Rows.Count</span> engineers · <span class="tabular-nums">@Analytics.Format(TotalExpected, "0.#")</span> accountable days</span>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,14rem)_1fr]">
-                <div class="well p-4">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                <div class="well flex min-h-24 flex-col justify-center p-3">
                     <div class="metric text-metric">@Analytics.Format(FillRate)<span class="text-metric-sm">%</span></div>
                     <div class="metric-delta text-ink-soft"><span class="tabular-nums">@TotalFilled</span> of <span class="tabular-nums">@TotalExpected</span> days filled</div>
                     <div class="label-instrument mt-1">Team fill rate</div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-                    <div>
+                    <div class="well flex min-h-24 flex-col justify-center p-3">
                         <div class="@($"metric text-metric-sm {(_missingDays > 0 ? "text-serious" : "")}")">@Analytics.Format(_missingDays, "0.#")</div>
                         <div class="metric-delta text-muted"><span class="tabular-nums">@_withGaps</span> engineer(s) with gaps</div>
                         <div class="label-instrument mt-1">Missing days</div>
                     </div>
-                    <div>
+                    <div class="well flex min-h-24 flex-col justify-center p-3">
                         <div class="metric text-metric-sm">@Analytics.Format(_pendingHours, "0")<span class="text-sm"> h</span></div>
                         <div class="metric-delta text-muted"><span class="tabular-nums">@_awaitingApproval</span> engineer(s)</div>
                         <div class="label-instrument mt-1">Awaiting approval</div>
                     </div>
-                    <div>
+                    <div class="well flex min-h-24 flex-col justify-center p-3">
                         <div class="metric text-metric-sm">@Analytics.Format(CapacityUsed)<span class="text-sm">%</span></div>
                         <div class="metric-delta text-muted">Across billable engineers</div>
                         <div class="label-instrument mt-1">Billable capacity used</div>
                     </div>
-                    <div>
+                    <div class="well flex min-h-24 flex-col justify-center p-3">
                         <div class="metric text-metric-sm">@Probationers</div>
                         <div class="metric-delta text-muted">Freshers on probation</div>
                         <div class="label-instrument mt-1">Probation context</div>
                     </div>
-                </div>
             </div>
         </section>
 
