@@ -247,10 +247,10 @@ function Get-DashboardRouteParameters {
         if ([string]::IsNullOrWhiteSpace($teamId)) {
             throw "Team-scoped dashboard '$dashboardId' has no groupId."
         }
-        $route.team = $teamId
+        $route['team'] = $teamId
     }
     if (-not [string]::IsNullOrWhiteSpace($WidgetId)) {
-        $route.widgetId = $WidgetId
+        $route['widgetId'] = $WidgetId
     }
     return $route
 }
@@ -335,6 +335,16 @@ $projectRaw = & az devops project show --project $ProjectName --organization $Or
 if ($LASTEXITCODE -ne 0) { throw 'Azure DevOps project authentication failed.' }
 $project = Convert-JsonText $projectRaw
 Write-Host "Authenticated project: $ProjectName ($($project.id))"
+
+$teamsRaw = & az devops team list --project $ProjectName --organization $OrganizationUrl --only-show-errors --output json
+if ($LASTEXITCODE -ne 0) { throw 'Could not list Azure DevOps teams.' }
+$teams = @(Convert-JsonText $teamsRaw)
+$projectTeam = $teams | Where-Object { $_.name -eq "$ProjectName Team" } | Select-Object -First 1
+if ($null -eq $projectTeam) { $projectTeam = $teams | Select-Object -First 1 }
+if ($null -eq $projectTeam) { throw 'No Azure DevOps team exists for the EOS project.' }
+$ProjectTeamId = [string]$projectTeam.id
+if ([string]::IsNullOrWhiteSpace($ProjectTeamId)) { throw 'The EOS team has no id.' }
+Write-Host "Dashboard team: $($projectTeam.name) ($ProjectTeamId)"
 
 & az boards work-item relation list-type --organization $OrganizationUrl --only-show-errors --output none
 if ($LASTEXITCODE -ne 0) { throw 'Boards relation CLI preflight failed.' }
@@ -451,23 +461,28 @@ $blocked = Ensure-SharedQuery -FolderId ([string]$eosFolder.id) -Name 'Blocked' 
 Step 'Build the EOS Engineering dashboard'
 $dashboards = Get-Dashboards
 $dashboardValues = @(Get-OptionalProperty -Object $dashboards -Name 'value')
-$dashboard = $dashboardValues | Where-Object { $_.name -eq $DashboardName -and ([string](Get-OptionalProperty -Object $_ -Name 'dashboardScope')) -ne 'project_Team' } | Select-Object -First 1
+$dashboard = $dashboardValues | Where-Object {
+    $_.name -eq $DashboardName -and
+    ([string](Get-OptionalProperty -Object $_ -Name 'dashboardScope')) -eq 'project_Team' -and
+    ([string](Get-OptionalProperty -Object $_ -Name 'groupId')) -eq $ProjectTeamId
+} | Select-Object -First 1
+
 if ($null -eq $dashboard) {
     $dashboard = Invoke-AdoCli `
         -Area 'dashboard' `
         -Resource 'dashboards' `
         -Method 'POST' `
         -ApiVersion $PreviewApiVersion `
-        -RouteParameters @{ project=$ProjectName } `
+        -RouteParameters @{ project=$ProjectName; team=$ProjectTeamId } `
         -Body ([ordered]@{
             name=$DashboardName
             description='EOS engineering cockpit: Azure Boards, EOS CI, test history, and operational controls. GitHub remains the source-of-truth for code and pull requests.'
             position=1
         })
-    Write-Host "Created project-scoped dashboard: $DashboardName"
+    Write-Host "Created team-scoped dashboard: $DashboardName"
 }
 else {
-    Write-Host "Reusing project-scoped dashboard: $DashboardName"
+    Write-Host "Reusing team-scoped dashboard: $DashboardName"
 }
 
 Ensure-DashboardWidget `
@@ -530,6 +545,7 @@ else {
 
 Step 'Project setup complete'
 Write-Host "Dashboard:      $DashboardName"
+Write-Host "Dashboard team: $($projectTeam.name)"
 Write-Host "Main pipeline:  $CiPipelineName"
 Write-Host 'Boards:         EOS UI, platform and reliability work seeded and linked'
 Write-Host 'Shared queries: Current Focus, UI & Visual Validation, Platform & DevOps, Recently Completed, Blocked'
