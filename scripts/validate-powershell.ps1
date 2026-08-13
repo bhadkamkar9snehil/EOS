@@ -36,10 +36,12 @@ if (Test-Path $projectBootstrap) {
 
     $lines = Get-Content $projectBootstrap
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match 'az boards work-item update') {
+        # Match only an actual command invocation, never comments or explanatory text.
+        if ($lines[$i] -match '^\s*(?:\$[A-Za-z_][A-Za-z0-9_]*\s*=\s*)?&\s+az\s+boards\s+work-item\s+update\b') {
             $end = [Math]::Min($i + 12, $lines.Count - 1)
-            $block = ($lines[$i..$end] -join "`n")
-            if ($block -match '--project') {
+            $blockLines = @($lines[$i..$end] | Where-Object { $_ -notmatch '^\s*#' })
+            $block = ($blockLines -join "`n")
+            if ($block -match '(?m)^\s*--project\b') {
                 $failures.Add("bootstrap-azure-devops-project.ps1:$($i + 1): az boards work-item update does not support --project.")
             }
         }
