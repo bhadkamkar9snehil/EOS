@@ -26,6 +26,9 @@ jobs:
       - checkout: self
         clean: true
 
+      - powershell: ./scripts/validate-powershell.ps1
+        displayName: Validate PowerShell automation
+
       - powershell: ./build/vm-health.ps1
         displayName: VM / agent preflight
 
