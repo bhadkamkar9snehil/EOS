@@ -151,12 +151,16 @@
             </div>
         </header>
 
+        @* A floating toast rather than an in-flow banner. This previously sat between the header
+           and <main>, so every message — including routine successes — shoved the whole page down
+           by ~50px and shoved it back up on dismiss, moving whatever the user was reading. *@
         @if (!string.IsNullOrEmpty(State.Message))
         {
-            <div class="px-6 pt-3">
-                <div class="@($"flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm {(State.IsError ? "border-critical-soft bg-critical-soft text-critical" : "border-good-soft bg-good-soft text-good")}")">
-                    <span>@State.Message</span>
-                    <button class="ml-3 text-lg leading-none opacity-70 hover:opacity-100" @onclick="State.ClearMessage">×</button>
+            <div class="pointer-events-none fixed inset-x-0 top-16 z-30 flex justify-center px-6" role="status" aria-live="polite">
+                <div class="@($"toast-enter floating pointer-events-auto flex max-w-2xl items-center gap-3 px-4 py-2.5 text-sm {(State.IsError ? "!border-critical-soft bg-critical-soft text-critical" : "!border-good-soft bg-good-soft text-good")}")">
+                    <i class="@($"lamp h-2 w-2 shrink-0 {(State.IsError ? "text-critical" : "text-good")}")" aria-hidden="true"></i>
+                    <span class="min-w-0">@State.Message</span>
+                    <button class="ml-1 shrink-0 text-lg leading-none opacity-70 transition-opacity hover:opacity-100" title="Dismiss" aria-label="Dismiss message" @onclick="State.ClearMessage">×</button>
                 </div>
             </div>
         }

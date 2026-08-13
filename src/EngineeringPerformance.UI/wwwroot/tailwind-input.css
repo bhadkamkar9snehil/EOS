@@ -1672,3 +1672,95 @@ a[href],
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+  ============================================================================
+  DELIGHT: MOTION, SKELETONS, TACTILITY
+  ============================================================================
+  Everything here is built from existing tokens and is disabled wholesale by the
+  prefers-reduced-motion block above, which already neutralises animation and
+  transition durations globally.
+*/
+
+/* The toast settles down into place rather than appearing. ease-settle (not ease-press)
+   because a message is a larger object than a button — heavier things move slower. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.toast-enter { animation: toast-in var(--duration-drawer) var(--ease-settle) both; }
+
+/*
+  Loading skeletons. There were none anywhere in the app: every chart rendered into an
+  empty well for at least a frame with nothing to indicate work was happening, and metric
+  tiles simply popped in. The sweep is a moving highlight over the recessed well colour, so
+  a skeleton reads as an empty machined slot waiting for its instrument rather than as a
+  generic grey box.
+*/
+@keyframes skeleton-sweep {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.skeleton {
+  border-radius: var(--radius-md);
+  background-color: var(--color-well);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-bevel) 55%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s var(--ease-settle) infinite;
+  box-shadow: var(--inset-shadow-track);
+}
+.skeleton-text { height: 0.75rem; }
+.skeleton-metric { height: 2rem; width: 4rem; }
+
+/*
+  Focus. A keyboard user needs the same "which control am I on" answer that hover gives a
+  mouse user, and the default UA ring disappears against the chassis. Built from the brand
+  glow token so it reads as the same illuminated indicator used elsewhere.
+*/
+:where(button, a[href], [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Plates lift very slightly toward a pointer that is already interacting with them. The
+   travel is deliberately smaller than a control's, because a plate is a much heavier object. */
+.plate-interactive {
+  transition: box-shadow var(--duration-lift) var(--ease-settle),
+              transform var(--duration-lift) var(--ease-settle);
+}
+.plate-interactive:hover {
+  box-shadow: var(--shadow-plate-lifted);
+  transform: translateY(-1px);
+}
+
+/* Lamps ease between states instead of snapping, so a status change is noticeable without
+   being a flash. */
+.lamp, .lamp-off {
+  transition: background-color var(--duration-control) var(--ease-press),
+              box-shadow var(--duration-control) var(--ease-press),
+              color var(--duration-control) var(--ease-press);
+}
+
+/*
+  A chart bay shows the skeleton sweep until it actually has a chart in it. ECharts injects
+  its own child nodes on first draw, so :empty clears this by itself — no pending-state flag
+  to thread through every page, and no way for the two to fall out of sync.
+*/
+.chart-bay:empty {
+  border-radius: var(--radius-md);
+  background-color: var(--color-well);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-bevel) 55%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s var(--ease-settle) infinite;
+}
