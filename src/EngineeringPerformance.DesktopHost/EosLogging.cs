@@ -1,5 +1,6 @@
 using EngineeringPerformance.Infrastructure;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 
@@ -8,7 +9,7 @@ namespace EngineeringPerformance.DesktopHost;
 /// <summary>
 /// Desktop-host logging composition root. Serilog is intentionally confined to this file: EOS
 /// application/infrastructure/UI code logs exclusively through Microsoft.Extensions.Logging.
-/// Serilog is the provider/sink implementation, not a second application logging API.
+/// Serilog is the single provider/sink implementation, not a second application logging API.
 /// </summary>
 internal static class EosLogging
 {
@@ -36,6 +37,11 @@ internal static class EosLogging
                 outputTemplate: OutputTemplate)
             .CreateLogger();
 
-        return builder.UseSerilog(logger, dispose: true);
+        // Host.CreateDefaultBuilder registers Console/Debug/EventSource/EventLog providers. EOS is
+        // a desktop app with one deliberate logging pipeline, so remove those implicit providers
+        // before installing Serilog. Every ILogger<T> event then has exactly one backend.
+        return builder
+            .ConfigureLogging(logging => logging.ClearProviders())
+            .UseSerilog(logger, dispose: true);
     }
 }
