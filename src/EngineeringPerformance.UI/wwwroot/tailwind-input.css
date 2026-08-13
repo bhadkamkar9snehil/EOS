@@ -770,15 +770,23 @@
   .timesheet-ledger-grid { table-layout: fixed; min-width: 68rem; }
   .timesheet-ledger-grid th:nth-child(1) { width: 15%; }
   .timesheet-ledger-grid th:nth-child(2) { width: 12%; }
-  .timesheet-ledger-grid th:nth-child(3) { width: 9%; }
+  .timesheet-ledger-grid th:nth-child(3) { width: 10%; }
   .timesheet-ledger-grid th:nth-child(4) { width: 11%; }
-  .timesheet-ledger-grid th:nth-child(5) { width: 9%; }
+  .timesheet-ledger-grid th:nth-child(5) { width: 8%; }
   .timesheet-ledger-grid th:nth-child(6) { width: 12%; }
   .timesheet-ledger-grid th:nth-child(7),
   .timesheet-ledger-grid th:nth-child(8),
   .timesheet-ledger-grid th:nth-child(9),
   .timesheet-ledger-grid th:nth-child(10) { width: 8%; }
   .timesheet-ledger-grid tbody td { white-space: nowrap; }
+  .timesheet-ledger-grid :is(th, td):nth-child(n+3) { text-align: right; }
+  .timesheet-ledger-grid th:nth-child(n+3) button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: right;
+  }
 
   /*
     Severity as a 3px status rail rather than a full-row wash. Flooding whole

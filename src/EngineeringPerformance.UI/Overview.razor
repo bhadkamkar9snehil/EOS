@@ -180,26 +180,28 @@
                 </div>
                 <p class="label-instrument -mt-1 mb-2">Bars · completion, approval, attendance, utilization</p>
 
+                <div class="grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_4.75rem] items-center gap-x-2 border-b border-line px-1.5 pb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted" aria-hidden="true">
+                    <span class="text-center">#</span><span></span><span>Engineer</span><span class="text-right">Score</span>
+                </div>
                 <ol class="flex flex-col divide-y divide-line-soft">
                     @for (var i = 0; i < AttentionRows.Count; i++)
                     {
                         var row = AttentionRows[i];
                         <li class="@($"group cursor-pointer rounded-md px-1.5 py-1.5 transition-colors duration-100 ease-press hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : string.Empty)}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
-                            <div class="flex items-center gap-2">
-                                <span class="label-instrument w-3.5 shrink-0 tabular-nums">@(i + 1)</span>
-                                <span class="well flex h-7 w-7 shrink-0 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Initials(row.Name)</span>
-                                <span class="flex min-w-0 flex-1 flex-col">
+                            <div class="grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_4.75rem] items-center gap-x-2">
+                                <span class="label-instrument text-center tabular-nums">@(i + 1)</span>
+                                <span class="well flex h-7 w-7 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Initials(row.Name)</span>
+                                <span class="flex min-w-0 flex-col">
                                     <strong class="truncate text-sm font-medium text-ink">@row.Name</strong>
                                     <small class="truncate text-2xs text-muted">@EmployeeContext(row.Name)</small>
                                 </span>
-                                <span class="flex shrink-0 items-baseline gap-1.5" title="Operational score; arrow shows change from the previous loaded month">
+                                <span class="flex items-baseline justify-end gap-1" title="Operational score; arrow shows change from the previous loaded month">
                                     <strong class="metric text-metric-sm">@Analytics.Format(row.Score, "0")</strong>
                                     @if (row.Delta is not null && row.Delta != 0)
                                     {
                                         <small class="@($"metric-delta {(row.Delta > 0 ? "text-good" : "text-critical")}")">@(row.Delta > 0 ? "↑" : "↓")@Analytics.Format(Math.Abs(row.Delta.Value), "0")</small>
                                     }
                                 </span>
-                                <button type="button" class="shrink-0 text-sm text-muted opacity-0 transition-opacity duration-100 hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100" title="Open @row.Name portrait" aria-label="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
                             </div>
 
                             @* One recessed readout bay holding both instruments, with a hairline
@@ -213,7 +215,8 @@
                                gap in the middle. Also shorter (py-1) — the previous version's
                                padding plus the row's own gap made every entry noticeably taller
                                than the information in it needed. *@
-                            <div class="well ml-[2.375rem] mt-1 inline-flex w-fit items-end gap-2.5 px-2 py-1">
+                            <div class="ml-[3.75rem] mt-1 flex items-center gap-2">
+                            <div class="well inline-flex min-w-0 items-end gap-2.5 px-2 py-1">
                                 <span class="flex items-end gap-1.5" aria-label="Completion, approval, attendance and utilization diagnostic fingerprint">
                                     @MiniFingerprint("Completion", row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
                                     @MiniFingerprint("Approval", row.Item.ApprovalScore, row.Item.HasSummaryData)
@@ -230,6 +233,8 @@
                                     </span>
                                     <span class="text-[8px] font-semibold uppercase leading-none text-muted">Rhythm</span>
                                 </span>
+                            </div>
+                            <button type="button" class="ml-auto shrink-0 text-sm text-muted opacity-0 transition-opacity duration-100 hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100" title="Open @row.Name portrait" aria-label="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
                             </div>
                         </li>
                     }

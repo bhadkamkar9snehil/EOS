@@ -55,10 +55,13 @@
             <span class="label-instrument ml-auto">last <span class="tnum">@MaxTailLines</span> lines · <span class="font-mono normal-case tracking-normal">@_todayLogPath</span></span>
         </div>
         <div class="mb-3 flex flex-wrap items-center gap-2">
-            <div class="segmented" role="group" aria-label="Log level filter">
+            <div class="grid grid-cols-5 gap-1.5" role="group" aria-label="Log level filter">
                 @foreach (var level in LogLevels)
                 {
-                    <button type="button" aria-pressed="@(_levelFilter == level)" @onclick="() => _levelFilter = level">@level <span class="ml-1 tabular-nums">@LevelCount(level)</span></button>
+                    <button type="button" class="@LogFilterClass(level)" aria-pressed="@(_levelFilter == level)" @onclick="() => _levelFilter = level">
+                        <span class="flex items-center gap-1.5"><i class="@LogFilterDotClass(level)"></i>@level</span>
+                        <strong class="tabular-nums text-ink">@LevelCount(level)</strong>
+                    </button>
                 }
             </div>
             <input class="field ml-auto w-72 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" @bind="_logSearch" @bind:event="oninput" placeholder="Search source or message…" aria-label="Search today's log" />
@@ -138,6 +141,8 @@
         .ToArray();
 
     private int LevelCount(string level) => level == "All" ? _logRows.Count : _logRows.Count(x => x.Level == level);
+    private string LogFilterClass(string level) => $"flex min-w-[4.75rem] items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors {(_levelFilter == level ? "border-primary bg-primary-soft text-primary shadow-control" : "border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-surface-inset")}";
+    private static string LogFilterDotClass(string level) => $"h-1.5 w-1.5 rounded-full {level switch { "ERR" => "bg-critical", "WRN" => "bg-warning", "INF" => "bg-info", "DBG" => "bg-muted", _ => "bg-primary" }}";
     private static string ShortSource(string source) => source.StartsWith("EngineeringPerformance.", StringComparison.Ordinal) ? source[23..] : source;
     private static string LevelClass(string level) => level switch
     {
