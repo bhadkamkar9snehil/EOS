@@ -12,11 +12,13 @@
 
 <div class="flex h-screen min-w-[900px] bg-canvas font-sans text-ink">
     <aside class="chassis flex w-60 shrink-0 flex-col border-r border-chassis-deep">
-        <div class="flex flex-col gap-1 px-5 pb-5 pt-6" aria-label="EOS Engineering Performance Analyzer">
+        @* h-14 matches the header bar exactly (both flex items-center at the same height),
+           so the seam between sidebar and header reads as one continuous frame line rather
+           than two panels of different heights sitting side by side. *@
+        <div class="flex h-14 shrink-0 items-center border-b border-chassis-deep px-5" aria-label="EOS Engineering Performance Analyzer">
             <strong class="flex items-center gap-2 font-display text-lg font-semibold tracking-wide text-primary">
                 <i aria-hidden="true" class="not-italic drop-shadow-[0_0_6px_var(--color-primary-glow)]">✦</i><span>EOS</span>
             </strong>
-            <small class="label-instrument !text-on-chassis-muted">Engineering performance analyzer</small>
         </div>
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
             <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Analyze</span>
@@ -46,7 +48,7 @@
     </aside>
 
     <section class="flex min-w-0 flex-1 flex-col">
-        <header class="chassis flex items-center justify-between gap-4 border-b border-chassis-deep px-6 py-3">
+        <header class="chassis flex h-14 shrink-0 items-center justify-between gap-4 border-b border-chassis-deep px-6">
             <h1 class="font-display text-xl font-semibold tracking-tight text-on-chassis">@PageTitleText</h1>
 
             <div class="flex items-center gap-2.5">
@@ -346,8 +348,11 @@
             <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)icon)</b><span>@label</span>
         </button>;
 
+    // Selected nav reads as a switch pressed *into* the chassis — recessed, brighter text —
+    // rather than a highlighted rectangle with an accent rail. Depth plus the text-colour
+    // contrast against unselected items is enough to mark state on its own.
     private string NavButtonClass(string route) => CurrentRoute == route
-        ? "relative flex items-center gap-3 rounded-md bg-chassis-deep px-3 py-2 font-display text-sm font-semibold text-on-chassis inset-shadow-track before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_8px_0_var(--color-primary-glow)]"
+        ? "flex items-center gap-3 rounded-md bg-chassis-deep px-3 py-2 font-display text-sm font-semibold text-on-chassis inset-shadow-track"
         : "flex items-center gap-3 rounded-md px-3 py-2 font-display text-sm font-medium text-on-chassis-soft transition-colors duration-100 ease-press hover:bg-chassis-deep/60 hover:text-on-chassis";
 
     private void GoTo(string route)

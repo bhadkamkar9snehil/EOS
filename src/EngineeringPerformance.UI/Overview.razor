@@ -83,17 +83,17 @@
                 <h2 class="label-instrument">Key trends · 30 days</h2>
                 <div class="mt-2 grid grid-cols-3 gap-2.5" style="grid-auto-rows:1fr">
                     <div class="well min-w-0 p-2.5">
-                        <div class="flex items-center justify-between"><label class="label-instrument">Attendance</label><span class="label-instrument">@TrendCoverage(AttendanceTrend, "weeks")</span></div>
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-1.5"><label class="label-instrument">Attendance</label><span class="label-instrument whitespace-nowrap">@TrendCoverage(AttendanceTrend, "weeks")</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong>@TrendChange(AttendanceTrend)</div>
                         <div id="pulse-attendance" class="h-8"></div>
                     </div>
                     <div class="well min-w-0 p-2.5">
-                        <div class="flex items-center justify-between"><label class="label-instrument">Completion</label><span class="label-instrument">@TrendCoverage(CompletionTrend, "weeks")</span></div>
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-1.5"><label class="label-instrument">Completion</label><span class="label-instrument whitespace-nowrap">@TrendCoverage(CompletionTrend, "weeks")</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong>@TrendChange(CompletionTrend)</div>
                         <div id="pulse-completion" class="h-8"></div>
                     </div>
                     <div class="well min-w-0 p-2.5">
-                        <div class="flex items-center justify-between"><label class="label-instrument">Utilization</label><span class="label-instrument">Monthly source</span></div>
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-1.5"><label class="label-instrument">Utilization</label><span class="label-instrument whitespace-nowrap">Monthly</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><small class="text-muted">Current period</small></div>
                         <div id="pulse-utilization" class="h-8"></div>
                     </div>
@@ -184,7 +184,7 @@
                     @for (var i = 0; i < AttentionRows.Count; i++)
                     {
                         var row = AttentionRows[i];
-                        <li class="@($"group cursor-pointer rounded-md px-1.5 py-2 transition-colors duration-100 ease-press hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : string.Empty)}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
+                        <li class="@($"group cursor-pointer rounded-md px-1.5 py-1.5 transition-colors duration-100 ease-press hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : string.Empty)}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
                             <div class="flex items-center gap-2">
                                 <span class="label-instrument w-3.5 shrink-0 tabular-nums">@(i + 1)</span>
                                 <span class="well flex h-7 w-7 shrink-0 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Initials(row.Name)</span>
@@ -207,15 +207,21 @@
                                plate — the earlier version was two clusters of bare bars with
                                nothing distinguishing what each was, or where one stopped and the
                                other began. *@
-                            <div class="well ml-[2.375rem] mt-1.5 flex items-end gap-3 px-2.5 py-1.5">
+                            @* w-fit, not a stretched full-width bar: sized to its own content so the
+                               two instruments sit close together under the avatar instead of being
+                               yanked apart by ml-auto across the row's full width, leaving a dead
+                               gap in the middle. Also shorter (py-1) — the previous version's
+                               padding plus the row's own gap made every entry noticeably taller
+                               than the information in it needed. *@
+                            <div class="well ml-[2.375rem] mt-1 inline-flex w-fit items-end gap-2.5 px-2 py-1">
                                 <span class="flex items-end gap-1.5" aria-label="Completion, approval, attendance and utilization diagnostic fingerprint">
                                     @MiniFingerprint("Completion", row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
                                     @MiniFingerprint("Approval", row.Item.ApprovalScore, row.Item.HasSummaryData)
                                     @MiniFingerprint("Attendance", row.Item.AttendanceDisciplineScore, true)
                                     @MiniFingerprint("Utilization", row.Item.Utilization, row.Item.HasSummaryData)
                                 </span>
-                                <span class="h-6 w-px shrink-0 self-center bg-line-soft"></span>
-                                <span class="ml-auto flex flex-col items-end gap-1">
+                                <span class="h-5 w-px shrink-0 self-center bg-line-soft"></span>
+                                <span class="flex flex-col items-center gap-[3px]">
                                     <span class="flex h-4 items-end gap-[2px]" title="Weekly attendance-discipline rhythm" aria-label="Weekly attendance discipline rhythm">
                                         @foreach (var value in WeeklyRhythm(row.Name))
                                         {
