@@ -7,26 +7,36 @@ namespace EngineeringPerformance.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddLocalInfrastructure(this IServiceCollection services, string dataDirectory)
+    public static IServiceCollection AddLocalInfrastructure(this IServiceCollection services, string dataDirectory) =>
+        services.AddLocalInfrastructure(new LocalApplicationPaths(dataDirectory));
+
+    public static IServiceCollection AddLocalInfrastructure(this IServiceCollection services, LocalApplicationPaths paths)
     {
-        Directory.CreateDirectory(dataDirectory);
-        var databasePath = Path.Combine(dataDirectory, "engineering-performance.db");
-        services.AddPooledDbContextFactory<PerformanceDbContext>(options => options.UseSqlite($"Data Source={databasePath};Cache=Shared"));
+        paths.EnsureDirectories();
+        services.AddSingleton(paths);
+        services.AddSingleton<IApplicationDiagnostics, LocalApplicationDiagnostics>();
+
+        services.AddPooledDbContextFactory<PerformanceDbContext>(options =>
+            options.UseSqlite($"Data Source={paths.DatabasePath};Cache=Shared"));
+
         services.AddSingleton<IWorkbookService, WorkbookService>();
         services.AddSingleton<LocalApplicationDatabase>();
         services.AddSingleton<IApplicationDatabase>(sp => new ConfigurableApplicationDatabase(
             sp.GetRequiredService<LocalApplicationDatabase>(),
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
             sp.GetRequiredService<IWorkbookService>(),
-            dataDirectory,
+            paths.DataDirectory,
             sp.GetService<ILogger<ConfigurableApplicationDatabase>>()));
         services.AddSingleton<IBackupService>(sp => new BackupService(
             sp.GetRequiredService<IDbContextFactory<PerformanceDbContext>>(),
-            dataDirectory,
-            databasePath,
+            paths.DataDirectory,
+            paths.DatabasePath,
             defaultBackupDirectory: null,
             sp.GetService<ILogger<BackupService>>()));
-        services.AddSingleton<IScoringPresetService>(sp => new ScoringPresetService(dataDirectory, sp.GetService<ILogger<ScoringPresetService>>()));
+        services.AddSingleton<IScoringPresetService>(sp => new ScoringPresetService(
+            paths.DataDirectory,
+            sp.GetService<ILogger<ScoringPresetService>>()));
+
         return services;
     }
 }

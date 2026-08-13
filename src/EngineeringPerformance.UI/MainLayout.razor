@@ -1,18 +1,16 @@
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
+@using Microsoft.Extensions.Logging
 @inherits LayoutComponentBase
 @inject AppState State
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ILogger<MainLayout> Logger
 @implements IDisposable
 
 <PageTitle>EOS — Engineering Performance</PageTitle>
 
 <div class="flex h-screen min-w-[900px] bg-canvas font-sans text-ink">
-    @* The chassis: the graphite structure every ivory plate is mounted into. It is
-       intentionally identical in both themes — a machine's frame does not change
-       colour when the room lights go down, and it is what gives the plates
-       something to sit against. *@
     <aside class="chassis flex w-60 shrink-0 flex-col border-r border-chassis-deep">
         <div class="flex flex-col gap-1 px-5 pb-5 pt-6" aria-label="EOS Engineering Performance Analyzer">
             <strong class="flex items-center gap-2 font-display text-lg font-semibold tracking-wide text-primary">
@@ -48,14 +46,10 @@
     </aside>
 
     <section class="flex min-w-0 flex-1 flex-col">
-        @* The header is part of the chassis, not a plate: it frames the work area
-           rather than sitting on it. *@
         <header class="chassis flex items-center justify-between gap-4 border-b border-chassis-deep px-6 py-3">
             <h1 class="font-display text-xl font-semibold tracking-tight text-on-chassis">@PageTitleText</h1>
 
             <div class="flex items-center gap-2.5">
-                @* Month stepper: a recessed track holding the current value, with the
-                   steppers as the only raised parts. *@
                 <div class="track flex items-center gap-1 px-1.5 py-1 text-xs">
                     <button class="rounded-sm px-1.5 text-on-chassis-soft transition-colors duration-100 hover:bg-chassis/70 hover:text-on-chassis disabled:opacity-25" title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
                     <strong class="font-display text-sm font-semibold tabular-nums text-on-chassis">@State.SelectedMonth.ToString("MMM yyyy")</strong>
@@ -81,8 +75,6 @@
                     </button>
                     @if (_searchOpen)
                     {
-                        @* A genuinely floating assembly, so real glass is appropriate here —
-                           unlike dashboard panels, which must stay opaque and matte. *@
                         <div class="glass absolute right-0 top-11 z-20 w-80 p-2">
                             <div class="well flex items-center gap-2 px-2.5 py-1.5">
                                 <span class="text-muted">@((MarkupString)Icon.Search)</span>
@@ -118,8 +110,6 @@
                     }
                 </div>
 
-                @* Readiness as four status lamps rather than a sentence — the count is
-                   readable at a glance, and each lamp is individually inspectable. *@
                 <div class="track flex items-center gap-2 px-2.5 py-1.5" title="System and review inputs available for the selected month">
                     <span class="label-instrument !text-on-chassis-muted">Ready</span>
                     <span class="flex items-center gap-1" aria-label="@State.ReadyCount of 4 inputs available">
@@ -158,7 +148,6 @@
     private bool _searchOpen;
     private string _searchQuery = string.Empty;
 
-    // Was hardcoded to "v2.6.1", which had drifted from the actual shipped version.
     private static readonly string AppVersion =
         System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.1.0";
 
@@ -166,7 +155,7 @@
     {
         State.Changed += OnStateChanged;
         Navigation.LocationChanged += OnLocationChanged;
-        InteractionLog.Write("shell.initialize", $"uri={Navigation.Uri}");
+        Logger.LogDebug("Shell initialized. Uri={Uri}", Navigation.Uri);
         await State.RefreshAsync();
     }
 
@@ -206,7 +195,10 @@
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        InteractionLog.Write("navigation.changed", $"location={e.Location}; intercepted={e.IsNavigationIntercepted}");
+        Logger.LogDebug(
+            "Navigation changed. Location={Location} Intercepted={IsNavigationIntercepted}",
+            e.Location,
+            e.IsNavigationIntercepted);
         State.ClearMessage();
         _searchOpen = false;
         _searchQuery = string.Empty;
@@ -308,15 +300,18 @@
     {
         CloseSearch();
         var before = State.SelectedMonth;
-        InteractionLog.Write("month.previous.request", $"from={before:yyyy-MM}");
+        Logger.LogDebug("Previous month requested. FromMonth={FromMonth:yyyy-MM}", before);
         try
         {
             await State.PreviousMonthAsync();
-            InteractionLog.Write("month.previous.completed", $"from={before:yyyy-MM}; to={State.SelectedMonth:yyyy-MM}");
+            Logger.LogDebug(
+                "Previous month completed. FromMonth={FromMonth:yyyy-MM} ToMonth={ToMonth:yyyy-MM}",
+                before,
+                State.SelectedMonth);
         }
         catch (Exception exception)
         {
-            InteractionLog.Write("month.previous.failed", $"from={before:yyyy-MM}", exception);
+            Logger.LogError(exception, "Previous month navigation failed. FromMonth={FromMonth:yyyy-MM}", before);
             throw;
         }
     }
@@ -325,15 +320,18 @@
     {
         CloseSearch();
         var before = State.SelectedMonth;
-        InteractionLog.Write("month.next.request", $"from={before:yyyy-MM}");
+        Logger.LogDebug("Next month requested. FromMonth={FromMonth:yyyy-MM}", before);
         try
         {
             await State.NextMonthAsync();
-            InteractionLog.Write("month.next.completed", $"from={before:yyyy-MM}; to={State.SelectedMonth:yyyy-MM}");
+            Logger.LogDebug(
+                "Next month completed. FromMonth={FromMonth:yyyy-MM} ToMonth={ToMonth:yyyy-MM}",
+                before,
+                State.SelectedMonth);
         }
         catch (Exception exception)
         {
-            InteractionLog.Write("month.next.failed", $"from={before:yyyy-MM}", exception);
+            Logger.LogError(exception, "Next month navigation failed. FromMonth={FromMonth:yyyy-MM}", before);
             throw;
         }
     }
@@ -343,17 +341,13 @@
             <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)icon)</b><span>@label</span>
         </button>;
 
-    // Selected nav reads as a switch pressed *into* the chassis — recessed, with an
-    // illuminated orange rail — rather than a highlighted rectangle. Unselected items
-    // sit flush. This is the same physical grammar used everywhere else: depth encodes
-    // state, colour only confirms it.
     private string NavButtonClass(string route) => CurrentRoute == route
         ? "relative flex items-center gap-3 rounded-md bg-chassis-deep px-3 py-2 font-display text-sm font-semibold text-on-chassis inset-shadow-track before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_8px_0_var(--color-primary-glow)]"
         : "flex items-center gap-3 rounded-md px-3 py-2 font-display text-sm font-medium text-on-chassis-soft transition-colors duration-100 ease-press hover:bg-chassis-deep/60 hover:text-on-chassis";
 
     private void GoTo(string route)
     {
-        InteractionLog.Write("navigation.request", $"from={CurrentRoute}; to={route}");
+        Logger.LogDebug("Navigation requested. FromRoute={FromRoute} ToRoute={ToRoute}", CurrentRoute, route);
         Navigation.NavigateTo($"/{route}");
     }
 

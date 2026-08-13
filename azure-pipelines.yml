@@ -39,7 +39,29 @@ jobs:
       - powershell: dotnet restore EngineeringPerformance.slnx
         displayName: Restore solution
 
-      - powershell: dotnet build EngineeringPerformance.slnx --configuration $(buildConfiguration) --no-restore
+      - powershell: |
+          $logPath = "$(Agent.TempDirectory)\eos-build.log"
+          dotnet build EngineeringPerformance.slnx --configuration $(buildConfiguration) --no-restore 2>&1 |
+            Tee-Object -FilePath $logPath
+          $exitCode = $LASTEXITCODE
+
+          if ($exitCode -ne 0) {
+            # A plain PowerShell failure is reported back to GitHub as only "exited with code 1".
+            # Re-emit compiler/MSBuild/NuGet errors through Azure logging commands so the actual
+            # diagnostic text becomes a first-class pipeline/GitHub Check annotation.
+            $diagnostics = Get-Content $logPath | Where-Object {
+              $_ -match '\berror\s+(CS|MSB|NU|NETSDK)\d+' -or
+              $_ -match ':\s+error\s+' -or
+              $_ -match '\bBuild FAILED\b'
+            } | Select-Object -Unique
+
+            foreach ($line in $diagnostics) {
+              $safe = $line.Replace("`r", ' ').Replace("`n", ' ')
+              Write-Host "##vso[task.logissue type=error]$safe"
+            }
+
+            exit $exitCode
+          }
         displayName: Build complete solution
 
       - powershell: |

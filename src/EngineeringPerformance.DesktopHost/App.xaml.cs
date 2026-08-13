@@ -1,4 +1,3 @@
-using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using EngineeringPerformance.Application;
@@ -6,18 +5,16 @@ using EngineeringPerformance.Infrastructure;
 using EngineeringPerformance.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Velopack;
-using Serilog;
-using Serilog.Events;
-using ILogger = Serilog.ILogger;
 
 namespace EngineeringPerformance.DesktopHost;
 
 public partial class App : System.Windows.Application
 {
     private readonly IHost _host;
-    private readonly string _dataDirectory;
-    private readonly ILogger _log;
+    private readonly LocalApplicationPaths _paths;
+    private readonly ILogger<App> _log;
 
     static App()
     {
@@ -31,115 +28,108 @@ public partial class App : System.Windows.Application
     public App()
     {
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        _dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
-        Directory.CreateDirectory(_dataDirectory);
+        _paths = LocalApplicationPaths.ForCurrentUser();
 
-        var logDirectory = Path.Combine(_dataDirectory, "logs");
-        Directory.CreateDirectory(logDirectory);
+        _host = Host.CreateDefaultBuilder()
+            .UseEosLogging(_paths)
+            .ConfigureServices(services =>
+            {
+                services.AddWpfBlazorWebView();
+                services.AddLocalInfrastructure(_paths);
+                services.AddSingleton<IFileDialogService, WindowsFileDialogService>();
+                services.AddSingleton<AppState>();
+                services.AddSingleton<MainWindow>();
+            })
+            .Build();
 
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .Enrich.FromLogContext()
-            .WriteTo.Debug()
-            .WriteTo.File(
-                Path.Combine(logDirectory, "eos-.log"),
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 30,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
-        _log = Log.Logger;
+        _log = _host.Services.GetRequiredService<ILogger<App>>();
 
-        // Catches crashes on background threads (Task.Run, timers, thread-pool work) that never
-        // reach the WPF dispatcher — without this handler they were completely uncaught and lost.
+        // Catch process-level failures that do not flow through normal awaited application code.
         AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
-        // Catches exceptions from fire-and-forget/unawaited async Tasks that get garbage collected
-        // without ever being observed — a known pitfall for the app's "await X; await Y" style code.
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
-
-        _host = Host.CreateDefaultBuilder().ConfigureServices(services =>
-        {
-            services.AddWpfBlazorWebView();
-            services.AddLocalInfrastructure(_dataDirectory);
-            services.AddSingleton<IFileDialogService, WindowsFileDialogService>();
-            services.AddSingleton<AppState>();
-            services.AddSingleton<MainWindow>();
-        }).UseSerilog().Build();
     }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+
         try
         {
+            _log.LogInformation("Starting EOS. DataDirectory={DataDirectory}", _paths.DataDirectory);
             await _host.StartAsync();
             await _host.Services.GetRequiredService<IApplicationDatabase>().InitializeAsync();
+
             MainWindow = _host.Services.GetRequiredService<MainWindow>();
             MainWindow.Show();
             ShutdownMode = ShutdownMode.OnMainWindowClose;
+            _log.LogInformation("EOS startup completed.");
 
             // Fire-and-forget: never delay app launch waiting on a network/file-share round trip.
             _ = CheckForUpdatesAsync();
         }
         catch (Exception exception)
         {
-            _log.Fatal(exception, "The application failed to start.");
-            Log.CloseAndFlush();
-            var logDirectory = Path.Combine(_dataDirectory, "logs");
-            MessageBox.Show($"The application could not start.\n\nDetails were saved to:\n{logDirectory}", "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Error);
+            _log.LogCritical(exception, "The application failed to start.");
+            MessageBox.Show(
+                $"The application could not start.\n\nDetails were saved to:\n{_paths.LogDirectory}",
+                "Engineering Performance Analyzer",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
             Shutdown(-1);
         }
     }
 
     /// <summary>
-    /// Without this, any exception raised while rendering a page (a bad component parameter, a
-    /// null somewhere) reaches the WPF dispatcher unhandled and kills the whole process instantly
-    /// with no on-screen message — the only trace is a .NET Runtime crash event in the Windows
-    /// Application log. Logging it here and letting the user decide whether to carry on gives a
-    /// real chance to recover (or at least see what broke) instead of a silent vanish.
+    /// Logs exceptions raised while rendering/dispatching UI work before showing a recoverable
+    /// message. This handler is intentionally narrow: ordinary application failures should be
+    /// handled and logged at the operation boundary rather than reaching the dispatcher.
     /// </summary>
-    private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    private void OnDispatcherUnhandledException(
+        object sender,
+        System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         try
         {
-            _log.Error(e.Exception, "Unhandled exception on the UI dispatcher.");
-            var logDirectory = Path.Combine(_dataDirectory, "logs");
+            _log.LogError(e.Exception, "Unhandled exception on the UI dispatcher.");
             MessageBox.Show(
-                $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{logDirectory}\n\nYou can keep using the app — try a different page or reload.",
-                "Engineering Performance Analyzer", MessageBoxButton.OK, MessageBoxImage.Warning);
+                $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{_paths.LogDirectory}\n\nYou can keep using the app — try a different page or reload.",
+                "Engineering Performance Analyzer",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
         catch
         {
-            // Logging itself must never be why the crash handler crashes.
+            // Crash reporting must never become a second crash source.
         }
+
         e.Handled = true;
     }
 
     /// <summary>
-    /// Checks the configured Velopack feed (see <see cref="UpdateSettings.FeedUrl"/>) for a newer
-    /// release and, if found, downloads it and offers to restart into it. Runs after the main
-    /// window is already showing and is deliberately best-effort: a missing/unreachable feed (the
-    /// common case until a real feed is configured) is swallowed silently rather than surfaced as
-    /// an error, since "no update source configured yet" isn't a fault.
+    /// Checks the configured Velopack feed for a newer release. Update availability is useful
+    /// operational information; an unreachable/not-yet-configured feed is expected in development
+    /// and is logged at Debug rather than surfaced as an application error.
     /// </summary>
-    private static async Task CheckForUpdatesAsync()
+    private async Task CheckForUpdatesAsync()
     {
         try
         {
             var updateManager = new UpdateManager(UpdateSettings.FeedUrl);
             if (!updateManager.IsInstalled)
             {
-                // Running from source/publish output rather than a Velopack-installed copy; nothing to check.
+                _log.LogDebug("Skipping update check because EOS is not running from a Velopack installation.");
                 return;
             }
 
             var newVersion = await updateManager.CheckForUpdatesAsync();
             if (newVersion is null)
             {
+                _log.LogDebug("Update check completed; no newer EOS release is available.");
                 return;
             }
 
+            _log.LogInformation("Downloading EOS update {Version}.", newVersion.TargetFullRelease.Version);
             await updateManager.DownloadUpdatesAsync(newVersion);
 
             var result = MessageBox.Show(
@@ -150,13 +140,13 @@ public partial class App : System.Windows.Application
 
             if (result == MessageBoxResult.Yes)
             {
+                _log.LogInformation("Applying EOS update {Version} and restarting.", newVersion.TargetFullRelease.Version);
                 updateManager.ApplyUpdatesAndRestart(newVersion);
             }
         }
-        catch
+        catch (Exception exception)
         {
-            // Best-effort: no update feed configured yet, feed unreachable, offline, etc. are all
-            // expected/non-fatal states, not something to interrupt the user about.
+            _log.LogDebug(exception, "Update check could not complete; continuing without interrupting the user.");
         }
     }
 
@@ -164,12 +154,14 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            _log.Fatal(e.ExceptionObject as Exception, "Unhandled exception on a background thread. IsTerminating={IsTerminating}", e.IsTerminating);
-            Log.CloseAndFlush();
+            _log.LogCritical(
+                e.ExceptionObject as Exception,
+                "Unhandled exception on a background thread. IsTerminating={IsTerminating}",
+                e.IsTerminating);
         }
         catch
         {
-            // Logging itself must never be why the crash handler crashes.
+            // Crash reporting must never become a second crash source.
         }
     }
 
@@ -177,23 +169,32 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            _log.Error(e.Exception, "An unobserved Task exception was raised.");
+            _log.LogError(e.Exception, "An unobserved Task exception was raised.");
         }
         catch
         {
-            // Logging itself must never be why the crash handler crashes.
+            // Crash reporting must never become a second crash source.
         }
-        // Without this the finalizer thread rethrows, crashing the process.
+
         e.SetObserved();
     }
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        DispatcherUnhandledException -= OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException -= OnAppDomainUnhandledException;
         TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
-        await _host.StopAsync();
-        _host.Dispose();
-        Log.CloseAndFlush();
+
+        try
+        {
+            _log.LogInformation("Stopping EOS.");
+            await _host.StopAsync();
+        }
+        finally
+        {
+            _host.Dispose();
+        }
+
         base.OnExit(e);
     }
 }
