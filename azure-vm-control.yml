@@ -4,13 +4,17 @@
 # on a Microsoft-hosted runner. It therefore remains usable when the self-hosted agent is offline.
 #
 # One-time project setup:
-#   1. Create an Azure Resource Manager service connection using Workload Identity Federation.
+#   1. Create an Azure Resource Manager service connection named `eos-vm-arm` using Workload
+#      Identity Federation.
 #   2. Create an Azure DevOps variable group named `eos-vm-control` containing:
-#        AZURE_VM_SERVICE_CONNECTION   service-connection name
 #        AZURE_SUBSCRIPTION_ID         Azure subscription GUID
 #        AZURE_RESOURCE_GROUP          resource group containing the VM
 #        AZURE_VM_NAME                 VM resource name
 #      These are identifiers, not passwords. The service connection owns authentication.
+#
+# The service-connection name is intentionally a static pipeline-level value. Azure DevOps resolves
+# protected resources before variable-group values are available, so service-connection names must
+# not be sourced from a variable group.
 #
 # This is deliberately manual-only. Normal build/test/visual CI lives in azure-pipelines.yml.
 
@@ -33,6 +37,8 @@ parameters:
 
 variables:
   - group: eos-vm-control
+  - name: azureVmServiceConnection
+    value: eos-vm-arm
   - name: computeApiVersion
     value: '2026-03-01'
 
@@ -50,7 +56,7 @@ jobs:
           displayName: Read VM instance view
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: GET
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/instanceView?api-version=$(computeApiVersion)'
             waitForCompletion: false
@@ -60,7 +66,7 @@ jobs:
           displayName: Start VM
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: POST
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/start?api-version=$(computeApiVersion)'
             headers: |
@@ -75,7 +81,7 @@ jobs:
           displayName: Restart VM
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: POST
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/restart?api-version=$(computeApiVersion)'
             headers: |
@@ -92,7 +98,7 @@ jobs:
           displayName: Collect guest health
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: POST
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
             headers: |
@@ -120,7 +126,7 @@ jobs:
           displayName: Repair Azure Pipelines agent service
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: POST
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
             headers: |
@@ -145,7 +151,7 @@ jobs:
           displayName: Enable Windows RDP service/firewall
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: POST
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
             headers: |
@@ -171,7 +177,7 @@ jobs:
           displayName: Disable Windows RDP service/firewall
           inputs:
             connectionType: connectedServiceNameARM
-            azureServiceConnection: '$(AZURE_VM_SERVICE_CONNECTION)'
+            azureServiceConnection: '$(azureVmServiceConnection)'
             method: POST
             urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
             headers: |
