@@ -32,7 +32,7 @@
                     <div class="label-instrument mt-1">Team fill rate</div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
                     <div>
                         <div class="@($"metric text-metric-sm {(_missingDays > 0 ? "text-serious" : "")}")">@Analytics.Format(_missingDays, "0.#")</div>
                         <div class="metric-delta text-muted"><span class="tabular-nums">@_withGaps</span> engineer(s) with gaps</div>
@@ -52,11 +52,6 @@
                         <div class="metric text-metric-sm">@Probationers</div>
                         <div class="metric-delta text-muted">Freshers on probation</div>
                         <div class="label-instrument mt-1">Probation context</div>
-                    </div>
-                    <div>
-                        <div class="@($"metric text-metric-sm {(AvgFilingDelay > 1 ? "text-serious" : "")}")">@Analytics.Format(AvgFilingDelay, "0.0")<span class="text-sm"> d</span></div>
-                        <div class="metric-delta text-muted"><span class="tabular-nums">@FilingDays</span> day(s) filed</div>
-                        <div class="label-instrument mt-1">Avg filing delay</div>
                     </div>
                 </div>
             </div>
@@ -94,6 +89,19 @@
                     <TemplateColumn Title="Filled days" Align="Align.Right" Sortable="true" SortBy="@_sortByFilled">
                         <span class="tabular-nums text-ink">@context.FilledDays / @context.ExpectedDays</span>
                     </TemplateColumn>
+                    <TemplateColumn Title="Filing delay" Align="Align.Right">
+                        @if (FilingFor(context.Name) is { } filing)
+                        {
+                            <span class="flex flex-col items-end" title="@($"Worst delay: {Analytics.Format(filing.MaxDelayDays, "0.#")} day(s), covering {filing.WorstDay:dd MMM}; {filing.FiledDays} filed day(s)")">
+                                <b class="@($"tabular-nums font-semibold {FilingDelayClass(filing.AverageDelayDays)}")">@Analytics.Format(filing.AverageDelayDays, "0.0") d avg</b>
+                                <small class="text-3xs tabular-nums text-muted">@Analytics.Format(filing.MaxDelayDays, "0.#") d worst</small>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </TemplateColumn>
                     <TemplateColumn Title="Missing days" Align="Align.Right" Sortable="true" SortBy="@_sortByMissing">
                         <span class="@($"tabular-nums font-semibold {MissingSeverityClass(context.MissingDays)}")">@context.MissingDays</span>
                     </TemplateColumn>
@@ -129,30 +137,6 @@
             }
         </section>
 
-        @if (FilingRows.Count > 0)
-        {
-            <section class="plate p-4" aria-label="Timesheet filing delay">
-                <div class="panel-head">
-                    <div>
-                        <div class="panel-eyebrow">Latency</div>
-                        <h2 class="panel-title">Timesheet filing delay</h2>
-                    </div>
-                    <span class="label-instrument ml-auto"><span class="tabular-nums">@FilingRows.Count</span> of <span class="tabular-nums">@Rows.Count</span> engineers with filed entries · worst first</span>
-                </div>
-                <ul class="flex flex-col divide-y divide-line-soft">
-                    @foreach (var row in FilingRows.Take(15))
-                    {
-                        <li class="flex items-baseline gap-3 py-1.5">
-                            <strong class="min-w-0 flex-1 truncate text-sm font-medium text-ink">@row.EmployeeName</strong>
-                            <span class="flex flex-1 flex-col text-right">
-                                <b class="@($"metric text-sm {(row.AverageDelayDays > 1 ? "text-serious" : "text-ink")}")">@Analytics.Format(row.AverageDelayDays, "0.0") d avg</b>
-                                <small class="text-2xs tabular-nums text-muted">Worst @Analytics.Format(row.MaxDelayDays, "0.#") day(s) late, for @row.WorstDay.ToString("dd MMM") · @row.FiledDays entr@(row.FiledDays == 1 ? "y" : "ies") filed</small>
-                            </span>
-                        </li>
-                    }
-                </ul>
-            </section>
-        }
     }
 </div>
 
@@ -227,6 +211,16 @@
         _ => "text-critical"
     };
 
+    private static string FilingDelayClass(decimal days) => days switch
+    {
+        <= 1 => "text-success",
+        <= 2 => "text-warning",
+        _ => "text-serious"
+    };
+
+    private TimesheetFilingRow? FilingFor(string employeeName) =>
+        FilingRows.FirstOrDefault(x => string.Equals(x.EmployeeName.Trim(), employeeName.Trim(), StringComparison.OrdinalIgnoreCase));
+
     private static string? RowSeverityClass(Analytics.ComplianceRow row) =>
         row.ExpectedDays > 0 && row.FilledDays == 0 ? "row-flag-critical"
         : row.MissingDays > 0 ? "row-flag"
@@ -241,6 +235,4 @@
     private int Probationers => _probationers;
 
     private IReadOnlyList<TimesheetFilingRow> FilingRows => State.TimesheetFiling?.Rows ?? [];
-    private decimal AvgFilingDelay => State.TimesheetFiling?.AverageDelayDays ?? 0m;
-    private int FilingDays => FilingRows.Sum(x => x.FiledDays);
 }
