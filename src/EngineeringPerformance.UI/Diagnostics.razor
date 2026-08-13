@@ -54,8 +54,41 @@
             </div>
             <span class="label-instrument ml-auto">last <span class="tnum">@MaxTailLines</span> lines · <span class="font-mono normal-case tracking-normal">@_todayLogPath</span></span>
         </div>
-        <pre class="well max-h-96 overflow-auto whitespace-pre-wrap p-3 font-mono text-2xs tabular-nums text-ink-soft" role="log" aria-label="Recent log output">@_logTail</pre>
-        <button type="button" class="btn btn-secondary mt-3" @onclick="RefreshTailAsync">Refresh</button>
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+            <div class="segmented" role="group" aria-label="Log level filter">
+                @foreach (var level in LogLevels)
+                {
+                    <button type="button" aria-pressed="@(_levelFilter == level)" @onclick="() => _levelFilter = level">@level <span class="ml-1 tabular-nums">@LevelCount(level)</span></button>
+                }
+            </div>
+            <input class="field ml-auto w-72 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" @bind="_logSearch" @bind:event="oninput" placeholder="Search source or message…" aria-label="Search today's log" />
+            <button type="button" class="btn btn-secondary" @onclick="RefreshTailAsync">Refresh</button>
+        </div>
+
+        <div class="well max-h-[32rem] overflow-auto p-1" role="log" aria-label="Recent log output">
+            <div class="sticky top-0 z-10 grid grid-cols-[5.5rem_3.5rem_15rem_minmax(24rem,1fr)] gap-3 rounded-sm bg-chassis px-3 py-2 font-display text-3xs font-semibold uppercase tracking-wide text-on-chassis-soft">
+                <span>Time</span><span>Level</span><span>Source</span><span>Message</span>
+            </div>
+            @if (FilteredLogRows.Count == 0)
+            {
+                <p class="p-6 text-center text-sm text-muted">No log entries match the current filters.</p>
+            }
+            else
+            {
+                @foreach (var row in FilteredLogRows)
+                {
+                    <details class="group border-b border-line-soft last:border-0">
+                        <summary class="grid cursor-pointer list-none grid-cols-[5.5rem_3.5rem_15rem_minmax(24rem,1fr)] items-start gap-3 px-3 py-2 text-xs hover:bg-surface-inset">
+                            <time class="font-mono text-2xs tabular-nums text-muted" title="@row.Timestamp">@row.Time</time>
+                            <span class="@($"badge w-fit {LevelClass(row.Level)}")">@row.Level</span>
+                            <span class="truncate font-mono text-2xs text-ink-soft" title="@row.Source">@ShortSource(row.Source)</span>
+                            <span class="min-w-0 break-words leading-relaxed text-ink">@row.Message</span>
+                        </summary>
+                        <pre class="mx-3 mb-2 overflow-x-auto whitespace-pre-wrap rounded-sm bg-well-deep p-3 font-mono text-2xs leading-relaxed text-ink-soft">@row.Raw</pre>
+                    </details>
+                }
+            }
+        </div>
     </div>
 </section>
 
@@ -68,6 +101,9 @@
     private string _logDirectory = string.Empty;
     private string _todayLogPath = string.Empty;
     private string _logTail = string.Empty;
+    private IReadOnlyList<LogRow> _logRows = [];
+    private string _levelFilter = "All";
+    private string _logSearch = string.Empty;
     private string? _bundlePath;
     private bool _bundling;
 
@@ -91,7 +127,52 @@
     {
         LoadInfo();
         _logTail = await ApplicationDiagnostics.ReadRecentLogAsync(MaxTailLines);
+        _logRows = ParseLog(_logTail);
     }
+
+    private static readonly string[] LogLevels = ["All", "ERR", "WRN", "INF", "DBG"];
+    private IReadOnlyList<LogRow> FilteredLogRows => _logRows
+        .Where(x => _levelFilter == "All" || x.Level == _levelFilter)
+        .Where(x => string.IsNullOrWhiteSpace(_logSearch) || x.Source.Contains(_logSearch, StringComparison.OrdinalIgnoreCase) || x.Message.Contains(_logSearch, StringComparison.OrdinalIgnoreCase) || x.Raw.Contains(_logSearch, StringComparison.OrdinalIgnoreCase))
+        .Reverse()
+        .ToArray();
+
+    private int LevelCount(string level) => level == "All" ? _logRows.Count : _logRows.Count(x => x.Level == level);
+    private static string ShortSource(string source) => source.StartsWith("EngineeringPerformance.", StringComparison.Ordinal) ? source[23..] : source;
+    private static string LevelClass(string level) => level switch
+    {
+        "ERR" or "FTL" => "bg-critical-soft text-critical",
+        "WRN" => "bg-warning-soft text-warning",
+        "INF" => "bg-info-soft text-info",
+        _ => "bg-surface-inset text-muted"
+    };
+
+    private static IReadOnlyList<LogRow> ParseLog(string text)
+    {
+        var rows = new List<LogRow>();
+        var pattern = new System.Text.RegularExpressions.Regex(
+            @"^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) \[(?<level>[A-Z]{3})\] (?<source>[^:]+): (?<message>.*)$",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        foreach (var line in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var match = pattern.Match(line);
+            if (match.Success)
+            {
+                var timestamp = match.Groups["timestamp"].Value;
+                rows.Add(new LogRow(timestamp, timestamp.Substring(11, 12), match.Groups["level"].Value, match.Groups["source"].Value, match.Groups["message"].Value, line));
+            }
+            else if (rows.Count > 0)
+            {
+                var previous = rows[^1];
+                rows[^1] = previous with { Raw = previous.Raw + Environment.NewLine + line };
+            }
+        }
+
+        return rows;
+    }
+
+    private sealed record LogRow(string Timestamp, string Time, string Level, string Source, string Message, string Raw);
 
     private async Task CreateBundleAsync()
     {
