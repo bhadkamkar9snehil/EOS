@@ -7,6 +7,8 @@
 @implements IDisposable
 
 <section class="flex flex-col gap-4">
+    @if (!Embedded)
+    {
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <div class="panel-eyebrow">Evidence</div>
@@ -33,6 +35,18 @@
             All months
         </label>
     </div>
+    }
+    else
+    {
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <div class="panel-eyebrow">@(_tab == Tab.History ? "Transaction audit" : "Normalized evidence")</div>
+                <h2 class="panel-title">@(_tab == Tab.History ? "All import transactions" : "Imported evidence rows")</h2>
+                <p class="mt-1 text-sm text-ink-soft">@(_tab == Tab.History ? "Every accepted ERP and review upload, its reporting period, row count, file, and replacement effect." : "The normalized employee-month records produced from the accepted source files.")</p>
+            </div>
+            <div class="text-right"><div class="metric text-metric-sm tabular-nums">@(_tab == Tab.History ? _history.Count : FilteredRows.Count)</div><div class="label-instrument mt-1">@(_tab == Tab.History ? "Transactions" : "Engineer rows")</div></div>
+        </div>
+    }
 
     @if (_tab == Tab.Rows)
     {
@@ -93,6 +107,16 @@
     else
     {
         <div>
+            @if (Embedded)
+            {
+                <div class="mb-3 flex items-center justify-between gap-4">
+                    <span class="text-2xs text-muted">Newest transaction first. Replacement imports preserve the complete audit trail.</span>
+                    <label class="control flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-ink-soft">
+                        <input type="checkbox" @bind="_allMonths" @bind:after="ReloadHistoryAsync" />
+                        Include all fiscal months
+                    </label>
+                </div>
+            }
             @if (_history.Count == 0)
             {
                 <div class="well bg-well-deep p-8 text-center text-sm text-muted">No uploads recorded@(_allMonths ? "" : $" for {State.SelectedMonth:MMMM yyyy}") yet.</div>
@@ -121,10 +145,13 @@
 </section>
 
 @code {
+    [Parameter] public bool Embedded { get; set; }
+    [Parameter] public string InitialView { get; set; } = "rows";
+
     private enum Tab { Rows, History }
     private Tab _tab = Tab.Rows;
     private string _filter = string.Empty;
-    private bool _allMonths;
+    private bool _allMonths = true;
     private IReadOnlyList<ImportHistoryItem> _history = [];
 
     private static readonly GridSort<MonthlyPerformanceItem> _byName = GridSort<MonthlyPerformanceItem>.ByAscending(x => x.EmployeeName);
@@ -143,8 +170,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Embedded && Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("data", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/imports", replace: true);
+            return;
+        }
         State.Changed += OnStateChanged;
         await ReloadHistoryAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Embedded) _tab = string.Equals(InitialView, "history", StringComparison.OrdinalIgnoreCase) ? Tab.History : Tab.Rows;
     }
 
     private void OnStateChanged() => InvokeAsync(async () => { await ReloadHistoryAsync(); StateHasChanged(); });

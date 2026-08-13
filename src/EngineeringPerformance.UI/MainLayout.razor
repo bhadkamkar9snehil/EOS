@@ -29,8 +29,7 @@
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
 
             <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Manage</span>
-            @NavButton("imports", "Data Imports", Icon.Imports)
-            @NavButton("data", "Imported Data", Icon.DataBrowser)
+            @NavButton("imports", "Data Operations", Icon.Imports)
             @NavButton("employees", "Employees & Teams", Icon.Employees)
             @NavButton("templates", "Review Templates", Icon.Templates)
 
@@ -241,8 +240,8 @@
 
     private string PageTitleText => CurrentRoute switch
     {
-        "imports" => "Data imports",
-        "data" => "Imported data",
+        "imports" => "Data operations",
+        "data" => "Data operations",
         "timesheets" => "Timesheets",
         "employees" => "Employees & teams",
         "peer-insights" => "Peer insights",
