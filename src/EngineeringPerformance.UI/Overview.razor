@@ -208,7 +208,12 @@
                 <div class="grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_4.75rem] items-center gap-x-2 border-b border-line px-1.5 pb-1.5 label-instrument" aria-hidden="true">
                     <span class="text-center">#</span><span></span><span>Engineer</span><span class="text-right">Score</span>
                 </div>
-                <ol class="flex flex-col divide-y divide-line-soft">
+                @* flex-1 + justify-around, matching the fix already applied and documented for
+                   Movement River / Operational Fingerprint further down this file. The lens is
+                   capped at five rows, so without this the list sat at its natural ~440px inside a
+                   column sized by the ~540px chart beside it, leaving dead space at the bottom on
+                   every render. *@
+                <ol class="flex flex-1 flex-col justify-around divide-y divide-line-soft">
                     @for (var i = 0; i < AttentionRows.Count; i++)
                     {
                         var row = AttentionRows[i];

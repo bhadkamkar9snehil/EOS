@@ -18,7 +18,11 @@
     }
     else
     {
-        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[1fr_1fr]">
+        @* items-start is load-bearing: grid rows stretch to the tallest sibling by default, so an
+       unbounded standings list on the left was dragging the right-hand plate — whose only content
+       is a fixed-height heatmap — to match it. With a full roster that left well over a thousand
+       pixels of empty plate below the chart. Sizing each column to its own content instead. *@
+    <section class="grid grid-cols-1 items-start gap-4 @@4xl:grid-cols-[1fr_1fr]">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
