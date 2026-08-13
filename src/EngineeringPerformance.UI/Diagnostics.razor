@@ -2,6 +2,7 @@
 @using EngineeringPerformance.Application
 @inject AppState State
 @inject IApplicationDiagnostics ApplicationDiagnostics
+@inject IUpdateService Updates
 
 <section class="flex flex-col gap-6">
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -18,6 +19,8 @@
             </div>
             <dl class="flex flex-col divide-y divide-line-soft">
                 <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Version</dt><dd class="truncate text-right tabular-nums text-ink">@_appVersion</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Update state</dt><dd class="truncate text-right text-ink">@Updates.Status.Phase</dd></div>
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Last update check</dt><dd class="truncate text-right tabular-nums text-ink">@(Updates.Status.LastSuccessfulCheckAt?.ToString("g") ?? "Never")</dd></div>
                 <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Database file</dt><dd class="truncate text-right font-mono text-2xs text-ink" title="@_dbPath">@_dbPath</dd></div>
                 <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Database size</dt><dd class="truncate text-right tabular-nums text-ink">@_dbSize</dd></div>
                 <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument shrink-0">Log directory</dt><dd class="truncate text-right font-mono text-2xs text-ink" title="@_logDirectory">@_logDirectory</dd></div>

@@ -26,7 +26,7 @@ jobs:
           global-json-file: global.json
 
       - name: Install Velopack CLI (vpk)
-        run: dotnet tool install -g vpk
+        run: dotnet tool install -g vpk --version 1.2.0
 
       - name: Derive version from tag
         id: version
@@ -34,15 +34,28 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $version = $tag.TrimStart("v")
+          [xml]$project = Get-Content "src/EngineeringPerformance.DesktopHost/EngineeringPerformance.DesktopHost.csproj"
+          $projectVersion = $project.Project.PropertyGroup.Version | Select-Object -First 1
+          if ($projectVersion -ne $version) {
+            throw "Tag version $version does not match DesktopHost version $projectVersion."
+          }
           echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Download previous Velopack release
+        shell: pwsh
+        run: vpk download github --repoUrl "https://github.com/${{ github.repository }}" --outputDir build/Releases --token "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Run release script
         shell: pwsh
         run: ./build/release.ps1 -Version "${{ steps.version.outputs.version }}"
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: EOS ${{ github.ref_name }}
-          generate_release_notes: true
-          files: build/Releases/*
+      - name: Publish Velopack release
+        shell: pwsh
+        run: >-
+          vpk upload github
+          --repoUrl "https://github.com/${{ github.repository }}"
+          --outputDir build/Releases
+          --token "${{ secrets.GITHUB_TOKEN }}"
+          --publish
+          --releaseName "EOS ${{ github.ref_name }}"
+          --tag "${{ github.ref_name }}"

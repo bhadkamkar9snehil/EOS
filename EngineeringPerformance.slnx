@@ -7,6 +7,7 @@
     <Project Path="src/EngineeringPerformance.UI/EngineeringPerformance.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/EngineeringPerformance.DesktopHost.Tests/EngineeringPerformance.DesktopHost.Tests.csproj" />
     <Project Path="tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj" />
     <Project Path="tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj" />
     <Project Path="tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj" />

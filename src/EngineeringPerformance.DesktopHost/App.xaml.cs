@@ -3,11 +3,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using EngineeringPerformance.Application;
 using EngineeringPerformance.Infrastructure;
+using EngineeringPerformance.DesktopHost.Updates;
 using EngineeringPerformance.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Velopack;
 
 namespace EngineeringPerformance.DesktopHost;
 
@@ -18,15 +18,6 @@ public partial class App : System.Windows.Application
     private readonly ILogger<App> _log;
     private readonly bool _visualCapture;
     private readonly string? _visualOutputDirectory;
-
-    static App()
-    {
-        // Must run before ANY other app code, per Velopack's WPF integration docs: this handles
-        // Velopack's special install-time/update-time process invocations (e.g. creating shortcuts
-        // during install, running app updates) and exits the process immediately when one of those
-        // is detected, so nothing below the App type's static initializer/constructor may run first.
-        VelopackApp.Build().Run();
-    }
 
     public App()
     {
@@ -43,6 +34,13 @@ public partial class App : System.Windows.Application
             {
                 services.AddWpfBlazorWebView();
                 services.AddLocalInfrastructure(_paths);
+                services.AddSingleton<IUpdateBackend>(_ => new VelopackUpdateBackend(UpdateSettings.RepositoryUrl));
+                services.AddSingleton<VelopackUpdateService>(sp => new VelopackUpdateService(
+                    sp.GetRequiredService<IUpdateBackend>(),
+                    () => Dispatcher.BeginInvoke(new Action(() => Shutdown())),
+                    sp.GetRequiredService<ILogger<VelopackUpdateService>>()));
+                services.AddSingleton<IUpdateService>(sp => sp.GetRequiredService<VelopackUpdateService>());
+                services.AddHostedService<UpdateCheckWorker>();
                 if (_visualCapture)
                 {
                     services.AddSingleton<IApplicationDatabase, VisualCaptureApplicationDatabase>();
@@ -87,8 +85,6 @@ public partial class App : System.Windows.Application
                 return;
             }
 
-            // Fire-and-forget: never delay app launch waiting on a network/file-share round trip.
-            _ = CheckForUpdatesAsync();
         }
         catch (Exception exception)
         {
@@ -154,50 +150,6 @@ public partial class App : System.Windows.Application
         catch
         {
             // Best effort only; the structured EOS log remains the primary crash record.
-        }
-    }
-
-    /// <summary>
-    /// Checks the configured Velopack feed for a newer release. Update availability is useful
-    /// operational information; an unreachable/not-yet-configured feed is expected in development
-    /// and is logged at Debug rather than surfaced as an application error.
-    /// </summary>
-    private async Task CheckForUpdatesAsync()
-    {
-        try
-        {
-            var updateManager = new UpdateManager(UpdateSettings.FeedUrl);
-            if (!updateManager.IsInstalled)
-            {
-                _log.LogDebug("Skipping update check because EOS is not running from a Velopack installation.");
-                return;
-            }
-
-            var newVersion = await updateManager.CheckForUpdatesAsync();
-            if (newVersion is null)
-            {
-                _log.LogDebug("Update check completed; no newer EOS release is available.");
-                return;
-            }
-
-            _log.LogInformation("Downloading EOS update {Version}.", newVersion.TargetFullRelease.Version);
-            await updateManager.DownloadUpdatesAsync(newVersion);
-
-            var result = MessageBox.Show(
-                $"A new version ({newVersion.TargetFullRelease.Version}) has been downloaded.\n\nRestart now to apply it?",
-                "Update available",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                _log.LogInformation("Applying EOS update {Version} and restarting.", newVersion.TargetFullRelease.Version);
-                updateManager.ApplyUpdatesAndRestart(newVersion);
-            }
-        }
-        catch (Exception exception)
-        {
-            _log.LogDebug(exception, "Update check could not complete; continuing without interrupting the user.");
         }
     }
 

@@ -6,20 +6,19 @@ Status: **implemented** (see `docs/performance-tech-installer-logging-audit.md` 
 ## What's in place
 
 - **Package**: `Velopack` referenced in `src/EngineeringPerformance.DesktopHost/EngineeringPerformance.DesktopHost.csproj`.
-- **Startup hook**: `App.xaml.cs`'s static constructor calls `VelopackApp.Build().Run()` before
-  anything else in the process, per Velopack's WPF integration docs. This intercepts the special
+- **Startup hook**: `Program.Main` calls `VelopackApp.Build().Run()` before constructing WPF,
+  per Velopack's integration contract. This intercepts the special
   command-line invocations Velopack uses during install/uninstall/update (e.g. creating shortcuts)
   and exits early when one is detected — it must run before any other app code.
-- **Update check**: `App.OnStartup` fires `CheckForUpdatesAsync()` as a non-blocking, fire-and-forget
-  task *after* the main window is already shown, so a slow/unreachable feed never delays launch. If
-  an update is found it's downloaded, then the user is asked (via `MessageBox`) whether to restart
-  into it now.
-- **Feed URL**: configured in one place, `src/EngineeringPerformance.DesktopHost/UpdateSettings.cs`
-  (`UpdateSettings.FeedUrl`). It currently holds a placeholder (`https://example.invalid/...`) — an
-  unreachable/misconfigured feed is caught and swallowed silently (not a real error state, since no
-  feed is configured yet). Point it at a real feed before relying on auto-update:
-  - a local/network file share, e.g. `\\fileserver\EOS-Releases`, or
-  - a GitHub Releases URL, e.g. `https://github.com/your-org/EOS`.
+- **Update source**: `VelopackUpdateBackend` uses `GithubSource` against the public EOS GitHub
+  Releases repository configured in `UpdateSettings.RepositoryUrl`.
+- **Update lifecycle**: `UpdateCheckWorker` checks when the host starts, then roughly hourly with
+  jitter while EOS is open. Feed failures back off to two, four, then six hours. Checks never
+  download. `IUpdateService` exposes immutable state to the footer, Settings, and Diagnostics.
+- **Explicit actions**: an available release remains available until Download is clicked. A
+  prepared release survives application restarts through Velopack's `UpdatePendingRestart` marker.
+  Restart uses `WaitExitThenApplyUpdates`, then closes EOS normally before files are replaced.
+- **Development builds**: non-installed launches report `Unsupported` and do not contact GitHub.
 
 ## Building a release
 
@@ -48,22 +47,12 @@ If `-Version` is omitted, the script reads `<Version>` from the DesktopHost `.cs
 dotnet tool install -g vpk
 ```
 
-After packing, publish the contents of `build/Releases/` to wherever `UpdateSettings.FeedUrl`
-points (copy to the file share, or upload as a GitHub Release) so installed copies can discover it.
+For tags, `.github/workflows/release.yml` downloads the preceding Velopack release, packages the
+new version, and publishes it with `vpk upload github`. Tag and project versions must match.
 
-## What's not verified in this sandbox
+## Release verification
 
-This repo's dev sandbox is Linux and `EngineeringPerformance.DesktopHost` targets
-`net10.0-windows10.0.19041.0`, so neither `dotnet publish` nor `vpk pack` can run here — both
-require Windows. What *was* verified on Linux:
-- The `Velopack` package reference resolves (added to the `.csproj`; the win-x64/Windows-target
-  restore itself is blocked here by `NETSDK1100`, which is pre-existing/expected, not caused by
-  this change).
-- `App.xaml.cs` compiles conceptually against Velopack's documented WPF integration API
-  (`VelopackApp.Build().Run()`, `UpdateManager`, `CheckForUpdatesAsync`, `DownloadUpdatesAsync`,
-  `ApplyUpdatesAndRestart`) — actual compilation needs a Windows build, which was not possible here.
-- Both test projects (`Infrastructure.Tests`, `Domain.Tests`) still build and pass after these
-  changes, and the non-Windows-targeted projects (`Domain`, `Application`, `UI`) still build clean.
-
-The end-to-end installer/update flow (install via `Setup.exe`, delta-update apply, restart) needs
-to be exercised on a Windows machine before relying on it.
+Verify each stable release from an installed preceding version: discover, download, close and
+reopen before applying, confirm the prepared update is recovered, restart, and verify the new
+version in EOS, executable metadata, and Windows Installed Apps. Persistent data under
+`%LOCALAPPDATA%\EOS\Data` must remain unchanged. Exercise delta and full-package fallback.

@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject ILogger<MainLayout> Logger
+@inject IUpdateService Updates
 @implements IDisposable
 
 <PageTitle>EOS — Engineering Performance</PageTitle>
@@ -148,7 +149,21 @@
         <footer class="chassis flex justify-between border-t border-chassis-deep px-6 py-2">
             <span class="label-instrument !text-on-chassis-muted">Data freshness · refreshed <span class="tabular-nums">@State.LastRefresh.ToString("h:mm tt")</span></span>
             <span class="label-instrument !text-on-chassis-muted">Local SQLite · @State.SelectedMonth.ToString("MMMM yyyy")</span>
-            <span class="label-instrument !text-on-chassis-muted">v@(AppVersion)</span>
+            <span class="flex items-center gap-3">
+                @if (Updates.Status.Phase == UpdatePhase.Available)
+                {
+                    <button type="button" class="label-instrument !text-primary" @onclick="() => Updates.DownloadAsync()">Download v@(Updates.Status.AvailableVersion)</button>
+                }
+                else if (Updates.Status.Phase == UpdatePhase.Downloading)
+                {
+                    <span class="label-instrument !text-on-chassis-muted">Downloading · @(Updates.Status.DownloadProgress ?? 0)%</span>
+                }
+                else if (Updates.Status.Phase == UpdatePhase.ReadyToRestart)
+                {
+                    <button type="button" class="label-instrument !text-primary" @onclick="Updates.RestartAndApply">Restart · v@(Updates.Status.AvailableVersion)</button>
+                }
+                <span class="label-instrument !text-on-chassis-muted">v@(AppVersion)</span>
+            </span>
         </footer>
     </section>
 </div>
@@ -163,6 +178,7 @@
     protected override async Task OnInitializedAsync()
     {
         State.Changed += OnStateChanged;
+        Updates.Changed += OnUpdateChanged;
         Navigation.LocationChanged += OnLocationChanged;
         Logger.LogDebug("Shell initialized. Uri={Uri}", Navigation.Uri);
         await State.RefreshAsync();
@@ -201,6 +217,7 @@
     };
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnUpdateChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
@@ -217,6 +234,7 @@
     public void Dispose()
     {
         State.Changed -= OnStateChanged;
+        Updates.Changed -= OnUpdateChanged;
         Navigation.LocationChanged -= OnLocationChanged;
     }
 

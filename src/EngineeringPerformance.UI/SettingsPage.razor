@@ -2,6 +2,7 @@
 @inject AppState State
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject EngineeringPerformance.Application.IUpdateService Updates
 @implements IDisposable
 
 <section class="flex flex-col gap-6">
@@ -18,6 +19,53 @@
                 @ThemeOption("light", "Light")
                 @ThemeOption("dark", "Dark")
                 @ThemeOption("system", "System")
+            </div>
+        </section>
+
+        <section class="plate p-4">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-eyebrow">Release</div>
+                    <h2 class="panel-title">Updates</h2>
+                </div>
+                <span class="ml-auto flex items-center gap-1.5">
+                    <i class="@UpdateLampClass" aria-hidden="true"></i>
+                    <span class="label-instrument">@UpdateStateLabel</span>
+                </span>
+            </div>
+            <dl class="flex flex-col divide-y divide-line-soft">
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Installed</dt><dd class="tabular-nums text-ink">@Updates.Status.CurrentVersion</dd></div>
+                @if (Updates.Status.AvailableVersion is { } available)
+                {
+                    <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Available</dt><dd class="tabular-nums text-ink">@available</dd></div>
+                }
+                <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Last checked</dt><dd class="tabular-nums text-ink">@(Updates.Status.LastSuccessfulCheckAt?.ToString("dd MMM · HH:mm") ?? "—")</dd></div>
+                @if (Updates.Status.Phase == EngineeringPerformance.Application.UpdatePhase.Downloading)
+                {
+                    <div class="flex justify-between gap-4 py-1.5 text-xs"><dt class="label-instrument">Download</dt><dd class="tabular-nums text-ink">@(Updates.Status.DownloadProgress ?? 0)%</dd></div>
+                }
+            </dl>
+            <div class="mt-4 flex flex-wrap gap-2">
+                @if (Updates.Status.Phase is EngineeringPerformance.Application.UpdatePhase.Idle or EngineeringPerformance.Application.UpdatePhase.Current or EngineeringPerformance.Application.UpdatePhase.Failed)
+                {
+                    <button type="button" class="btn btn-secondary" @onclick="CheckForUpdatesAsync">@(Updates.Status.Phase == EngineeringPerformance.Application.UpdatePhase.Failed ? "Retry" : "Check")</button>
+                }
+                else if (Updates.Status.Phase == EngineeringPerformance.Application.UpdatePhase.Available)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="DownloadUpdateAsync">Download v@(Updates.Status.AvailableVersion)</button>
+                }
+                else if (Updates.Status.Phase == EngineeringPerformance.Application.UpdatePhase.ReadyToRestart)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="Updates.RestartAndApply">Restart · v@(Updates.Status.AvailableVersion)</button>
+                }
+                else if (Updates.Status.Phase == EngineeringPerformance.Application.UpdatePhase.Checking)
+                {
+                    <button type="button" class="btn btn-secondary" disabled>Checking</button>
+                }
+                else if (Updates.Status.Phase == EngineeringPerformance.Application.UpdatePhase.Downloading)
+                {
+                    <button type="button" class="btn btn-primary" disabled>Downloading · @(Updates.Status.DownloadProgress ?? 0)%</button>
+                }
             </div>
         </section>
 
@@ -53,9 +101,41 @@
 </section>
 
 @code {
-    protected override void OnInitialized() => State.Changed += OnStateChanged;
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+        Updates.Changed += OnUpdateChanged;
+    }
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
-    public void Dispose() => State.Changed -= OnStateChanged;
+    private void OnUpdateChanged() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        State.Changed -= OnStateChanged;
+        Updates.Changed -= OnUpdateChanged;
+    }
+
+    private Task CheckForUpdatesAsync() => Updates.CheckNowAsync();
+    private Task DownloadUpdateAsync() => Updates.DownloadAsync();
+
+    private string UpdateLampClass => $"h-2 w-2 {Updates.Status.Phase switch
+    {
+        EngineeringPerformance.Application.UpdatePhase.Current or EngineeringPerformance.Application.UpdatePhase.ReadyToRestart => "lamp text-good",
+        EngineeringPerformance.Application.UpdatePhase.Checking or EngineeringPerformance.Application.UpdatePhase.Downloading or EngineeringPerformance.Application.UpdatePhase.Available => "lamp text-warning",
+        EngineeringPerformance.Application.UpdatePhase.Failed => "lamp text-critical",
+        _ => "lamp-off"
+    }}";
+
+    private string UpdateStateLabel => Updates.Status.Phase switch
+    {
+        EngineeringPerformance.Application.UpdatePhase.Unsupported => "Development build",
+        EngineeringPerformance.Application.UpdatePhase.Idle => "Not checked",
+        EngineeringPerformance.Application.UpdatePhase.Checking => "Checking",
+        EngineeringPerformance.Application.UpdatePhase.Current => "Current",
+        EngineeringPerformance.Application.UpdatePhase.Available => "Available",
+        EngineeringPerformance.Application.UpdatePhase.Downloading => "Downloading",
+        EngineeringPerformance.Application.UpdatePhase.ReadyToRestart => "Ready",
+        _ => Updates.Status.FailureCode ?? "Failed"
+    };
 
     private RenderFragment ThemeOption(string mode, string label) =>
         @* .segmented styles the selected child off aria-checked, so no conditional class string is needed. *@

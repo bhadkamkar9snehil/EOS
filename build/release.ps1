@@ -18,7 +18,7 @@
 
 .PARAMETER AppId
     Velopack app id used to identify this app across releases/updates. Defaults to
-    "EngineeringPerformance". Change only if you also update UpdateSettings.FeedUrl-related
+    "EngineeringPerformance". Change only if you also update UpdateSettings.RepositoryUrl-related
     tooling to match — the app id must stay consistent release-to-release or update detection breaks.
 
 .PARAMETER Configuration
@@ -72,7 +72,8 @@ if (-not $SkipTests) {
     $testProjects = @(
         (Join-Path $repoRoot "tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj"),
         (Join-Path $repoRoot "tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj"),
-        (Join-Path $repoRoot "tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj")
+        (Join-Path $repoRoot "tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj"),
+        (Join-Path $repoRoot "tests/EngineeringPerformance.DesktopHost.Tests/EngineeringPerformance.DesktopHost.Tests.csproj")
     )
     foreach ($testProject in $testProjects) {
         Write-Host "==> dotnet test $testProject"
@@ -126,5 +127,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Release $Version packed successfully. Output: $releasesDir"
-Write-Host "Next step: publish the contents of $releasesDir to wherever UpdateSettings.FeedUrl points"
-Write-Host "(a file share / GitHub Release / blob container) so installed copies can find the update."
+Write-Host "Next step: publish $releasesDir with vpk upload so installed copies can discover the update."
