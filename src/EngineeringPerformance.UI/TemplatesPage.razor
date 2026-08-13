@@ -26,7 +26,7 @@
         </div>
     </header>
 
-    <section class="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_auto_1fr]">
+    <section class="grid grid-cols-1 items-center gap-4 @@3xl:grid-cols-[1fr_auto_1fr]">
         <article class="plate p-4">
             <div class="panel-eyebrow !text-primary">01 · Team round</div>
             <div class="metric mt-1 text-metric tabular-nums">@State.Employees.Count</div>
@@ -36,7 +36,7 @@
             <button class="btn btn-primary mt-4" @onclick="GenerateAllTemplates" disabled="@(State.Busy || State.Employees.Count == 0)">Generate all review workbooks</button>
         </article>
 
-        <div class="hidden text-2xl text-muted lg:block" aria-hidden="true">→</div>
+        <div class="hidden text-2xl text-muted @@3xl:block" aria-hidden="true">→</div>
 
         <article class="plate p-4">
             <div class="panel-eyebrow">02 · Exception / reissue</div>
@@ -63,7 +63,7 @@
                 <h2 class="panel-title">Round trip</h2>
             </div>
         </div>
-        <div class="grid grid-cols-1 gap-px overflow-hidden rounded-lg bg-line-soft sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-px overflow-hidden rounded-lg bg-line-soft @@md:grid-cols-3">
             <div class="bg-surface p-3"><div class="label-instrument">Workbook</div><strong class="mt-1 block text-sm font-semibold text-ink">Self + peer review</strong></div>
             <div class="bg-surface p-3"><div class="label-instrument">Identity</div><strong class="mt-1 block text-sm font-semibold text-ink">ERP roster</strong></div>
             <div class="bg-surface p-3"><div class="label-instrument">Return</div><strong class="mt-1 block text-sm font-semibold text-ink">Data operations</strong></div>

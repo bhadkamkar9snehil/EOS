@@ -923,6 +923,23 @@
     width: 18px;
   }
 
+  /*
+    The roster grid's nine fixed tracks need ~952px before the Engineer column gets a single
+    pixel. It previously lived inside `plate overflow-hidden`, so below roughly 1230px the name
+    column was silently CLIPPED with no scroll affordance at all — unlike the other wide tables
+    here, which at least have overflow-x-auto. Declaring the track list once (rather than
+    repeating it on both the header row and every data row, where the two could drift apart)
+    and pairing it with a min-width plus a scrolling parent makes the overflow visible and
+    recoverable instead of destructive.
+  */
+  .roster-grid {
+    display: grid;
+    grid-template-columns: 5rem minmax(9rem, 1.6fr) 5.5rem 9rem 6rem 7rem 5rem 5.5rem 11rem;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 60rem;
+  }
+
   .chart-bay { position: relative; }
   .chart-bay > :where(div[id]) { height: 100%; }
   .chart-bay-sm { height: var(--size-bay-sm); }

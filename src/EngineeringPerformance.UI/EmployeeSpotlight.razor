@@ -23,7 +23,7 @@
             }
             else
             {
-                <div class="plate grid grid-cols-3 gap-2 p-3 sm:grid-cols-5">
+                <div class="plate grid grid-cols-3 gap-2 p-3 @@md:grid-cols-5">
                     @Kpi("Operational", Item.OperationalScore)
                     @Kpi("Timesheet", Item.TimesheetCompletionScore, Item.HasSummaryData)
                     @Kpi("Approval", Item.ApprovalScore, Item.HasSummaryData)
@@ -50,7 +50,7 @@
 
                     <section class="plate p-4">
                         <div class="panel-head"><div><div class="panel-eyebrow">Readout</div><h3 class="panel-title">Current numerical detail</h3></div></div>
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div class="grid grid-cols-1 gap-4 @@md:grid-cols-2">
                             <div><h4 class="label-instrument">Capacity</h4><div class="mt-1 flex flex-col gap-1">@Row("Compliance", Item.ComplianceHours, Item.HasSummaryData, "h")@Row("Entered", Item.EnteredHours, true, "h")@Row("Approved", Item.ApprovedHours, true, "h")@Row("Office", Item.OfficeHours, true, "h")</div></div>
                             <div><h4 class="label-instrument">Allocation</h4><div class="mt-1 flex flex-col gap-1">@Row("Billable", Item.BillableHours, true, "h")@Row("Non-billable", Item.NonBillableHours, true, "h")@Row("Training", Item.TrainingHours, true, "h")@Row("Detailed", Item.DetailedHours, true, "h")</div></div>
                             <div><h4 class="label-instrument">Attendance</h4><div class="mt-1 flex flex-col gap-1">@Row("Punch", Item.PunchHours, true, "h")@Row("Attendance TS", Item.AttendanceTimesheetHours, true, "h")@Row("Variance", Item.ReconciliationVariance, true, "h", true)@Row("Attendance days", Item.AttendanceDays)</div></div>

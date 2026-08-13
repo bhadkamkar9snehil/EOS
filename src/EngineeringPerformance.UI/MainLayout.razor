@@ -11,39 +11,57 @@
 
 <PageTitle>EOS — Engineering Performance</PageTitle>
 
-<div class="flex h-screen min-w-[900px] bg-canvas font-sans text-ink">
-    <aside class="chassis flex w-60 shrink-0 flex-col border-r border-chassis-deep">
+@* min-w-[900px] used to live here, which meant that below a 900px window the ENTIRE app —
+   sidebar, header and all — scrolled horizontally rather than adapting. The sidebar now
+   collapses to an icon rail instead, so the content area keeps its width down to much
+   narrower windows. *@
+<div class="flex h-screen bg-canvas font-sans text-ink">
+    <aside class="@($"chassis flex shrink-0 flex-col border-r border-chassis-deep transition-[width] duration-200 ease-settle {(_navCollapsed ? "w-14" : "w-60")}")">
         @* h-14 matches the header bar exactly (both flex items-center at the same height),
            so the seam between sidebar and header reads as one continuous frame line rather
            than two panels of different heights sitting side by side. *@
-        <div class="flex h-14 shrink-0 items-center border-b border-chassis-deep px-5" aria-label="EOS Engineering Performance Analyzer">
-            <strong class="flex items-center gap-2 font-display text-lg font-semibold tracking-wide text-primary">
-                <i aria-hidden="true" class="not-italic drop-shadow-[0_0_6px_var(--color-primary-glow)]">✦</i><span>EOS</span>
-            </strong>
+        <div class="@($"flex h-14 shrink-0 items-center border-b border-chassis-deep {(_navCollapsed ? "justify-center px-2" : "gap-2 px-4")}")" aria-label="EOS Engineering Performance Analyzer">
+            <button type="button"
+                    class="nav-icon shrink-0 rounded-md text-on-chassis-soft transition-colors duration-100 hover:bg-chassis-deep hover:text-on-chassis"
+                    title="@(_navCollapsed ? "Expand navigation" : "Collapse navigation")"
+                    aria-label="@(_navCollapsed ? "Expand navigation" : "Collapse navigation")"
+                    aria-expanded="@(!_navCollapsed)"
+                    @onclick="ToggleNav">
+                @((MarkupString)Icon.Menu)
+            </button>
+            @if (!_navCollapsed)
+            {
+                <strong class="flex items-center gap-2 font-display text-lg font-semibold tracking-wide text-primary">
+                    <i aria-hidden="true" class="not-italic drop-shadow-[0_0_6px_var(--color-primary-glow)]">✦</i><span>EOS</span>
+                </strong>
+            }
         </div>
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
-            <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Analyze</span>
+            @if (!_navCollapsed) { <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Analyze</span> }
             @NavButton("overview", "Overview", Icon.Overview)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
             @NavButton("team-comparison", "Team Comparison", Icon.Employees)
 
-            <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Manage</span>
+            @if (!_navCollapsed) { <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Manage</span> }
             @NavButton("imports", "Data Operations", Icon.Imports)
             @NavButton("employees", "Employees & Teams", Icon.Employees)
             @NavButton("templates", "Review Templates", Icon.Templates)
 
-            <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Configure</span>
+            @if (!_navCollapsed) { <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Configure</span> }
             @NavButton("scoring", "Scoring", Icon.Scoring)
             @NavButton("diagnostics", "Diagnostics", Icon.Settings)
             @NavButton("backup", "Backup & Restore", Icon.Settings)
         </nav>
         <div class="border-t border-chassis-deep px-3 py-3">
-            <button class="w-full @NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
-                <b class="nav-icon">@((MarkupString)Icon.Settings)</b><span>Settings</span>
+            <button class="w-full @NavButtonClass("settings")" title="Settings" @onclick='() => Navigation.NavigateTo("/settings")'>
+                <b class="nav-icon">@((MarkupString)Icon.Settings)</b>@if (!_navCollapsed) { <span>Settings</span> }
             </button>
-            <small class="mt-2 block px-2 text-3xs text-on-chassis-muted">Local analysis · SQLite</small>
+            @if (!_navCollapsed)
+            {
+                <small class="mt-2 block px-2 text-3xs text-on-chassis-muted">Local analysis · SQLite</small>
+            }
         </div>
     </aside>
 
@@ -143,7 +161,13 @@
             </div>
         }
 
-        <main class="@($"route-{CurrentRoute} min-w-0 flex-1 overflow-y-auto p-6")">
+        @* This is the container every page's @@-prefixed layout class resolves against. Without it
+           those container queries have no containment ancestor and never match, silently collapsing
+           every multi-column layout to one column. Pages size themselves against the space they
+           actually get here, not the viewport: the shell costs a sidebar plus padding, so a 1280px
+           window leaves pages ~992px, which meant viewport xl: breakpoints were firing ~288px early
+           and starving the very content they were meant to widen. *@
+        <main class="@($"route-{CurrentRoute} @container min-w-0 flex-1 overflow-y-auto p-4 sm:p-6")">
             @Body
         </main>
         <footer class="chassis flex justify-between border-t border-chassis-deep px-6 py-2">
@@ -170,6 +194,9 @@
 
 @code {
     private bool _searchOpen;
+    // Collapsed = a 56px icon rail. Persisted per session only; the window size that makes this
+    // worthwhile varies by user, so it stays a manual choice rather than an automatic breakpoint.
+    private bool _navCollapsed;
     private string _searchQuery = string.Empty;
 
     private static readonly string AppVersion =
@@ -367,17 +394,30 @@
         }
     }
 
+    private void ToggleNav()
+    {
+        _navCollapsed = !_navCollapsed;
+        Logger.LogDebug("Navigation rail toggled. Collapsed={Collapsed}", _navCollapsed);
+    }
+
+    // title= carries the label when collapsed, so an icon-only rail stays usable.
     private RenderFragment NavButton(string route, string label, string icon) =>
-        @<button class="@NavButtonClass(route)" @onclick="() => GoTo(route)">
-            <b class="nav-icon">@((MarkupString)icon)</b><span>@label</span>
+        @<button class="@NavButtonClass(route)" title="@label" aria-label="@label" @onclick="() => GoTo(route)">
+            <b class="nav-icon">@((MarkupString)icon)</b>@if (!_navCollapsed) { <span class="truncate">@label</span> }
         </button>;
 
     // Selected nav reads as a switch pressed *into* the chassis — recessed, brighter text —
     // rather than a highlighted rectangle with an accent rail. Depth plus the text-colour
     // contrast against unselected items is enough to mark state on its own.
-    private string NavButtonClass(string route) => CurrentRoute == route
-        ? "flex items-center gap-3 rounded-md bg-chassis-deep px-3 py-2 font-display text-sm font-semibold text-on-chassis inset-shadow-track"
-        : "flex items-center gap-3 rounded-md px-3 py-2 font-display text-sm font-medium text-on-chassis-soft transition-colors duration-100 ease-press hover:bg-chassis-deep/60 hover:text-on-chassis";
+    private string NavButtonClass(string route)
+    {
+        var shape = _navCollapsed
+            ? "flex items-center justify-center rounded-md px-0 py-2"
+            : "flex items-center gap-3 rounded-md px-3 py-2";
+        return CurrentRoute == route
+            ? $"{shape} font-display text-sm font-semibold text-on-chassis bg-chassis-deep inset-shadow-track"
+            : $"{shape} font-display text-sm font-medium text-on-chassis-soft transition-colors duration-100 ease-press hover:bg-chassis-deep/60 hover:text-on-chassis";
+    }
 
     private void GoTo(string route)
     {
@@ -403,6 +443,7 @@
         public static readonly string Templates = Svg($"<rect x=\"4.5\" y=\"3.5\" width=\"11\" height=\"13\" rx=\"1.6\" {Stroke}/><path d=\"M7 7.5h6M7 10.5h6M7 13.5h3.5\" {Stroke}/>");
         public static readonly string Reports = Svg($"<path d=\"M4.5 16V9.5M10 16V4M15.5 16v-6\" {Stroke}/>");
         public static readonly string Scoring = Svg($"<circle cx=\"10\" cy=\"10\" r=\"6.2\" {Stroke}/><circle cx=\"10\" cy=\"10\" r=\"2.6\" {Stroke}/>");
+        public static readonly string Menu = Svg($"<path d=\"M4 6h12M4 10h12M4 14h12\" {Stroke}/>");
         public static readonly string Settings = Svg($"<circle cx=\"10\" cy=\"10\" r=\"2.6\" {Stroke}/><path d=\"M10 3.6v1.8M10 14.6v1.8M16.4 10h-1.8M5.4 10H3.6M14.6 5.4l-1.3 1.3M6.7 13.3l-1.3 1.3M14.6 14.6l-1.3-1.3M6.7 6.7 5.4 5.4\" {Stroke}/>");
         public static readonly string Sun = Svg($"<circle cx=\"10\" cy=\"10\" r=\"3.3\" {Stroke}/><path d=\"M10 2.8v1.7M10 15.5v1.7M17.2 10h-1.7M4.5 10H2.8M15.1 4.9l-1.2 1.2M6.1 13.9l-1.2 1.2M15.1 15.1l-1.2-1.2M6.1 6.1l-1.2-1.2\" {Stroke}/>");
         public static readonly string Moon = Svg($"<path d=\"M16.2 12.6A6.4 6.4 0 1 1 7.4 3.8a7.2 7.2 0 0 0 8.8 8.8Z\" {Stroke}/>");

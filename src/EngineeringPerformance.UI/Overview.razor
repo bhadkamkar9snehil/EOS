@@ -150,7 +150,7 @@
         @* The aside is widened to 400px: the Attention Lens carries a per-person
            fingerprint and rhythm strip, and at 360px the name column was being
            squeezed to a couple of characters. *@
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_460px]">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]">
             <div class="plate p-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -267,7 +267,7 @@
             </aside>
         </section>
 
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-2">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
@@ -345,7 +345,7 @@
                     <h2 class="panel-title">Trend alerts</h2>
                     <span class="ml-auto text-2xs text-muted">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</span>
                 </div>
-                <ul class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
+                <ul class="mt-3 grid grid-cols-1 gap-2 @@2xl:grid-cols-2 @@5xl:grid-cols-3">
                     @foreach (var alert in VisibleAlerts)
                     {
                         <li class="@($"rounded-md border p-3 shadow-well {AlertSurface(alert.Level)}")">

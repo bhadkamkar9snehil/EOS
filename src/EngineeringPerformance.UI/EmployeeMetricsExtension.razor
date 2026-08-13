@@ -16,7 +16,7 @@
             <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/data")'>Open numerical audit →</button>
         </header>
 
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div class="grid grid-cols-2 gap-3 @@md:grid-cols-3 @@3xl:grid-cols-6">
             @Metric("Operational score", Latest.OperationalScore, "", Analytics.BandSoftClass(Analytics.ScoreBand(Latest.OperationalScore)))
             @Metric("Utilization", Latest.Utilization, "%", Latest.Utilization >= 75 ? "bg-good-soft text-good" : "bg-warning-soft text-warning")
             @Metric("Timesheet days", Latest.TimesheetFilledDays, $"/ {Latest.ExpectedTimesheetDays}", Latest.TimesheetFilledDays >= Latest.ExpectedTimesheetDays ? "bg-good-soft text-good" : "bg-warning-soft text-warning")
@@ -25,8 +25,8 @@
             @Metric("Projects", Latest.UniqueProjects, "", "bg-surface-inset text-ink-soft")
         </div>
 
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-            <section class="plate p-4 xl:col-span-7">
+        <div class="grid grid-cols-1 gap-4 @@4xl:grid-cols-12">
+            <section class="plate p-4 @@4xl:col-span-7">
                 <div class="panel-head">
                     <div>
                         <div class="panel-eyebrow">Capacity</div>
@@ -38,7 +38,7 @@
                     <div id="employee-current-hours" class="chart-bay chart-bay-md"></div>
                 </div>
             </section>
-            <section class="plate p-4 xl:col-span-5">
+            <section class="plate p-4 @@4xl:col-span-5">
                 <div class="panel-head">
                     <div>
                         <div class="panel-eyebrow">Exceptions</div>
@@ -60,7 +60,7 @@
             </div>
             <span class="label-instrument ml-auto tabular-nums">@LatestLabel</span>
         </div>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div class="grid grid-cols-1 gap-4 @@md:grid-cols-2 @@3xl:grid-cols-3 @@4xl:grid-cols-6">
             <section><h3 class="label-instrument">Scores</h3><div class="mt-1 flex flex-col gap-1">@Value("Operational", Latest.OperationalScore)@Value("Timesheet", Latest.TimesheetCompletionScore, Latest.HasSummaryData)@Value("Approval", Latest.ApprovalScore, Latest.HasSummaryData)@Value("Attendance", Latest.AttendanceDisciplineScore)</div></section>
             <section><h3 class="label-instrument">Capacity &amp; timesheets</h3><div class="mt-1 flex flex-col gap-1">@Value("Compliance hours", Latest.ComplianceHours, Latest.HasSummaryData)@Value("Entered hours", Latest.EnteredHours)@Value("Approved hours", Latest.ApprovedHours)@Value("Utilization", Latest.Utilization, Latest.HasSummaryData, "%")</div></section>
             <section><h3 class="label-instrument">Work allocation</h3><div class="mt-1 flex flex-col gap-1">@Value("Billable hours", Latest.BillableHours)@Value("Non-billable hours", Latest.NonBillableHours)@Value("Training hours", Latest.TrainingHours)@Value("Office hours", Latest.OfficeHours)</div></section>
@@ -79,7 +79,7 @@
                 </span>
                 <span class="label-instrument">Show / hide</span>
             </summary>
-            <div class="grid grid-cols-1 gap-4 border-t border-line p-4 xl:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 border-t border-line p-4 @@4xl:grid-cols-2">
                 <section>
                     <div class="panel-head"><div><div class="panel-eyebrow">Allocation</div><h2 class="panel-title">Hours history</h2></div></div>
                     <div class="well p-2"><div id="employee-hours-history" class="chart-bay chart-bay-lg"></div></div>

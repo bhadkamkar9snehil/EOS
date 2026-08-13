@@ -30,7 +30,7 @@
         </div>
     </header>
 
-    <nav class="plate grid grid-cols-1 gap-2 p-2 sm:grid-cols-3" aria-label="Data operations views">
+    <nav class="plate grid grid-cols-1 gap-2 p-2 @@md:grid-cols-3" aria-label="Data operations views">
         <button type="button" class="@WorkspaceButtonClass(Workspace.Intake)" aria-pressed="@(_workspace == Workspace.Intake)" @onclick="() => _workspace = Workspace.Intake">
             <strong>Daily import</strong><span class="badge bg-surface-inset text-muted">@State.SystemReadyCount/3</span>
         </button>
@@ -44,7 +44,7 @@
 
     @if (_workspace == Workspace.Intake)
     {
-    <section class="plate grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Import workflow">
+    <section class="plate grid grid-cols-1 gap-2 p-3 @@md:grid-cols-2 @@3xl:grid-cols-5" aria-label="Import workflow">
         @PipelineNode(1, "Period", true, State.SelectedMonth.ToString("MMM yy"))
         @PipelineNode(2, "ERP evidence", State.SystemReadyCount >= 3, $"{State.SystemReadyCount}/3")
         @PipelineNode(3, "Normalize", State.Performance.Count > 0, State.Performance.Count == 0 ? "waiting" : $"{State.Performance.Count} people")
@@ -52,7 +52,7 @@
         @PipelineNode(5, "Atlas", State.Performance.Count > 0, State.Performance.Count > 0 ? "ready" : "waiting")
     </section>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
+    <div class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1fr)_minmax(15rem,19rem)]">
         <section class="flex flex-col gap-4">
             <section class="plate p-4">
                 <div class="panel-head">
@@ -66,7 +66,7 @@
                     </div>
                 </div>
 
-                <div class="well mt-4 grid grid-cols-2 gap-3 p-3 sm:grid-cols-4" aria-label="Loaded review evidence">
+                <div class="well mt-4 grid grid-cols-2 gap-3 p-3 @@md:grid-cols-4" aria-label="Loaded review evidence">
                     <div><div class="metric text-metric-sm tabular-nums">@ReviewReviewerCount</div><div class="label-instrument mt-1">Reviewers loaded</div></div>
                     <div><div class="metric text-metric-sm tabular-nums">@State.PeerReviews.Count</div><div class="label-instrument mt-1">Feedback entries</div></div>
                     <div><div class="metric text-metric-sm tabular-nums">@ReviewSubjectCount</div><div class="label-instrument mt-1">People reviewed</div></div>

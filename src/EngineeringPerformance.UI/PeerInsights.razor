@@ -18,7 +18,7 @@
     }
     else
     {
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[1fr_1fr]">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
@@ -89,7 +89,7 @@
                     <h2 class="panel-title">Coverage and blind spots</h2>
                 </div>
             </div>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr]">
+            <div class="grid grid-cols-1 gap-4 @@2xl:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)]">
                 <div class="well p-4">
                     <div class="metric text-metric">@Analytics.Format(NetworkCompletion, "0")<span class="text-metric-sm">%</span></div>
                     <div class="track mt-2 h-1.5 overflow-hidden"><i class="block h-full rounded-full bg-petrol" style="@($"width:{CssPct(NetworkCompletion)}")"></i></div>
@@ -177,7 +177,7 @@
             }
             else
             {
-                <ul class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <ul class="grid grid-cols-1 gap-3 @@2xl:grid-cols-2 @@4xl:grid-cols-3">
                     @foreach (var c in AllComments)
                     {
                         <li class="group cursor-pointer rounded-lg border border-line-soft bg-surface-inset p-3 transition-colors duration-100 ease-press hover:bg-surface-raised" @onclick="() => OpenPortrait(c.SubjectName)" title="Open @c.SubjectName portrait">

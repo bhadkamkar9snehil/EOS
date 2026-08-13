@@ -6,8 +6,8 @@
 @implements IDisposable
 
 <section class="flex flex-col gap-6">
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section class="plate p-4 lg:col-span-2">
+    <div class="grid grid-cols-1 gap-4 @@3xl:grid-cols-2">
+        <section class="plate p-4 @@3xl:col-span-2">
             <div class="panel-head">
                 <div>
                     <div class="panel-eyebrow">Appearance</div>
@@ -18,7 +18,7 @@
 
             @* Each tile carries data-theme, so the swatches below render that theme's REAL tokens
                rather than a hand-copied preview palette that could drift from it. *@
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" role="radiogroup" aria-label="Theme">
+            <div class="grid grid-cols-2 gap-2 @@md:grid-cols-3 @@4xl:grid-cols-6" role="radiogroup" aria-label="Theme">
                 @ThemeTile("system", "System", "Follows Windows")
                 @ThemeTile("light", "Light", "Warm Atlas cream")
                 @ThemeTile("slate", "Slate", "Cool neutral light")

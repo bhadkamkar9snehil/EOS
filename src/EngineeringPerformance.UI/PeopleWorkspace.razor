@@ -25,7 +25,7 @@
 
     <details class="plate">
         <summary class="panel-title cursor-pointer p-4">Add employee or create team</summary>
-        <div class="grid grid-cols-1 gap-4 border-t border-line p-4 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 border-t border-line p-4 @@3xl:grid-cols-2">
             <EditForm Model="_newEmployee" OnValidSubmit="AddEmployeeAsync">
                 <DataAnnotationsValidator />
                 <div class="flex flex-wrap items-end gap-3">
@@ -64,7 +64,7 @@
     {
         <details class="plate">
             <summary class="cursor-pointer p-4"><span class="panel-title">Team structure</span> <span class="label-instrument ml-2 tabular-nums">@State.Teams.Count team(s)</span></summary>
-            <div class="grid grid-cols-1 gap-3 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid grid-cols-1 gap-3 border-t border-line p-4 @@md:grid-cols-2 @@3xl:grid-cols-3">
                 @foreach (var team in State.Teams)
                 {
                     <div class="group rounded-lg border border-line-soft bg-surface-inset p-3">
@@ -95,13 +95,13 @@
         </details>
     }
 
-    <div class="plate overflow-hidden">
-        <div class="chassis label-instrument grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-chassis-deep px-3 py-2 !text-on-chassis-soft">
+    <div class="plate overflow-x-auto">
+        <div class="chassis label-instrument roster-grid border-b border-chassis-deep px-3 py-2 !text-on-chassis-soft">
             <span>Code</span><span>Engineer</span><span>Level</span><span>Team</span><span>Billable</span><span>Employment</span><span title="Daily commute classification imported from the ERP roster.">Commute</span><span>Analysis</span><span>Actions</span>
         </div>
         <Virtualize TItem="EmployeeListItem" Items="_employeesSnapshot" Context="employee" ItemSize="58">
             @{ var editing = _editingEmployeeId == employee.Id; }
-            <div class="@($"group grid grid-cols-[5rem_1.6fr_5.5rem_9rem_6rem_7rem_5rem_5.5rem_11rem] items-center gap-2 border-b border-line-soft px-3 py-2 text-xs transition-colors duration-100 ease-press hover:bg-surface-inset {(employee.IsExcluded ? "opacity-50" : "")} {(editing ? "bg-primary-soft/30" : "")}")">
+            <div class="@($"group roster-grid border-b border-line-soft px-3 py-2 text-xs transition-colors duration-100 ease-press hover:bg-surface-inset {(employee.IsExcluded ? "opacity-50" : "")} {(editing ? "bg-primary-soft/30" : "")}")">
                 <div><code class="text-2xs tabular-nums text-ink-soft">@employee.EmployeeCode</code></div>
                 <div>
                     <span class="flex flex-col">

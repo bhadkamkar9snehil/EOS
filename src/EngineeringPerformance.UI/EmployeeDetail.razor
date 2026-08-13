@@ -56,7 +56,7 @@
             </div>
         </header>
 
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[1.4fr_1fr]">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
@@ -65,7 +65,7 @@
                     </div>
                     <span class="label-instrument ml-auto">Peer ratings scored separately</span>
                 </div>
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div class="grid grid-cols-2 gap-3 @@md:grid-cols-3">
                     @PortraitMetric("Timesheet completion", Latest.HasSummaryData ? Latest.TimesheetCompletionScore : null)
                     @PortraitMetric("Approval completion", Latest.HasSummaryData ? Latest.ApprovalScore : null)
                     @PortraitMetric("Attendance discipline", Latest.AttendanceDisciplineScore)
@@ -73,7 +73,7 @@
                     @PortraitMetric("Workload balance", WorkloadIndex(Latest))
                     @PortraitMetric("Reconciliation quality", ReconciliationIndex(Latest))
                 </div>
-                <div class="well mt-4 grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
+                <div class="well mt-4 grid grid-cols-2 gap-3 p-3 @@md:grid-cols-3">
                     @SourceFact("Expected days", Analytics.Format(Latest.ExpectedTimesheetDays, "0.#"))
                     @SourceFact("Filled days", Analytics.Format(Latest.TimesheetFilledDays, "0.#"))
                     @SourceFact("Entered hours", Analytics.Format(Latest.EnteredHours, "0.0"))
@@ -96,7 +96,7 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[1.4fr_1fr]">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
@@ -134,7 +134,7 @@
             </aside>
         </section>
 
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[1.4fr_1fr]">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
@@ -153,7 +153,7 @@
                 }
                 else
                 {
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
+                    <div class="grid grid-cols-1 gap-4 @@2xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
                         <div class="well p-2">
                             <div id="portrait-peer-radar" class="chart-bay chart-bay-md" aria-label="Employee peer aspect profile"></div>
                         </div>
