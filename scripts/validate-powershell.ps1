@@ -25,18 +25,25 @@ if (Test-Path $projectBootstrap) {
     $content = Get-Content $projectBootstrap -Raw
 
     if ($content -match '-ApiVersion\s+[''"]\d+\.\d+-preview\.\d+[''"]') {
-        $failures.Add('bootstrap-azure-devops-project.ps1: az devops invoke must not receive preview revision suffixes (for example 7.1-preview.3); the extension parser cannot parse them.')
+        $failures.Add('bootstrap-azure-devops-project.ps1: az devops invoke must not receive preview revision suffixes such as 7.1-preview.3.')
     }
     if ($content -match '(?i)Invoke-RestMethod') {
-        $failures.Add('bootstrap-azure-devops-project.ps1: do not bypass the authenticated Azure DevOps CLI with raw Invoke-RestMethod calls.')
+        $failures.Add('bootstrap-azure-devops-project.ps1: use the authenticated Azure DevOps CLI rather than raw Invoke-RestMethod calls.')
     }
     if ($content -match '(?i)\$Args\b') {
-        $failures.Add('bootstrap-azure-devops-project.ps1: do not use $Args as a named variable or parameter; it collides with the PowerShell automatic $args variable.')
+        $failures.Add('bootstrap-azure-devops-project.ps1: do not use $Args as a named variable or parameter; it collides with PowerShell automatic $args.')
+    }
+
+    $dashboardDescriptionMatch = [regex]::Match($content, '\$DashboardDescription\s*=\s*''([^'']*)''')
+    if (-not $dashboardDescriptionMatch.Success) {
+        $failures.Add('bootstrap-azure-devops-project.ps1: DashboardDescription must be a statically validated single-quoted literal.')
+    }
+    elseif ($dashboardDescriptionMatch.Groups[1].Value.Length -gt 128) {
+        $failures.Add("bootstrap-azure-devops-project.ps1: Azure DevOps dashboard descriptions are limited to 128 characters; found $($dashboardDescriptionMatch.Groups[1].Value.Length).")
     }
 
     $lines = Get-Content $projectBootstrap
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        # Match only an actual command invocation, never comments or explanatory text.
         if ($lines[$i] -match '^\s*(?:\$[A-Za-z_][A-Za-z0-9_]*\s*=\s*)?&\s+az\s+boards\s+work-item\s+update\b') {
             $end = [Math]::Min($i + 12, $lines.Count - 1)
             $blockLines = @($lines[$i..$end] | Where-Object { $_ -notmatch '^\s*#' })
