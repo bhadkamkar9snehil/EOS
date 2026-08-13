@@ -3,10 +3,12 @@
 @using System.Globalization
 @using EngineeringPerformance.Application
 @using EngineeringPerformance.Domain
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JS
 @inject IApplicationDatabase Database
 @inject AppState State
 @inject NavigationManager Navigation
+@inject ILogger<Overview> Logger
 @implements IAsyncDisposable
 
 <div class="flex flex-col gap-6">
@@ -433,7 +435,7 @@
         {
             _layoutLogged = true;
             var layout = await JS.InvokeAsync<string>("epaAtlas.measureOverview");
-            InteractionLog.Write("overview.layout", layout);
+            Logger.LogDebug("Overview layout measured. Layout={Layout}", layout);
         }
     }
 
