@@ -27,16 +27,16 @@ function Step([string]$Text) {
     Write-Host "`n=== $Text ===" -ForegroundColor Cyan
 }
 
-function AzJson([string[]]$Args) {
-    $raw = & az @Args --only-show-errors --output json
-    if ($LASTEXITCODE -ne 0) { throw "Azure CLI failed: az $($Args -join ' ')" }
+function AzJson([string[]]$CliArgs) {
+    $raw = & az @CliArgs --only-show-errors --output json
+    if ($LASTEXITCODE -ne 0) { throw "Azure CLI failed: az $($CliArgs -join ' ')" }
     if ([string]::IsNullOrWhiteSpace(($raw -join "`n"))) { return $null }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
 
-function AzTsv([string[]]$Args) {
-    $raw = & az @Args --only-show-errors --output tsv
-    if ($LASTEXITCODE -ne 0) { throw "Azure CLI failed: az $($Args -join ' ')" }
+function AzTsv([string[]]$CliArgs) {
+    $raw = & az @CliArgs --only-show-errors --output tsv
+    if ($LASTEXITCODE -ne 0) { throw "Azure CLI failed: az $($CliArgs -join ' ')" }
     return (($raw -join "`n").Trim())
 }
 
