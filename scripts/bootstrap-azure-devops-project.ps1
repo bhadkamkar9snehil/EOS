@@ -90,13 +90,14 @@ function Ensure-WorkItem {
         Write-Host "Reusing $Type #$($item.id): $Title"
     }
 
+    # az boards work-item update is scoped by work-item ID + organization and does not
+    # accept --project in the current azure-devops CLI extension.
     $updateRaw = & az boards work-item update `
         --id ([int]$item.id) `
         --state $State `
         --description $Description `
         --fields "System.Tags=$Tags" `
         --organization $OrganizationUrl `
-        --project $ProjectName `
         --only-show-errors `
         --output json
     if ($LASTEXITCODE -ne 0) { throw "Could not update work item '$Title'." }
