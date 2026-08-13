@@ -39,7 +39,7 @@
             @NavButton("backup", "Backup & Restore", Icon.Settings)
         </nav>
         <div class="border-t border-chassis-deep px-3 py-3">
-            <button class="@NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
+            <button class="w-full @NavButtonClass("settings")" @onclick='() => Navigation.NavigateTo("/settings")'>
                 <b class="flex h-[18px] w-[18px] items-center justify-center">@((MarkupString)Icon.Settings)</b><span>Settings</span>
             </button>
             <small class="mt-2 block px-2 text-3xs text-on-chassis-muted">Local analysis · SQLite</small>
