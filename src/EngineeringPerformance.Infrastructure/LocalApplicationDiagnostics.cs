@@ -75,52 +75,64 @@ public sealed class LocalApplicationDiagnostics(
 
         return Task.Run(() =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var outputDirectory = Path.Combine(Path.GetTempPath(), "EngineeringPerformance-Diagnostics");
-            Directory.CreateDirectory(outputDirectory);
-            var zipPath = Path.Combine(outputDirectory, $"eos-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.zip");
-
-            using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-            var cutoff = DateTime.Now.AddDays(-days);
-
-            if (Directory.Exists(paths.LogDirectory))
+            try
             {
-                foreach (var file in Directory.EnumerateFiles(paths.LogDirectory, "eos-*.log")
-                    .Where(file => File.GetLastWriteTime(file) >= cutoff)
-                    .OrderBy(file => file, StringComparer.OrdinalIgnoreCase))
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var outputDirectory = Path.Combine(Path.GetTempPath(), "EngineeringPerformance-Diagnostics");
+                Directory.CreateDirectory(outputDirectory);
+                var zipPath = Path.Combine(outputDirectory, $"eos-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss-fff}.zip");
+
+                using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+                var cutoff = DateTime.Now.AddDays(-days);
+
+                if (Directory.Exists(paths.LogDirectory))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    AddFileSnapshot(archive, file, Path.GetFileName(file));
+                    foreach (var file in Directory.EnumerateFiles(paths.LogDirectory, "eos-*.log")
+                        .Where(file => File.GetLastWriteTime(file) >= cutoff)
+                        .OrderBy(file => file, StringComparer.OrdinalIgnoreCase))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        AddFileSnapshot(archive, file, Path.GetFileName(file));
+                    }
                 }
-            }
 
-            // Preserve the previous hand-written interaction log in support bundles if an install
-            // still has one. Nothing writes to this file anymore after the unified logger ships.
-            if (File.Exists(paths.LegacyInteractionLogPath))
+                // Preserve the previous hand-written interaction log in support bundles if an install
+                // still has one. Nothing writes to this file anymore after the unified logger ships.
+                if (File.Exists(paths.LegacyInteractionLogPath))
+                {
+                    AddFileSnapshot(archive, paths.LegacyInteractionLogPath, "legacy-interaction.log");
+                }
+
+                var info = GetInfo();
+                var infoEntry = archive.CreateEntry("info.txt");
+                using (var writer = new StreamWriter(infoEntry.Open()))
+                {
+                    writer.WriteLine("EOS diagnostics bundle");
+                    writer.WriteLine($"Generated: {DateTime.Now:O}");
+                    writer.WriteLine($"App version: {info.ApplicationVersion}");
+                    writer.WriteLine($"Database path: {info.DatabasePath}");
+                    writer.WriteLine($"Database size: {info.DatabaseSize}");
+                    writer.WriteLine($"Log directory: {info.LogDirectory}");
+                    writer.WriteLine($"Machine: {Environment.MachineName}");
+                    writer.WriteLine($"OS: {Environment.OSVersion}");
+                }
+
+                logger.LogInformation(
+                    "Created diagnostics bundle {BundlePath} containing up to {Days} days of EOS logs.",
+                    zipPath,
+                    days);
+                return zipPath;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                AddFileSnapshot(archive, paths.LegacyInteractionLogPath, "legacy-interaction.log");
+                throw;
             }
-
-            var info = GetInfo();
-            var infoEntry = archive.CreateEntry("info.txt");
-            using (var writer = new StreamWriter(infoEntry.Open()))
+            catch (Exception exception)
             {
-                writer.WriteLine("EOS diagnostics bundle");
-                writer.WriteLine($"Generated: {DateTime.Now:O}");
-                writer.WriteLine($"App version: {info.ApplicationVersion}");
-                writer.WriteLine($"Database path: {info.DatabasePath}");
-                writer.WriteLine($"Database size: {info.DatabaseSize}");
-                writer.WriteLine($"Log directory: {info.LogDirectory}");
-                writer.WriteLine($"Machine: {Environment.MachineName}");
-                writer.WriteLine($"OS: {Environment.OSVersion}");
+                logger.LogError(exception, "Could not create EOS diagnostics bundle for {Days} days of logs.", days);
+                throw;
             }
-
-            logger.LogInformation(
-                "Created diagnostics bundle {BundlePath} containing up to {Days} days of EOS logs.",
-                zipPath,
-                days);
-            return zipPath;
         }, cancellationToken);
     }
 
