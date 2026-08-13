@@ -18,7 +18,7 @@
                     <span class="label-instrument"><span class="tnum">@_backups.Count</span> on disk</span>
                 </span>
             </div>
-            <p class="text-sm text-ink-soft">Database and scoring settings, saved to <code class="font-mono text-2xs">@Backups.DefaultBackupDirectory</code></p>
+            <div class="text-sm text-ink-soft"><span class="label-instrument mr-1">Folder</span><code class="font-mono text-2xs">@Backups.DefaultBackupDirectory</code></div>
             <div class="mt-4 flex gap-2">
                 <button class="btn btn-secondary" @onclick="ExportToDefaultAsync" disabled="@State.Busy">Backup now</button>
                 <button class="btn btn-secondary" @onclick="ExportToChosenFolderAsync" disabled="@State.Busy">Backup to a chosen folder…</button>
@@ -36,9 +36,10 @@
                     <span class="label-instrument">Destructive</span>
                 </span>
             </div>
-            <div class="rounded-lg border border-critical-soft bg-critical-soft p-3">
-                <div class="label-instrument !text-critical">This is destructive</div>
-                <p class="mt-1 text-xs text-ink-soft">Replaces all current data and the current database. A safety backup is taken first. Restart EOS afterward.</p>
+            <div class="flex flex-wrap gap-2 rounded-lg border border-critical-soft bg-critical-soft p-3">
+                <span class="badge bg-surface text-critical">Full replacement</span>
+                <span class="badge bg-surface text-ink-soft">Safety backup</span>
+                <span class="badge bg-surface text-warning">Restart required</span>
             </div>
             <div class="mt-4 flex gap-2">
                 <button class="btn btn-primary" @onclick="RestoreAsync" disabled="@State.Busy">Choose backup file to restore…</button>
@@ -56,7 +57,7 @@
         </div>
         @if (_backups.Count == 0)
         {
-            <p class="text-sm text-muted">No backups yet. Use "Backup now" above to create the first one.</p>
+            <p class="text-sm text-muted">No backups</p>
         }
         else
         {

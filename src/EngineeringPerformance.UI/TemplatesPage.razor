@@ -13,7 +13,6 @@
         <div>
             <div class="panel-eyebrow">Review workbooks</div>
             <h2 class="panel-title">Review workbook generation</h2>
-            <p class="mt-1 max-w-lg text-sm text-ink-soft">Employee identity and level are pre-filled from the local roster.</p>
         </div>
         <div class="flex gap-6">
             <div class="text-right">
@@ -33,7 +32,6 @@
             <div class="metric mt-1 text-metric tabular-nums">@State.Employees.Count</div>
             <div class="label-instrument mt-1">Personalized workbooks</div>
             <h2 class="panel-title mt-3">Generate the complete review set</h2>
-            <p class="mt-1 text-sm text-ink-soft">One personalized workbook per employee, written into a dated folder. This is the normal monthly review workflow.</p>
             <div class="well mt-3 px-3 py-2"><code class="text-xs text-ink-soft">Reviews_@State.SelectedMonth.ToString("yyyy_MM")\&lt;employee&gt;.xlsx</code></div>
             <button class="btn btn-primary mt-4" @onclick="GenerateAllTemplates" disabled="@(State.Busy || State.Employees.Count == 0)">Generate all review workbooks</button>
         </article>
@@ -45,7 +43,6 @@
             <div class="metric mt-1 text-metric tabular-nums">1</div>
             <div class="label-instrument mt-1">Single workbook</div>
             <h2 class="panel-title mt-3">Generate one workbook</h2>
-            <p class="mt-1 text-sm text-ink-soft">Use this when a single employee needs a fresh copy without regenerating the complete team set.</p>
             <label class="mt-3 flex flex-col gap-1 text-xs text-ink-soft">Employee
                 <select class="field px-2 py-1.5 text-sm text-ink" @bind="_templateEmployeeId">
                     <option value="">Select employee</option>
@@ -67,9 +64,9 @@
             </div>
         </div>
         <div class="grid grid-cols-1 gap-px overflow-hidden rounded-lg bg-line-soft sm:grid-cols-3">
-            <div class="bg-surface p-3"><div class="label-instrument">Workbook contract</div><strong class="mt-1 block text-sm font-semibold text-ink">Self review + peer review</strong><small class="text-2xs text-muted">Returned files are recognized by their workbook structure, not by filename alone.</small></div>
-            <div class="bg-surface p-3"><div class="label-instrument">Identity source</div><strong class="mt-1 block text-sm font-semibold text-ink">ERP roster</strong><small class="text-2xs text-muted">Employee code, name and seniority remain aligned with imported identity.</small></div>
-            <div class="bg-surface p-3"><div class="label-instrument">Return path</div><strong class="mt-1 block text-sm font-semibold text-ink">Data imports</strong><small class="text-2xs text-muted">Upload completed workbooks individually or as a ZIP package.</small></div>
+            <div class="bg-surface p-3"><div class="label-instrument">Workbook</div><strong class="mt-1 block text-sm font-semibold text-ink">Self + peer review</strong></div>
+            <div class="bg-surface p-3"><div class="label-instrument">Identity</div><strong class="mt-1 block text-sm font-semibold text-ink">ERP roster</strong></div>
+            <div class="bg-surface p-3"><div class="label-instrument">Return</div><strong class="mt-1 block text-sm font-semibold text-ink">Data operations</strong></div>
         </div>
     </section>
 </div>

@@ -13,7 +13,6 @@
         <div>
             <div class="panel-eyebrow">Evidence</div>
             <h2 class="panel-title">Evidence worksheet</h2>
-            <p class="mt-1 text-sm text-ink-soft">Source and calculated fields are kept visually separate.</p>
         </div>
         <div class="text-right">
             <div class="metric text-metric-sm tabular-nums">@FilteredRows.Count</div>
@@ -42,7 +41,6 @@
             <div>
                 <div class="panel-eyebrow">@(_tab == Tab.History ? "Transaction audit" : "Normalized evidence")</div>
                 <h2 class="panel-title">@(_tab == Tab.History ? "All import transactions" : "Imported evidence rows")</h2>
-                <p class="mt-1 text-sm text-ink-soft">@(_tab == Tab.History ? "Every accepted ERP and review upload, its reporting period, row count, file, and replacement effect." : "The normalized employee-month records produced from the accepted source files.")</p>
             </div>
             <div class="text-right"><div class="metric text-metric-sm tabular-nums">@(_tab == Tab.History ? _history.Count : FilteredRows.Count)</div><div class="label-instrument mt-1">@(_tab == Tab.History ? "Transactions" : "Engineer rows")</div></div>
         </div>
@@ -52,7 +50,6 @@
     {
         <div class="flex items-center justify-between gap-4">
             <input class="field w-64 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" aria-label="Filter engineer or code" @bind="_filter" @bind:event="oninput" placeholder="Filter engineer or code…" />
-            <span class="text-2xs text-muted">Calculated groups are marked separately; source gaps remain em dashes rather than zeros.</span>
         </div>
         @if (FilteredRows.Count == 0)
         {
@@ -110,7 +107,6 @@
             @if (Embedded)
             {
                 <div class="mb-3 flex items-center justify-between gap-4">
-                    <span class="text-2xs text-muted">Newest transaction first. Replacement imports preserve the complete audit trail.</span>
                     <label class="control flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-ink-soft">
                         <input type="checkbox" @bind="_allMonths" @bind:after="ReloadHistoryAsync" />
                         Include all fiscal months

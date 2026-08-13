@@ -14,7 +14,6 @@
                 <div class="panel-eyebrow">Portrait</div>
                 <h2 class="panel-title">No history for @Name</h2>
             </div>
-            <p class="text-sm text-ink-soft">No imported rows were found for this person across the months currently loaded.</p>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/overview")'>Back to team performance</button>
         </div>
     }
@@ -121,16 +120,16 @@
                 <ul class="flex flex-col divide-y divide-line-soft">
                     @if (Alerts.Count == 0)
                     {
-                        <li class="py-1.5"><strong class="text-sm font-semibold text-ink">No active alert rule</strong><small class="block text-2xs text-muted">No anomaly rule fired for the current month.</small></li>
+                        <li class="py-1.5"><strong class="text-sm font-semibold text-ink">No active alerts</strong></li>
                     }
                     else
                     {
                         @foreach (var alert in Alerts.Take(6)) { <li class="py-1.5"><strong class="@($"text-sm font-semibold {Level(alert.Level)}")">@alert.Headline</strong><small class="block text-2xs text-muted">@alert.Detail</small></li> }
                     }
-                    @if (Latest.MissingPunchDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Missing punch · <span class="tabular-nums">@Latest.MissingPunchDays</span> day(s)</strong><small class="block text-2xs text-muted">Attendance evidence is incomplete on those days.</small></li> }
-                    @if (Latest.LateDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Late arrival · <span class="tabular-nums">@Latest.LateDays</span> day(s)</strong><small class="block text-2xs text-muted">Punctuality contributed to attendance discipline.</small></li> }
-                    @if (Latest.EarlyDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Early departure · <span class="tabular-nums">@Latest.EarlyDays</span> day(s)</strong><small class="block text-2xs text-muted">Early departures contributed to attendance discipline.</small></li> }
-                    @if (Latest.LessDurationDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Short duration · <span class="tabular-nums">@Latest.LessDurationDays</span> day(s)</strong><small class="block text-2xs text-muted">Office duration fell below the configured threshold.</small></li> }
+                    @if (Latest.MissingPunchDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Missing punch · <span class="tabular-nums">@Latest.MissingPunchDays</span> day(s)</strong></li> }
+                    @if (Latest.LateDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Late arrival · <span class="tabular-nums">@Latest.LateDays</span> day(s)</strong></li> }
+                    @if (Latest.EarlyDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Early departure · <span class="tabular-nums">@Latest.EarlyDays</span> day(s)</strong></li> }
+                    @if (Latest.LessDurationDays > 0) { <li class="py-1.5"><strong class="text-sm font-semibold text-ink">Short duration · <span class="tabular-nums">@Latest.LessDurationDays</span> day(s)</strong></li> }
                 </ul>
             </aside>
         </section>

@@ -800,6 +800,15 @@
   .epa-grid tbody tr.row-flag-critical td:first-child { box-shadow: inset 3px 0 0 0 var(--color-critical); }
   .epa-grid tbody tr.row-selected td { background-color: var(--color-primary-soft); }
 
+  .source-register-grid {
+    display: grid;
+    min-width: 72rem;
+    grid-template-columns: minmax(12rem, 1.1fr) minmax(15rem, 1.35fr) minmax(15rem, 1.35fr) 6.5rem 8rem 6.5rem 6rem;
+    column-gap: 0.75rem;
+    align-items: center;
+  }
+  .source-register-grid > * { min-width: 0; }
+
   /*
     .card is kept as a deliberately *flatter* container than .plate, for
     genuinely independent modules. Most analytical regions should now be a

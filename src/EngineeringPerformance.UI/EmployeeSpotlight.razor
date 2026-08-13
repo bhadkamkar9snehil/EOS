@@ -19,7 +19,7 @@
         <div class="flex flex-col gap-4 p-4">
             @if (Item is null)
             {
-                <div class="plate p-6"><strong class="panel-title block">No <span class="tabular-nums">@Month.ToString("MMMM yyyy")</span> data for @Name</strong><p class="mt-1 text-sm text-ink-soft">This person has no imported rows for the selected month.</p></div>
+                <div class="plate p-6"><strong class="panel-title block">No data · <span class="tabular-nums">@Month.ToString("MMMM yyyy")</span> · @Name</strong></div>
             }
             else
             {

@@ -13,7 +13,6 @@
         <div>
             <div class="panel-eyebrow">Data operations</div>
             <h2 class="panel-title">Import and evidence workspace</h2>
-            <p class="mt-1 text-sm text-ink-soft">Import daily ERP evidence, audit every transaction, and inspect the normalized employee data for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span>.</p>
         </div>
         <div class="flex items-end gap-6">
             <div class="text-right">
@@ -33,13 +32,13 @@
 
     <nav class="plate grid grid-cols-1 gap-2 p-2 sm:grid-cols-3" aria-label="Data operations views">
         <button type="button" class="@WorkspaceButtonClass(Workspace.Intake)" aria-pressed="@(_workspace == Workspace.Intake)" @onclick="() => _workspace = Workspace.Intake">
-            <span class="flex flex-col text-left"><strong>Daily import</strong><small>Load or replace ERP and review files</small></span><span class="badge bg-surface-inset text-muted">@State.SystemReadyCount/3</span>
+            <strong>Daily import</strong><span class="badge bg-surface-inset text-muted">@State.SystemReadyCount/3</span>
         </button>
         <button type="button" class="@WorkspaceButtonClass(Workspace.History)" aria-pressed="@(_workspace == Workspace.History)" @onclick="() => _workspace = Workspace.History">
-            <span class="flex flex-col text-left"><strong>Import ledger</strong><small>Audit every upload transaction</small></span><span class="badge bg-surface-inset text-muted">@_allHistoryCount</span>
+            <strong>Import ledger</strong><span class="badge bg-surface-inset text-muted">@_allHistoryCount</span>
         </button>
         <button type="button" class="@WorkspaceButtonClass(Workspace.Rows)" aria-pressed="@(_workspace == Workspace.Rows)" @onclick="() => _workspace = Workspace.Rows">
-            <span class="flex flex-col text-left"><strong>Evidence rows</strong><small>Inspect normalized employee data</small></span><span class="badge bg-surface-inset text-muted">@State.Performance.Count</span>
+            <strong>Evidence rows</strong><span class="badge bg-surface-inset text-muted">@State.Performance.Count</span>
         </button>
     </nav>
 
@@ -60,7 +59,6 @@
                     <div>
                         <div class="panel-eyebrow">Peer review intake</div>
                         <h2 class="panel-title">Add returned employee reviews</h2>
-                        <p class="mt-1 max-w-md text-xs text-ink-soft">Select one workbook, several employee workbooks, or a ZIP. Each reviewer is updated independently; everybody else stays untouched.</p>
                     </div>
                     <div class="ml-auto flex shrink-0 gap-2">
                         <button class="btn btn-primary" @onclick="AddReviewsAsync" disabled="@State.Busy">Add review files</button>
@@ -78,7 +76,7 @@
                 @if (_confirmReplaceReviews)
                 {
                     <div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-critical-soft bg-critical-soft p-3" role="alert">
-                        <div><strong class="block text-sm font-semibold text-critical">Replace every review for @State.SelectedMonth.ToString("MMMM yyyy")?</strong><span class="text-xs text-ink-soft">The files you select next become the complete month set. This cannot affect other months.</span></div>
+                        <strong class="block text-sm font-semibold text-critical">Replace all reviews · @State.SelectedMonth.ToString("MMMM yyyy")</strong>
                         <div class="flex gap-2">
                             <button class="btn btn-danger" @onclick="ReplaceReviewsAsync" disabled="@State.Busy">Choose replacement files</button>
                             <button class="btn btn-secondary" @onclick="CancelReplaceReviews" disabled="@State.Busy">Cancel</button>
@@ -108,7 +106,6 @@
                     </div>
                 }
 
-                <footer class="mt-3 flex items-center gap-2 text-xs text-muted"><strong class="text-ink-soft">Safe merge</strong><span>Re-uploading one employee's workbook replaces only that reviewer's entries for this month.</span></footer>
             </section>
 
             <section class="plate p-4">
@@ -117,25 +114,25 @@
                         <div class="panel-eyebrow">Register</div>
                         <h2 class="panel-title">Source register</h2>
                     </div>
-                    <span class="label-instrument ml-auto">Replace an input to recalculate the month</span>
+                    <span class="label-instrument ml-auto tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span>
                 </div>
 
                 <div class="overflow-x-auto rounded-lg">
-                    <div class="chassis grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] gap-2 rounded-md px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-chassis-soft">
+                    <div class="source-register-grid chassis rounded-md px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-on-chassis-soft">
                         <span>Source</span><span>Expected export</span><span>Loaded evidence</span><span>Period</span><span>Imported</span><span>State</span><span>Action</span>
                     </div>
                     @foreach (var slot in State.Snapshot?.SourceSlots ?? [])
                     {
                         var ready = slot.Status == SourceStatus.Uploaded;
-                        <div class="group grid grid-cols-[1.6fr_1.4fr_1fr_0.8fr_0.9fr_0.7fr_0.7fr] items-center gap-2 border-b border-line-soft px-3 py-2.5 text-xs transition-colors duration-100 hover:bg-surface-inset" data-state="@(ready ? "accepted" : "open")">
+                        <div class="source-register-grid group border-b border-line-soft px-3 py-2.5 text-xs transition-colors duration-100 hover:bg-surface-inset" data-state="@(ready ? "accepted" : "open")">
                             <div class="flex items-center gap-2">
                                 <i class="well flex h-7 w-7 shrink-0 items-center justify-center !rounded-md font-display text-3xs font-semibold not-italic text-ink-soft">@Initial(slot.ReportType)</i>
-                                <span class="flex flex-col"><strong class="font-medium text-ink">@Label(slot.ReportType)</strong><small class="text-2xs text-muted">@Description(slot.ReportType)</small></span>
+                                <strong class="truncate font-medium text-ink" title="@Label(slot.ReportType)">@Label(slot.ReportType)</strong>
                             </div>
-                            <div><span class="flex flex-col"><code class="truncate text-2xs text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code><small class="text-3xs text-muted" title="@ErpSource(slot.ReportType)">@ErpSource(slot.ReportType)</small></span></div>
-                            <div><span class="truncate text-ink-soft" title="@slot.FileName">@(slot.FileName ?? "—")</span></div>
-                            <div><span class="tabular-nums text-ink-soft">@State.SelectedMonth.ToString("MMM yyyy")</span></div>
-                            <div><span class="tabular-nums text-ink-soft">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span></div>
+                            <code class="block truncate text-2xs text-ink-soft" title="@ExpectedFileName(slot.ReportType)">@ExpectedFileName(slot.ReportType)</code>
+                            <span class="block truncate text-ink-soft" title="@slot.FileName">@(slot.FileName ?? "—")</span>
+                            <span class="whitespace-nowrap tabular-nums text-ink-soft">@State.SelectedMonth.ToString("MMM yyyy")</span>
+                            <span class="whitespace-nowrap tabular-nums text-ink-soft">@(ImportedAt(slot.ReportType) is { } at ? at.ToString("dd MMM · HH:mm") : "—")</span>
                             <div class="flex items-center gap-1.5">
                                 <i class="@($"h-2 w-2 shrink-0 {(ready ? "lamp text-good" : "lamp-off")}")" aria-hidden="true"></i>
                                 <span class="@(ready ? "text-2xs text-good" : "text-2xs text-muted")">@(ready ? "Accepted" : "Open")</span>
@@ -155,13 +152,6 @@
                 </div>
             </section>
 
-            <details class="plate p-3 text-xs">
-                <summary class="cursor-pointer font-semibold text-ink-soft">Reporting-period rules</summary>
-                <div class="mt-2 flex flex-col gap-2 text-ink-soft">
-                    <p>Attendance and detailed-timesheet rows carry their own dates, so EOS files each row into its actual reporting month.</p>
-                    <p>The monthly utilization summary contains one aggregate per employee for the requested ERP period. A file spanning multiple calendar months is rejected rather than estimated. Export one summary per calendar month.</p>
-                </div>
-            </details>
         </section>
 
         <aside class="plate h-fit p-4">

@@ -55,7 +55,6 @@
             </ul>
             <div class="mt-4 rounded-lg bg-surface-inset p-3">
                 <div class="label-instrument">Recalculation scope</div>
-                <p class="mt-1 text-xs text-ink-soft">Saving recalculates every existing monthly row.</p>
             </div>
         </div>
     </div>
@@ -237,7 +236,7 @@
     private RenderFragment OperationalWeight(string label, string detail, string barClass, Func<decimal> get, Action<decimal> set) =>
         @<label class="group flex flex-col gap-1.5 py-3">
             <span class="flex items-center justify-between gap-3">
-                <span class="flex-1"><strong class="block text-sm font-medium text-ink">@label</strong><small class="text-2xs text-muted">@detail</small></span>
+                <strong class="flex-1 text-sm font-medium text-ink">@label</strong>
                 <span class="control flex items-center gap-1 px-2 py-1">
                     <input type="number" min="0" max="100" step="1" aria-label="@label weight percent" class="w-12 bg-transparent text-right text-sm tabular-nums text-ink outline-none" value="@get()" @onchange="e => set(decimal.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v, 0, 100) : 0)" /><b class="label-instrument">%</b>
                 </span>

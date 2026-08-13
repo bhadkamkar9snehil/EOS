@@ -13,7 +13,6 @@
         <div>
             <div class="panel-eyebrow">Roster</div>
             <h2 class="panel-title">People &amp; teams</h2>
-            <p class="mt-1 text-sm text-ink-soft">Read-only ERP evidence — classification controls appear while editing.</p>
         </div>
         <div class="flex items-center gap-3">
             @if (ExcludedCount > 0)
@@ -222,7 +221,7 @@
         </Virtualize>
         @if (State.Employees.Count == 0)
         {
-            <div class="p-8 text-center text-sm text-muted">No employees yet. Add one above, or import the ERP roster.</div>
+            <div class="p-8 text-center text-sm text-muted">No employees</div>
         }
     </div>
 </section>

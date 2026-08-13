@@ -10,7 +10,6 @@
         <div class="plate flex flex-col items-start gap-3 p-8">
             <div class="panel-eyebrow">Timesheets</div>
             <h2 class="panel-title">No timesheet data for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span></h2>
-            <p class="text-sm text-ink-soft">Import this month's attendance and utilization exports on the Data imports screen.</p>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>
         </div>
     }

@@ -35,13 +35,12 @@
                     <span class="label-instrument">@(_bundling ? "Building" : _bundlePath is not null ? "Ready" : "Idle")</span>
                 </span>
             </div>
-            <p class="text-xs text-ink-soft">Zips recent EOS logs and runtime information for attaching to a bug report.</p>
             <button type="button" class="btn btn-secondary mt-3" @onclick="CreateBundleAsync" disabled="@_bundling">
                 @(_bundling ? "Building bundle..." : "Create diagnostics bundle")
             </button>
             @if (!string.IsNullOrEmpty(_bundlePath))
             {
-                <p class="mt-2 text-xs text-ink-soft">Bundle saved to: <code class="font-mono text-2xs">@_bundlePath</code></p>
+                <div class="mt-2"><span class="label-instrument">Bundle</span> <code class="font-mono text-2xs">@_bundlePath</code></div>
             }
         </section>
     </div>

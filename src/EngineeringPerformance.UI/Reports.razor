@@ -21,7 +21,6 @@
             <div class="metric-delta mt-1 text-ink-soft"><span class="tnum">@State.PeerReviews.Count</span> peer entries · <span class="tnum">@AlertLines.Count</span> alert lines</div>
             <div class="label-instrument mt-1">Engineers in this workbook</div>
 
-            <p class="mt-3 text-sm text-ink-soft">Team pulse, score distribution, ranked engineers, operational evidence, alerts and peer-review context in one workbook.</p>
 
             <dl class="well mt-3 flex flex-col divide-y divide-line-soft px-3">
                 <div class="flex justify-between py-2 text-xs"><dt class="label-instrument">Peer feedback</dt><dd class="metric text-sm">@State.PeerReviews.Count</dd></div>
@@ -29,7 +28,6 @@
                 <div class="flex justify-between py-2 text-xs"><dt class="label-instrument">Excluded people</dt><dd class="metric text-sm">@State.ExcludedNames.Count</dd></div>
             </dl>
             <button class="btn btn-primary mt-4" @onclick="GenerateTeamAsync" disabled="@(State.Busy || State.Performance.Count == 0)">Generate team workbook</button>
-            @if (State.Performance.Count == 0) { <small class="mt-2 block text-2xs text-muted">Import this month's ERP evidence before generating a report.</small> }
         </article>
 
         <article class="plate p-4">
@@ -43,7 +41,6 @@
             <div class="metric text-metric">1</div>
             <div class="label-instrument mt-1">Engineer per workbook</div>
 
-            <p class="mt-3 text-sm text-ink-soft">Current score, operating components, loaded history, peer feedback and intervention evidence for one engineer.</p>
             <label class="mt-3 flex flex-col gap-1"><span class="label-instrument">Engineer</span>
                 <select class="control px-2 py-1.5 text-sm text-ink hover:control-hover active:control-pressed" @bind="_selectedEmployeeId">
                     <option value="">Select employee</option>

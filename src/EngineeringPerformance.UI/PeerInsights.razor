@@ -13,7 +13,6 @@
         <div class="plate flex flex-col items-start gap-3 p-8">
             <div class="panel-eyebrow">Peer evidence</div>
             <h2 class="panel-title">No peer feedback for <span class="tabular-nums">@State.SelectedMonth.ToString("MMMM yyyy")</span></h2>
-            <p class="text-sm text-ink-soft">Generate review workbooks, collect the completed sheets, and upload them through Data imports.</p>
             <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/templates")'>Go to review templates</button>
         </div>
     }
@@ -30,8 +29,6 @@
                         <summary class="cursor-pointer text-2xs font-semibold text-ink-soft hover:text-ink">How this rank works</summary>
                         <div class="well mt-2 max-w-sm p-3 text-xs text-ink-soft">
                             <strong class="block text-ink">Evidence target adapts to this month</strong>
-                            <p class="mt-1">An established placement currently requires <span class="tabular-nums">@Summary.EvidenceCoverageTarget</span> independent reviewers, the median coverage among reviewed employees. Thinner results stay visible as provisional signals after the established ranking.</p>
-                            <p class="mt-1">The team mean stabilizes sparse averages, but only actual reviewers narrow the uncertainty range. Model assumptions never count as extra reviews.</p>
                             <span class="mt-1 block">Team mean <b class="tabular-nums text-ink">@Analytics.Format(Summary.AverageRating, "0.00")</b></span>
                             <span class="block">Data-derived stabilizer <b class="tabular-nums text-ink">@Analytics.Format(Summary.ModelPriorStrength, "0.0")</b></span>
                         </div>
@@ -46,7 +43,7 @@
                         var standing = Summary.Standings[i];
                         if (i > 0 && Summary.Standings[i - 1].IsEstablished && !standing.IsEstablished)
                         {
-                            <li class="flex items-baseline gap-2 bg-surface-inset px-1 py-1.5 text-2xs"><span class="label-instrument">Provisional signals</span><small class="text-muted">Fewer than <span class="tabular-nums">@Summary.EvidenceCoverageTarget</span> independent reviewers</small></li>
+                            <li class="flex items-baseline gap-2 bg-surface-inset px-1 py-1.5 text-2xs"><span class="label-instrument">Provisional</span><small class="text-muted tabular-nums">&lt; @Summary.EvidenceCoverageTarget reviewers</small></li>
                         }
                         <li class="group">
                             <button type="button" class="@($"grid w-full grid-cols-[1.5rem_1fr_5rem_3rem_3rem] items-center gap-2 rounded-md px-1 py-2 text-left transition-colors duration-100 ease-press hover:bg-surface-inset {(!standing.IsEstablished ? "opacity-70" : "")} {(IsFocused(standing.Name) ? "bg-primary-soft" : "")}")" @onclick="() => SelectPerson(standing.Name)" aria-pressed="@IsFocused(standing.Name)" title="Focus @standing.Name in the relationship network">

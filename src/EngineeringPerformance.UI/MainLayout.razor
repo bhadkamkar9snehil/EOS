@@ -95,7 +95,10 @@
                             <div class="mt-1 max-h-80 overflow-y-auto">
                                 @if (SearchResults.Count == 0)
                                 {
-                                    <p class="px-2.5 py-3 text-xs text-muted">@(string.IsNullOrWhiteSpace(_searchQuery) ? "Type a name or employee code." : "No matching engineer.")</p>
+                                    @if (!string.IsNullOrWhiteSpace(_searchQuery))
+                                    {
+                                        <p class="px-2.5 py-3 text-xs text-muted">No matches</p>
+                                    }
                                 }
                                 else
                                 {
