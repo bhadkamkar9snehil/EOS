@@ -744,11 +744,18 @@
             const cs = getComputedStyle(el), rect = el.getBoundingClientRect();
             return `${selector}=${rect.width.toFixed(1)}x${rect.height.toFixed(1)};minH=${cs.minHeight};height=${cs.height};pad=${cs.paddingTop}/${cs.paddingBottom};font=${cs.fontSize};color=${cs.color};bg=${cs.backgroundColor};display=${cs.display};grid=${cs.gridTemplateColumns}`;
         };
+        const visible = selector => {
+            const el = document.querySelector(selector);
+            return !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+        };
         return [
             `viewport=${window.innerWidth}x${window.innerHeight};dpr=${window.devicePixelRatio};interface=atlas`,
-            read('.nav-rail button.selected'), read('.nav-rail button.selected b'),
-            read('.atlas-pulse'), read('.pulse-score'), read('.pulse-score-main > strong'),
-            read('.atlas-primary'), read('#atlas-field'), read('.attention-row'), read('.atlas-secondary')
+            read('.adaptive-strip'), read('.pulse-module'), read('.distribution-module'), read('.trends-module'),
+            `distribution=${visible('.distribution-detail') ? 'expanded' : 'summary'}`,
+            `trends=${visible('.trend-spark') ? 'expanded' : 'summary'}`,
+            `readiness=${visible('.readiness-detail') ? 'expanded' : 'summary'}`,
+            `alerts=${visible('.alert-meter') ? 'expanded' : 'summary'}`,
+            read('#atlas-field'), read('.attention-lens')
         ].join(' | ');
     }
 

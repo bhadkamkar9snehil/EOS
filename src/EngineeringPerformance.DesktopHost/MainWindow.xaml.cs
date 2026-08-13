@@ -38,6 +38,7 @@ public partial class MainWindow : Window
 
             var viewports = new[]
             {
+                new Viewport(1920, 1080),
                 new Viewport(1536, 1024),
                 new Viewport(1280, 800)
             };

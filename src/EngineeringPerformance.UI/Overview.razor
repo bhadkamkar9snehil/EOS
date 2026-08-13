@@ -28,45 +28,46 @@
     {
         @* One plate carrying several instruments separated by hairlines, rather than
            four independent cards floating side by side. *@
-        <section class="plate flex flex-wrap divide-y divide-line-soft lg:flex-nowrap lg:divide-x lg:divide-y-0" aria-label="Team pulse">
-            <div class="w-full min-w-0 shrink-0 p-4 lg:w-40">
+        <div class="adaptive-strip-shell">
+        <section class="plate adaptive-strip" aria-label="Team pulse">
+            <article class="adaptive-module pulse-module">
                 <div class="panel-eyebrow">Team pulse</div>
                 @* Number first, then its delta, then the descriptor — the metric is the
                    object being read, not a footnote to a label. *@
-                <div class="mt-1.5 flex items-baseline gap-2">
+                <div class="pulse-reading">
                     <strong class="metric text-metric engraved">@Analytics.Format(TeamScore, "0")</strong>
                     @if (PreviousTeamScore is not null)
                     {
                         var pulseDelta = decimal.Round(TeamScore - PreviousTeamScore.Value, 0);
-                        <span class="@($"metric-delta {(pulseDelta > 0 ? "text-good" : pulseDelta < 0 ? "text-critical" : "text-muted")}")" title="Change from @Previous.ToString("MMMM yyyy")">
+                        <span class="@($"pulse-delta metric-delta {(pulseDelta > 0 ? "text-good" : pulseDelta < 0 ? "text-critical" : "text-muted")}")" title="Change from @Previous.ToString("MMMM yyyy")">
                             @(pulseDelta > 0 ? "↑" : pulseDelta < 0 ? "↓" : "→") @Analytics.Format(Math.Abs(pulseDelta), "0")
                         </span>
                     }
                 </div>
-                <div class="label-instrument mt-1.5">Overall score</div>
-                <div class="mt-0.5 text-3xs tabular-nums text-muted">vs @Previous.ToString("MMM yyyy") · @(PreviousTeamScore is null ? "—" : Analytics.Format(PreviousTeamScore.Value, "0"))</div>
-            </div>
+                <div class="label-instrument pulse-label">Overall score</div>
+                <div class="adaptive-secondary pulse-comparison">vs @Previous.ToString("MMM yyyy") · @(PreviousTeamScore is null ? "—" : Analytics.Format(PreviousTeamScore.Value, "0"))</div>
+            </article>
 
-            <div class="w-full min-w-0 p-4 lg:flex-[2]">
+            <article class="adaptive-module distribution-module">
                 <h2 class="label-instrument">Score distribution · people</h2>
-                <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4" role="img" aria-label="@DistributionSummary">
+                <div class="distribution-detail" role="group" aria-label="@DistributionSummary">
                     @foreach (var band in ScoreBands)
                     {
                         var members = BandMembers(band);
                         @* Each band is a calibrated channel with the people seated in it as
                            lamps. The channel is recessed; the lamps sit proud of it. *@
-                        <section>
-                            <div class="flex items-baseline gap-1.5">
+                        <section class="distribution-band">
+                            <div class="distribution-band-heading">
                                 <strong class="@($"metric text-metric-sm {Analytics.BandTextClass(band.CssClass)}")">@members.Count</strong>
-                                <span class="@($"text-2xs font-medium tabular-nums {Analytics.BandTextClass(band.CssClass)}")">@band.Label</span>
+                                <span class="@($"distribution-range {Analytics.BandTextClass(band.CssClass)}")">@band.Label</span>
                             </div>
-                            <div class="label-instrument mt-0.5"><span class="tabular-nums">@BandShare(members.Count)%</span> of team</div>
-                            <div class="track relative mt-1.5 h-7 !rounded-md" aria-label="@members.Count people scoring @band.Label">
+                            <div class="adaptive-secondary distribution-share"><span class="tabular-nums">@BandShare(members.Count)%</span> of team</div>
+                            <div class="track distribution-track" aria-label="@members.Count people scoring @band.Label">
                                 @for (var i = 0; i < members.Count; i++)
                                 {
                                     var member = members[i];
                                     <button type="button"
-                                            class="@($"lamp absolute top-2 h-2.5 w-2.5 -translate-x-1/2 cursor-pointer transition-transform duration-100 ease-press hover:scale-125 {Analytics.BandTextClass(band.CssClass)} {(IsFocused(member.EmployeeName) ? "ring-2 ring-primary ring-offset-1 ring-offset-well scale-125" : "")}")"
+                                            class="@($"lamp distribution-dot {Analytics.BandTextClass(band.CssClass)} {(IsFocused(member.EmployeeName) ? "ring-2 ring-primary ring-offset-1 ring-offset-well scale-125" : "")}")"
                                             style="@BandDotStyle(members, band, i)"
                                             title="@member.EmployeeName · @Analytics.Format(member.OperationalScore)"
                                             aria-label="@member.EmployeeName score @Analytics.Format(member.OperationalScore)"
@@ -76,50 +77,77 @@
                         </section>
                     }
                 </div>
-            </div>
-
-            <div class="w-full min-w-0 p-4 lg:flex-[2]">
-                <h2 class="label-instrument">Key trends · 30 days</h2>
-                <div class="mt-2 grid grid-cols-3 gap-2.5" style="grid-auto-rows:1fr">
-                    <div class="well min-w-0 p-2.5">
-                        <div class="flex flex-wrap items-baseline justify-between gap-x-1.5"><label class="label-instrument">Attendance</label><span class="label-instrument whitespace-nowrap">@TrendCoverage(AttendanceTrend, "weeks")</span></div>
-                        <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong>@TrendChange(AttendanceTrend)</div>
-                        <div id="pulse-attendance" class="h-8"></div>
+                <div class="distribution-summary" role="img" aria-label="@DistributionSummary">
+                    <div class="distribution-stack" aria-hidden="true">
+                        @foreach (var band in ScoreBands)
+                        {
+                            var count = BandMembers(band).Count;
+                            <i class="@($"distribution-segment distribution-segment-{band.CssClass}")" style="@BandWidthStyle(count)"></i>
+                        }
                     </div>
-                    <div class="well min-w-0 p-2.5">
-                        <div class="flex flex-wrap items-baseline justify-between gap-x-1.5"><label class="label-instrument">Completion</label><span class="label-instrument whitespace-nowrap">@TrendCoverage(CompletionTrend, "weeks")</span></div>
-                        <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong>@TrendChange(CompletionTrend)</div>
-                        <div id="pulse-completion" class="h-8"></div>
-                    </div>
-                    <div class="well min-w-0 p-2.5">
-                        <div class="flex flex-wrap items-baseline justify-between gap-x-1.5"><label class="label-instrument">Utilization</label><span class="label-instrument whitespace-nowrap">Monthly</span></div>
-                        <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><small class="text-muted">Current period</small></div>
-                        <div id="pulse-utilization" class="h-8"></div>
+                    <div class="distribution-legend">
+                        @foreach (var band in ScoreBands)
+                        {
+                            var count = BandMembers(band).Count;
+                            <span><i class="@($"lamp {Analytics.BandTextClass(band.CssClass)}")"></i><b class="metric">@count</b><small>@band.Label</small></span>
+                        }
                     </div>
                 </div>
-            </div>
+            </article>
 
-            <div class="w-full min-w-0 shrink-0 p-4 lg:w-36">
+            <article class="adaptive-module trends-module">
+                <h2 class="label-instrument">Key trends · 30 days</h2>
+                <div class="trend-grid">
+                    <div class="well trend-card">
+                        <div class="trend-heading"><label class="label-instrument">Attendance</label><span class="trend-period">@TrendCoverage(AttendanceTrend, "weeks")</span></div>
+                        <div class="trend-reading"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong><span class="trend-context">@TrendChange(AttendanceTrend)</span></div>
+                        <div id="pulse-attendance" class="trend-spark"></div>
+                    </div>
+                    <div class="well trend-card">
+                        <div class="trend-heading"><label class="label-instrument">Completion</label><span class="trend-period">@TrendCoverage(CompletionTrend, "weeks")</span></div>
+                        <div class="trend-reading"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong><span class="trend-context">@TrendChange(CompletionTrend)</span></div>
+                        <div id="pulse-completion" class="trend-spark"></div>
+                    </div>
+                    <div class="well trend-card">
+                        <div class="trend-heading"><label class="label-instrument">Utilization</label><span class="trend-period">Monthly</span></div>
+                        <div class="trend-reading"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><small class="trend-context">Current</small></div>
+                        <div class="track utilization-meter" aria-label="Utilization @Analytics.Format(Average(x => x.Utilization, true), "0") percent; target @Analytics.Format(Analytics.UtilizationTarget, "0") percent">
+                            <i class="utilization-value" style="@UtilizationWidthStyle"></i>
+                            <i class="utilization-target" style="@UtilizationTargetStyle"></i>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="adaptive-module readiness-module">
                 <h2 class="label-instrument">Data readiness</h2>
-                <div class="mt-2 flex flex-col gap-1.5">
+                <div class="readiness-detail">
                     @ReadinessLight("Timesheets", IsReady(ReportType.MonthlyTimesheetSummary))
                     @ReadinessLight("Imports", IsReady(ReportType.DetailedTimesheetTransactions))
                     @ReadinessLight("Mappings", IsReady(ReportType.AttendanceLeaveUaaTimesheet))
                     @ReadinessLight("Coverage", State.ReviewsUploaded, true)
                 </div>
-            </div>
-
-            <div class="w-full min-w-0 shrink-0 p-4 lg:w-40">
-                <h2 class="label-instrument">Alert pressure</h2>
-                <div title="Alert pressure increases with the number of open analytical alerts; critical alerts carry additional weight.">
-                    <strong class="@($"mt-1 block metric text-metric-sm {(AlertPressureLabel == "High" ? "text-critical" : AlertPressureLabel == "Elevated" ? "text-serious" : AlertPressureLabel == "Watch" ? "text-warning" : "text-good")}")">@AlertPressureLabel</strong>
-                    <div class="mt-1.5 flex gap-0.5" aria-label="@Alerts.Count open analytical alerts">
-                        @for (var i = 0; i < 12; i++) { <i class="@($"h-4 w-1.5 rounded-xs {(i < AlertPressureBars ? "bg-critical" : "bg-well-deep")}")"></i> }
-                    </div>
-                    <small class="mt-1 block text-3xs text-muted">@Alerts.Count open · @Alerts.Count(x => x.Level == AlertLevel.Critical) critical</small>
+                <div class="readiness-summary" aria-label="@ReadinessSummary">
+                    <strong class="metric text-metric-sm">@ReadinessReadyCount<span class="text-muted">/4</span></strong>
+                    <span class="adaptive-secondary">ready</span>
+                    <span class="readiness-lamps" aria-hidden="true">@foreach (var ready in ReadinessStates) { <i class="@(ready ? "lamp text-good" : "lamp-off")"></i> }</span>
                 </div>
-            </div>
+            </article>
+
+            <article class="adaptive-module alerts-module">
+                <h2 class="label-instrument">Alert pressure</h2>
+                <div class="alert-reading">
+                    <strong class="@($"metric text-metric-sm {AlertPressureTextClass}")">@AlertPressureLabel</strong>
+                    <span class="alert-critical"><b class="metric">@CriticalAlertCount</b> critical</span>
+                    <div class="track alert-meter" role="img" aria-label="@Alerts.Count open alerts, @CriticalAlertCount critical">
+                        <i class="alert-open-segment" style="@NonCriticalAlertWidthStyle"></i>
+                        <i class="alert-critical-segment" style="@CriticalAlertWidthStyle"></i>
+                    </div>
+                    <small class="adaptive-secondary alert-open-count">@Alerts.Count open</small>
+                </div>
+            </article>
         </section>
+        </div>
 
         @* The aside is widened to 400px: the Attention Lens carries a per-person
            fingerprint and rhythm strip, and at 360px the name column was being
@@ -170,7 +198,7 @@
                strip onto its own line gives the identity line the width it needs, and
                the bar legend is stated once in the header instead of being crushed into
                four abbreviations sharing 88px. *@
-            <aside class="plate flex flex-col p-4">
+            <aside class="plate attention-lens flex flex-col p-4">
                 <div class="panel-head">
                     <div>
                         <div class="panel-eyebrow">Priority</div>
@@ -348,7 +376,7 @@
 </div>
 
 @code {
-    private static readonly string[] AtlasChartIds = ["pulse-attendance", "pulse-completion", "pulse-utilization", "atlas-field", "atlas-river"];
+    private static readonly string[] AtlasChartIds = ["pulse-attendance", "pulse-completion", "atlas-field", "atlas-river"];
     private string? _focusName;
     private string? _renderedSignature;
     private bool _chartsPending;
@@ -427,7 +455,6 @@
         await JS.InvokeVoidAsync("epaAtlas.registerDrilldown", _selfRef);
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-attendance", AttendanceTrend, "attendance");
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-completion", CompletionTrend, "timesheet");
-        await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-utilization", UtilizationCurrent, "operational");
 
         var previousRows = State.History
             .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
@@ -545,8 +572,6 @@
         .TakeLast(5)
         .ToArray();
 
-    private decimal?[] UtilizationCurrent => [Average(x => x.Utilization, true)];
-
     private decimal? ScoreFor(string name, DateTime month) => State.History
         .Where(x => x.Year == month.Year && x.Month == month.Month && PersonName.Matches(x.EmployeeName, name))
         .Select(x => (decimal?)x.OperationalScore).FirstOrDefault();
@@ -560,6 +585,9 @@
         .ThenBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
         .ToArray();
     private decimal BandShare(int count) => State.Performance.Count == 0 ? 0 : decimal.Round(count * 100m / State.Performance.Count, 0);
+    private string BandWidthStyle(int count) => $"width:{CssPct(BandShare(count))}";
+    private string UtilizationWidthStyle => $"width:{CssPct(Average(x => x.Utilization, true))}";
+    private string UtilizationTargetStyle => $"left:{CssPct(Analytics.UtilizationTarget)}";
 
     /// <summary>Plain inline positioning (left/top in px/%) — no CSS custom-property indirection, since
     /// no external stylesheet rule needs to consume it; Tailwind's `absolute` utility class handles
@@ -641,7 +669,27 @@
     }
 
     private bool IsReady(ReportType type) => State.Snapshot?.SourceSlots.Any(x => x.ReportType == type && x.Status == SourceStatus.Uploaded) == true;
-    private int AlertPressureBars => Math.Clamp((int)Math.Ceiling((Alerts.Count + Alerts.Count(x => x.Level == AlertLevel.Critical) * 2) / 2.0), 0, 12);
+    private bool[] ReadinessStates =>
+    [
+        IsReady(ReportType.MonthlyTimesheetSummary),
+        IsReady(ReportType.DetailedTimesheetTransactions),
+        IsReady(ReportType.AttendanceLeaveUaaTimesheet),
+        State.ReviewsUploaded
+    ];
+    private int ReadinessReadyCount => ReadinessStates.Count(x => x);
+    private string ReadinessSummary => $"{ReadinessReadyCount} of 4 evidence sources ready";
+    private int CriticalAlertCount => Alerts.Count(x => x.Level == AlertLevel.Critical);
+    private int NonCriticalAlertCount => Alerts.Count - CriticalAlertCount;
+    private decimal AlertScaleMaximum => Math.Max(25, Alerts.Count);
+    private string NonCriticalAlertWidthStyle => $"width:{CssPct(NonCriticalAlertCount * 100m / AlertScaleMaximum)}";
+    private string CriticalAlertWidthStyle => $"width:{CssPct(CriticalAlertCount * 100m / AlertScaleMaximum)}";
+    private string AlertPressureTextClass => AlertPressureLabel switch
+    {
+        "High" => "text-critical",
+        "Elevated" => "text-serious",
+        "Watch" => "text-warning",
+        _ => "text-good"
+    };
     private string AlertPressureLabel => Alerts.Count >= 14 || Alerts.Any(x => x.Level == AlertLevel.Critical) ? "High" : Alerts.Count >= 7 ? "Elevated" : Alerts.Count > 0 ? "Watch" : "Low";
 
     private IReadOnlyList<FingerprintMetric> FingerprintMetrics
@@ -702,7 +750,7 @@
     private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
     private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
     private RenderFragment ReadinessLight(string label, bool ready, bool optional = false) =>
-        @<div class="flex items-center justify-between text-xs" title="@label: @(ready ? "ready" : optional ? "optional evidence missing" : "required evidence missing")">
+        @<div class="readiness-row" title="@label: @(ready ? "ready" : optional ? "optional evidence missing" : "required evidence missing")">
             <span class="text-ink-soft">@label</span><i class="@($"h-2 w-2 {(ready ? "lamp text-good" : optional ? "lamp text-warning" : "lamp-off")}")"></i>
         </div>;
     // A single diagnostic rail — an engraved socket with the reading standing in it — plus a

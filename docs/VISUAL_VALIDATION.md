@@ -13,6 +13,7 @@ Visual work is not considered validated by code review, build success, or genera
    Capture mode uses a deterministic synthetic database and redirects its SQLite/log files beneath
    the evidence directory; it never reads or mutates the user's live application data.
 3. Capture screenshots from the actual desktop window at minimum:
+   - 1920 x 1080
    - 1536 x 1024
    - 1280 x 800
 4. Inspect screenshots for:
