@@ -50,14 +50,19 @@
             <h1 class="font-display text-xl font-semibold tracking-tight text-on-chassis">@PageTitleText</h1>
 
             <div class="flex items-center gap-2.5">
-                <div class="track flex items-center gap-1 px-1.5 py-1 text-xs">
+                @* Fixed-width month readout: "MMM yyyy" abbreviations vary slightly in glyph
+                   width (e.g. "Sep" vs "Jul"), which was making the whole pill visibly resize
+                   as you stepped through months. track-chassis (not track): the header stays
+                   dark chassis in both themes, so its recessed controls must not pull from the
+                   theme-flipping --color-well — see the utility's comment in tailwind-input.css. *@
+                <div class="track-chassis flex items-center gap-1 px-1.5 py-1 text-xs">
                     <button class="rounded-sm px-1.5 text-on-chassis-soft transition-colors duration-100 hover:bg-chassis/70 hover:text-on-chassis disabled:opacity-25" title="Previous month" aria-label="Previous month" disabled="@(!State.CanGoPrevious)" @onclick="PreviousMonthAsync">‹</button>
-                    <strong class="font-display text-sm font-semibold tabular-nums text-on-chassis">@State.SelectedMonth.ToString("MMM yyyy")</strong>
+                    <strong class="inline-block w-[4.75rem] text-center font-display text-sm font-semibold tabular-nums text-on-chassis">@State.SelectedMonth.ToString("MMM yyyy")</strong>
                     <button class="rounded-sm px-1.5 text-on-chassis-soft transition-colors duration-100 hover:bg-chassis/70 hover:text-on-chassis disabled:opacity-25" title="Next month" aria-label="Next month" disabled="@(!State.CanGoNext)" @onclick="NextMonthAsync">›</button>
                 </div>
 
                 <button type="button"
-                        class="control flex h-8 w-8 items-center justify-center !rounded-md text-ink-soft hover:control-hover active:control-pressed"
+                        class="control-chassis flex h-8 w-8 items-center justify-center !rounded-md hover:control-chassis-hover active:control-pressed"
                         title="@ThemeTooltip"
                         aria-label="@ThemeTooltip"
                         @onclick="CycleThemeAsync">
@@ -66,7 +71,7 @@
 
                 <div class="relative">
                     <button type="button"
-                            class="@($"control flex h-8 w-8 items-center justify-center !rounded-md hover:control-hover active:control-pressed {(_searchOpen ? "!bg-primary-soft text-primary" : "text-ink-soft")}")"
+                            class="@($"control-chassis flex h-8 w-8 items-center justify-center !rounded-md active:control-pressed {(_searchOpen ? "!bg-primary/25 !text-primary" : "hover:control-chassis-hover")}")"
                             title="Search engineers"
                             aria-label="Search engineers"
                             aria-expanded="@_searchOpen"
@@ -110,7 +115,7 @@
                     }
                 </div>
 
-                <div class="track flex items-center gap-2 px-2.5 py-1.5" title="System and review inputs available for the selected month">
+                <div class="track-chassis flex items-center gap-2 px-2.5 py-1.5" title="System and review inputs available for the selected month">
                     <span class="label-instrument !text-on-chassis-muted">Ready</span>
                     <span class="flex items-center gap-1" aria-label="@State.ReadyCount of 4 inputs available">
                         @for (var i = 0; i < 4; i++)

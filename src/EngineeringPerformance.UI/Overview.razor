@@ -30,7 +30,7 @@
         @* One plate carrying several instruments separated by hairlines, rather than
            four independent cards floating side by side. *@
         <section class="plate flex flex-wrap divide-y divide-line-soft lg:flex-nowrap lg:divide-x lg:divide-y-0" aria-label="Team pulse">
-            <div class="w-full shrink-0 p-4 lg:w-40">
+            <div class="w-full min-w-0 shrink-0 p-4 lg:w-40">
                 <div class="panel-eyebrow">Team pulse</div>
                 @* Number first, then its delta, then the descriptor — the metric is the
                    object being read, not a footnote to a label. *@
@@ -48,7 +48,7 @@
                 <div class="mt-0.5 text-3xs tabular-nums text-muted">vs @Previous.ToString("MMM yyyy") · @(PreviousTeamScore is null ? "—" : Analytics.Format(PreviousTeamScore.Value, "0"))</div>
             </div>
 
-            <div class="w-full p-4 lg:flex-[2]">
+            <div class="w-full min-w-0 p-4 lg:flex-[2]">
                 <h2 class="label-instrument">Score distribution · people</h2>
                 <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4" role="img" aria-label="@DistributionSummary">
                     @foreach (var band in ScoreBands)
@@ -79,20 +79,20 @@
                 </div>
             </div>
 
-            <div class="w-full p-4 lg:flex-[2]">
+            <div class="w-full min-w-0 p-4 lg:flex-[2]">
                 <h2 class="label-instrument">Key trends · 30 days</h2>
-                <div class="mt-2 grid grid-cols-3 gap-2.5">
-                    <div class="well p-2.5">
+                <div class="mt-2 grid grid-cols-3 gap-2.5" style="grid-auto-rows:1fr">
+                    <div class="well min-w-0 p-2.5">
                         <div class="flex items-center justify-between"><label class="label-instrument">Attendance</label><span class="label-instrument">@TrendCoverage(AttendanceTrend, "weeks")</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.AttendanceDisciplineScore), "0")%</strong>@TrendChange(AttendanceTrend)</div>
                         <div id="pulse-attendance" class="h-8"></div>
                     </div>
-                    <div class="well p-2.5">
+                    <div class="well min-w-0 p-2.5">
                         <div class="flex items-center justify-between"><label class="label-instrument">Completion</label><span class="label-instrument">@TrendCoverage(CompletionTrend, "weeks")</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.TimesheetCompletionScore, true), "0")%</strong>@TrendChange(CompletionTrend)</div>
                         <div id="pulse-completion" class="h-8"></div>
                     </div>
-                    <div class="well p-2.5">
+                    <div class="well min-w-0 p-2.5">
                         <div class="flex items-center justify-between"><label class="label-instrument">Utilization</label><span class="label-instrument">Monthly source</span></div>
                         <div class="mt-1 flex items-baseline gap-1.5"><strong class="metric text-metric-sm">@Analytics.Format(Average(x => x.Utilization, true), "0")%</strong><small class="text-muted">Current period</small></div>
                         <div id="pulse-utilization" class="h-8"></div>
@@ -100,7 +100,7 @@
                 </div>
             </div>
 
-            <div class="w-full shrink-0 p-4 lg:w-32">
+            <div class="w-full min-w-0 shrink-0 p-4 lg:w-36">
                 <h2 class="label-instrument">Data readiness</h2>
                 <div class="mt-2 flex flex-col gap-1.5">
                     @ReadinessLight("Timesheets", IsReady(ReportType.MonthlyTimesheetSummary))
@@ -110,7 +110,7 @@
                 </div>
             </div>
 
-            <div class="w-full shrink-0 p-4 lg:w-40">
+            <div class="w-full min-w-0 shrink-0 p-4 lg:w-40">
                 <h2 class="label-instrument">Alert pressure</h2>
                 <div title="Alert pressure increases with the number of open analytical alerts; critical alerts carry additional weight.">
                     <strong class="@($"mt-1 block metric text-metric-sm {(AlertPressureLabel == "High" ? "text-critical" : AlertPressureLabel == "Elevated" ? "text-serious" : AlertPressureLabel == "Watch" ? "text-warning" : "text-good")}")">@AlertPressureLabel</strong>
@@ -125,7 +125,7 @@
         @* The aside is widened to 400px: the Attention Lens carries a per-person
            fingerprint and rhythm strip, and at 360px the name column was being
            squeezed to a couple of characters. *@
-        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
+        <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_460px]">
             <div class="plate p-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -202,18 +202,27 @@
                                 <button type="button" class="shrink-0 text-sm text-muted opacity-0 transition-opacity duration-100 hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100" title="Open @row.Name portrait" aria-label="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
                             </div>
 
-                            <div class="mt-1.5 flex items-center gap-3 pl-[2.375rem]">
-                                <span class="flex items-end gap-1" aria-label="Completion, approval, attendance and utilization diagnostic fingerprint">
+                            @* One recessed readout bay holding both instruments, with a hairline
+                               divider between them instead of the pair floating unlabeled on the
+                               plate — the earlier version was two clusters of bare bars with
+                               nothing distinguishing what each was, or where one stopped and the
+                               other began. *@
+                            <div class="well ml-[2.375rem] mt-1.5 flex items-end gap-3 px-2.5 py-1.5">
+                                <span class="flex items-end gap-1.5" aria-label="Completion, approval, attendance and utilization diagnostic fingerprint">
                                     @MiniFingerprint("Completion", row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
                                     @MiniFingerprint("Approval", row.Item.ApprovalScore, row.Item.HasSummaryData)
                                     @MiniFingerprint("Attendance", row.Item.AttendanceDisciplineScore, true)
                                     @MiniFingerprint("Utilization", row.Item.Utilization, row.Item.HasSummaryData)
                                 </span>
-                                <span class="ml-auto flex h-4 items-end gap-[2px]" title="Weekly attendance-discipline rhythm" aria-label="Weekly attendance discipline rhythm">
-                                    @foreach (var value in WeeklyRhythm(row.Name))
-                                    {
-                                        <i class="@($"block w-1 rounded-xs {(value < 65 ? "bg-critical" : "bg-petrol")}")" style="@($"height:{CssPct(value)}")"></i>
-                                    }
+                                <span class="h-6 w-px shrink-0 self-center bg-line-soft"></span>
+                                <span class="ml-auto flex flex-col items-end gap-1">
+                                    <span class="flex h-4 items-end gap-[2px]" title="Weekly attendance-discipline rhythm" aria-label="Weekly attendance discipline rhythm">
+                                        @foreach (var value in WeeklyRhythm(row.Name))
+                                        {
+                                            <i class="@($"block w-1 rounded-xs {(value < 65 ? "bg-critical" : "bg-petrol")}")" style="@($"height:{CssPct(value)}")"></i>
+                                        }
+                                    </span>
+                                    <span class="text-[8px] font-semibold uppercase leading-none text-muted">Rhythm</span>
                                 </span>
                             </div>
                         </li>
@@ -240,7 +249,12 @@
                 </div>
             </div>
 
-            <div class="plate p-4">
+            @* The plate is a flex column so the well below can flex-1 and actually fill the
+               height the grid gives this panel (matched to Movement River's h-[300px] well)
+               instead of five thin rows sitting at the top with a slab of dead space under
+               them. Rows are spaced with justify-around rather than a fixed gap, so they
+               always occupy the full bay regardless of exactly how tall it ends up. *@
+            <div class="plate flex flex-col p-4">
                 <div class="panel-head">
                     <div>
                         <div class="panel-eyebrow">Profile</div>
@@ -253,19 +267,21 @@
                         <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-primary"></i>@(FocusItem is null ? "Team" : FocusItem.EmployeeName)</span>
                     </div>
                 </div>
-                <div class="mt-3 flex flex-col gap-3">
-                    <div class="grid grid-cols-[6rem_1fr_4rem] gap-2 text-3xs font-semibold uppercase tracking-wide text-muted"><span>Dimension</span><span>Distribution / target</span><span class="text-right">Current</span></div>
+                <div class="grid grid-cols-[7rem_1fr_4.5rem] gap-2 pl-3 text-3xs font-semibold uppercase tracking-wide text-muted">
+                    <span>Dimension</span><span>Distribution / target</span><span class="text-right">Current</span>
+                </div>
+                <div class="well mt-1.5 flex flex-1 flex-col justify-around gap-1 p-3">
                     @foreach (var metric in FingerprintMetrics)
                     {
-                        <div class="grid grid-cols-[6rem_1fr_4rem] items-center gap-2">
+                        <div class="grid grid-cols-[7rem_1fr_4.5rem] items-center gap-2">
                             <label class="text-xs font-medium text-ink-soft">@metric.Label</label>
-                            <span class="relative block h-4" title="@metric.Tooltip">
+                            <span class="relative block h-5" title="@metric.Tooltip">
                                 <i class="absolute inset-y-1.5 rounded-full bg-line" style="@QuartileStyle(metric)"></i>
                                 <i class="absolute inset-y-0 w-0.5 bg-ink-soft" style="@($"left:{CssPct(metric.Median)}")"></i>
                                 <i class="absolute inset-y-0 w-0.5 border-l-2 border-dashed border-muted" style="@($"left:{CssPct(metric.Target)}")"></i>
-                                <i class="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-primary" style="@($"left:{CssPct(metric.Value)}")"></i>
+                                <i class="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-well bg-primary" style="@($"left:{CssPct(metric.Value)}")"></i>
                             </span>
-                            <strong class="text-right text-xs font-semibold text-ink" title="Target: @metric.TargetLabel">@metric.Display</strong>
+                            <strong class="text-right text-sm font-semibold tabular-nums text-ink" title="Target: @metric.TargetLabel">@metric.Display</strong>
                         </div>
                     }
                 </div>
@@ -657,10 +673,15 @@
         @<div class="flex items-center justify-between text-xs" title="@label: @(ready ? "ready" : optional ? "optional evidence missing" : "required evidence missing")">
             <span class="text-ink-soft">@label</span><i class="@($"h-2 w-2 {(ready ? "lamp text-good" : optional ? "lamp text-warning" : "lamp-off")}")"></i>
         </div>;
-    // A single diagnostic rail: an engraved socket with the reading standing in it.
+    // A single diagnostic rail — an engraved socket with the reading standing in it — plus a
+    // one-letter caption sitting directly under it. The header states the four names once, but a
+    // reader scanning a specific row shouldn't have to look back up to decode which bar is which.
     private RenderFragment MiniFingerprint(string label, decimal value, bool available) =>
-        @<span class="track relative block h-4 w-1.5 overflow-hidden !rounded-xs" title="@label: @(available ? Analytics.Format(value,"0") + "%" : "No source")">
-            <i class="@($"absolute inset-x-0 bottom-0 rounded-xs {(!available || value < 65 ? "bg-critical" : "bg-good")}")" style="@($"height:{CssPct(available ? value : 0)}")"></i>
+        @<span class="flex flex-col items-center gap-1">
+            <span class="track relative block h-5 w-2 overflow-hidden !rounded-xs" title="@label: @(available ? Analytics.Format(value,"0") + "%" : "No source")">
+                <i class="@($"absolute inset-x-0 bottom-0 rounded-xs {(!available || value < 65 ? "bg-critical" : "bg-good")}")" style="@($"height:{CssPct(available ? value : 0)}")"></i>
+            </span>
+            <span class="text-[8px] font-semibold uppercase leading-none text-muted">@label[0]</span>
         </span>;
 
     public async ValueTask DisposeAsync()
