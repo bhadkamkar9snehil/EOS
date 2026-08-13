@@ -52,6 +52,10 @@ public static class Analytics
     public static string Initials(string name) =>
         string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
 
+    /// <summary>A 0-100 value as a clamped CSS percentage, for inline positioning/width styles.</summary>
+    public static string CssPct(decimal value) =>
+        Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
     public static string Svg(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>Average punch hours per accountable day.</summary>

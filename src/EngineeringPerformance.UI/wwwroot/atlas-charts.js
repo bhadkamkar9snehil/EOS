@@ -23,19 +23,11 @@
     });
     const orange = () => css('--color-primary', '#f26a12');
     const chartStroke = role => ({ strong: 3, focus: 2, context: 1.5, hairline: 1 }[role] || 1);
-    const rgbOf = hex => { const c = hex.replace('#', '').trim(); const f = c.length === 3 ? c.split('').map(x => x + x).join('') : c; const n = parseInt(f, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-    const srgbLinear = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
-    const relLuminance = ([r, g, b]) => .2126 * srgbLinear(r) + .7152 * srgbLinear(g) + .0722 * srgbLinear(b);
-    const contrastRatio = (hexA, hexB) => { const a = relLuminance(rgbOf(hexA)), b = relLuminance(rgbOf(hexB)); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };
-    const bestTextColor = fill => contrastRatio(fill, '#ffffff') >= contrastRatio(fill, '#101828') ? '#ffffff' : '#101828';
-    const mixHex = (hexA, hexB, t) => { const [ar, ag, ab] = rgbOf(hexA), [br, bg, bb] = rgbOf(hexB); const m = v => Math.round(v); return `rgb(${m(ar + (br - ar) * t)},${m(ag + (bg - ag) * t)},${m(ab + (bb - ab) * t)})`; };
-    const hexToRgba = (hex, alpha) => {
-        const clean = hex.replace('#', '').trim();
-        const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
-        const int = parseInt(full, 16);
-        if (Number.isNaN(int)) return `rgba(15,95,122,${alpha})`;
-        return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
-    };
+    // Colour maths lives in charts.js (loaded first — see index.html) and is shared, exactly as
+    // analytics-charts.js already shares palette()/roleColor(). Same algorithm in two files was
+    // how the two copies drifted apart in the first place.
+    const bestTextColor = fill => window.epaCharts.bestTextColor(fill);
+    const mixHex = (a, b, t) => window.epaCharts.mixHex(a, b, t);
     // Quadrant tints come from fully resolved per-theme tokens rather than a semantic
     // colour composited at low alpha. Alpha math cannot serve both themes: 5% of a hue
     // over cream reads as a clean pastel band, but the same 5% over near-black turns

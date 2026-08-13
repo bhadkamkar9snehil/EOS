@@ -96,7 +96,7 @@
             <div class="grid grid-cols-1 gap-4 @@2xl:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)]">
                 <div class="well p-4">
                     <div class="metric text-metric">@Analytics.Format(NetworkCompletion, "0")<span class="text-metric-sm">%</span></div>
-                    <div class="track mt-2 h-1.5 overflow-hidden"><i class="block h-full rounded-full bg-petrol" style="@($"width:{CssPct(NetworkCompletion)}")"></i></div>
+                    <div class="track mt-2 h-1.5 overflow-hidden"><i class="block h-full rounded-full bg-petrol" style="@($"width:{Analytics.CssPct(NetworkCompletion)}")"></i></div>
                     <div class="label-instrument mt-1">Reviewer-to-colleague links recorded</div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -158,7 +158,7 @@
                                 else
                                 {
                                     var rating = AspectValue(review);
-                                    <button type="button" class="@($"flex h-8 items-center justify-center rounded-sm text-2xs font-semibold tabular-nums {(rating >= 3.5m ? "text-white" : "text-ink")}")" style="@($"background-color:color-mix(in srgb, var(--color-heat-5) {CssPct(rating * 20m)}, var(--color-heat-1))")" title="@PairTooltip(review)" @onclick="() => OpenPortrait(subject)">@Analytics.Format(rating, "0.0")</button>
+                                    <button type="button" class="@($"flex h-8 items-center justify-center rounded-sm text-2xs font-semibold tabular-nums {(rating >= 3.5m ? "text-white" : "text-ink")}")" style="@($"background-color:color-mix(in srgb, var(--color-heat-5) {Analytics.CssPct(rating * 20m)}, var(--color-heat-1))")" title="@PairTooltip(review)" @onclick="() => OpenPortrait(subject)">@Analytics.Format(rating, "0.0")</button>
                                 }
                             }
                         }
@@ -260,11 +260,10 @@
     private string EvidenceLabel(Analytics.PeerStanding standing) => standing.IsEstablished
         ? "established signal"
         : $"provisional · {standing.ReviewsReceived}/{Summary.EvidenceCoverageTarget} coverage";
-    private string ConfidenceTrackStyle(Analytics.PeerStanding standing) => $"left:{ScorePct(standing.ConfidenceLowerBound)};width:{CssPct(Math.Abs((Math.Clamp(standing.Average,1m,5m)-1m)*25m - (Math.Clamp(standing.ConfidenceLowerBound,1m,5m)-1m)*25m))}";
-    private string CoverageBarStyle(Analytics.PeerStanding standing) => $"width:{CssPct(standing.ReviewsReceived * 100m / MaxReceived)}";
-    private static string ScorePct(decimal value) => CssPct((Math.Clamp(value, 1m, 5m) - 1m) * 25m);
+    private string ConfidenceTrackStyle(Analytics.PeerStanding standing) => $"left:{ScorePct(standing.ConfidenceLowerBound)};width:{Analytics.CssPct(Math.Abs((Math.Clamp(standing.Average,1m,5m)-1m)*25m - (Math.Clamp(standing.ConfidenceLowerBound,1m,5m)-1m)*25m))}";
+    private string CoverageBarStyle(Analytics.PeerStanding standing) => $"width:{Analytics.CssPct(standing.ReviewsReceived * 100m / MaxReceived)}";
+    private static string ScorePct(decimal value) => Analytics.CssPct((Math.Clamp(value, 1m, 5m) - 1m) * 25m);
     private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
-    private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
     private RenderFragment Diagnostic(string label, string value, string detail) =>
         @<div class="well p-3"><strong class="metric block text-metric-sm">@value</strong><small class="metric-delta block text-muted">@detail</small><span class="label-instrument mt-1 block">@label</span></div>;
 

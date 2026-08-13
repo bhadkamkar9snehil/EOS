@@ -279,27 +279,26 @@
     private decimal TeamPeerAverage(Func<PeerReviewItem, decimal> selector) { var values = State.PeerReviews.Select(selector).Where(x => x > 0).ToArray(); return values.Length == 0 ? 0 : decimal.Round(values.Average(), 2); }
     private static decimal WorkloadIndex(MonthlyPerformanceItem item) => Analytics.WorkloadCeiling <= 0 ? 0 : Math.Clamp(item.Workload() * 100m / Analytics.WorkloadCeiling, 0, 100);
     private static decimal ReconciliationIndex(MonthlyPerformanceItem item) => Math.Clamp(100m - Math.Abs(item.ReconciliationVariance) * 2m, 0, 100);
-    private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
     private static string Signed(decimal value) => value > 0 ? $"+{Analytics.Format(value)}" : Analytics.Format(value);
     private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "text-critical", AlertLevel.Serious => "text-serious", _ => "text-warning" };
 
     private RenderFragment PortraitMetric(string label, decimal? value) =>
         @<div class="group">
             <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="metric text-sm">@(value is null ? "—" : Analytics.Format(value.Value, "0") + "%")</b></label>
-            <span class="track mt-1.5 block h-1.5"><i class="block h-full rounded-full bg-petrol" style="@($"width:{CssPct(value ?? 0)}")"></i></span>
+            <span class="track mt-1.5 block h-1.5"><i class="block h-full rounded-full bg-petrol" style="@($"width:{Analytics.CssPct(value ?? 0)}")"></i></span>
         </div>;
     private RenderFragment PortraitHours(string label, decimal value, decimal total) =>
         @<div class="group">
             <label class="flex items-center justify-between text-xs"><span class="text-ink-soft">@label</span><b class="metric text-sm">@Analytics.Format(value, "0.0") h</b></label>
-            <span class="track mt-1.5 block h-1.5"><i class="block h-full rounded-full bg-chart-1" style="@($"width:{CssPct(total <= 0 ? 0 : value * 100m / total)}")"></i></span>
+            <span class="track mt-1.5 block h-1.5"><i class="block h-full rounded-full bg-chart-1" style="@($"width:{Analytics.CssPct(total <= 0 ? 0 : value * 100m / total)}")"></i></span>
         </div>;
     private RenderFragment SourceFact(string label, string value) => @<span class="flex flex-col"><b class="metric text-sm">@value</b><small class="label-instrument mt-1">@label</small></span>;
     private RenderFragment PeerAspect(string label, decimal value, decimal team) =>
         @<div class="group">
             <span class="flex items-baseline justify-between"><strong class="text-xs font-medium text-ink-soft">@label</strong><small class="text-3xs tabular-nums text-muted">@Analytics.Format(value, "0.00") employee · @Analytics.Format(team, "0.00") team</small></span>
             <span class="track relative mt-1.5 block h-1.5">
-                <i class="absolute inset-y-0 left-0 rounded-full bg-chart-2" style="@($"width:{CssPct(value * 20m)}")"></i>
-                <i class="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 bg-ink-soft opacity-70 transition-opacity duration-150 group-hover:opacity-100" title="Team average" style="@($"left:{CssPct(team * 20m)}")"></i>
+                <i class="absolute inset-y-0 left-0 rounded-full bg-chart-2" style="@($"width:{Analytics.CssPct(value * 20m)}")"></i>
+                <i class="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 bg-ink-soft opacity-70 transition-opacity duration-150 group-hover:opacity-100" title="Team average" style="@($"left:{Analytics.CssPct(team * 20m)}")"></i>
             </span>
         </div>;
 

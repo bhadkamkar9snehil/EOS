@@ -60,13 +60,13 @@
             <div class="grid grid-cols-5 gap-1.5" role="group" aria-label="Log level filter">
                 @foreach (var level in LogLevels)
                 {
-                    <button type="button" class="@LogFilterClass(level)" aria-pressed="@(_levelFilter == level)" @onclick="() => _levelFilter = level">
+                    <button type="button" class="@LogFilterClass(level)" aria-pressed="@(_levelFilter == level)" @onclick="() => SetLevelFilter(level)">
                         <span class="flex items-center gap-1.5"><i class="@LogFilterDotClass(level)"></i>@level</span>
                         <strong class="tabular-nums text-ink">@LevelCount(level)</strong>
                     </button>
                 }
             </div>
-            <input class="field ml-auto w-72 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" @bind="_logSearch" @bind:event="oninput" placeholder="Search source or message…" aria-label="Search today's log" />
+            <input class="field ml-auto w-72 px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted" @bind="LogSearch" @bind:event="oninput" placeholder="Search source or message…" aria-label="Search today's log" />
             <button type="button" class="btn btn-secondary" @onclick="RefreshTailAsync">Refresh</button>
         </div>
 
@@ -74,14 +74,13 @@
             <div class="sticky top-0 z-10 grid grid-cols-[5.5rem_3.5rem_15rem_minmax(24rem,1fr)] gap-3 rounded-sm bg-chassis px-3 py-2 label-instrument !text-on-chassis-soft">
                 <span>Time</span><span>Level</span><span>Source</span><span>Message</span>
             </div>
-            @if (FilteredLogRows.Count == 0)
+            @if (FilteredLogRows.Length == 0)
             {
                 <p class="empty-slot">No log entries match the current filters.</p>
             }
             else
             {
-                @foreach (var row in FilteredLogRows)
-                {
+                <Virtualize Items="@FilteredLogRows" Context="row" ItemSize="38">
                     <details class="group border-b border-line-soft last:border-0">
                         <summary class="grid cursor-pointer list-none grid-cols-[5.5rem_3.5rem_15rem_minmax(24rem,1fr)] items-start gap-3 px-3 py-2 text-xs hover:bg-surface-inset">
                             <time class="font-mono text-2xs tabular-nums text-muted" title="@row.Timestamp">@row.Time</time>
@@ -91,7 +90,7 @@
                         </summary>
                         <pre class="mx-3 mb-2 overflow-x-auto whitespace-pre-wrap rounded-sm bg-well-deep p-3 font-mono text-2xs leading-relaxed text-ink-soft">@row.Raw</pre>
                     </details>
-                }
+                </Virtualize>
             }
         </div>
     </div>
@@ -109,6 +108,13 @@
     private IReadOnlyList<LogRow> _logRows = [];
     private string _levelFilter = "All";
     private string _logSearch = string.Empty;
+
+    private void SetLevelFilter(string level) { _levelFilter = level; InvalidateLogFilter(); }
+    private string LogSearch
+    {
+        get => _logSearch;
+        set { _logSearch = value; InvalidateLogFilter(); }
+    }
     private string? _bundlePath;
     private bool _bundling;
 
@@ -133,14 +139,21 @@
         LoadInfo();
         _logTail = await ApplicationDiagnostics.ReadRecentLogAsync(MaxTailLines);
         _logRows = ParseLog(_logTail);
+        InvalidateLogFilter();
     }
 
     private static readonly string[] LogLevels = ["All", "ERR", "WRN", "INF", "DBG"];
-    private IReadOnlyList<LogRow> FilteredLogRows => _logRows
+    // Cached rather than recomputed per access: this is read three times per render, and the
+    // search box binds oninput, so the full Where/Where/Reverse/ToArray pipeline previously ran
+    // on every keystroke and reallocated the array each time.
+    private LogRow[]? _filteredLogRows;
+    private LogRow[] FilteredLogRows => _filteredLogRows ??= _logRows
         .Where(x => _levelFilter == "All" || x.Level == _levelFilter)
         .Where(x => string.IsNullOrWhiteSpace(_logSearch) || x.Source.Contains(_logSearch, StringComparison.OrdinalIgnoreCase) || x.Message.Contains(_logSearch, StringComparison.OrdinalIgnoreCase) || x.Raw.Contains(_logSearch, StringComparison.OrdinalIgnoreCase))
         .Reverse()
         .ToArray();
+
+    private void InvalidateLogFilter() => _filteredLogRows = null;
 
     private int LevelCount(string level) => level == "All" ? _logRows.Count : _logRows.Count(x => x.Level == level);
     private string LogFilterClass(string level) => $"flex min-w-[4.75rem] items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors {(_levelFilter == level ? "border-primary bg-primary-soft text-primary shadow-control" : "border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-surface-inset")}";

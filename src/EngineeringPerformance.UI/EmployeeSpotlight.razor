@@ -6,7 +6,7 @@
 <div class="fixed inset-0 z-50 flex justify-end bg-ink/40 transition-opacity duration-300 ease-settle" @onclick="Close">
     <aside class="glass flex h-full w-full max-w-2xl flex-col overflow-y-auto !rounded-none transition-transform duration-300 ease-settle" role="dialog" aria-modal="true" aria-label="@($"Spotlight for {Name}")" @onclick:stopPropagation="true">
         <header class="flex items-center gap-3 border-b border-line p-4">
-            <span class="well flex h-10 w-10 shrink-0 items-center justify-center !rounded-full font-display text-sm font-semibold text-ink-soft">@Initials(Name)</span>
+            <span class="well flex h-10 w-10 shrink-0 items-center justify-center !rounded-full font-display text-sm font-semibold text-ink-soft">@Analytics.Initials(Name)</span>
             <div class="min-w-0 flex-1">
                 <div class="panel-eyebrow">Spotlight</div>
                 <h2 class="panel-title truncate">@Name</h2>
@@ -170,5 +170,4 @@
     private static string Level(AlertLevel level) => level switch { AlertLevel.Critical => "critical", AlertLevel.Serious => "serious", _ => "warning" };
     private static string LevelBg(AlertLevel level) => level switch { AlertLevel.Critical => "bg-critical-soft text-critical", AlertLevel.Serious => "bg-serious-soft text-serious", _ => "bg-warning-soft text-warning" };
     private static string LevelIcon(AlertLevel level) => level switch { AlertLevel.Critical => "▲", AlertLevel.Serious => "◆", _ => "●" };
-    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
 }

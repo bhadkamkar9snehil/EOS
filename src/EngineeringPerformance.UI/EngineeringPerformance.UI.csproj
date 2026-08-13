@@ -14,7 +14,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="10.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <!-- Matches Infrastructure's version; these had drifted (10.0.7 here vs 10.0.10 there), which
+         leaves NuGet silently unifying to the higher one at restore rather than it being stated. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>

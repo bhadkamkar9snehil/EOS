@@ -10,15 +10,15 @@
          theme.js's resolve() (including mapping "system" through prefers-color-scheme) because
          theme.js itself is deferred and therefore runs too late to prevent the flash. -->
     <script>(function(){try{var t=['light','slate','dark','midnight','contrast'],m=localStorage.getItem('epa-theme')||'system';document.documentElement.dataset.theme=m==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):(t.indexOf(m)>=0?m:'light');}catch(e){}})();</script>
-    <link rel="stylesheet" href="_content/EngineeringPerformance.UI/tailwind.css?v=4" />
+    <link rel="stylesheet" href="_content/EngineeringPerformance.UI/tailwind.css?v=5" />
     <!-- echarts.min.js (1.1MB) is lazy-loaded via echarts-loader.js only on chart-rendering routes.
          Confirmed atlas-charts.js's chart set only touches the `echarts` global lazily inside draw
          functions, never at parse time, so this still holds. -->
     <script src="_content/EngineeringPerformance.UI/theme.js?v=2" defer></script>
     <script src="_content/EngineeringPerformance.UI/echarts-loader.js?v=1" defer></script>
-    <script src="_content/EngineeringPerformance.UI/charts.js?v=6" defer></script>
-    <script src="_content/EngineeringPerformance.UI/analytics-charts.js?v=4" defer></script>
-    <script src="_content/EngineeringPerformance.UI/atlas-charts.js?v=25" defer></script>
+    <script src="_content/EngineeringPerformance.UI/charts.js?v=7" defer></script>
+    <script src="_content/EngineeringPerformance.UI/analytics-charts.js?v=7" defer></script>
+    <script src="_content/EngineeringPerformance.UI/atlas-charts.js?v=26" defer></script>
 </head>
 <body class="bg-canvas font-sans text-ink">
     <div id="app">

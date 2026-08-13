@@ -1,5 +1,6 @@
 @page "/timesheets"
 @using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
 @inject AppState State
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -65,7 +66,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid timesheet-ledger-grid" RowClass="@RowSeverityClass">
+                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid timesheet-ledger-grid" RowClass="@RowSeverityClass" Pagination="@_ledgerPage">
                     <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
                         <span class="flex flex-col"><strong class="font-medium text-ink">@context.Name</strong>@if (!string.IsNullOrWhiteSpace(context.TeamName)){<small class="text-2xs text-muted">@context.TeamName</small>}</span>
                     </TemplateColumn>
@@ -123,6 +124,7 @@
                         <span class="tabular-nums text-ink">@(context.IsNonBillable ? "n/a" : context.CapacityUtilization <= 0 ? "—" : Analytics.Format(context.CapacityUtilization) + "%")</span>
                     </TemplateColumn>
                 </QuickGrid>
+                <Paginator State="@_ledgerPage" />
             </div>
 
             @if (FilteredRows.Count == 0)
@@ -172,6 +174,9 @@
     private static readonly GridSort<Analytics.ComplianceRow> _sortByBillable = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.BillableHours);
     private static readonly GridSort<Analytics.ComplianceRow> _sortByCapacity = GridSort<Analytics.ComplianceRow>.ByDescending(x => x.CapacityUtilization);
 
+    // Paginated: the ledger renders 8+ TemplateColumns per row for the whole roster, and the
+    // filter box binds oninput, so every keystroke re-rendered the entire grid.
+    private readonly PaginationState _ledgerPage = new() { ItemsPerPage = 25 };
     private string _filter = string.Empty;
     private IReadOnlyList<Analytics.ComplianceRow> _rows = [];
     private IReadOnlyList<Analytics.ComplianceRow>? _filterCache;
@@ -211,7 +216,7 @@
     };
 
     private TimesheetFilingRow? FilingFor(string employeeName) =>
-        FilingRows.FirstOrDefault(x => string.Equals(x.EmployeeName.Trim(), employeeName.Trim(), StringComparison.OrdinalIgnoreCase));
+        FilingRows.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, employeeName));
 
     private static string? RowSeverityClass(Analytics.ComplianceRow row) =>
         row.ExpectedDays > 0 && row.FilledDays == 0 ? "row-flag-critical"

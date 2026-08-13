@@ -177,10 +177,23 @@
         registerThemeUpdater(id, applyTheme);
     }
 
-    const rgb = hex => [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
-    const linear = v => v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);
-    const contrast = (a,b) => {const la=rgb(a).map(linear),lb=rgb(b).map(linear),x=.2126*la[0]+.7152*la[1]+.0722*la[2],y=.2126*lb[0]+.7152*lb[1]+.0722*lb[2];return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
-    const onFill = fill => contrast(fill,'#FFFFFF')>=contrast(fill,'#101828')?'#FFFFFF':'#101828';
+    // WCAG 2.x relative luminance / contrast, defined ONCE here and exported for atlas-charts.js,
+    // which used to carry a second copy of the same algorithm. The previous version here parsed
+    // hex by hard-coded offsets 1/3/5, so a 3-digit token like #abc — or any rgb()/oklch() value
+    // getComputedStyle can legitimately return — produced NaN and silently forced white text.
+    const rgbOf = hex => {
+        const c = String(hex).replace('#','').trim();
+        const f = c.length === 3 ? c.split('').map(x => x + x).join('') : c;
+        const n = parseInt(f, 16);
+        return Number.isNaN(n) ? [0,0,0] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    };
+    const srgbLinear = v => { v /= 255; return v <= .04045 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4); };
+    const relLuminance = ([r,g,b]) => .2126*srgbLinear(r) + .7152*srgbLinear(g) + .0722*srgbLinear(b);
+    const contrastRatio = (a,b) => { const x=relLuminance(rgbOf(a)), y=relLuminance(rgbOf(b)); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+    const bestTextColor = fill => contrastRatio(fill,'#ffffff') >= contrastRatio(fill,'#101828') ? '#ffffff' : '#101828';
+    const mixHex = (a,b,t) => { const [ar,ag,ab]=rgbOf(a), [br,bg,bb]=rgbOf(b), r=v=>Math.round(v);
+        return `rgb(${r(ar+(br-ar)*t)},${r(ag+(bg-ag)*t)},${r(ab+(bb-ab)*t)})`; };
+    const onFill = bestTextColor;
     const heatFill = (value,p) => p.heatScale[Math.max(0,Math.min(p.heatScale.length-1,Math.floor((Math.max(0,Math.min(100,Number(value)))/100)*p.heatScale.length)))] || p.heatScale[0];
     const buildHeatData = (xCategories,yCategories,cells,p) => {
         const source = new Map(cells.map(c=>[`${c.x}:${c.y}`,c]));
@@ -236,5 +249,5 @@
         registerThemeUpdater(id,applyTheme);
     }
 
-    window.epaCharts={ensure,dispose,gauge,radar,scatter,trend,multiline,heatmap,network,bars,verticalBars,registerDrilldown,registerThemeUpdater,refreshTheme,roleColor,palette};
+    window.epaCharts={bestTextColor,contrastRatio,mixHex,ensure,dispose,gauge,radar,scatter,trend,multiline,heatmap,network,bars,verticalBars,registerDrilldown,registerThemeUpdater,refreshTheme,roleColor,palette};
 })();

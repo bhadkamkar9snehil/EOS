@@ -220,7 +220,7 @@
                         <li class="@($"group cursor-pointer rounded-md px-1.5 py-1.5 transition-colors duration-100 ease-press hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : string.Empty)}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
                             <div class="grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_4.75rem] items-center gap-x-2">
                                 <span class="label-instrument text-center tabular-nums">@(i + 1)</span>
-                                <span class="well flex h-7 w-7 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Initials(row.Name)</span>
+                                <span class="well flex h-7 w-7 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Analytics.Initials(row.Name)</span>
                                 <span class="flex min-w-0 flex-col">
                                     <strong class="truncate text-sm font-medium text-ink">@row.Name</strong>
                                     <small class="truncate text-2xs text-muted">@EmployeeContext(row.Name)</small>
@@ -258,7 +258,7 @@
                                     <span class="flex h-4 items-end gap-[2px]" title="Weekly attendance-discipline rhythm" aria-label="Weekly attendance discipline rhythm">
                                         @foreach (var value in WeeklyRhythm(row.Name))
                                         {
-                                            <i class="@($"block w-1 rounded-xs {(value < 65 ? "bg-critical" : "bg-petrol")}")" style="@($"height:{CssPct(value)}")"></i>
+                                            <i class="@($"block w-1 rounded-xs {(value < 65 ? "bg-critical" : "bg-petrol")}")" style="@($"height:{Analytics.CssPct(value)}")"></i>
                                         }
                                     </span>
                                     <span class="label-micro">Rhythm</span>
@@ -318,9 +318,9 @@
                             <label class="text-xs font-medium text-ink-soft">@metric.Label</label>
                             <span class="relative block h-5" title="@metric.Tooltip">
                                 <i class="absolute inset-y-1.5 rounded-full bg-line" style="@QuartileStyle(metric)"></i>
-                                <i class="absolute inset-y-0 w-0.5 bg-ink-soft" style="@($"left:{CssPct(metric.Median)}")"></i>
-                                <i class="absolute inset-y-0 w-0.5 border-l-2 border-dashed border-muted" style="@($"left:{CssPct(metric.Target)}")"></i>
-                                <i class="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-well bg-primary" style="@($"left:{CssPct(metric.Value)}")"></i>
+                                <i class="absolute inset-y-0 w-0.5 bg-ink-soft" style="@($"left:{Analytics.CssPct(metric.Median)}")"></i>
+                                <i class="absolute inset-y-0 w-0.5 border-l-2 border-dashed border-muted" style="@($"left:{Analytics.CssPct(metric.Target)}")"></i>
+                                <i class="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-well bg-primary" style="@($"left:{Analytics.CssPct(metric.Value)}")"></i>
                             </span>
                             <strong class="text-right text-sm font-semibold tabular-nums text-ink" title="Target: @metric.TargetLabel">@metric.Display</strong>
                         </div>
@@ -588,9 +588,9 @@
         .ThenBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
         .ToArray();
     private decimal BandShare(int count) => State.Performance.Count == 0 ? 0 : decimal.Round(count * 100m / State.Performance.Count, 0);
-    private string BandWidthStyle(int count) => $"width:{CssPct(BandShare(count))}";
-    private string UtilizationWidthStyle => $"width:{CssPct(Average(x => x.Utilization, true))}";
-    private string UtilizationTargetStyle => $"left:{CssPct(Analytics.UtilizationTarget)}";
+    private string BandWidthStyle(int count) => $"width:{Analytics.CssPct(BandShare(count))}";
+    private string UtilizationWidthStyle => $"width:{Analytics.CssPct(Average(x => x.Utilization, true))}";
+    private string UtilizationTargetStyle => $"left:{Analytics.CssPct(Analytics.UtilizationTarget)}";
 
     /// <summary>Plain inline positioning (left/top in px/%) — no CSS custom-property indirection, since
     /// no external stylesheet rule needs to consume it; Tailwind's `absolute` utility class handles
@@ -634,7 +634,7 @@
         }
 
         var lane = lanes[index];
-        return $"left:{CssPct(positions[index])};top:{4 + lane * 8}px";
+        return $"left:{Analytics.CssPct(positions[index])};top:{4 + lane * 8}px";
     }
     private static decimal BandPosition(MonthlyPerformanceItem item, ScoreBand band)
     {
@@ -684,8 +684,8 @@
     private int CriticalAlertCount => Alerts.Count(x => x.Level == AlertLevel.Critical);
     private int NonCriticalAlertCount => Alerts.Count - CriticalAlertCount;
     private decimal AlertScaleMaximum => Math.Max(25, Alerts.Count);
-    private string NonCriticalAlertWidthStyle => $"width:{CssPct(NonCriticalAlertCount * 100m / AlertScaleMaximum)}";
-    private string CriticalAlertWidthStyle => $"width:{CssPct(CriticalAlertCount * 100m / AlertScaleMaximum)}";
+    private string NonCriticalAlertWidthStyle => $"width:{Analytics.CssPct(NonCriticalAlertCount * 100m / AlertScaleMaximum)}";
+    private string CriticalAlertWidthStyle => $"width:{Analytics.CssPct(CriticalAlertCount * 100m / AlertScaleMaximum)}";
     private string AlertPressureTextClass => AlertPressureLabel switch
     {
         "High" => "text-critical",
@@ -720,7 +720,7 @@
         return new FingerprintMetric(label, Math.Clamp(value,0,100), Percentile(safe,.5m), Percentile(safe,.25m), Percentile(safe,.75m), display(value), Math.Clamp(target,0,100), targetLabel, $"{label}: {display(value)} · target {targetLabel}");
     }
 
-    private static string QuartileStyle(FingerprintMetric metric) => $"left:{CssPct(metric.Q1)};width:{CssPct(metric.Q3 - metric.Q1)}";
+    private static string QuartileStyle(FingerprintMetric metric) => $"left:{Analytics.CssPct(metric.Q1)};width:{Analytics.CssPct(metric.Q3 - metric.Q1)}";
 
     private static decimal WorkloadIndex(MonthlyPerformanceItem item) => Analytics.WorkloadCeiling <= 0 ? 0 : Math.Clamp(item.Workload() * 100m / Analytics.WorkloadCeiling, 0, 100);
     private static decimal Median(IEnumerable<decimal> source) => Percentile(source.ToArray(), .5m);
@@ -750,8 +750,6 @@
     {
         if (args.Key is "Enter" or " ") Focus(name);
     }
-    private static string CssPct(decimal value) => Math.Clamp(value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
-    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
     private RenderFragment ReadinessLight(string label, bool ready, bool optional = false) =>
         @<div class="readiness-row" title="@label: @(ready ? "ready" : optional ? "optional evidence missing" : "required evidence missing")">
             <span class="text-ink-soft">@label</span><i class="@($"h-2 w-2 {(ready ? "lamp text-good" : optional ? "lamp text-warning" : "lamp-off")}")"></i>
@@ -762,7 +760,7 @@
     private RenderFragment MiniFingerprint(string label, decimal value, bool available) =>
         @<span class="flex flex-col items-center gap-1">
             <span class="track relative block h-5 w-2 overflow-hidden !rounded-xs" title="@label: @(available ? Analytics.Format(value,"0") + "%" : "No source")">
-                <i class="@($"absolute inset-x-0 bottom-0 rounded-xs {(!available || value < 65 ? "bg-critical" : "bg-good")}")" style="@($"height:{CssPct(available ? value : 0)}")"></i>
+                <i class="@($"absolute inset-x-0 bottom-0 rounded-xs {(!available || value < 65 ? "bg-critical" : "bg-good")}")" style="@($"height:{Analytics.CssPct(available ? value : 0)}")"></i>
             </span>
             <span class="label-micro">@label[0]</span>
         </span>;
