@@ -39,12 +39,17 @@
 */
 
 /*
-  Attribute-based dark variant (rather than Tailwind's media-query-only default)
-  so an explicit user choice ([data-theme="dark"], set by wwwroot/theme.js) can
-  override the OS preference. "System" mode sets no attribute and falls through
-  to the prefers-color-scheme block below.
+  Attribute-based dark variant (rather than Tailwind's media-query-only default).
+  wwwroot/theme.js always resolves the user's choice — including "system" — to a
+  concrete theme name on the root element, so this never has to consult
+  prefers-color-scheme itself. Any dark-ish theme must be listed here so the rare
+  genuine `dark:` utility still fires for it; the palettes themselves need no such
+  registration, since they simply redefine the same --color-* tokens.
 */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant dark (&:where(
+  [data-theme="dark"], [data-theme="dark"] *,
+  [data-theme="midnight"], [data-theme="midnight"] *
+));
 
 /*
   "static" (not a bare @theme block) is required: Tailwind v4 otherwise
@@ -246,116 +251,30 @@
   bevel, and shadows deepen considerably — because a dark material reflects
   less and occludes more.
 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) { color-scheme: dark; }
-}
-:root[data-theme="dark"] { color-scheme: dark; }
+/*
+  Each theme is exactly ONE block. "System" is resolved to a concrete theme name by
+  wwwroot/theme.js (which also listens for OS changes), so there is no
+  prefers-color-scheme duplicate of any palette to keep in sync — that duplication
+  previously meant ~100 lines of dark tokens maintained twice, and it would have
+  multiplied with every theme added here.
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --color-canvas: #12151a;
-    --color-chassis: #1b2129;
-    --color-chassis-deep: #141920;
-    --color-surface: #212831;
-    --color-surface-raised: #262e38;
-    --color-surface-inset: #1b222a;
-    --color-well: #151b22;
-    --color-well-deep: #10151b;
-    --color-surface-dark: #141920;
-    --color-glass: #212831e6;
+  Adding a theme = copy one block, change the values, add the name to theme.js's
+  Themes list. Every utility and every chart follows automatically, because the UI
+  reads utilities generated from these names and the chart JS reads the very same
+  custom properties via getComputedStyle.
+*/
+/* color-scheme is a document-level concern (native scrollbars, form controls), so unlike the
+   palettes below it stays pinned to :root. */
+:root[data-theme="dark"], :root[data-theme="midnight"] { color-scheme: dark; }
+:root[data-theme="light"], :root[data-theme="slate"], :root[data-theme="contrast"] { color-scheme: light; }
 
-    --color-ink: #eef1f5;
-    --color-ink-soft: #b9c1cc;
-    --color-muted: #7d8794;
-    --color-on-dark: #eef1f5;
-    --color-on-dark-soft: #a8b0bb;
-    --color-on-chassis: #eef1f5;
-    --color-on-chassis-soft: #a8b0bb;
-    --color-on-chassis-muted: #6f7a87;
+/* The palette blocks below are deliberately NOT :root-scoped. Any element carrying data-theme
+   gets that theme's tokens, which is what lets the Settings theme picker render a live swatch of
+   each theme using the real values (<span data-theme="midnight" class="bg-canvas">) instead of a
+   hand-copied preview palette that could silently drift from the real one. */
 
-    --color-line: #333c47;
-    --color-line-soft: #2a323b;
-    --color-bevel: #ffffff14;
-    --color-groove: #00000059;
-
-    --color-primary: #ff7d28;
-    --color-primary-soft: #4a2810;
-    --color-primary-glow: #ff7d2866;
-    --color-vermilion: #ff6a55;
-    --color-petrol: #3aa6cc;
-
-    --color-good: #4cc47a;
-    --color-good-soft: #14301f;
-    --color-warning: #d7a52f;
-    --color-warning-soft: #322710;
-    --color-serious: #ee9553;
-    --color-serious-soft: #362010;
-    --color-critical: #f2604f;
-    --color-critical-soft: #3a1a15;
-
-    --color-info: #6b9ade;
-    --color-info-soft: #16243a;
-    --color-missing: #5d6673;
-
-    --color-chart-1: #3aa6cc;
-    --color-chart-2: #6b9ade;
-    --color-chart-3: #a08ce6;
-    --color-chart-4: #d489bd;
-    --color-chart-5: #49b2b9;
-    --color-chart-6: #8b95a3;
-    --color-chart-7: #74a6d4;
-    --color-chart-8: #a294cf;
-
-    --color-heat-1: #1a2433;
-    --color-heat-2: #26406b;
-    --color-heat-3: #3c67a8;
-    --color-heat-4: #6b9ade;
-    --color-heat-5: #b3cdf2;
-
-    --color-zone-underused: #171d27;
-    --color-zone-overloaded: #241a19;
-    --color-zone-inconsistent: #22200f;
-    --color-zone-balanced: #15211a;
-
-    --shadow-plate:
-      inset 0 1px 0 0 var(--color-bevel),
-      0 1px 2px 0 #00000073,
-      0 4px 10px -3px #00000080,
-      0 12px 22px -10px #0000008c;
-    --shadow-plate-lifted:
-      inset 0 1px 0 0 #ffffff1f,
-      0 2px 4px 0 #00000080,
-      0 10px 18px -4px #0000008c,
-      0 22px 36px -14px #00000099;
-    --shadow-control:
-      inset 0 1px 0 0 #ffffff1a,
-      0 1px 2px 0 #00000080,
-      0 2px 5px -1px #0000008c;
-    --shadow-control-hover:
-      inset 0 1px 0 0 #ffffff26,
-      0 2px 3px 0 #00000086,
-      0 6px 12px -2px #00000099;
-    --shadow-pressed:
-      inset 0 2px 5px 0 #00000099,
-      inset 0 1px 2px 0 #00000080;
-    --shadow-floating:
-      0 2px 6px -1px #00000099,
-      0 14px 28px -6px #000000a6,
-      0 32px 56px -16px #000000b3;
-
-    --inset-shadow-well:
-      inset 0 2px 6px 0 #00000099,
-      inset 0 1px 2px 0 #00000080,
-      inset 0 -1px 0 0 #ffffff0f;
-    --inset-shadow-track:
-      inset 0 1px 3px 0 #000000a6,
-      inset 0 -1px 0 0 #ffffff0d;
-    --inset-shadow-engraved:
-      inset 0 1px 1px 0 #00000080;
-  }
-}
-
-:root[data-theme="dark"] {
+/* ---------------------------------------------------------------- DARK (graphite) */
+[data-theme="dark"] {
   --color-canvas: #12151a;
   --color-chassis: #1b2129;
   --color-chassis-deep: #141920;
@@ -455,6 +374,265 @@
     inset 0 -1px 0 0 #ffffff0d;
   --inset-shadow-engraved:
     inset 0 1px 1px 0 #00000080;
+}
+
+/* --------------------------------------------------------- SLATE (cool light)
+   A neutral-cool alternative to the default warm Atlas cream, for people who
+   read the ivory/beige as "aged paper". Same light source and same depth
+   grammar — only the hues shift from warm to cool. */
+[data-theme="slate"] {
+  --color-canvas: #eef1f5;
+  --color-chassis: #2b3440;
+  --color-chassis-deep: #212936;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-inset: #f2f5f9;
+  --color-well: #e4e9f0;
+  --color-well-deep: #d7dee8;
+  --color-surface-dark: #2b3440;
+  --color-glass: #ffffffd9;
+
+  --color-ink: #16191d;
+  --color-ink-soft: #48505b;
+  --color-muted: #7c8695;
+  --color-on-dark: #eef1f5;
+  --color-on-dark-soft: #aab4c2;
+  --color-on-chassis: #eef1f5;
+  --color-on-chassis-soft: #aab4c2;
+  --color-on-chassis-muted: #78828f;
+
+  --color-line: #d3dae3;
+  --color-line-soft: #e2e7ee;
+  --color-bevel: #fffffff2;
+  --color-groove: #00000014;
+
+  --color-primary: #e35d0c;
+  --color-primary-soft: #fbe0cd;
+  --color-primary-glow: #e35d0c59;
+  --color-vermilion: #d92d20;
+  --color-petrol: #0f5f7a;
+
+  --color-good: #2f8f52;
+  --color-good-soft: #d9edde;
+  --color-warning: #9a7800;
+  --color-warning-soft: #f2ead0;
+  --color-serious: #c96c14;
+  --color-serious-soft: #f8e3cf;
+  --color-critical: #c9271b;
+  --color-critical-soft: #f8dcd8;
+
+  --color-info: #2f5fa3;
+  --color-info-soft: #dbe5f4;
+  --color-missing: #a5aeba;
+
+  --color-chart-1: #0f5f7a;
+  --color-chart-2: #33619f;
+  --color-chart-3: #6f5bb0;
+  --color-chart-4: #96588a;
+  --color-chart-5: #2f8189;
+  --color-chart-6: #5f6b7a;
+  --color-chart-7: #4a7fa8;
+  --color-chart-8: #7d6ea3;
+
+  --color-heat-1: #e2e9f4;
+  --color-heat-2: #a8c0de;
+  --color-heat-3: #6389c0;
+  --color-heat-4: #35619f;
+  --color-heat-5: #1f3f6e;
+
+  --color-zone-underused: #e8eef7;
+  --color-zone-overloaded: #f8ebe8;
+  --color-zone-inconsistent: #f4f0e2;
+  --color-zone-balanced: #e7f2ea;
+}
+
+/* ------------------------------------------------------- MIDNIGHT (true black)
+   For OLED panels and dim rooms: the canvas goes to near-pure black so unlit
+   pixels actually switch off, and the plates lift off it with more separation
+   than in `dark`. Highlights are thinner still and shadows are near-opaque,
+   because a black material reflects almost nothing back. */
+[data-theme="midnight"] {
+  --color-canvas: #05070a;
+  --color-chassis: #0c1016;
+  --color-chassis-deep: #05070a;
+  --color-surface: #141a22;
+  --color-surface-raised: #1a212b;
+  --color-surface-inset: #10161d;
+  --color-well: #0a0e14;
+  --color-well-deep: #05070a;
+  --color-surface-dark: #05070a;
+  --color-glass: #141a22e6;
+
+  --color-ink: #eef3f9;
+  --color-ink-soft: #b3becb;
+  --color-muted: #74808f;
+  --color-on-dark: #eef3f9;
+  --color-on-dark-soft: #a3aebd;
+  --color-on-chassis: #eef3f9;
+  --color-on-chassis-soft: #a3aebd;
+  --color-on-chassis-muted: #66717f;
+
+  --color-line: #232c38;
+  --color-line-soft: #1a212b;
+  --color-bevel: #ffffff0f;
+  --color-groove: #00000073;
+
+  --color-primary: #ff8a3d;
+  --color-primary-soft: #43230c;
+  --color-primary-glow: #ff8a3d73;
+  --color-vermilion: #ff6a55;
+  --color-petrol: #3fb3db;
+
+  --color-good: #52d585;
+  --color-good-soft: #0d2b1a;
+  --color-warning: #e3b23c;
+  --color-warning-soft: #2c2209;
+  --color-serious: #f7a05e;
+  --color-serious-soft: #331d0d;
+  --color-critical: #ff6a58;
+  --color-critical-soft: #341210;
+
+  --color-info: #74a6ea;
+  --color-info-soft: #101f33;
+  --color-missing: #545e6b;
+
+  --color-chart-1: #3fb3db;
+  --color-chart-2: #74a6ea;
+  --color-chart-3: #ab97f2;
+  --color-chart-4: #e094c8;
+  --color-chart-5: #50c0c7;
+  --color-chart-6: #94a0ae;
+  --color-chart-7: #7fb2e0;
+  --color-chart-8: #ad9fdb;
+
+  --color-heat-1: #101a2b;
+  --color-heat-2: #1e3760;
+  --color-heat-3: #35619f;
+  --color-heat-4: #74a6ea;
+  --color-heat-5: #bcd6f7;
+
+  --color-zone-underused: #0b1220;
+  --color-zone-overloaded: #1d100e;
+  --color-zone-inconsistent: #1b1708;
+  --color-zone-balanced: #08170f;
+
+  --shadow-plate:
+    inset 0 1px 0 0 var(--color-bevel),
+    0 1px 2px 0 #000000cc,
+    0 4px 12px -3px #000000e6,
+    0 14px 26px -10px #000000f2;
+  --shadow-plate-lifted:
+    inset 0 1px 0 0 #ffffff1a,
+    0 2px 4px 0 #000000e6,
+    0 12px 22px -4px #000000f2,
+    0 26px 44px -14px #000000;
+  --shadow-control:
+    inset 0 1px 0 0 #ffffff14,
+    0 1px 2px 0 #000000e6,
+    0 3px 6px -1px #000000f2;
+  --shadow-control-hover:
+    inset 0 1px 0 0 #ffffff26,
+    0 2px 4px 0 #000000e6,
+    0 7px 14px -2px #000000f2;
+  --shadow-pressed:
+    inset 0 2px 6px 0 #000000f2,
+    inset 0 1px 2px 0 #000000cc;
+  --shadow-floating:
+    0 2px 8px -1px #000000e6,
+    0 16px 32px -6px #000000f2,
+    0 36px 64px -16px #000000;
+
+  --inset-shadow-well:
+    inset 0 2px 7px 0 #000000e6,
+    inset 0 1px 2px 0 #000000cc,
+    inset 0 -1px 0 0 #ffffff0a;
+  --inset-shadow-track:
+    inset 0 1px 4px 0 #000000f2,
+    inset 0 -1px 0 0 #ffffff0a;
+  --inset-shadow-engraved:
+    inset 0 1px 1px 0 #000000cc;
+}
+
+/* --------------------------------------------------- CONTRAST (high contrast)
+   An accessibility theme, not a style: pure white ground, near-black ink, and
+   saturated semantic colours chosen to clear WCAG AAA (7:1) against their own
+   background. Depth is deliberately reduced to hard 1px rules rather than soft
+   shadows, because low-vision users lose gradient edges before line edges. */
+[data-theme="contrast"] {
+  --color-canvas: #ffffff;
+  --color-chassis: #000000;
+  --color-chassis-deep: #000000;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-inset: #f2f2f2;
+  --color-well: #f2f2f2;
+  --color-well-deep: #e5e5e5;
+  --color-surface-dark: #000000;
+  --color-glass: #ffffff;
+
+  --color-ink: #000000;
+  --color-ink-soft: #1c1c1c;
+  --color-muted: #4a4a4a;
+  --color-on-dark: #ffffff;
+  --color-on-dark-soft: #e8e8e8;
+  --color-on-chassis: #ffffff;
+  --color-on-chassis-soft: #e8e8e8;
+  --color-on-chassis-muted: #c4c4c4;
+
+  --color-line: #000000;
+  --color-line-soft: #6b6b6b;
+  --color-bevel: #ffffff;
+  --color-groove: #00000040;
+
+  --color-primary: #b03c00;
+  --color-primary-soft: #ffe2d0;
+  --color-primary-glow: #b03c0080;
+  --color-vermilion: #a30d00;
+  --color-petrol: #00506b;
+
+  --color-good: #006428;
+  --color-good-soft: #d4f0dd;
+  --color-warning: #6b4d00;
+  --color-warning-soft: #f7ecc9;
+  --color-serious: #8a3d00;
+  --color-serious-soft: #ffe0cc;
+  --color-critical: #a30d00;
+  --color-critical-soft: #ffdcd8;
+
+  --color-info: #00429e;
+  --color-info-soft: #d8e4fb;
+  --color-missing: #6b6b6b;
+
+  --color-chart-1: #00506b;
+  --color-chart-2: #00429e;
+  --color-chart-3: #5a2d91;
+  --color-chart-4: #8a1f6b;
+  --color-chart-5: #005f63;
+  --color-chart-6: #3d3d3d;
+  --color-chart-7: #1f5f8a;
+  --color-chart-8: #6b3d8a;
+
+  --color-heat-1: #eaf0fa;
+  --color-heat-2: #9db7dd;
+  --color-heat-3: #4f7ab5;
+  --color-heat-4: #00429e;
+  --color-heat-5: #001f4d;
+
+  --color-zone-underused: #eef2fb;
+  --color-zone-overloaded: #fdecea;
+  --color-zone-inconsistent: #faf3dd;
+  --color-zone-balanced: #e6f4ea;
+
+  /* Hard edges instead of soft depth — see the note above. */
+  --shadow-plate: 0 0 0 1px var(--color-line);
+  --shadow-plate-lifted: 0 0 0 2px var(--color-line);
+  --shadow-control: 0 0 0 1px var(--color-line);
+  --shadow-control-hover: 0 0 0 2px var(--color-line);
+  --shadow-pressed: inset 0 0 0 2px var(--color-line);
+  --shadow-floating: 0 0 0 2px var(--color-line), 0 8px 24px -8px #00000059;
+  --inset-shadow-well: inset 0 0 0 1px var(--color-line-soft);
+  --inset-shadow-track: inset 0 0 0 1px var(--color-line-soft);
+  --inset-shadow-engraved: inset 0 0 0 1px var(--color-line-soft);
 }
 
 /*

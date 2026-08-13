@@ -195,25 +195,29 @@
         }
     }
 
+    // The header stays a quick 3-way toggle over the everyday choices. Midnight and Contrast are
+    // deliberate opt-ins chosen from Settings, not stops on a cycle everyone has to click past —
+    // but selecting one here is still reflected, and one click returns to System.
     private Task CycleThemeAsync() => State.SetThemeAsync(JS, State.ThemeMode switch
     {
+        "system" => "light",
         "light" => "dark",
         "dark" => "system",
-        _ => "light"
+        _ => "system"
     });
 
     private string ThemeTooltip => State.ThemeMode switch
     {
         "light" => "Theme: Light — click for Dark",
         "dark" => "Theme: Dark — click for System",
-        _ => "Theme: System — click for Light"
+        "system" => "Theme: System — click for Light",
+        var other => $"Theme: {char.ToUpperInvariant(other[0])}{other[1..]} — click for System"
     };
 
     private string ThemeIcon => State.ThemeMode switch
     {
-        "light" => Icon.Sun,
-        "dark" => Icon.Moon,
-        _ => Icon.System
+        "system" => Icon.System,
+        _ => State.IsDarkTheme ? Icon.Moon : Icon.Sun
     };
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);

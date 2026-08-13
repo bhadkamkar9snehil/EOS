@@ -7,18 +7,24 @@
 
 <section class="flex flex-col gap-6">
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section class="plate p-4">
+        <section class="plate p-4 lg:col-span-2">
             <div class="panel-head">
                 <div>
                     <div class="panel-eyebrow">Appearance</div>
                     <h2 class="panel-title">Theme</h2>
                 </div>
-                <span class="label-instrument ml-auto">"System" follows Windows</span>
+                <span class="label-instrument ml-auto">Charts and tables follow the theme</span>
             </div>
-            <div class="segmented" role="radiogroup" aria-label="Theme">
-                @ThemeOption("light", "Light")
-                @ThemeOption("dark", "Dark")
-                @ThemeOption("system", "System")
+
+            @* Each tile carries data-theme, so the swatches below render that theme's REAL tokens
+               rather than a hand-copied preview palette that could drift from it. *@
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" role="radiogroup" aria-label="Theme">
+                @ThemeTile("system", "System", "Follows Windows")
+                @ThemeTile("light", "Light", "Warm Atlas cream")
+                @ThemeTile("slate", "Slate", "Cool neutral light")
+                @ThemeTile("dark", "Dark", "Graphite")
+                @ThemeTile("midnight", "Midnight", "True black / OLED")
+                @ThemeTile("contrast", "Contrast", "High contrast, WCAG AAA")
             </div>
         </section>
 
@@ -137,11 +143,24 @@
         _ => Updates.Status.FailureCode ?? "Failed"
     };
 
-    private RenderFragment ThemeOption(string mode, string label) =>
-        @* .segmented styles the selected child off aria-checked, so no conditional class string is needed. *@
-        @<button type="button" role="radio" aria-checked="@(State.ThemeMode == mode ? "true" : "false")" aria-label="@label theme"
-                 class="@($"cursor-pointer hover:text-ink {(State.ThemeMode == mode ? "is-active" : string.Empty)}")"
+    // "system" has no palette of its own, so its swatch previews whichever concrete theme the OS
+    // currently resolves to — otherwise it would be the one tile showing nothing.
+    private string PreviewTheme(string mode) => mode == "system" ? State.ResolvedTheme : mode;
+
+    private RenderFragment ThemeTile(string mode, string label, string description) =>
+        @<button type="button" role="radio" aria-checked="@(State.ThemeMode == mode ? "true" : "false")"
+                 aria-label="@label theme — @description" title="@description"
+                 class="@($"control flex flex-col gap-2 p-2 text-left hover:control-hover active:control-pressed {(State.ThemeMode == mode ? "!border-primary ring-2 ring-primary/40" : string.Empty)}")"
                  @onclick="() => State.SetThemeAsync(JS, mode)">
-            @label
+            <span data-theme="@PreviewTheme(mode)" class="flex h-9 overflow-hidden rounded-sm border border-line bg-canvas" aria-hidden="true">
+                <span class="w-1/4 bg-chassis"></span>
+                <span class="w-1/4 bg-surface"></span>
+                <span class="w-1/4 bg-well"></span>
+                <span class="w-1/4 bg-primary"></span>
+            </span>
+            <span class="flex min-w-0 flex-col">
+                <strong class="truncate text-xs font-semibold text-ink">@label</strong>
+                <small class="truncate text-3xs text-muted">@description</small>
+            </span>
         </button>;
 }

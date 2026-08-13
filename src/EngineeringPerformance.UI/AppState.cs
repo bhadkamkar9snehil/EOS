@@ -46,21 +46,31 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
 
     public string? SpotlightName { get; set; }
 
-    /// <summary>"light", "dark", or "system" — mirrors the [data-theme] attribute wwwroot/theme.js
-    /// manages, kept here purely so every component showing the current choice (header toggle,
-    /// Settings picker) re-renders together via <see cref="Changed"/>.</summary>
+    /// <summary>The user's stored choice: "system" or any theme name in wwwroot/theme.js's list
+    /// ("light", "slate", "dark", "midnight", "contrast"). Kept here purely so every component
+    /// showing the current choice (header toggle, Settings picker) re-renders together via
+    /// <see cref="Changed"/>; theme.js owns the actual [data-theme] attribute.</summary>
     public string ThemeMode { get; private set; } = "system";
+
+    /// <summary>The concrete theme actually applied. Differs from <see cref="ThemeMode"/> only when
+    /// the choice is "system", which theme.js resolves through the OS preference. Components need
+    /// this to answer "is the UI currently dark?" — a question ThemeMode alone can't answer.</summary>
+    public string ResolvedTheme { get; private set; } = "light";
+
+    public bool IsDarkTheme => ResolvedTheme is "dark" or "midnight";
 
     public async Task SetThemeAsync(IJSRuntime js, string mode)
     {
         await js.InvokeVoidAsync("epaTheme.set", mode);
         ThemeMode = mode;
+        ResolvedTheme = await js.InvokeAsync<string>("epaTheme.resolved");
         Changed?.Invoke();
     }
 
     public async Task LoadThemeAsync(IJSRuntime js)
     {
         ThemeMode = await js.InvokeAsync<string>("epaTheme.get");
+        ResolvedTheme = await js.InvokeAsync<string>("epaTheme.resolved");
         Changed?.Invoke();
     }
 
