@@ -2,21 +2,15 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 # Idempotent EOS Azure DevOps project bootstrap.
-# GitHub stays canonical for source/PRs; Azure DevOps owns Boards, Pipelines,
-# test history, dashboards and Azure operations.
+# GitHub remains canonical for source code and pull requests.
+# Azure DevOps owns Boards, Windows CI/test history, dashboards, and Azure VM operations.
 
 $OrganizationUrl = 'https://dev.azure.com/apexasnehil'
 $ProjectName = 'EOS'
 $DashboardName = 'EOS Engineering'
 $CiPipelineName = 'EOS CI'
 $ControlPipelineName = 'EOS VM Control'
-$GitHubRepositoryUrl = 'https://github.com/bhadkamkar9snehil/EOS'
 $GitHubPr12Url = 'https://github.com/bhadkamkar9snehil/EOS/pull/12'
-$AzureVmUrl = 'https://portal.azure.com/#view/HubsExtension/BrowseResource/resourceType/Microsoft.Compute%2FvirtualMachines'
-
-# IMPORTANT: az devops invoke has a parser bug: its apiVersionToFloat() removes
-# "-preview" but cannot parse revision suffixes such as 7.1-preview.3.
-# Use 7.1-preview here. Azure DevOps REST accepts the generic preview stage.
 $StableApiVersion = '7.1'
 $PreviewApiVersion = '7.1-preview'
 
@@ -31,6 +25,18 @@ function Convert-JsonText($Value) {
     return ($text | ConvertFrom-Json)
 }
 
+function Get-OptionalProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory)][string]$Name
+    )
+
+    if ($null -eq $Object) { return $null }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    return $property.Value
+}
+
 function Invoke-AdoCli {
     param(
         [Parameter(Mandatory)][string]$Area,
@@ -42,8 +48,10 @@ function Invoke-AdoCli {
         [object]$Body = $null
     )
 
+    # azure-devops CLI's az devops invoke parser accepts major.minor and
+    # major.minor-preview, but not revision suffixes such as 7.1-preview.3.
     if ($ApiVersion -notmatch '^\d+\.\d+(-preview)?$') {
-        throw "Unsupported az devops invoke API version '$ApiVersion'. Use major.minor or major.minor-preview; revision suffixes are rejected by the Azure DevOps CLI extension."
+        throw "Unsupported az devops invoke API version '$ApiVersion'."
     }
 
     $commandArgs = @(
@@ -133,7 +141,7 @@ function Ensure-WorkItem {
         Write-Host "Reusing $Type #$($item.id): $Title"
     }
 
-    # This command intentionally has no --project option in the Azure DevOps CLI.
+    # az boards work-item update does not support --project.
     $raw = & az boards work-item update `
         --id ([int]$item.id) `
         --state $State `
@@ -156,19 +164,15 @@ function Ensure-Parent {
     if ($LASTEXITCODE -ne 0) { throw "Could not inspect relations for work item #$ChildId." }
     $item = Convert-JsonText $raw
 
-    $alreadyLinked = $false
-    foreach ($relation in @($item.relations)) {
-        $name = [string]$relation.attributes.name
-        $url = [string]$relation.url
+    $relations = Get-OptionalProperty -Object $item -Name 'relations'
+    foreach ($relation in @($relations)) {
+        $attributes = Get-OptionalProperty -Object $relation -Name 'attributes'
+        $name = [string](Get-OptionalProperty -Object $attributes -Name 'name')
+        $url = [string](Get-OptionalProperty -Object $relation -Name 'url')
         if ($name -eq 'Parent' -and $url.EndsWith("/$ParentId")) {
-            $alreadyLinked = $true
-            break
+            Write-Host "Hierarchy already linked: #$ChildId -> parent #$ParentId"
+            return
         }
-    }
-
-    if ($alreadyLinked) {
-        Write-Host "Hierarchy already linked: #$ChildId -> parent #$ParentId"
-        return
     }
 
     & az boards work-item relation add `
@@ -199,7 +203,8 @@ function Ensure-SharedQuery {
     )
 
     $folder = Get-QueryFolder -QueryId $FolderId
-    $existing = @($folder.children) | Where-Object { $_.name -eq $Name } | Select-Object -First 1
+    $children = Get-OptionalProperty -Object $folder -Name 'children'
+    $existing = @($children) | Where-Object { $_.name -eq $Name } | Select-Object -First 1
     if ($null -ne $existing) {
         Write-Host "Reusing shared query: $Name"
         return $existing
@@ -224,17 +229,59 @@ function Get-Dashboards {
         -RouteParameters @{ project=$ProjectName }
 }
 
-function Get-DashboardWidgets([string]$DashboardId) {
+function Get-DashboardRouteParameters {
+    param(
+        [Parameter(Mandatory)][object]$Dashboard,
+        [string]$WidgetId = $null
+    )
+
+    $dashboardId = [string](Get-OptionalProperty -Object $Dashboard -Name 'id')
+    if ([string]::IsNullOrWhiteSpace($dashboardId)) {
+        throw 'Dashboard object has no id.'
+    }
+
+    $route = @{ project=$ProjectName; dashboardId=$dashboardId }
+    $scope = [string](Get-OptionalProperty -Object $Dashboard -Name 'dashboardScope')
+    if ($scope -eq 'project_Team') {
+        $teamId = [string](Get-OptionalProperty -Object $Dashboard -Name 'groupId')
+        if ([string]::IsNullOrWhiteSpace($teamId)) {
+            throw "Team-scoped dashboard '$dashboardId' has no groupId."
+        }
+        $route.team = $teamId
+    }
+    if (-not [string]::IsNullOrWhiteSpace($WidgetId)) {
+        $route.widgetId = $WidgetId
+    }
+    return $route
+}
+
+function Get-DashboardWidgets {
+    param([Parameter(Mandatory)][object]$Dashboard)
+
     return Invoke-AdoCli `
         -Area 'dashboard' `
         -Resource 'widgets' `
         -ApiVersion $PreviewApiVersion `
-        -RouteParameters @{ project=$ProjectName; dashboardId=$DashboardId }
+        -RouteParameters (Get-DashboardRouteParameters -Dashboard $Dashboard)
+}
+
+function Try-GetDashboardWidgets {
+    param([Parameter(Mandatory)][object]$Dashboard)
+
+    try {
+        return Get-DashboardWidgets -Dashboard $Dashboard
+    }
+    catch {
+        $id = [string](Get-OptionalProperty -Object $Dashboard -Name 'id')
+        $name = [string](Get-OptionalProperty -Object $Dashboard -Name 'name')
+        Write-Warning "Skipping dashboard '$name' ($id): $($_.Exception.Message)"
+        return $null
+    }
 }
 
 function Ensure-DashboardWidget {
     param(
-        [Parameter(Mandatory)][string]$DashboardId,
+        [Parameter(Mandatory)][object]$Dashboard,
         [Parameter(Mandatory)][string]$Name,
         [Parameter(Mandatory)][string]$ContributionId,
         [Parameter(Mandatory)][hashtable]$Position,
@@ -244,8 +291,9 @@ function Ensure-DashboardWidget {
         [object]$SettingsVersion = $null
     )
 
-    $widgets = Get-DashboardWidgets -DashboardId $DashboardId
-    $existing = @($widgets.value) | Where-Object { $_.name -eq $Name } | Select-Object -First 1
+    $widgets = Get-DashboardWidgets -Dashboard $Dashboard
+    $values = Get-OptionalProperty -Object $widgets -Name 'value'
+    $existing = @($values) | Where-Object { $_.name -eq $Name } | Select-Object -First 1
     if ($null -ne $existing) {
         Write-Host "Reusing dashboard widget: $Name"
         return $existing
@@ -270,7 +318,7 @@ function Ensure-DashboardWidget {
         -Resource 'widgets' `
         -Method 'POST' `
         -ApiVersion $PreviewApiVersion `
-        -RouteParameters @{ project=$ProjectName; dashboardId=$DashboardId } `
+        -RouteParameters (Get-DashboardRouteParameters -Dashboard $Dashboard) `
         -Body $body
     Write-Host "Created dashboard widget: $Name"
     return $widget
@@ -288,7 +336,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Azure DevOps project authentication failed.' }
 $project = Convert-JsonText $projectRaw
 Write-Host "Authenticated project: $ProjectName ($($project.id))"
 
-# Read-only preflight: all APIs/commands used later must work before any project mutation.
 & az boards work-item relation list-type --organization $OrganizationUrl --only-show-errors --output none
 if ($LASTEXITCODE -ne 0) { throw 'Boards relation CLI preflight failed.' }
 
@@ -302,13 +349,16 @@ if ($null -eq $preflightQueries) { throw 'Shared-query API preflight returned no
 
 $preflightDashboards = Get-Dashboards
 if ($null -eq $preflightDashboards) { throw 'Dashboard API preflight returned no data.' }
-if (@($preflightDashboards.value).Count -gt 0) {
-    $firstDashboardId = [string]@($preflightDashboards.value)[0].id
-    if (-not [string]::IsNullOrWhiteSpace($firstDashboardId)) {
-        Get-DashboardWidgets -DashboardId $firstDashboardId | Out-Null
-    }
+$preflightDashboardValues = @(Get-OptionalProperty -Object $preflightDashboards -Name 'value')
+$accessibleDashboardCount = 0
+foreach ($candidate in $preflightDashboardValues) {
+    $widgets = Try-GetDashboardWidgets -Dashboard $candidate
+    if ($null -ne $widgets) { $accessibleDashboardCount++; break }
 }
-Write-Host 'Preflight passed before mutations.'
+if ($preflightDashboardValues.Count -gt 0 -and $accessibleDashboardCount -eq 0) {
+    throw 'Dashboards were listed, but none could be read with their proper project/team scope.'
+}
+Write-Host 'Preflight passed: Boards, queries, dashboards, and scoped widget reads are callable.'
 
 Step 'Normalize pipeline names'
 $pipelinesRaw = & az pipelines list --organization $OrganizationUrl --project $ProjectName --only-show-errors --output json
@@ -372,10 +422,12 @@ $rootQueries = Invoke-AdoCli `
     -ApiVersion $StableApiVersion `
     -RouteParameters @{ project=$ProjectName } `
     -QueryParameters @{ '$depth'='2' }
-$sharedRoot = @($rootQueries.value) | Where-Object { $_.name -eq 'Shared Queries' } | Select-Object -First 1
+$rootValues = @(Get-OptionalProperty -Object $rootQueries -Name 'value')
+$sharedRoot = $rootValues | Where-Object { $_.name -eq 'Shared Queries' } | Select-Object -First 1
 if ($null -eq $sharedRoot) { throw 'Shared Queries root was not found.' }
 
-$eosFolder = @($sharedRoot.children) | Where-Object { $_.name -eq 'EOS' -and $_.isFolder } | Select-Object -First 1
+$sharedChildren = @(Get-OptionalProperty -Object $sharedRoot -Name 'children')
+$eosFolder = $sharedChildren | Where-Object { $_.name -eq 'EOS' -and $_.isFolder } | Select-Object -First 1
 if ($null -eq $eosFolder) {
     $eosFolder = Invoke-AdoCli `
         -Area 'wit' `
@@ -398,8 +450,8 @@ $blocked = Ensure-SharedQuery -FolderId ([string]$eosFolder.id) -Name 'Blocked' 
 
 Step 'Build the EOS Engineering dashboard'
 $dashboards = Get-Dashboards
-$dashboardValues = @($dashboards.value)
-$dashboard = $dashboardValues | Where-Object { $_.name -eq $DashboardName } | Select-Object -First 1
+$dashboardValues = @(Get-OptionalProperty -Object $dashboards -Name 'value')
+$dashboard = $dashboardValues | Where-Object { $_.name -eq $DashboardName -and ([string](Get-OptionalProperty -Object $_ -Name 'dashboardScope')) -ne 'project_Team' } | Select-Object -First 1
 if ($null -eq $dashboard) {
     $dashboard = Invoke-AdoCli `
         -Area 'dashboard' `
@@ -407,111 +459,73 @@ if ($null -eq $dashboard) {
         -Method 'POST' `
         -ApiVersion $PreviewApiVersion `
         -RouteParameters @{ project=$ProjectName } `
-        -Body ([ordered]@{ name=$DashboardName; position=1 })
-    $dashboardValues += $dashboard
-    Write-Host "Created dashboard: $DashboardName"
+        -Body ([ordered]@{
+            name=$DashboardName
+            description='EOS engineering cockpit: Azure Boards, EOS CI, test history, and operational controls. GitHub remains the source-of-truth for code and pull requests.'
+            position=1
+        })
+    Write-Host "Created project-scoped dashboard: $DashboardName"
 }
 else {
-    Write-Host "Reusing dashboard: $DashboardName"
-}
-$dashboardId = [string]$dashboard.id
-
-# Remove the Azure-Repos-only Code Tile. EOS source lives in GitHub.
-foreach ($candidate in $dashboardValues) {
-    $candidateId = [string]$candidate.id
-    if ([string]::IsNullOrWhiteSpace($candidateId)) { continue }
-    $widgets = Get-DashboardWidgets -DashboardId $candidateId
-    foreach ($widget in @($widgets.value | Where-Object { $_.name -eq 'Code Tile' -or ([string]$_.contributionId) -match '(?i)CodeTile' })) {
-        Invoke-AdoCli `
-            -Area 'dashboard' `
-            -Resource 'widgets' `
-            -Method 'DELETE' `
-            -ApiVersion $PreviewApiVersion `
-            -RouteParameters @{ project=$ProjectName; dashboardId=$candidateId; widgetId=[string]$widget.id } | Out-Null
-        Write-Host "Removed Code Tile from dashboard '$($candidate.name)'."
-    }
+    Write-Host "Reusing project-scoped dashboard: $DashboardName"
 }
 
-$currentFocusUrl = "$OrganizationUrl/$ProjectName/_queries/query/$($currentFocus.id)/"
-$uiQueryUrl = "$OrganizationUrl/$ProjectName/_queries/query/$($uiQuery.id)/"
-$platformQueryUrl = "$OrganizationUrl/$ProjectName/_queries/query/$($platformQuery.id)/"
-$recentDoneUrl = "$OrganizationUrl/$ProjectName/_queries/query/$($recentDone.id)/"
-$blockedUrl = "$OrganizationUrl/$ProjectName/_queries/query/$($blocked.id)/"
-$ciPipelineUrl = if ($null -ne $ciPipeline) { "$OrganizationUrl/$ProjectName/_build?definitionId=$($ciPipeline.id)" } else { "$OrganizationUrl/$ProjectName/_build" }
-$controlPipelineUrl = if ($null -ne $controlPipeline) { "$OrganizationUrl/$ProjectName/_build?definitionId=$($controlPipeline.id)" } else { "$OrganizationUrl/$ProjectName/_build" }
-
-$markdown = @"
-## EOS engineering control center
-
-**Code & review**
-- [GitHub repository]($GitHubRepositoryUrl)
-- [Visual-validation PR #12]($GitHubPr12Url)
-
-**Build & operations**
-- [EOS CI]($ciPipelineUrl)
-- [EOS VM Control]($controlPipelineUrl)
-- [Azure VM]($AzureVmUrl)
-
-**Boards**
-- [Current Focus]($currentFocusUrl)
-- [UI & Visual Validation]($uiQueryUrl)
-- [Platform & DevOps]($platformQueryUrl)
-- [Recently Completed]($recentDoneUrl)
-- [Blocked]($blockedUrl)
-
-GitHub is canonical for code/PRs. Azure DevOps owns Boards, Windows CI/test history, dashboards and Azure VM operations. Use `AB#<id>` in GitHub commits and PR descriptions.
-"@
-
 Ensure-DashboardWidget `
-    -DashboardId $dashboardId `
-    -Name 'EOS Control Center' `
-    -ContributionId 'ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget' `
-    -Position @{row=1;column=1} `
-    -Size @{rowSpan=3;columnSpan=4} `
-    -Settings $markdown `
-    -ConfigurationContributionId 'ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration' `
-    -SettingsVersion @{major=1;minor=0;patch=0} | Out-Null
-
-Ensure-DashboardWidget `
-    -DashboardId $dashboardId `
+    -Dashboard $dashboard `
     -Name 'New EOS Work Item' `
     -ContributionId 'ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.NewWorkItemWidget' `
-    -Position @{row=1;column=5} `
+    -Position @{row=1;column=1} `
     -Size @{rowSpan=1;columnSpan=2} `
     -ConfigurationContributionId 'ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.NewWorkItemWidget.Configuration' `
     -SettingsVersion @{major=1;minor=0;patch=0} | Out-Null
 
-# Clone a known-good build widget if one already exists, rather than guessing its settings schema.
+# Reuse an existing Build History widget's known-good settings. Existing dashboards
+# may be team-scoped, so all reads use dashboardScope + groupId routing.
 $sourceBuildWidget = $null
 foreach ($candidate in $dashboardValues) {
-    $candidateId = [string]$candidate.id
-    if ([string]::IsNullOrWhiteSpace($candidateId) -or $candidateId -eq $dashboardId) { continue }
-    $widgets = Get-DashboardWidgets -DashboardId $candidateId
-    $candidateWidgets = @($widgets.value)
+    $candidateId = [string](Get-OptionalProperty -Object $candidate -Name 'id')
+    $targetId = [string](Get-OptionalProperty -Object $dashboard -Name 'id')
+    if ([string]::IsNullOrWhiteSpace($candidateId) -or $candidateId -eq $targetId) { continue }
+
+    $widgets = Try-GetDashboardWidgets -Dashboard $candidate
+    if ($null -eq $widgets) { continue }
+    $candidateWidgets = @(Get-OptionalProperty -Object $widgets -Name 'value')
+
     if ($null -ne $ciPipeline) {
         $sourceBuildWidget = $candidateWidgets | Where-Object {
-            (([string]$_.settings) -like "*$($ciPipeline.id)*") -and (([string]$_.contributionId) -match '(?i)build')
+            (([string](Get-OptionalProperty -Object $_ -Name 'settings')) -like "*$($ciPipeline.id)*") -and
+            (([string](Get-OptionalProperty -Object $_ -Name 'contributionId')) -match '(?i)build')
         } | Select-Object -First 1
     }
     if ($null -eq $sourceBuildWidget) {
-        $sourceBuildWidget = $candidateWidgets | Where-Object { ([string]$_.contributionId) -match '(?i)build' } | Select-Object -First 1
+        $sourceBuildWidget = $candidateWidgets | Where-Object {
+            ([string](Get-OptionalProperty -Object $_ -Name 'contributionId')) -match '(?i)build'
+        } | Select-Object -First 1
     }
     if ($null -ne $sourceBuildWidget) { break }
 }
 
 if ($null -ne $sourceBuildWidget) {
+    $configurationContributionId = [string](Get-OptionalProperty -Object $sourceBuildWidget -Name 'configurationContributionId')
+    $settingsVersion = Get-OptionalProperty -Object $sourceBuildWidget -Name 'settingsVersion'
+    $sourceSize = Get-OptionalProperty -Object $sourceBuildWidget -Name 'size'
+    $rowSpan = [int](Get-OptionalProperty -Object $sourceSize -Name 'rowSpan')
+    $columnSpan = [int](Get-OptionalProperty -Object $sourceSize -Name 'columnSpan')
+    if ($rowSpan -le 0) { $rowSpan = 2 }
+    if ($columnSpan -le 0) { $columnSpan = 4 }
+
     Ensure-DashboardWidget `
-        -DashboardId $dashboardId `
+        -Dashboard $dashboard `
         -Name 'EOS CI — Build History' `
-        -ContributionId ([string]$sourceBuildWidget.contributionId) `
-        -Position @{row=1;column=7} `
-        -Size @{rowSpan=[int]$sourceBuildWidget.size.rowSpan;columnSpan=[int]$sourceBuildWidget.size.columnSpan} `
-        -Settings ([string]$sourceBuildWidget.settings) `
-        -ConfigurationContributionId ([string]$sourceBuildWidget.configurationContributionId) `
-        -SettingsVersion $sourceBuildWidget.settingsVersion | Out-Null
+        -ContributionId ([string](Get-OptionalProperty -Object $sourceBuildWidget -Name 'contributionId')) `
+        -Position @{row=1;column=3} `
+        -Size @{rowSpan=$rowSpan;columnSpan=$columnSpan} `
+        -Settings ([string](Get-OptionalProperty -Object $sourceBuildWidget -Name 'settings')) `
+        -ConfigurationContributionId $configurationContributionId `
+        -SettingsVersion $settingsVersion | Out-Null
 }
 else {
-    Write-Warning 'No existing Build History widget was available to clone; EOS Control Center still links directly to EOS CI.'
+    Write-Warning 'No existing Build History widget was available to clone. The dashboard itself is configured; EOS CI remains available under Pipelines.'
 }
 
 Step 'Project setup complete'
@@ -521,4 +535,4 @@ Write-Host 'Boards:         EOS UI, platform and reliability work seeded and lin
 Write-Host 'Shared queries: Current Focus, UI & Visual Validation, Platform & DevOps, Recently Completed, Blocked'
 Write-Host 'Repos:          intentionally unused; GitHub remains canonical'
 Write-Host 'VM control:     EOS VM Control remains separate from normal CI'
-Write-Host 'Use AB#<id> in GitHub commits/PR descriptions to link code to Azure Boards.' -ForegroundColor Green
+Write-Host 'Traceability:   use AB#<id> in GitHub commits and PR descriptions' -ForegroundColor Green
