@@ -1,7 +1,7 @@
 @page "/diagnostics"
 @using EngineeringPerformance.Application
 @inject AppState State
-@inject IApplicationDiagnostics Diagnostics
+@inject IApplicationDiagnostics ApplicationDiagnostics
 
 <section class="flex flex-col gap-6">
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -79,7 +79,7 @@
 
     private void LoadInfo()
     {
-        var info = Diagnostics.GetInfo();
+        var info = ApplicationDiagnostics.GetInfo();
         _appVersion = info.ApplicationVersion;
         _dbPath = info.DatabasePath;
         _dbSize = info.DatabaseSize;
@@ -90,7 +90,7 @@
     private async Task RefreshTailAsync()
     {
         LoadInfo();
-        _logTail = await Diagnostics.ReadRecentLogAsync(MaxTailLines);
+        _logTail = await ApplicationDiagnostics.ReadRecentLogAsync(MaxTailLines);
     }
 
     private async Task CreateBundleAsync()
@@ -101,7 +101,7 @@
 
         try
         {
-            _bundlePath = await Diagnostics.CreateBundleAsync();
+            _bundlePath = await ApplicationDiagnostics.CreateBundleAsync();
             State.ShowMessage($"Diagnostics bundle saved to {_bundlePath}");
         }
         catch (Exception ex)
