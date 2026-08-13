@@ -9,11 +9,13 @@ Visual work is not considered validated by code review, build success, or genera
 ## Required loop
 
 1. Build or update the UI implementation.
-2. Run the compiled WPF + Blazor/WebView2 desktop application against local application data.
+2. Run `scripts/capture-ui.ps1` against the compiled WPF + Blazor/WebView2 desktop application.
+   Capture mode uses a deterministic synthetic database and redirects its SQLite/log files beneath
+   the evidence directory; it never reads or mutates the user's live application data.
 3. Capture screenshots from the actual desktop window at minimum:
    - 1536 x 1024
    - 1280 x 800
-5. Inspect screenshots for:
+4. Inspect screenshots for:
    - material hierarchy and visual fidelity
    - spacing, alignment and density
    - clipping and overflow
@@ -21,9 +23,12 @@ Visual work is not considered validated by code review, build success, or genera
    - chart legibility
    - typography collisions
    - missing assets or browser console errors
-6. Compare against the active benchmark/reference image, not against the previous implementation.
-7. Make corrections, rerender, and repeat until the visual pass is acceptable.
-8. Only after real desktop-host evidence exists should a visual implementation be described as validated.
+5. Compare against the active benchmark/reference image, not against the previous implementation.
+6. Make corrections, rerender, and repeat until the visual pass is acceptable.
+7. Only after real desktop-host evidence exists should a visual implementation be described as validated.
+
+Azure Pipelines runs the same capture after build/tests and publishes the `visual-evidence` artifact,
+including ten PNGs, `visual-report.json`, and the isolated structured EOS logs.
 
 ## Rendering hierarchy
 

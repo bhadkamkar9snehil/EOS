@@ -12,11 +12,12 @@ pr:
 
 variables:
   buildConfiguration: Release
+  visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
 
 jobs:
   - job: windows_ci
-    displayName: Windows build & test
-    timeoutInMinutes: 30
+    displayName: Windows build, test & visual validation
+    timeoutInMinutes: 40
     pool:
       name: Default
       demands:
@@ -83,3 +84,14 @@ jobs:
           mergeTestResults: true
           failTaskOnFailedTests: true
           testRunTitle: EOS Windows unit tests
+
+      - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
+        displayName: Capture real WPF + WebView2 visual evidence
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish screenshots, browser diagnostics and app logs
+        condition: always()
+        inputs:
+          targetPath: '$(visualEvidenceDirectory)'
+          artifact: visual-evidence
+          publishLocation: pipeline

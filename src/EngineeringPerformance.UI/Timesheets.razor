@@ -73,7 +73,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid" RowClass="@RowSeverityClass">
+                <QuickGrid Items="@FilteredRows.AsQueryable()" Class="epa-grid timesheet-ledger-grid" RowClass="@RowSeverityClass">
                     <TemplateColumn Title="Engineer" Sortable="true" SortBy="@_sortByName">
                         <span class="flex flex-col"><strong class="font-medium text-ink">@context.Name</strong>@if (!string.IsNullOrWhiteSpace(context.TeamName)){<small class="text-2xs text-muted">@context.TeamName</small>}</span>
                     </TemplateColumn>

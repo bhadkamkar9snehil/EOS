@@ -104,24 +104,24 @@ public partial class MainWindow : Window
         });
 
         var themeJson = JsonSerializer.Serialize(theme);
-        await core.ExecuteScriptAsync($"""
-            (() => {{
-              if (window.epaTheme && typeof window.epaTheme.set === 'function') window.epaTheme.set({themeJson});
-              else {{ document.documentElement.dataset.theme = {themeJson}; localStorage.setItem('epa-theme', {themeJson}); }}
+        await core.ExecuteScriptAsync($$"""
+            (() => {
+              if (window.epaTheme && typeof window.epaTheme.set === 'function') window.epaTheme.set({{themeJson}});
+              else { document.documentElement.dataset.theme = {{themeJson}}; localStorage.setItem('epa-theme', {{themeJson}}); }
               window.__eosVisualErrors = [];
               return true;
-            }})()
+            })()
             """);
 
         var pathJson = JsonSerializer.Serialize(route.Path);
-        await core.ExecuteScriptAsync($"""
-            (() => {{
-              if (location.pathname !== {pathJson}) {{
-                history.pushState({{}}, '', {pathJson});
+        await core.ExecuteScriptAsync($$"""
+            (() => {
+              if (location.pathname !== {{pathJson}}) {
+                history.pushState({}, '', {{pathJson}});
                 window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
+              }
               return location.pathname;
-            }})()
+            })()
             """);
 
         await WaitForRouteAsync(core, route.Slug, TimeSpan.FromSeconds(20));

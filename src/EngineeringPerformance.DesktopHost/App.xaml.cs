@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using EngineeringPerformance.Application;
@@ -15,6 +16,8 @@ public partial class App : System.Windows.Application
     private readonly IHost _host;
     private readonly LocalApplicationPaths _paths;
     private readonly ILogger<App> _log;
+    private readonly bool _visualCapture;
+    private readonly string? _visualOutputDirectory;
 
     static App()
     {
@@ -28,7 +31,11 @@ public partial class App : System.Windows.Application
     public App()
     {
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        _paths = LocalApplicationPaths.ForCurrentUser();
+        _visualCapture = string.Equals(Environment.GetEnvironmentVariable("EOS_VISUAL_CAPTURE"), "1", StringComparison.Ordinal);
+        _visualOutputDirectory = Environment.GetEnvironmentVariable("EOS_VISUAL_OUTPUT");
+        _paths = _visualCapture && !string.IsNullOrWhiteSpace(_visualOutputDirectory)
+            ? new LocalApplicationPaths(Path.Combine(_visualOutputDirectory, "appdata"))
+            : LocalApplicationPaths.ForCurrentUser();
 
         _host = Host.CreateDefaultBuilder()
             .UseEosLogging(_paths)
@@ -36,6 +43,10 @@ public partial class App : System.Windows.Application
             {
                 services.AddWpfBlazorWebView();
                 services.AddLocalInfrastructure(_paths);
+                if (_visualCapture)
+                {
+                    services.AddSingleton<IApplicationDatabase, VisualCaptureApplicationDatabase>();
+                }
                 services.AddSingleton<IFileDialogService, WindowsFileDialogService>();
                 services.AddSingleton<AppState>();
                 services.AddSingleton<MainWindow>();
@@ -60,10 +71,21 @@ public partial class App : System.Windows.Application
             await _host.StartAsync();
             await _host.Services.GetRequiredService<IApplicationDatabase>().InitializeAsync();
 
-            MainWindow = _host.Services.GetRequiredService<MainWindow>();
-            MainWindow.Show();
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow;
+            mainWindow.Show();
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             _log.LogInformation("EOS startup completed.");
+
+            if (_visualCapture)
+            {
+                var outputDirectory = string.IsNullOrWhiteSpace(_visualOutputDirectory)
+                    ? Path.Combine(Path.GetTempPath(), "eos-visual-evidence")
+                    : _visualOutputDirectory;
+                var passed = await mainWindow.CaptureVisualEvidenceAsync(outputDirectory);
+                Shutdown(passed ? 0 : 2);
+                return;
+            }
 
             // Fire-and-forget: never delay app launch waiting on a network/file-share round trip.
             _ = CheckForUpdatesAsync();
@@ -71,6 +93,13 @@ public partial class App : System.Windows.Application
         catch (Exception exception)
         {
             _log.LogCritical(exception, "The application failed to start.");
+            if (_visualCapture)
+            {
+                await WriteCaptureFailureAsync(exception);
+                Shutdown(-1);
+                return;
+            }
+
             MessageBox.Show(
                 $"The application could not start.\n\nDetails were saved to:\n{_paths.LogDirectory}",
                 "Engineering Performance Analyzer",
@@ -92,6 +121,12 @@ public partial class App : System.Windows.Application
         try
         {
             _log.LogError(e.Exception, "Unhandled exception on the UI dispatcher.");
+            if (_visualCapture)
+            {
+                e.Handled = true;
+                return;
+            }
+
             MessageBox.Show(
                 $"Something went wrong on this page.\n\n{e.Exception.Message}\n\nDetails were saved to:\n{_paths.LogDirectory}\n\nYou can keep using the app — try a different page or reload.",
                 "Engineering Performance Analyzer",
@@ -104,6 +139,22 @@ public partial class App : System.Windows.Application
         }
 
         e.Handled = true;
+    }
+
+    private async Task WriteCaptureFailureAsync(Exception exception)
+    {
+        try
+        {
+            var outputDirectory = string.IsNullOrWhiteSpace(_visualOutputDirectory)
+                ? Path.Combine(Path.GetTempPath(), "eos-visual-evidence")
+                : _visualOutputDirectory;
+            Directory.CreateDirectory(outputDirectory);
+            await File.WriteAllTextAsync(Path.Combine(outputDirectory, "startup-failure.txt"), exception.ToString());
+        }
+        catch
+        {
+            // Best effort only; the structured EOS log remains the primary crash record.
+        }
     }
 
     /// <summary>

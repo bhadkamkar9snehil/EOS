@@ -764,6 +764,13 @@
   }
   .epa-grid tbody tr:hover td { background-color: var(--color-surface-inset); }
 
+  /* Preserve numeric column separation in the dense timesheet ledger. At narrower desktop
+     widths the containing well scrolls horizontally instead of allowing adjacent hour values
+     to collide and become ambiguous. */
+  .timesheet-ledger-grid thead th,
+  .timesheet-ledger-grid tbody td { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .timesheet-ledger-grid tbody td { white-space: nowrap; }
+
   /*
     Severity as a 3px status rail rather than a full-row wash. Flooding whole
     rows with pale yellow and pale red makes a dense table visually noisy and
