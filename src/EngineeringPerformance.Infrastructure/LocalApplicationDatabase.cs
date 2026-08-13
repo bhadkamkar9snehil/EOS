@@ -290,7 +290,7 @@ public sealed class LocalApplicationDatabase(
         var detectedType = workbookService.DetectReportType(sourcePath);
         if (detectedType != reportType) throw new InvalidDataException($"This file is {detectedType}, not {reportType}.");
         var performance = workbookService.ReadPerformance(sourcePath, reportType, year, month);
-        var importDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance", "Imports", $"{year:D4}-{month:D2}");
+        var importDirectory = Path.Combine(LocalApplicationPaths.ForCurrentUser().DataDirectory, "Imports", $"{year:D4}-{month:D2}");
         Directory.CreateDirectory(importDirectory);
         var storedPath = Path.Combine(importDirectory, $"{(int)reportType}-{Path.GetFileName(sourcePath)}");
         File.Copy(sourcePath, storedPath, true);
@@ -519,7 +519,7 @@ public sealed class LocalApplicationDatabase(
                 x => x.Year == year && x.Month == month && x.ReportType == ReportType.EngineerReviewWorkbook, cancellationToken);
             if (previousFile is not null) context.ImportedSourceFiles.Remove(previousFile);
 
-            var storedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance", "Imports", $"{year:D4}-{month:D2}");
+            var storedDirectory = Path.Combine(LocalApplicationPaths.ForCurrentUser().DataDirectory, "Imports", $"{year:D4}-{month:D2}");
             Directory.CreateDirectory(storedDirectory);
             var batchName = paths.Count == 1
                 ? Path.GetFileName(paths[0])

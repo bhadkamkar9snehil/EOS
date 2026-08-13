@@ -48,6 +48,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $desktopHostProject = Join-Path $repoRoot "src/EngineeringPerformance.DesktopHost/EngineeringPerformance.DesktopHost.csproj"
+$appIcon = Join-Path $repoRoot "src/EngineeringPerformance.DesktopHost/Assets/app-icon.ico"
 $publishDir = Join-Path $repoRoot "build/publish/win-x64"
 $releasesDir = Join-Path $repoRoot "build/Releases"
 
@@ -112,8 +113,12 @@ New-Item -ItemType Directory -Force -Path $releasesDir | Out-Null
 vpk pack `
     --packId $AppId `
     --packVersion $Version `
+    --packTitle "EOS - Engineering Performance Analyzer" `
+    --packAuthors "EOS" `
     --packDir $publishDir `
     --mainExe "EngineeringPerformance.DesktopHost.exe" `
+    --icon $appIcon `
+    --shortcuts "Desktop,StartMenuRoot" `
     --outputDir $releasesDir
 if ($LASTEXITCODE -ne 0) {
     throw "vpk pack failed (exit code $LASTEXITCODE)."

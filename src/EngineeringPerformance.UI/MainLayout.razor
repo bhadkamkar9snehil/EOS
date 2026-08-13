@@ -169,7 +169,7 @@
     {
         if (firstRender)
         {
-            var p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngineeringPerformance");
+            var p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EOS", "Data");
             Directory.CreateDirectory(p);
             File.WriteAllText(Path.Combine(p, "ui-ready.marker"), DateTime.UtcNow.ToString("O"));
             await State.LoadThemeAsync(JS);

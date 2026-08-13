@@ -7,7 +7,8 @@ namespace EngineeringPerformance.Infrastructure;
 /// </summary>
 public sealed class LocalApplicationPaths
 {
-    public const string ProductDirectoryName = "EngineeringPerformance";
+    public const string ProductDirectoryName = "EOS";
+    public const string DataDirectoryName = "Data";
     public const string DatabaseFileName = "engineering-performance.db";
     public const string LogFilePrefix = "eos-";
 
@@ -50,7 +51,8 @@ public sealed class LocalApplicationPaths
     {
         var root = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            ProductDirectoryName);
+            ProductDirectoryName,
+            DataDirectoryName);
         return new LocalApplicationPaths(root);
     }
 }

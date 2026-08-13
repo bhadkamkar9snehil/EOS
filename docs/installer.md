@@ -36,6 +36,10 @@ It runs, in order:
 3. `vpk pack` on the publish output, producing a `Setup.exe` installer plus delta update packages
    in `build/Releases/`.
 
+The installer registers **EOS - Engineering Performance Analyzer** in Windows Installed Apps,
+creates Start Menu and Desktop shortcuts, and installs per-user without mixing application binaries
+under `%LocalAppData%\EngineeringPerformance` with persistent data under `%LocalAppData%\EOS\Data`.
+
 If `-Version` is omitted, the script reads `<Version>` from the DesktopHost `.csproj` instead.
 
 **Prerequisite**: the Velopack CLI must be installed once per machine:
