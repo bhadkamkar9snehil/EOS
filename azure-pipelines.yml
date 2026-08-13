@@ -30,6 +30,12 @@ jobs:
       - powershell: ./scripts/validate-powershell.ps1
         displayName: Validate PowerShell automation
 
+      - powershell: ./scripts/bootstrap-azure-devops-project.ps1
+        displayName: Reconcile Azure DevOps project configuration
+        continueOnError: true
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
       - powershell: ./build/vm-health.ps1
         displayName: VM / agent preflight
 
