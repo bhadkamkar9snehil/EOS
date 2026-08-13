@@ -77,7 +77,11 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
         var version = Interlocked.Increment(ref _refreshVersion);
         var year = SelectedMonth.Year;
         var month = SelectedMonth.Month;
-        InteractionLog.Write("state.refresh.started", $"version={version}; month={year:D4}-{month:D2}");
+        _logger.LogDebug(
+            "Application state refresh started. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2}",
+            version,
+            year,
+            month);
 
         try
         {
@@ -92,7 +96,11 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
             await Task.WhenAll(dashboardTask, employeesTask, performanceTask, historyTask, exclusionsTask, reviewsTask, teamsTask);
             if (version != Volatile.Read(ref _refreshVersion))
             {
-                InteractionLog.Write("state.refresh.superseded", $"version={version}; month={year:D4}-{month:D2}");
+                _logger.LogDebug(
+                    "Application state refresh was superseded. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2}",
+                    version,
+                    year,
+                    month);
                 return;
             }
 
@@ -106,7 +114,14 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
             PeerReviews = await reviewsTask;
             Teams = await teamsTask;
             LastRefresh = DateTime.Now;
-            InteractionLog.Write("state.refresh.completed", $"version={version}; month={year:D4}-{month:D2}; people={Performance.Count}; reviews={PeerReviews.Count}");
+
+            _logger.LogDebug(
+                "Application state refresh completed. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2} People={PeopleCount} Reviews={ReviewCount}",
+                version,
+                year,
+                month,
+                Performance.Count,
+                PeerReviews.Count);
             Changed?.Invoke();
 
             _ = LoadWeeklyPerformanceAsync(version, year, month);
@@ -114,8 +129,12 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "AppState.RefreshAsync failed for {Year:D4}-{Month:D2}.", year, month);
-            InteractionLog.Write("state.refresh.failed", $"version={version}; month={year:D4}-{month:D2}", exception);
+            _logger.LogError(
+                exception,
+                "Application state refresh failed. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2}",
+                version,
+                year,
+                month);
             throw;
         }
     }
@@ -132,6 +151,12 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
         catch (Exception exception)
         {
             if (version != Volatile.Read(ref _refreshVersion)) return;
+            _logger.LogError(
+                exception,
+                "Weekly performance load failed. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2}",
+                version,
+                year,
+                month);
             Message = $"Weekly performance could not be loaded: {exception.Message}";
             IsError = true;
             Changed?.Invoke();
@@ -145,15 +170,24 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
             var snapshot = await Task.Run(() => database.GetTimesheetFilingAsync(year, month));
             if (version != Volatile.Read(ref _refreshVersion)) return;
             TimesheetFiling = snapshot;
-            InteractionLog.Write(
-                "timesheet-filing.refresh.completed",
-                $"version={version}; month={year:D4}-{month:D2}; people={snapshot.Rows.Count}; avgDelayDays={snapshot.AverageDelayDays}");
+            _logger.LogDebug(
+                "Timesheet filing refresh completed. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2} People={PeopleCount} AverageDelayDays={AverageDelayDays}",
+                version,
+                year,
+                month,
+                snapshot.Rows.Count,
+                snapshot.AverageDelayDays);
             Changed?.Invoke();
         }
         catch (Exception exception)
         {
             if (version != Volatile.Read(ref _refreshVersion)) return;
-            InteractionLog.Write("timesheet-filing.refresh.failed", $"version={version}; month={year:D4}-{month:D2}", exception);
+            _logger.LogError(
+                exception,
+                "Timesheet filing refresh failed. RefreshVersion={RefreshVersion} Month={Year:D4}-{Month:D2}",
+                version,
+                year,
+                month);
             Message = $"Timesheet filing delay could not be loaded: {exception.Message}";
             IsError = true;
             Changed?.Invoke();
