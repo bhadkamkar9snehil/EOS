@@ -16,7 +16,7 @@ public sealed class ScoringPresetService(string dataDirectory, ILogger<ScoringPr
     private readonly string _presetsPath = Path.Combine(dataDirectory, "scoring-presets.json");
     private readonly ILogger<ScoringPresetService> _logger = logger ?? NullLogger<ScoringPresetService>.Instance;
 
-    public static readonly IReadOnlyList<ScoringPreset> BuiltInPresets =
+    private static readonly IReadOnlyList<ScoringPreset> BuiltInPresets =
     [
         new ScoringPreset("Individual Contributor", new OperationalScoringSettings(55m, 15m, 30m), IsBuiltIn: true),
         new ScoringPreset("Team Lead", new OperationalScoringSettings(35m, 35m, 30m), IsBuiltIn: true),
