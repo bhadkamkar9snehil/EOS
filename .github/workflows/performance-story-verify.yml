@@ -1,0 +1,33 @@
+name: Performance Story Verification
+
+on:
+  push:
+    branches:
+      - feature/performance-story
+
+jobs:
+  windows-verify:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore EngineeringPerformance.slnx
+
+      - name: Build complete solution
+        run: dotnet build EngineeringPerformance.slnx --configuration Release --no-restore
+
+      - name: Domain tests
+        run: dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration Release --no-build --no-restore
+
+      - name: Infrastructure tests
+        run: dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration Release --no-build --no-restore
+
+      - name: UI tests
+        run: dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration Release --no-build --no-restore
