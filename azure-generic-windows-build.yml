@@ -76,15 +76,19 @@ jobs:
           git clone --filter=blob:none --no-checkout $url $target
           if ($LASTEXITCODE -ne 0) { throw "git clone failed with exit code $LASTEXITCODE." }
 
-          $fetchRef = if ($ref -match '^refs/' -or $ref -match '^[0-9a-fA-F]{7,40}$') {
-            $ref
+          if ($ref -match '^refs/' -or $ref -match '^[0-9a-fA-F]{7,40}$') {
+            git -C $target fetch origin $ref --depth=1
+            if ($LASTEXITCODE -ne 0) { throw "Could not fetch '$ref' from $url." }
           }
           else {
-            "refs/heads/$ref"
+            git -C $target fetch origin "refs/heads/$ref" --depth=1
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "No branch named '$ref'; trying tag."
+              git -C $target fetch origin "refs/tags/$ref" --depth=1
+              if ($LASTEXITCODE -ne 0) { throw "Could not resolve '$ref' as a branch, tag or commit in $url." }
+            }
           }
 
-          git -C $target fetch origin $fetchRef --depth=1
-          if ($LASTEXITCODE -ne 0) { throw "Could not fetch '$ref' from $url." }
           git -C $target checkout --detach FETCH_HEAD
           if ($LASTEXITCODE -ne 0) { throw "Could not check out '$ref'." }
 
