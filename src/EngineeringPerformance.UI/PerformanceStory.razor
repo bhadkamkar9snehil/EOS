@@ -1,0 +1,587 @@
+@page "/performance-story"
+@using EngineeringPerformance.Application
+@using EngineeringPerformance.Domain
+@inject AppState State
+@inject IApplicationDatabase Database
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="flex flex-col gap-6">
+    @if (State.Performance.Count == 0)
+    {
+        <div class="plate empty-bay">
+            <div class="panel-eyebrow">Performance story</div>
+            <h2 class="panel-title">No performance data for @State.SelectedMonth.ToString("MMMM yyyy")</h2>
+            <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/imports")'>Go to data imports</button>
+        </div>
+    }
+    else
+    {
+        <section class="plate grid grid-cols-2 divide-x divide-y divide-line-soft overflow-hidden @@3xl:grid-cols-5 @@3xl:divide-y-0" aria-label="Team health">
+            <article class="p-4">
+                <div class="panel-eyebrow">How are we doing?</div>
+                <div class="mt-1 flex items-baseline gap-2">
+                    <strong class="metric text-metric-lg">@Analytics.Format(_teamScore, "0")</strong>
+                    @if (_teamDelta is not null)
+                    {
+                        <span class="@($"metric-delta {DeltaClass(_teamDelta.Value)}")">@DeltaLabel(_teamDelta.Value)</span>
+                    }
+                </div>
+                <div class="label-instrument mt-1">Team operational score</div>
+            </article>
+            <article class="p-4">
+                <div class="panel-eyebrow">Direction</div>
+                <strong class="@($"metric mt-2 block text-metric-sm {(_teamDelta is null ? "text-muted" : DeltaClass(_teamDelta.Value))}")">@(_teamDelta is null ? "—" : DeltaLabel(_teamDelta.Value))</strong>
+                <div class="label-instrument mt-1">vs @PreviousMonth.ToString("MMM yyyy")</div>
+            </article>
+            <article class="p-4">
+                <div class="panel-eyebrow">Distribution</div>
+                <div class="mt-2 flex items-baseline gap-2">
+                    <strong class="metric text-metric-sm text-good">@GoodCount</strong>
+                    <span class="text-xs text-ink-soft">good</span>
+                    <strong class="metric ml-2 text-sm text-critical">@CriticalCount</strong>
+                    <span class="text-xs text-ink-soft">critical</span>
+                </div>
+                <div class="label-instrument mt-1">@_people.Count people scored</div>
+            </article>
+            <article class="p-4">
+                <div class="panel-eyebrow">Attention</div>
+                <strong class="metric mt-2 block text-metric-sm @(AttentionCount > 0 ? "text-serious" : "text-good")">@AttentionCount</strong>
+                <div class="label-instrument mt-1">need management review</div>
+            </article>
+            <article class="col-span-2 p-4 @@3xl:col-span-1">
+                <div class="panel-eyebrow">Evidence</div>
+                <strong class="metric mt-2 block text-metric-sm">@State.ReadyCount<span class="text-muted">/4</span></strong>
+                <div class="label-instrument mt-1">input families ready</div>
+            </article>
+        </section>
+
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)]">
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Is the team improving or deteriorating?</div>
+                        <h2 class="panel-title">Team performance trend</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Operational score · last @_trend.Count loaded months</span>
+                </div>
+                <div class="well mt-3 p-2">
+                    <svg class="block h-72 w-full" viewBox="0 0 100 48" role="img" aria-label="Team operational score trend">
+                        @foreach (var reference in TrendReferences)
+                        {
+                            <line x1="8" x2="96" y1="@Svg(TrendY(reference.Score))" y2="@Svg(TrendY(reference.Score))" stroke="var(--color-line)" stroke-width="0.28" stroke-dasharray="1 1" />
+                            <text x="1" y="@Svg(TrendY(reference.Score) + .8)" fill="var(--color-muted)" font-size="2.4">@reference.Label</text>
+                        }
+                        @if (_trend.Count > 1)
+                        {
+                            <polyline points="@TrendPolyline" fill="none" stroke="var(--color-petrol)" stroke-width="1.15" stroke-linejoin="round" stroke-linecap="round" />
+                        }
+                        @for (var i = 0; i < _trend.Count; i++)
+                        {
+                            var point = _trend[i];
+                            var x = TrendX(i);
+                            var y = TrendY(point.Score);
+                            <circle cx="@Svg(x)" cy="@Svg(y)" r="1.45" fill="var(--color-petrol)" stroke="var(--color-well)" stroke-width=".65">
+                                <title>@point.Label · @Analytics.Format(point.Score)</title>
+                            </circle>
+                            <text x="@Svg(x)" y="45.2" text-anchor="middle" fill="var(--color-muted)" font-size="2.25">@point.ShortLabel</text>
+                            @if (i == _trend.Count - 1)
+                            {
+                                <text x="@Svg(x)" y="@Svg(y - 2.5)" text-anchor="middle" fill="var(--color-ink)" font-size="2.7" font-weight="700">@Analytics.Format(point.Score, "0")</text>
+                            }
+                        }
+                    </svg>
+                </div>
+            </div>
+
+            <aside class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">What caused the change?</div>
+                        <h2 class="panel-title">Change drivers</h2>
+                    </div>
+                    @if (_teamDelta is not null)
+                    {
+                        <strong class="@($"metric ml-auto text-metric-sm {DeltaClass(_teamDelta.Value)}")">@DeltaLabel(_teamDelta.Value)</strong>
+                    }
+                </div>
+                @if (_driverEffects.Count == 0)
+                {
+                    <div class="empty-slot mt-3">Load the previous month to decompose movement.</div>
+                }
+                else
+                {
+                    <div class="mt-3 flex flex-col gap-3">
+                        @foreach (var driver in _driverEffects)
+                        {
+                            <div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-medium text-ink-soft">@driver.Label</span>
+                                    <b class="@($"metric text-xs {DeltaClass(driver.Effect)}")">@DeltaLabel(driver.Effect)</b>
+                                </div>
+                                <div class="relative mt-1 h-4">
+                                    <i class="absolute inset-y-0 left-1/2 w-px bg-line"></i>
+                                    <i class="absolute top-1/2 h-2 -translate-y-1/2 rounded-full" style="@DriverBarStyle(driver.Effect)"></i>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="well mt-4 p-3 text-xs text-ink-soft">
+                        <span class="label-instrument block">Largest weighted movement</span>
+                        <strong class="mt-1 block text-sm font-semibold text-ink">@LargestDriverLabel</strong>
+                    </div>
+                }
+            </aside>
+        </section>
+
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,.65fr)]">
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Who changed?</div>
+                        <h2 class="panel-title">Performance × momentum</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">X · current score · Y · month-over-month movement</span>
+                </div>
+                <div class="well mt-3 p-2">
+                    <svg class="block h-80 w-full" viewBox="0 0 100 66" role="img" aria-label="Current operational score versus month-over-month movement">
+                        <line x1="@Svg(MomentumX(85))" x2="@Svg(MomentumX(85))" y1="5" y2="58" stroke="var(--color-line)" stroke-width=".35" stroke-dasharray="1 1" />
+                        <line x1="8" x2="96" y1="@Svg(MomentumY(0))" y2="@Svg(MomentumY(0))" stroke="var(--color-ink-soft)" stroke-width=".42" />
+                        <text x="12" y="9" fill="var(--color-muted)" font-size="2.45">RECOVERING</text>
+                        <text x="79" y="9" fill="var(--color-muted)" font-size="2.45">LEADING</text>
+                        <text x="12" y="56" fill="var(--color-muted)" font-size="2.45">CRITICAL</text>
+                        <text x="80" y="56" fill="var(--color-muted)" font-size="2.45">SLIPPING</text>
+                        @foreach (var person in _people.Where(x => x.Delta is not null))
+                        {
+                            var selected = IsFocused(person.Name);
+                            <circle class="cursor-pointer" cx="@Svg(MomentumX(person.Score))" cy="@Svg(MomentumY(person.Delta!.Value))" r="@(selected ? "2.7" : "1.8")" fill="@(selected ? "var(--color-primary)" : PointFill(person.Score))" stroke="var(--color-well)" stroke-width="@(selected ? ".85" : ".55")" @onclick="() => Focus(person.Name)">
+                                <title>@person.Name · score @Analytics.Format(person.Score) · @DeltaLabel(person.Delta.Value)</title>
+                            </circle>
+                            @if (selected)
+                            {
+                                <text x="@Svg(MomentumX(person.Score) + 3.2)" y="@Svg(MomentumY(person.Delta.Value) + .8)" fill="var(--color-ink)" font-size="2.45" font-weight="700">@Analytics.Initials(person.Name)</text>
+                            }
+                        }
+                        <text x="52" y="64" text-anchor="middle" fill="var(--color-muted)" font-size="2.35">CURRENT OPERATIONAL SCORE →</text>
+                    </svg>
+                </div>
+            </div>
+
+            <aside class="plate flex flex-col p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Who needs attention?</div>
+                        <h2 class="panel-title">Attention queue</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">@AttentionCount flagged</span>
+                </div>
+                @if (AttentionRows.Count == 0)
+                {
+                    <div class="empty-slot mt-3">No current priority concerns.</div>
+                }
+                else
+                {
+                    <ol class="mt-2 flex flex-1 flex-col divide-y divide-line-soft">
+                        @for (var i = 0; i < AttentionRows.Count; i++)
+                        {
+                            var row = AttentionRows[i];
+                            <li>
+                                <button type="button" class="@($"grid w-full grid-cols-[1.5rem_minmax(0,1fr)_4rem] items-center gap-2 rounded-md px-1 py-2 text-left transition-colors duration-100 hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : "")}")" @onclick="() => Focus(row.Name)">
+                                    <span class="label-instrument text-center">@(i + 1)</span>
+                                    <span class="min-w-0">
+                                        <strong class="block truncate text-sm font-medium text-ink">@row.Name</strong>
+                                        <small class="block truncate text-2xs text-muted">@PrimaryReason(row)</small>
+                                    </span>
+                                    <span class="text-right">
+                                        <b class="@($"metric block text-sm {Analytics.BandTextClass(Analytics.ScoreBand(row.Score))}")">@Analytics.Format(row.Score, "0")</b>
+                                        <small class="@($"metric-delta {DeltaClass(row.Delta ?? 0)}")">@(row.Delta is null ? "—" : DeltaLabel(row.Delta.Value))</small>
+                                    </span>
+                                </button>
+                            </li>
+                        }
+                    </ol>
+                }
+            </aside>
+        </section>
+
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,.65fr)]">
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">What is driving individual performance?</div>
+                        <h2 class="panel-title">Driver heatmap</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Sorted by management priority</span>
+                </div>
+                <div class="mt-3 overflow-hidden rounded-md border border-line-soft">
+                    <div class="chassis grid grid-cols-[minmax(9rem,1.5fr)_repeat(4,minmax(4rem,1fr))_4rem] gap-1 px-2 py-2">
+                        <span class="label-instrument !text-on-chassis-soft">Engineer</span>
+                        <span class="label-instrument text-center !text-on-chassis-soft">Completion</span>
+                        <span class="label-instrument text-center !text-on-chassis-soft">Approval</span>
+                        <span class="label-instrument text-center !text-on-chassis-soft">Attendance</span>
+                        <span class="label-instrument text-center !text-on-chassis-soft">Utilization</span>
+                        <span class="label-instrument text-right !text-on-chassis-soft">Score</span>
+                    </div>
+                    <div class="max-h-96 overflow-y-auto">
+                        @foreach (var row in _people)
+                        {
+                            <button type="button" class="@($"grid w-full grid-cols-[minmax(9rem,1.5fr)_repeat(4,minmax(4rem,1fr))_4rem] items-center gap-1 border-b border-line-soft px-2 py-1.5 text-left transition-colors duration-100 hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : "")}")" @onclick="() => Focus(row.Name)">
+                                <span class="truncate text-xs font-medium text-ink">@row.Name</span>
+                                @HeatCell(row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
+                                @HeatCell(row.Item.ApprovalScore, row.Item.HasSummaryData)
+                                @HeatCell(row.Item.AttendanceDisciplineScore, row.Item.ExpectedTimesheetDays > 0)
+                                @HeatCell(row.Item.Utilization, row.Item.HasSummaryData)
+                                <b class="@($"metric text-right text-xs {Analytics.BandTextClass(Analytics.ScoreBand(row.Score))}")">@Analytics.Format(row.Score, "0")</b>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <aside class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Why is this person different?</div>
+                        <h2 class="panel-title">Operational fingerprint</h2>
+                    </div>
+                    @if (Focused is not null)
+                    {
+                        <button type="button" class="btn btn-secondary ml-auto" @onclick="OpenFocusedPortrait">Open portrait ↗</button>
+                    }
+                </div>
+                @if (Focused is null)
+                {
+                    <div class="empty-slot mt-3">Select an engineer above.</div>
+                }
+                else
+                {
+                    <div class="mt-3 flex items-center gap-3 border-b border-line-soft pb-3">
+                        <span class="well flex h-10 w-10 items-center justify-center !rounded-full font-display text-xs font-semibold text-ink-soft">@Analytics.Initials(Focused.Name)</span>
+                        <span class="min-w-0 flex-1"><strong class="block truncate text-sm font-semibold text-ink">@Focused.Name</strong><small class="text-2xs text-muted">Score @Analytics.Format(Focused.Score, "0") · @(Focused.Delta is null ? "no prior month" : DeltaLabel(Focused.Delta.Value))</small></span>
+                    </div>
+                    <div class="mt-4 flex flex-col gap-4">
+                        @FingerprintMetric("Timesheet completion", Focused.Item.TimesheetCompletionScore, 95m, Median(x => x.TimesheetCompletionScore, x => x.HasSummaryData), Focused.Item.HasSummaryData)
+                        @FingerprintMetric("Approval completion", Focused.Item.ApprovalScore, 95m, Median(x => x.ApprovalScore, x => x.HasSummaryData), Focused.Item.HasSummaryData)
+                        @FingerprintMetric("Attendance discipline", Focused.Item.AttendanceDisciplineScore, 95m, Median(x => x.AttendanceDisciplineScore, x => x.ExpectedTimesheetDays > 0), Focused.Item.ExpectedTimesheetDays > 0)
+                        @FingerprintMetric("Utilization", Focused.Item.Utilization, Analytics.UtilizationTarget, Median(x => x.Utilization, x => x.HasSummaryData), Focused.Item.HasSummaryData)
+                    </div>
+                    <div class="well mt-4 grid grid-cols-3 gap-2 p-3 text-center">
+                        <span><b class="metric block text-sm">@Analytics.Format(Focused.Item.Workload(), "0.0")</b><small class="label-instrument">h/day</small></span>
+                        <span><b class="metric block text-sm">@ExceptionCount(Focused.Item)</b><small class="label-instrument">exceptions</small></span>
+                        <span><b class="metric block text-sm">@Signed(Focused.Item.ReconciliationVariance)</b><small class="label-instrument">variance h</small></span>
+                    </div>
+                }
+            </aside>
+        </section>
+
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-2">
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Is workload part of the problem?</div>
+                        <h2 class="panel-title">Workload × utilization</h2>
+                    </div>
+                    <span class="label-instrument ml-auto">Healthy references · 9 h/day · @Analytics.UtilizationTarget% utilization</span>
+                </div>
+                <div class="well mt-3 p-2">
+                    <svg class="block h-80 w-full" viewBox="0 0 100 66" role="img" aria-label="Average accountable hours per day versus utilization">
+                        <line x1="@Svg(CapacityX(Analytics.WorkloadCeiling))" x2="@Svg(CapacityX(Analytics.WorkloadCeiling))" y1="6" y2="58" stroke="var(--color-line)" stroke-width=".35" stroke-dasharray="1 1" />
+                        <line x1="8" x2="96" y1="@Svg(CapacityY(Analytics.UtilizationTarget))" y2="@Svg(CapacityY(Analytics.UtilizationTarget))" stroke="var(--color-line)" stroke-width=".35" stroke-dasharray="1 1" />
+                        <text x="11" y="10" fill="var(--color-muted)" font-size="2.4">EFFICIENT</text>
+                        <text x="78" y="10" fill="var(--color-muted)" font-size="2.4">SUSTAINED LOAD</text>
+                        <text x="11" y="55" fill="var(--color-muted)" font-size="2.4">UNDERUSED</text>
+                        <text x="75" y="55" fill="var(--color-muted)" font-size="2.4">LOAD / BOOKING GAP</text>
+                        @foreach (var person in _people.Where(x => x.Item.HasSummaryData))
+                        {
+                            var selected = IsFocused(person.Name);
+                            <circle class="cursor-pointer" cx="@Svg(CapacityX(person.Item.Workload()))" cy="@Svg(CapacityY(person.Item.Utilization))" r="@(selected ? "2.7" : "1.8")" fill="@(selected ? "var(--color-primary)" : PointFill(person.Score))" stroke="var(--color-well)" stroke-width="@(selected ? ".85" : ".55")" @onclick="() => Focus(person.Name)">
+                                <title>@person.Name · @Analytics.Format(person.Item.Workload(), "0.0") h/day · @Analytics.Format(person.Item.Utilization, "0")% utilization</title>
+                            </circle>
+                            @if (selected)
+                            {
+                                <text x="@Svg(CapacityX(person.Item.Workload()) + 3.2)" y="@Svg(CapacityY(person.Item.Utilization) + .8)" fill="var(--color-ink)" font-size="2.45" font-weight="700">@Analytics.Initials(person.Name)</text>
+                            }
+                        }
+                        <text x="52" y="64" text-anchor="middle" fill="var(--color-muted)" font-size="2.35">AVERAGE ACCOUNTABLE HOURS / DAY →</text>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="plate p-4">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-eyebrow">Do peers corroborate the signal?</div>
+                        <h2 class="panel-title">Operational × peer signal</h2>
+                    </div>
+                    <button type="button" class="btn btn-secondary ml-auto" @onclick='() => Navigation.NavigateTo("/peer-insights")'>Open peer insights ↗</button>
+                </div>
+                @if (_peerPoints.Count == 0)
+                {
+                    <div class="empty-slot mt-3">Import peer reviews to compare operational and peer evidence.</div>
+                }
+                else
+                {
+                    <div class="well mt-3 p-2">
+                        <svg class="block h-80 w-full" viewBox="0 0 100 66" role="img" aria-label="Operational score versus evidence-adjusted peer rating">
+                            <line x1="@Svg(MomentumX(85))" x2="@Svg(MomentumX(85))" y1="6" y2="58" stroke="var(--color-line)" stroke-width=".35" stroke-dasharray="1 1" />
+                            <line x1="8" x2="96" y1="@Svg(PeerY(_peerAverage))" y2="@Svg(PeerY(_peerAverage))" stroke="var(--color-line)" stroke-width=".35" stroke-dasharray="1 1" />
+                            <text x="10" y="10" fill="var(--color-muted)" font-size="2.4">PEER-STRENGTH / OPS-RISK</text>
+                            <text x="73" y="10" fill="var(--color-muted)" font-size="2.4">STRONG BOTH</text>
+                            <text x="10" y="55" fill="var(--color-muted)" font-size="2.4">WEAK BOTH</text>
+                            <text x="70" y="55" fill="var(--color-muted)" font-size="2.4">OPS-STRONG / PEER-RISK</text>
+                            @foreach (var point in _peerPoints)
+                            {
+                                var selected = IsFocused(point.Name);
+                                <circle class="cursor-pointer" cx="@Svg(MomentumX(point.OperationalScore))" cy="@Svg(PeerY(point.PeerScore))" r="@(selected ? "2.7" : "1.8")" fill="@(selected ? "var(--color-primary)" : PointFill(point.OperationalScore))" stroke="var(--color-well)" stroke-width="@(selected ? ".85" : ".55")" @onclick="() => Focus(point.Name)">
+                                    <title>@point.Name · operational @Analytics.Format(point.OperationalScore) · reliable peer floor @Analytics.Format(point.PeerScore, "0.00") · @point.Reviews review(s)</title>
+                                </circle>
+                                @if (selected)
+                                {
+                                    <text x="@Svg(MomentumX(point.OperationalScore) + 3.2)" y="@Svg(PeerY(point.PeerScore) + .8)" fill="var(--color-ink)" font-size="2.45" font-weight="700">@Analytics.Initials(point.Name)</text>
+                                }
+                            }
+                            <text x="52" y="64" text-anchor="middle" fill="var(--color-muted)" font-size="2.35">OPERATIONAL SCORE →</text>
+                        </svg>
+                    </div>
+                    <p class="label-instrument mt-2">Peer Y-axis uses the evidence-adjusted conservative rating floor, not the raw average.</p>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly (decimal Score, string Label)[] TrendReferences = [(50m, "50"), (70m, "70"), (85m, "85")];
+    private OperationalScoringSettings _settings = OperationalScoringSettings.Default;
+    private IReadOnlyList<TrendPoint> _trend = [];
+    private IReadOnlyList<PersonSignal> _people = [];
+    private IReadOnlyList<Anomaly> _alerts = [];
+    private IReadOnlyList<DriverEffect> _driverEffects = [];
+    private IReadOnlyList<PeerPoint> _peerPoints = [];
+    private string? _focusName;
+    private decimal _teamScore;
+    private decimal? _previousTeamScore;
+    private decimal? _teamDelta;
+    private decimal _momentumRange = 10m;
+    private decimal _capacityXMax = 10m;
+    private decimal _capacityYMax = 120m;
+    private decimal _peerAverage = 3m;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnStateChanged;
+        _settings = await Database.GetOperationalScoringSettingsAsync();
+        Recompute();
+    }
+
+    private void OnStateChanged()
+    {
+        Recompute();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private DateTime PreviousMonth => State.SelectedMonth.AddMonths(-1);
+    private int GoodCount => _people.Count(x => x.Score >= 85m);
+    private int CriticalCount => _people.Count(x => x.Score < 55m);
+    private int AttentionCount => _people.Count(NeedsAttention);
+    private IReadOnlyList<PersonSignal> AttentionRows => _people.Where(NeedsAttention).Take(5).ToArray();
+    private PersonSignal? Focused => _people.FirstOrDefault(x => IsFocused(x.Name));
+    private string TrendPolyline => string.Join(" ", _trend.Select((point, index) => $"{Svg(TrendX(index))},{Svg(TrendY(point.Score))}"));
+    private string LargestDriverLabel => _driverEffects.Count == 0 ? "—" : _driverEffects.MaxBy(x => Math.Abs(x.Effect)) is { } largest ? $"{largest.Label} · {DeltaLabel(largest.Effect)}" : "—";
+
+    private void Recompute()
+    {
+        _teamScore = State.Performance.Count == 0 ? 0m : decimal.Round(State.Performance.Average(x => x.OperationalScore), 1);
+
+        var previousRows = State.History
+            .Where(x => x.Year == PreviousMonth.Year && x.Month == PreviousMonth.Month)
+            .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First())
+            .ToArray();
+        _previousTeamScore = previousRows.Length == 0 ? null : decimal.Round(previousRows.Average(x => x.OperationalScore), 1);
+        _teamDelta = _previousTeamScore is null ? null : decimal.Round(_teamScore - _previousTeamScore.Value, 1);
+
+        var previousScores = previousRows.ToDictionary(x => x.EmployeeName, x => x.OperationalScore, StringComparer.OrdinalIgnoreCase);
+        _alerts = Analytics.Anomalies(State.Performance, previousScores);
+
+        _people = State.Performance
+            .Select(item =>
+            {
+                var previous = previousScores.TryGetValue(item.EmployeeName, out var score) ? score : (decimal?)null;
+                var delta = previous is null ? null : decimal.Round(item.OperationalScore - previous.Value, 1);
+                var personAlerts = _alerts.Where(x => PersonName.Matches(x.EmployeeName, item.EmployeeName)).ToArray();
+                var severity = personAlerts.Sum(x => x.Level == AlertLevel.Critical ? 14m : x.Level == AlertLevel.Serious ? 8m : 3m);
+                var priority = (100m - item.OperationalScore) * .5m
+                    + (delta is < 0 ? Math.Abs(delta.Value) * 1.5m : 0m)
+                    + ExceptionCount(item)
+                    + Math.Min(30m, Math.Abs(item.ReconciliationVariance)) * .2m
+                    + severity;
+                return new PersonSignal(item, previous, delta, personAlerts.Length, priority);
+            })
+            .OrderByDescending(x => x.Priority)
+            .ThenBy(x => x.Score)
+            .ToArray();
+
+        var largestDelta = _people.Where(x => x.Delta is not null).Select(x => Math.Abs(x.Delta!.Value)).DefaultIfEmpty(0m).Max();
+        _momentumRange = Math.Max(10m, Math.Ceiling(largestDelta / 5m) * 5m);
+        _capacityXMax = Math.Max(10m, Math.Ceiling(_people.Select(x => x.Item.Workload()).DefaultIfEmpty(0m).Max() + 1m));
+        var largestUtilization = _people.Where(x => x.Item.HasSummaryData).Select(x => x.Item.Utilization).DefaultIfEmpty(0m).Max();
+        _capacityYMax = Math.Max(120m, Math.Ceiling(largestUtilization / 10m) * 10m);
+
+        var monthly = State.History.Concat(State.Performance)
+            .Where(x => new DateTime(x.Year, x.Month, 1) <= State.SelectedMonth)
+            .GroupBy(x => (x.Year, x.Month, Name: PersonName.Normalize(x.EmployeeName)))
+            .Select(x => x.First())
+            .GroupBy(x => (x.Year, x.Month))
+            .OrderBy(x => x.Key.Year).ThenBy(x => x.Key.Month)
+            .Select(group => new TrendPoint(
+                new DateTime(group.Key.Year, group.Key.Month, 1).ToString("MMMM yyyy"),
+                new DateTime(group.Key.Year, group.Key.Month, 1).ToString("MMM"),
+                decimal.Round(group.Average(x => x.OperationalScore), 1)))
+            .TakeLast(6)
+            .ToArray();
+        _trend = monthly;
+
+        _driverEffects = BuildDriverEffects(previousRows);
+
+        var peerSummary = Analytics.Peers(State.PeerReviews);
+        _peerAverage = peerSummary.AverageRating <= 0 ? 3m : peerSummary.AverageRating;
+        _peerPoints = peerSummary.Standings
+            .Select(standing =>
+            {
+                var person = State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, standing.Name));
+                return person is null ? null : new PeerPoint(standing.Name, person.OperationalScore, standing.ConfidenceLowerBound, standing.ReviewsReceived);
+            })
+            .Where(x => x is not null)
+            .Select(x => x!)
+            .ToArray();
+
+        if (_focusName is null || _people.All(x => !PersonName.Matches(x.Name, _focusName)))
+            _focusName = AttentionRows.FirstOrDefault()?.Name ?? _people.FirstOrDefault()?.Name;
+    }
+
+    private IReadOnlyList<DriverEffect> BuildDriverEffects(IReadOnlyList<MonthlyPerformanceItem> previous)
+    {
+        if (_teamDelta is null || previous.Count == 0) return [];
+
+        var effects = new List<DriverEffect>
+        {
+            new("Timesheet completion", WeightedEffect(State.Performance, previous, x => x.TimesheetCompletionScore, x => x.HasSummaryData, _settings.TimesheetCompletionWeight)),
+            new("Approval completion", WeightedEffect(State.Performance, previous, x => x.ApprovalScore, x => x.HasSummaryData, _settings.ApprovalCompletionWeight)),
+            new("Attendance discipline", WeightedEffect(State.Performance, previous, x => x.AttendanceDisciplineScore, x => x.ExpectedTimesheetDays > 0, _settings.AttendanceDisciplineWeight))
+        };
+        var residual = decimal.Round(_teamDelta.Value - effects.Sum(x => x.Effect), 1);
+        if (Math.Abs(residual) >= .1m) effects.Add(new DriverEffect("Population / source mix", residual));
+        return effects;
+    }
+
+    private static decimal WeightedEffect(
+        IEnumerable<MonthlyPerformanceItem> current,
+        IEnumerable<MonthlyPerformanceItem> previous,
+        Func<MonthlyPerformanceItem, decimal> selector,
+        Func<MonthlyPerformanceItem, bool> applicable,
+        decimal weight)
+    {
+        var now = current.Where(applicable).Select(selector).ToArray();
+        var before = previous.Where(applicable).Select(selector).ToArray();
+        if (now.Length == 0 || before.Length == 0) return 0m;
+        return decimal.Round((now.Average() - before.Average()) * weight / 100m, 1);
+    }
+
+    private bool NeedsAttention(PersonSignal person) =>
+        person.AlertCount > 0 || person.Score < 70m || person.Delta is <= -5m;
+
+    private string PrimaryReason(PersonSignal person)
+    {
+        var alert = _alerts.Where(x => PersonName.Matches(x.EmployeeName, person.Name)).OrderBy(x => x.Level).FirstOrDefault();
+        if (alert is not null) return alert.Headline;
+        if (person.Delta is <= -5m) return $"Score down {Analytics.Format(Math.Abs(person.Delta.Value), "0.#")} points";
+        if (person.Item.TimesheetCompletionScore < 70m && person.Item.HasSummaryData) return "Low timesheet completion";
+        if (person.Item.AttendanceDisciplineScore < 70m && person.Item.ExpectedTimesheetDays > 0) return "Attendance discipline";
+        if (person.Item.ApprovalScore < 70m && person.Item.HasSummaryData) return "Approval completion";
+        return "Low operational score";
+    }
+
+    private void Focus(string name) => _focusName = name;
+    private bool IsFocused(string name) => _focusName is not null && PersonName.Matches(_focusName, name);
+    private void OpenFocusedPortrait()
+    {
+        if (Focused is { } person) Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(person.Name)}");
+    }
+
+    private RenderFragment HeatCell(decimal value, bool available) => available
+        ? @<span class="@($"rounded-sm px-2 py-1.5 text-center text-xs font-semibold tabular-nums {HeatClass(value)}")">@Analytics.Format(value, "0")</span>
+        : @<span class="rounded-sm bg-surface-inset px-2 py-1.5 text-center text-xs text-muted">—</span>;
+
+    private RenderFragment FingerprintMetric(string label, decimal value, decimal target, decimal median, bool available) =>
+        @<div>
+            <div class="flex items-center justify-between gap-2"><span class="text-xs font-medium text-ink-soft">@label</span><b class="metric text-xs">@(available ? Analytics.Format(value, "0") + "%" : "—")</b></div>
+            @if (available)
+            {
+                <div class="track relative mt-1 h-4 overflow-visible" title="Target @Analytics.Format(target, "0") · team median @Analytics.Format(median, "0")">
+                    <i class="absolute inset-y-0 left-0 rounded-full bg-petrol" style="@($"width:{Analytics.CssPct(value)}")"></i>
+                    <i class="absolute -inset-y-1 w-px bg-ink-soft" style="@($"left:{Analytics.CssPct(median)}")"></i>
+                    <i class="absolute -inset-y-1 border-l border-dashed border-muted" style="@($"left:{Analytics.CssPct(target)}")"></i>
+                </div>
+                <div class="mt-1 flex justify-between label-instrument"><span>Median @Analytics.Format(median, "0")</span><span>Target @Analytics.Format(target, "0")</span></div>
+            }
+        </div>;
+
+    private decimal Median(Func<MonthlyPerformanceItem, decimal> selector, Func<MonthlyPerformanceItem, bool> applicable)
+    {
+        var values = State.Performance.Where(applicable).Select(selector).OrderBy(x => x).ToArray();
+        if (values.Length == 0) return 0m;
+        var middle = values.Length / 2;
+        return values.Length % 2 == 1 ? values[middle] : decimal.Round((values[middle - 1] + values[middle]) / 2m, 1);
+    }
+
+    private string DriverBarStyle(decimal effect)
+    {
+        var max = Math.Max(1m, _driverEffects.Select(x => Math.Abs(x.Effect)).DefaultIfEmpty(1m).Max());
+        var width = Math.Min(48m, Math.Abs(effect) / max * 48m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        return effect >= 0
+            ? $"left:50%;width:{width}%;background:var(--color-good)"
+            : $"right:50%;width:{width}%;background:var(--color-critical)";
+    }
+
+    private static string HeatClass(decimal value) => value switch
+    {
+        >= 85m => "bg-good-soft text-good",
+        >= 70m => "bg-warning-soft text-warning",
+        >= 55m => "bg-serious-soft text-serious",
+        _ => "bg-critical-soft text-critical"
+    };
+
+    private static string PointFill(decimal score) => score switch
+    {
+        >= 85m => "var(--color-good)",
+        >= 70m => "var(--color-warning)",
+        >= 55m => "var(--color-serious)",
+        _ => "var(--color-critical)"
+    };
+
+    private static string DeltaClass(decimal value) => value > 0 ? "text-good" : value < 0 ? "text-critical" : "text-muted";
+    private static string DeltaLabel(decimal value) => value > 0 ? $"↑ {Analytics.Format(value, "0.#")}" : value < 0 ? $"↓ {Analytics.Format(Math.Abs(value), "0.#")}" : "→ 0";
+    private static string Signed(decimal value) => $"{(value > 0 ? "+" : string.Empty)}{Analytics.Format(value, "0.0")}";
+    private static int ExceptionCount(MonthlyPerformanceItem item) => item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
+
+    private double TrendX(int index) => _trend.Count <= 1 ? 52d : 8d + index * 88d / (_trend.Count - 1d);
+    private static double TrendY(decimal score) => 38d - (double)Math.Clamp(score, 0m, 100m) * .30d;
+    private static double MomentumX(decimal score) => 8d + (double)Math.Clamp(score, 0m, 100m) * .88d;
+    private double MomentumY(decimal delta) => 32d - (double)Math.Clamp(delta, -_momentumRange, _momentumRange) / (double)_momentumRange * 24d;
+    private double CapacityX(decimal workload) => 8d + (double)Math.Clamp(workload, 0m, _capacityXMax) / (double)_capacityXMax * 88d;
+    private double CapacityY(decimal utilization) => 58d - (double)Math.Clamp(utilization, 0m, _capacityYMax) / (double)_capacityYMax * 48d;
+    private static double PeerY(decimal peerScore) => 58d - (double)Math.Clamp(peerScore - 1m, 0m, 4m) / 4d * 48d;
+    private static string Svg(double value) => Analytics.Svg(value);
+
+    private sealed record TrendPoint(string Label, string ShortLabel, decimal Score);
+    private sealed record DriverEffect(string Label, decimal Effect);
+    private sealed record PeerPoint(string Name, decimal OperationalScore, decimal PeerScore, int Reviews);
+    private sealed record PersonSignal(MonthlyPerformanceItem Item, decimal? PreviousScore, decimal? Delta, int AlertCount, decimal Priority)
+    {
+        public string Name => Item.EmployeeName;
+        public decimal Score => Item.OperationalScore;
+    }
+}
