@@ -1,12 +1,9 @@
 name: Performance Story Verification
 
 on:
-  push:
-    branches:
-      - feature/performance-story
   pull_request:
     branches:
-      - claude/ponytail-simplification-42sqra
+      - feature/performance-story
 
 jobs:
   windows-verify:
