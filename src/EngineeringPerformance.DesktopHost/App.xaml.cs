@@ -34,7 +34,7 @@ public partial class App : System.Windows.Application
             {
                 services.AddWpfBlazorWebView();
                 services.AddLocalInfrastructure(_paths);
-                services.AddSingleton<IUpdateBackend>(_ => new VelopackUpdateBackend(UpdateSettings.RepositoryUrl));
+                services.AddSingleton<IUpdateBackend>(_ => new VelopackUpdateBackend("https://github.com/bhadkamkar9snehil/EOS"));
                 services.AddSingleton<VelopackUpdateService>(sp => new VelopackUpdateService(
                     sp.GetRequiredService<IUpdateBackend>(),
                     () => Dispatcher.BeginInvoke(new Action(() => Shutdown())),
