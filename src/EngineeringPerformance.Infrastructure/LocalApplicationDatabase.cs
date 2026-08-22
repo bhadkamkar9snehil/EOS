@@ -84,20 +84,29 @@ public sealed class LocalApplicationDatabase(
 
     public async Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(employeeName)) return;
-        var trimmed = employeeName.Trim();
+        var normalized = PersonName.Normalize(employeeName);
+        if (normalized.Length == 0) return;
+
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var existing = await context.AnalysisExclusions.SingleOrDefaultAsync(
-            x => x.EmployeeName.ToLower() == trimmed.ToLower(), cancellationToken);
+        // PersonName.Matches intentionally runs in .NET: its whitespace normalization is not
+        // provider-translatable, and this table is a tiny user-maintained set.
+        var exclusions = await context.AnalysisExclusions.ToListAsync(cancellationToken);
+        var matches = exclusions.Where(x => PersonName.Matches(x.EmployeeName, normalized)).ToArray();
+
         if (excluded)
         {
-            if (existing is null) context.AnalysisExclusions.Add(new AnalysisExclusion(trimmed));
+            if (matches.Length == 0)
+                context.AnalysisExclusions.Add(new AnalysisExclusion(normalized));
+            else if (matches.Length > 1)
+                context.AnalysisExclusions.RemoveRange(matches.Skip(1));
         }
-        else if (existing is not null)
+        else if (matches.Length > 0)
         {
-            context.AnalysisExclusions.Remove(existing);
+            context.AnalysisExclusions.RemoveRange(matches);
         }
-        await context.SaveChangesAsync(cancellationToken);
+
+        if (context.ChangeTracker.HasChanges())
+            await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<DashboardSnapshot> GetDashboardAsync(int? year = null, int? month = null, CancellationToken cancellationToken = default)
