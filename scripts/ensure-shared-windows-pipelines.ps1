@@ -64,7 +64,7 @@ function Ensure-Pipeline {
             --output none
         if ($LASTEXITCODE -ne 0) { throw "Could not update pipeline '$Name'." }
         Write-Host "Pipeline already present: $Name (#$pipelineId)"
-        return
+        return [pscustomobject]@{ Id = $pipelineId; Created = $false }
     }
 
     Write-Host "Creating pipeline: $Name"
@@ -87,7 +87,10 @@ function Ensure-Pipeline {
     if ($null -eq $created -or [int]$created.id -le 0) {
         throw "Pipeline '$Name' was not created correctly."
     }
-    Write-Host "Created pipeline: $Name (#$($created.id))"
+
+    $pipelineId = [int]$created.id
+    Write-Host "Created pipeline: $Name (#$pipelineId)"
+    return [pscustomobject]@{ Id = $pipelineId; Created = $true }
 }
 
 if ([string]::IsNullOrWhiteSpace($env:AZURE_DEVOPS_EXT_PAT) -and -not [string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
@@ -151,18 +154,35 @@ if ([string]::IsNullOrWhiteSpace($serviceConnectionId)) {
 
 Write-Host "Using GitHub service connection: $serviceConnectionId"
 
-Ensure-Pipeline `
+$genericPipeline = Ensure-Pipeline `
     -Name $GenericPipelineName `
     -Repository 'https://github.com/bhadkamkar9snehil/EOS' `
     -YamlPath 'azure-generic-windows-build.yml' `
     -Description 'Manual branch/tag/SHA-selectable Windows verification for EOS and APS on the shared EOS Azure VM agent.' `
     -ServiceConnectionId $serviceConnectionId
 
-Ensure-Pipeline `
+$apsPipeline = Ensure-Pipeline `
     -Name $ApsPipelineName `
     -Repository 'https://github.com/bhadkamkar9snehil/APS' `
     -YamlPath 'azure-pipelines.yml' `
     -Description 'Branch-agnostic APS Windows build, tests and desktop publish validation on the shared EOS Azure VM agent.' `
     -ServiceConnectionId $serviceConnectionId
 
-Write-Host 'Shared Windows pipeline reconciliation complete.'
+if ($apsPipeline.Created) {
+    Write-Host "Queuing initial APS main verification on pipeline #$($apsPipeline.Id)."
+    $initialRun = Invoke-AzJson -Arguments @(
+        'pipelines','run',
+        '--id',([string]$apsPipeline.Id),
+        '--branch','main',
+        '--organization',$OrganizationUrl,
+        '--project',$ProjectName,
+        '--only-show-errors',
+        '--output','json'
+    )
+    if ($null -eq $initialRun -or [int]$initialRun.id -le 0) {
+        throw 'APS CI pipeline was created but its initial main verification could not be queued.'
+    }
+    Write-Host "Queued APS main validation run #$($initialRun.id)."
+}
+
+Write-Host "Shared Windows pipeline reconciliation complete. Windows Build Lab #$($genericPipeline.Id); APS CI #$($apsPipeline.Id)."
