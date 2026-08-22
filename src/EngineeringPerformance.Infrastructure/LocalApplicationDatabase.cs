@@ -96,9 +96,28 @@ public sealed class LocalApplicationDatabase(
         if (excluded)
         {
             if (matches.Length == 0)
+            {
                 context.AnalysisExclusions.Add(new AnalysisExclusion(normalized));
-            else if (matches.Length > 1)
-                context.AnalysisExclusions.RemoveRange(matches.Skip(1));
+            }
+            else
+            {
+                // Old databases may contain case/spacing variants created before AnalysisExclusion
+                // enforced its normalized-key invariant. Collapse the whole identity set to one
+                // deterministic normalized row while preserving the casing already stored.
+                var canonicalName = matches
+                    .Select(x => PersonName.Normalize(x.EmployeeName))
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(x => x, StringComparer.Ordinal)
+                    .First();
+                var alreadyCanonical = matches.Length == 1 &&
+                    string.Equals(matches[0].EmployeeName, canonicalName, StringComparison.Ordinal);
+
+                if (!alreadyCanonical)
+                {
+                    context.AnalysisExclusions.RemoveRange(matches);
+                    context.AnalysisExclusions.Add(new AnalysisExclusion(canonicalName));
+                }
+            }
         }
         else if (matches.Length > 0)
         {
