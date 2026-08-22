@@ -14,7 +14,6 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
-    <PackageReference Include="FluentValidation" Version="12.1.1" />
   </ItemGroup>
 
   <PropertyGroup>
