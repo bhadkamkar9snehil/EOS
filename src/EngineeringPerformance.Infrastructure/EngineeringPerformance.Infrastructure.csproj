@@ -13,6 +13,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <!-- Deliberately pinned rather than relying on EF Core 10.0.10's >=2.1.11 transitive floor.
+         Removing this can change the resolved native SQLite bundle on restore; revisit only in a
+         CLI-validated package-management pass. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 
   <PropertyGroup>
