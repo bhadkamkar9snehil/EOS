@@ -39,6 +39,7 @@
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
             @if (!_navCollapsed) { <span class="label-instrument mb-1 mt-3 px-2 !text-on-chassis-muted">Analyze</span> }
             @NavButton("overview", "Overview", Icon.Overview)
+            @NavButton("performance-story", "Performance Story", Icon.Reports)
             @NavButton("timesheets", "Timesheets", Icon.Timesheets)
             @NavButton("peer-insights", "Peer Insights", Icon.PeerInsights)
             @NavButton("reports", "Reports", Icon.Reports)
@@ -301,6 +302,7 @@
         "timesheets" => "Timesheets",
         "employees" => "Employees & teams",
         "peer-insights" => "Peer insights",
+        "performance-story" => "Performance story",
         "templates" => "Review templates",
         "reports" => "Reports",
         "team-comparison" => "Team comparison",
