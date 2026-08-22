@@ -32,6 +32,7 @@ variables:
   targetSourceRoot: '$(Agent.TempDirectory)\WindowsBuildLab\source'
   testResultsDirectory: '$(Agent.TempDirectory)\WindowsBuildLab\test-results'
   artifactDirectory: '$(Agent.TempDirectory)\WindowsBuildLab\artifacts'
+  fallbackDotNetSdk: '10.0.203'
 
 jobs:
   - job: windows_build_lab
@@ -49,12 +50,6 @@ jobs:
         clean: true
         fetchDepth: 1
         persistCredentials: false
-
-      - task: UseDotNet@2
-        displayName: Use .NET 10 SDK
-        inputs:
-          packageType: sdk
-          version: 10.0.x
 
       - powershell: |
           $ErrorActionPreference = 'Stop'
@@ -92,10 +87,30 @@ jobs:
           git -C $target checkout --detach FETCH_HEAD
           if ($LASTEXITCODE -ne 0) { throw "Could not check out '$ref'." }
 
+          $globalJson = Join-Path $target 'global.json'
+          $hasGlobalJson = Test-Path -LiteralPath $globalJson
+          Write-Host "##vso[task.setvariable variable=TargetHasGlobalJson]$($hasGlobalJson.ToString().ToLowerInvariant())"
+
           Write-Host "Repository: $repository"
           Write-Host "Requested ref: $ref"
           Write-Host "Resolved commit: $(git -C $target rev-parse HEAD)"
+          Write-Host "Target global.json: $hasGlobalJson"
         displayName: Resolve requested repository ref
+
+      - task: UseDotNet@2
+        displayName: Use target ref SDK from global.json
+        condition: and(succeeded(), eq(variables['TargetHasGlobalJson'], 'true'))
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+          workingDirectory: $(targetSourceRoot)
+
+      - task: UseDotNet@2
+        displayName: Use fallback .NET SDK for legacy refs
+        condition: and(succeeded(), ne(variables['TargetHasGlobalJson'], 'true'))
+        inputs:
+          packageType: sdk
+          version: $(fallbackDotNetSdk)
 
       - powershell: |
           $runVisual = '${{ parameters.runVisualValidation }}' -eq 'True'
