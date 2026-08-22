@@ -9,13 +9,6 @@ public enum AlertLevel { Critical, Serious, Warning }
 
 public sealed record Anomaly(AlertLevel Level, string EmployeeName, string Headline, string Detail);
 
-public sealed record QuartileRow(string EmployeeName, decimal Score, decimal? PreviousScore)
-{
-    public decimal? Delta => PreviousScore is null ? null : decimal.Round(Score - PreviousScore.Value, 1);
-}
-
-public sealed record RadarAxis(string Label, decimal TeamAverage, decimal TopQuartile, decimal BottomQuartile);
-
 /// <summary>
 /// Derives every Overview figure from imported monthly rows. Kept out of the
 /// component so the rules are testable on their own.
@@ -70,14 +63,6 @@ public static class Analytics
     public static string ScoreBand(decimal score) =>
         score >= 85 ? "good" : score >= 70 ? "warning" : score >= 55 ? "serious" : "critical";
 
-    public static string ScoreBandLabel(string band) => band switch
-    {
-        "good" => "Strong (85+)",
-        "warning" => "On track (70–84)",
-        "serious" => "At risk (55–69)",
-        _ => "Critical (<55)"
-    };
-
     /// <summary>
     /// Tailwind class names for a score band, written as literal switch-case strings (not string
     /// interpolation) so Tailwind's static content scanner can find them — a dynamically built
@@ -122,8 +107,6 @@ public static class Analytics
         _ => "#cde2fb"
     };
 
-    public static bool HeatTextIsLight(decimal score) => score >= 60;
-
     /// <summary>Percentage of accountable days on which a timesheet was filled.</summary>
     public static decimal FillRate(this MonthlyPerformanceItem item) =>
         item.ExpectedTimesheetDays <= 0 ? 0 : Clamp(item.TimesheetFilledDays * 100m / item.ExpectedTimesheetDays);
@@ -138,45 +121,6 @@ public static class Analytics
         item.ExpectedTimesheetDays <= 0 ? 0 : Clamp(100m - (item.LateDays + item.EarlyDays) * 100m / (item.ExpectedTimesheetDays * 2m));
 
     private static decimal Clamp(decimal value) => Math.Clamp(decimal.Round(value, 1), 0, 100);
-
-    /// <summary>Team average, top-quartile average and bottom-quartile average per operational dimension.</summary>
-    public static IReadOnlyList<RadarAxis> Radar(IReadOnlyList<MonthlyPerformanceItem> items)
-    {
-        if (items.Count == 0) return [];
-        var ranked = items.OrderByDescending(x => x.OperationalScore).ToArray();
-        var size = Math.Max(1, ranked.Length / 4);
-        var top = ranked.Take(size).ToArray();
-        var bottom = ranked.Reverse().Take(size).ToArray();
-
-        RadarAxis Axis(string label, Func<MonthlyPerformanceItem, decimal> selector) => new(
-            label,
-            decimal.Round(items.Average(selector), 1),
-            decimal.Round(top.Average(selector), 1),
-            decimal.Round(bottom.Average(selector), 1));
-
-        return
-        [
-            Axis("Timesheet fill", x => x.FillRate()),
-            Axis("Approval", x => x.ApprovalScore),
-            Axis("Punctuality", x => x.Punctuality()),
-            Axis("Punch record", x => x.PunchCompliance()),
-            Axis("Full duration", x => x.DurationCompliance())
-        ];
-    }
-
-    public static IReadOnlyList<QuartileRow> Quartile(
-        IReadOnlyList<MonthlyPerformanceItem> items,
-        IReadOnlyDictionary<string, decimal> previous,
-        bool top)
-    {
-        var ordered = top
-            ? items.OrderByDescending(x => x.OperationalScore)
-            : items.OrderBy(x => x.OperationalScore);
-        return ordered.Take(5)
-            .Select(x => new QuartileRow(x.EmployeeName, x.OperationalScore,
-                previous.TryGetValue(x.EmployeeName, out var p) ? p : null))
-            .ToArray();
-    }
 
     /// <summary>
     /// Rules run against imported figures only. Every alert names the number it fired on
@@ -461,22 +405,5 @@ public static class Analytics
         })
         .OrderByDescending(x => x.MissingDays).ThenBy(x => x.Name)
         .ToArray();
-    }
-
-    /// <summary>Least-squares projection of the next point, clamped to the score range.</summary>
-    public static decimal? Forecast(IReadOnlyList<decimal> series)
-    {
-        if (series.Count < 2) return null;
-        var n = series.Count;
-        var sumX = 0m; var sumY = 0m; var sumXy = 0m; var sumXx = 0m;
-        for (var i = 0; i < n; i++)
-        {
-            sumX += i; sumY += series[i]; sumXy += i * series[i]; sumXx += (decimal)i * i;
-        }
-        var denominator = n * sumXx - sumX * sumX;
-        if (denominator == 0) return null;
-        var slope = (n * sumXy - sumX * sumY) / denominator;
-        var intercept = (sumY - slope * sumX) / n;
-        return Math.Clamp(decimal.Round(intercept + slope * n, 1), 0, 100);
     }
 }
