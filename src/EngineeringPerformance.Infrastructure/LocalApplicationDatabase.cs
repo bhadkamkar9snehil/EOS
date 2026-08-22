@@ -84,20 +84,48 @@ public sealed class LocalApplicationDatabase(
 
     public async Task SetExclusionAsync(string employeeName, bool excluded, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(employeeName)) return;
-        var trimmed = employeeName.Trim();
+        var normalized = PersonName.Normalize(employeeName);
+        if (normalized.Length == 0) return;
+
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var existing = await context.AnalysisExclusions.SingleOrDefaultAsync(
-            x => x.EmployeeName.ToLower() == trimmed.ToLower(), cancellationToken);
+        // PersonName.Matches intentionally runs in .NET: its whitespace normalization is not
+        // provider-translatable, and this table is a tiny user-maintained set.
+        var exclusions = await context.AnalysisExclusions.ToListAsync(cancellationToken);
+        var matches = exclusions.Where(x => PersonName.Matches(x.EmployeeName, normalized)).ToArray();
+
         if (excluded)
         {
-            if (existing is null) context.AnalysisExclusions.Add(new AnalysisExclusion(trimmed));
+            if (matches.Length == 0)
+            {
+                context.AnalysisExclusions.Add(new AnalysisExclusion(normalized));
+            }
+            else
+            {
+                // Old databases may contain case/spacing variants created before AnalysisExclusion
+                // enforced its normalized-key invariant. Collapse the whole identity set to one
+                // deterministic normalized row while preserving the casing already stored.
+                var canonicalName = matches
+                    .Select(x => PersonName.Normalize(x.EmployeeName))
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(x => x, StringComparer.Ordinal)
+                    .First();
+                var alreadyCanonical = matches.Length == 1 &&
+                    string.Equals(matches[0].EmployeeName, canonicalName, StringComparison.Ordinal);
+
+                if (!alreadyCanonical)
+                {
+                    context.AnalysisExclusions.RemoveRange(matches);
+                    context.AnalysisExclusions.Add(new AnalysisExclusion(canonicalName));
+                }
+            }
         }
-        else if (existing is not null)
+        else if (matches.Length > 0)
         {
-            context.AnalysisExclusions.Remove(existing);
+            context.AnalysisExclusions.RemoveRange(matches);
         }
-        await context.SaveChangesAsync(cancellationToken);
+
+        if (context.ChangeTracker.HasChanges())
+            await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<DashboardSnapshot> GetDashboardAsync(int? year = null, int? month = null, CancellationToken cancellationToken = default)

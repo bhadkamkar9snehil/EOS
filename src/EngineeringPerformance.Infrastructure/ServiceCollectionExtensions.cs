@@ -7,9 +7,6 @@ namespace EngineeringPerformance.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddLocalInfrastructure(this IServiceCollection services, string dataDirectory) =>
-        services.AddLocalInfrastructure(new LocalApplicationPaths(dataDirectory));
-
     public static IServiceCollection AddLocalInfrastructure(this IServiceCollection services, LocalApplicationPaths paths)
     {
         paths.EnsureDirectories();

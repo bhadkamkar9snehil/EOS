@@ -1,5 +1,23 @@
 namespace EngineeringPerformance.Application;
 
+/// <summary>Human-readable byte-size formatting shared by every page and service that reports file sizes.</summary>
+public static class FileSizeFormat
+{
+    public static string Format(long bytes)
+    {
+        double size = bytes;
+        string[] units = ["B", "KB", "MB", "GB"];
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+
+        return $"{size:0.##} {units[unit]}";
+    }
+}
+
 /// <summary>
 /// Snapshot of the local runtime information shown on the Diagnostics page. The UI deliberately
 /// consumes this contract instead of knowing where the desktop host stores databases or log files.
