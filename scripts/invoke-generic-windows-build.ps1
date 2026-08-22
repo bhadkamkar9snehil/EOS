@@ -117,29 +117,43 @@ try {
         }
 
         'APS' {
-            Invoke-Checked -Label 'Restore APS solution' -Command {
-                dotnet restore APS.slnx
+            $apsVerifier = Join-Path $source 'build\verify.ps1'
+            if (Test-Path -LiteralPath $apsVerifier) {
+                Write-Host "Using APS ref's authoritative build/verify.ps1 contract."
+                $publish = Join-Path $artifacts 'desktop-publish'
+                $diagnostics = Join-Path $artifacts 'aps-diagnostics'
+                & $apsVerifier `
+                    -Configuration $Configuration `
+                    -ResultsDirectory $results `
+                    -PublishDirectory $publish `
+                    -DiagnosticsDirectory $diagnostics
             }
+            else {
+                Write-Host 'APS ref predates build/verify.ps1; using legacy-compatible Build Lab fallback.'
+                Invoke-Checked -Label 'Restore APS solution' -Command {
+                    dotnet restore APS.slnx
+                }
 
-            Invoke-BuildWithDiagnostics -Solution 'APS.slnx' -LogPath $buildLog
+                Invoke-BuildWithDiagnostics -Solution 'APS.slnx' -LogPath $buildLog
 
-            Invoke-Checked -Label 'APS planning tests' -Command {
-                dotnet test tests/APS.Planning.Tests/APS.Planning.Tests.csproj --configuration $Configuration --no-build --no-restore --logger "trx;LogFileName=planning.trx" --results-directory $results
-            }
-            Invoke-Checked -Label 'APS UI tests' -Command {
-                dotnet test tests/APS.UI.Tests/APS.UI.Tests.csproj --configuration $Configuration --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
-            }
+                Invoke-Checked -Label 'APS planning tests' -Command {
+                    dotnet test tests/APS.Planning.Tests/APS.Planning.Tests.csproj --configuration $Configuration --no-build --no-restore --logger "trx;LogFileName=planning.trx" --results-directory $results
+                }
+                Invoke-Checked -Label 'APS UI tests' -Command {
+                    dotnet test tests/APS.UI.Tests/APS.UI.Tests.csproj --configuration $Configuration --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
+                }
 
-            $publish = Join-Path $artifacts 'desktop-publish'
-            if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
-            Invoke-Checked -Label 'APS Windows desktop publish smoke test' -Command {
-                dotnet publish src/APS.DesktopHost/APS.DesktopHost.csproj `
-                    --configuration $Configuration `
-                    --runtime win-x64 `
-                    --self-contained true `
-                    --no-restore `
-                    -p:PublishReadyToRun=true `
-                    --output $publish
+                $publish = Join-Path $artifacts 'desktop-publish'
+                if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
+                Invoke-Checked -Label 'APS Windows desktop publish smoke test' -Command {
+                    dotnet publish src/APS.DesktopHost/APS.DesktopHost.csproj `
+                        --configuration $Configuration `
+                        --runtime win-x64 `
+                        --self-contained true `
+                        --no-restore `
+                        -p:PublishReadyToRun=true `
+                        --output $publish
+                }
             }
         }
     }
