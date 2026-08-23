@@ -249,9 +249,12 @@
                 var removedNames = preview.SampleRemoved is { Count: > 0 }
                     ? $"\nWill remove: {string.Join(", ", preview.SampleRemoved)}\n"
                     : string.Empty;
+                var uncertainty = string.IsNullOrWhiteSpace(preview.Warning)
+                    ? string.Empty
+                    : $"\nWARNING: {preview.Warning}\n";
                 var summary = $"{Path.GetFileName(path)} → {Label(type)}\n\n" +
                     $"{preview.RowsAdded} row(s) added, {preview.RowsUpdated} updated, {preview.RowsRemoved} removed, {preview.RowsUnchanged} unchanged, {preview.TotalRows} incoming row(s).\n" +
-                    removedNames + "\nProceed with this import?";
+                    removedNames + uncertainty + "\nProceed with this import?";
                 var confirmed = await JS.InvokeAsync<bool>("confirm", summary);
                 if (!confirmed) return;
             }
