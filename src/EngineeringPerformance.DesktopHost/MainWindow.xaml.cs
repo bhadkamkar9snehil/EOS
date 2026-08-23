@@ -45,6 +45,7 @@ public partial class MainWindow : Window
             var routes = new[]
             {
                 new CaptureRoute("overview", "/overview"),
+                new CaptureRoute("performance-story", "/performance-story"),
                 new CaptureRoute("employee", "/employee/Asha%20Nair"),
                 new CaptureRoute("timesheets", "/timesheets"),
                 new CaptureRoute("peer-insights", "/peer-insights")
