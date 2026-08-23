@@ -64,6 +64,41 @@ public sealed class PerformanceStoryTests : BunitContext
         Assert.Contains("Approval completion", page.Markup);
     }
 
+    [Fact]
+    public async Task Driver_effects_renormalize_weights_when_a_source_is_inapplicable()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var database = new FakeApplicationDatabase
+        {
+            MonthlyPerformance = [RenormalizedPerformance(2026, 7, 80m, 80m)],
+            History = [RenormalizedPerformance(2026, 6, 76.67m, 70m)]
+        };
+        var state = new AppState(database);
+        await state.SetMonthAsync(new DateTime(2026, 7, 1));
+        Services.AddSingleton<IApplicationDatabase>(database);
+        Services.AddSingleton(state);
+
+        var page = Render<PerformanceStory>();
+
+        Assert.Contains("Approval completion", page.Markup);
+        Assert.Contains("↑ 3.3", page.Markup);
+        Assert.DoesNotContain("Population / source mix", page.Markup);
+    }
+
+    private static MonthlyPerformanceItem RenormalizedPerformance(
+        int year,
+        int month,
+        decimal operationalScore,
+        decimal approvalScore) => new(
+            "Asha Nair", "E-001", operationalScore,
+            0m, approvalScore, 80m,
+            160m, 0m, 0m, 0m,
+            0, 0, 20m, 0m,
+            0, 0, 0, 0,
+            year, month, 160m, 160m,
+            20m, 22m, 0m, 0m,
+            approvalScore / 100m * 160m);
+
     private static MonthlyPerformanceItem Performance(
         string name,
         int year,
