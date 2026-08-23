@@ -267,7 +267,7 @@ public sealed partial class ConfigurableApplicationDatabase(
         var count = await inner.ImportPackageAsync(year, month, zipPath, cancellationToken);
         var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
         await RecalculateAllAsync(settings, cancellationToken);
-        await ReconcileProblemIdentitiesAsync(settings, cancellationToken);
+        await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
         return count;
     }
 
