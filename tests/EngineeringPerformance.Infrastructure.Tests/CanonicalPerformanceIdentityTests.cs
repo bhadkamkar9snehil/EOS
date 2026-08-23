@@ -140,6 +140,43 @@ public sealed class CanonicalPerformanceIdentityTests
         }
     }
 
+    [Fact]
+    public async Task Empty_reimport_clears_superseded_monthly_summary_evidence()
+    {
+        var folder = CreateFolder();
+        var databasePath = Path.Combine(folder, "empty-replacement.db");
+        var firstPath = Path.Combine(folder, $"RPwiseTimesheetUtilazationReport-{Guid.NewGuid():N}.xlsx");
+        var emptyPath = Path.Combine(folder, $"RPwiseTimesheetUtilazationReport-{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            WriteMonthlySummary(firstPath, [("Asha Nair", 176m, 160m, 150m)]);
+            WriteMonthlySummary(emptyPath, []);
+
+            var (database, factory) = CreateDatabase(folder, databasePath);
+            await database.InitializeAsync();
+            await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, firstPath);
+
+            await using (var before = factory.CreateDbContext())
+            {
+                Assert.Single(await before.EmployeeMonthlyPerformances
+                    .Where(x => x.Year == 2026 && x.Month == 7)
+                    .ToListAsync());
+            }
+
+            await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, emptyPath);
+
+            await using var after = factory.CreateDbContext();
+            Assert.Empty(await after.EmployeeMonthlyPerformances
+                .Where(x => x.Year == 2026 && x.Month == 7)
+                .ToListAsync());
+        }
+        finally
+        {
+            Cleanup(folder);
+        }
+    }
+
     private static (IApplicationDatabase Database, TestContextFactory Factory) CreateDatabase(
         string folder,
         string databasePath)
