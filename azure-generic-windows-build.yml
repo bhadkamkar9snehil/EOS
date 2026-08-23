@@ -3,12 +3,9 @@ pr: none
 
 parameters:
   - name: repository
-    displayName: Repository to build
+    displayName: GitHub repository (owner/name)
     type: string
-    default: EOS
-    values:
-      - EOS
-      - APS
+    default: bhadkamkar9snehil/EOS
 
   - name: ref
     displayName: Branch, tag, full ref, or commit SHA
@@ -37,7 +34,7 @@ variables:
 jobs:
   - job: windows_build_lab
     displayName: Windows Build Lab · ${{ parameters.repository }} · ${{ parameters.ref }}
-    timeoutInMinutes: 45
+    timeoutInMinutes: 60
     workspace:
       clean: all
     pool:
@@ -58,16 +55,17 @@ jobs:
           if (Test-Path $parent) { Remove-Item $parent -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $parent | Out-Null
 
-          $repository = '${{ parameters.repository }}'
+          $repository = '${{ parameters.repository }}'.Trim()
           $ref = '${{ parameters.ref }}'.Trim()
-          if ([string]::IsNullOrWhiteSpace($ref)) { throw 'A branch, tag, ref, or commit SHA is required.' }
 
-          $url = switch ($repository) {
-            'EOS' { 'https://github.com/bhadkamkar9snehil/EOS.git' }
-            'APS' { 'https://github.com/bhadkamkar9snehil/APS.git' }
-            default { throw "Unsupported repository '$repository'." }
+          if ($repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+            throw "Repository must be in owner/name form; got '$repository'."
+          }
+          if ([string]::IsNullOrWhiteSpace($ref)) {
+            throw 'A branch, tag, ref, or commit SHA is required.'
           }
 
+          $url = "https://github.com/$repository.git"
           git clone --filter=blob:none --no-checkout $url $target
           if ($LASTEXITCODE -ne 0) { throw "git clone failed with exit code $LASTEXITCODE." }
 
@@ -80,7 +78,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) {
               Write-Host "No branch named '$ref'; trying tag."
               git -C $target fetch origin "refs/tags/$ref" --depth=1
-              if ($LASTEXITCODE -ne 0) { throw "Could not resolve '$ref' as a branch, tag or commit in $url." }
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not resolve '$ref' as a branch, tag or commit in $url."
+              }
             }
           }
 
@@ -89,12 +89,20 @@ jobs:
 
           $globalJson = Join-Path $target 'global.json'
           $hasGlobalJson = Test-Path -LiteralPath $globalJson
+          $solutions = @(
+            Get-ChildItem -LiteralPath $target -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.Extension -in '.sln', '.slnx' }
+          )
+          $hasDotNet = $hasGlobalJson -or ($solutions.Count -gt 0)
+
           Write-Host "##vso[task.setvariable variable=TargetHasGlobalJson]$($hasGlobalJson.ToString().ToLowerInvariant())"
+          Write-Host "##vso[task.setvariable variable=TargetHasDotNet]$($hasDotNet.ToString().ToLowerInvariant())"
 
           Write-Host "Repository: $repository"
           Write-Host "Requested ref: $ref"
           Write-Host "Resolved commit: $(git -C $target rev-parse HEAD)"
           Write-Host "Target global.json: $hasGlobalJson"
+          Write-Host "Target .NET project: $hasDotNet"
         displayName: Resolve requested repository ref
 
       - task: UseDotNet@2
@@ -107,7 +115,7 @@ jobs:
 
       - task: UseDotNet@2
         displayName: Use fallback .NET SDK for legacy refs
-        condition: and(succeeded(), ne(variables['TargetHasGlobalJson'], 'true'))
+        condition: and(succeeded(), eq(variables['TargetHasDotNet'], 'true'), ne(variables['TargetHasGlobalJson'], 'true'))
         inputs:
           packageType: sdk
           version: $(fallbackDotNetSdk)
@@ -126,7 +134,7 @@ jobs:
         displayName: Build, test and validate requested ref
 
       - task: PublishTestResults@2
-        displayName: Publish test results
+        displayName: Publish .NET test results
         condition: succeededOrFailed()
         inputs:
           testResultsFormat: VSTest
@@ -134,7 +142,20 @@ jobs:
           searchFolder: '$(testResultsDirectory)'
           mergeTestResults: true
           failTaskOnFailedTests: true
-          testRunTitle: 'Windows Build Lab · ${{ parameters.repository }} · ${{ parameters.ref }}'
+          failTaskOnMissingResultsFile: false
+          testRunTitle: 'Windows Build Lab · ${{ parameters.repository }} · ${{ parameters.ref }} · .NET'
+
+      - task: PublishTestResults@2
+        displayName: Publish Python test results
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: '*.xml'
+          searchFolder: '$(testResultsDirectory)'
+          mergeTestResults: true
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: false
+          testRunTitle: 'Windows Build Lab · ${{ parameters.repository }} · ${{ parameters.ref }} · Python'
 
       - task: PublishPipelineArtifact@1
         displayName: Publish verification artifacts
