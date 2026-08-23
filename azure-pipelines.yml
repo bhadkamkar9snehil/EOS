@@ -2,23 +2,24 @@ trigger:
   batch: true
   branches:
     include:
-      - '*'
+      - ci/acm-vm-verify-f045bc0
+  paths:
+    exclude:
+      - .ci-results/**
 
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - '*'
+pr: none
 
 variables:
-  buildConfiguration: Release
-  visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
-  diagnosticsDirectory: '$(Agent.TempDirectory)\EosDiagnostics'
+  acmCommit: 'f045bc05fbc6868f1460ec2685ff8a56d20d10a7'
+  acmSource: '$(Agent.TempDirectory)\AcmVmVerify\source'
+  acmResults: '$(Agent.TempDirectory)\AcmVmVerify\test-results'
+  acmArtifacts: '$(Agent.TempDirectory)\AcmVmVerify\artifacts'
+  acmLog: '$(Agent.TempDirectory)\AcmVmVerify\verify.log'
 
 jobs:
-  - job: windows_ci
-    displayName: Windows build, test & visual validation
-    timeoutInMinutes: 40
+  - job: acm_vm_verify
+    displayName: ACM f045bc0 on EOS Azure VM
+    timeoutInMinutes: 60
     workspace:
       clean: all
     pool:
@@ -30,117 +31,155 @@ jobs:
       - checkout: self
         clean: true
         fetchDepth: 0
-        persistCredentials: false
-
-      - powershell: ./scripts/validate-powershell.ps1
-        displayName: Validate PowerShell automation
-
-      # Project/dashboard/pipeline reconciliation mutates Azure DevOps configuration. Keep that
-      # mutation on canonical main builds only; feature branches should only build and test code.
-      - powershell: ./scripts/bootstrap-azure-devops-project.ps1
-        displayName: Reconcile Azure DevOps project configuration
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        continueOnError: true
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./scripts/ensure-shared-windows-pipelines.ps1
-        displayName: Reconcile shared Windows build pipelines
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./build/vm-health.ps1
-        displayName: VM / agent preflight
-
-      - task: UseDotNet@2
-        displayName: Use .NET SDK from global.json
-        inputs:
-          packageType: sdk
-          useGlobalJson: true
-          workingDirectory: $(Build.SourcesDirectory)
-
-      - powershell: dotnet restore EngineeringPerformance.slnx
-        displayName: Restore solution
+        persistCredentials: true
 
       - powershell: |
-          $logPath = "$(Agent.TempDirectory)\eos-build.log"
-          dotnet build EngineeringPerformance.slnx --configuration $(buildConfiguration) --no-restore 2>&1 |
-            Tee-Object -FilePath $logPath
-          $exitCode = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          $resultRoot = Join-Path "$(Build.SourcesDirectory)" '.ci-results'
+          New-Item -ItemType Directory -Force -Path $resultRoot | Out-Null
+          $heartbeat = Join-Path $resultRoot 'acm-f045bc0-started.txt'
+          @(
+            'ACM Azure VM verification started',
+            'Requested commit: $(acmCommit)',
+            'Agent: $(Agent.Name) / $(Agent.MachineName)',
+            'Azure build: $(Build.BuildNumber)',
+            'Azure branch: $(Build.SourceBranch)'
+          ) | Set-Content -LiteralPath $heartbeat -Encoding utf8
 
-          if ($exitCode -ne 0) {
-            # Re-emit compiler/MSBuild/NuGet errors through Azure logging commands so the actual
-            # diagnostic text becomes a first-class pipeline/GitHub Check annotation.
-            $diagnostics = Get-Content $logPath | Where-Object {
-              $_ -match '\berror\s+(CS|MSB|NU|NETSDK)\d+' -or
-              $_ -match ':\s+error\s+' -or
-              $_ -match '\bBuild FAILED\b'
-            } | Select-Object -Unique
+          git config user.name 'EOS Azure VM verifier'
+          git config user.email 'azure-vm-verifier@users.noreply.github.com'
+          git add .ci-results/acm-f045bc0-started.txt
+          git commit -m '[ci-heartbeat] ACM f045bc0 verification started'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit Azure VM heartbeat.' }
+          $branch = "$(Build.SourceBranch)" -replace '^refs/heads/', ''
+          git push origin "HEAD:$branch"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push Azure VM heartbeat back to GitHub.' }
+        displayName: Report EOS Azure VM heartbeat to GitHub
 
-            foreach ($line in $diagnostics) {
-              $safe = $line.Replace("`r", ' ').Replace("`n", ' ')
-              Write-Host "##vso[task.logissue type=error]$safe"
-            }
+      - powershell: |
+          $ErrorActionPreference = 'Stop'
+          $root = Split-Path -Parent "$(acmSource)"
+          if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
 
-            exit $exitCode
+          git clone --filter=blob:none --no-checkout https://github.com/bhadkamkar9snehil/ACM.git "$(acmSource)"
+          if ($LASTEXITCODE -ne 0) { throw "ACM clone failed with exit code $LASTEXITCODE." }
+          git -C "$(acmSource)" fetch origin "$(acmCommit)" --depth=1
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch ACM commit $(acmCommit)." }
+          git -C "$(acmSource)" checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Could not check out ACM commit $(acmCommit)." }
+
+          $resolved = (git -C "$(acmSource)" rev-parse HEAD).Trim()
+          if ($resolved -ne "$(acmCommit)") { throw "Resolved ACM commit $resolved does not match requested $(acmCommit)." }
+          Write-Host "ACM requested/resolved commit: $resolved"
+          Write-Host "Azure agent: $(Agent.Name) / $(Agent.MachineName)"
+        displayName: Resolve exact ACM merge commit
+
+      - powershell: |
+          $ErrorActionPreference = 'Continue'
+          foreach ($path in @("$(acmResults)", "$(acmArtifacts)")) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $path | Out-Null
           }
-        displayName: Build complete solution
+          $logParent = Split-Path -Parent "$(acmLog)"
+          New-Item -ItemType Directory -Force -Path $logParent | Out-Null
 
-      - powershell: |
-          $results = "$(Agent.TempDirectory)\TestResults"
-          New-Item -ItemType Directory -Force -Path $results | Out-Null
+          $exitCode = 0
+          try {
+            & ./scripts/invoke-generic-windows-build.ps1 `
+              -Repository 'bhadkamkar9snehil/ACM' `
+              -SourceRoot "$(acmSource)" `
+              -Configuration Release `
+              -ResultsDirectory "$(acmResults)" `
+              -ArtifactDirectory "$(acmArtifacts)" *>&1 |
+              Tee-Object -FilePath "$(acmLog)"
+          }
+          catch {
+            $_ | Out-String | Tee-Object -FilePath "$(acmLog)" -Append | Write-Host
+            $exitCode = 1
+          }
 
-          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=domain.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=infrastructure.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        displayName: Run tests
+          function Get-JUnitSummary {
+            param([string]$Path, [string]$Label)
+            if (-not (Test-Path -LiteralPath $Path)) { return "$Label: result XML not created" }
+            try {
+              [xml]$xml = Get-Content -LiteralPath $Path -Raw
+              $suites = @($xml.SelectNodes('//testsuite'))
+              $tests = 0; $failures = 0; $errors = 0; $skipped = 0
+              foreach ($suite in $suites) {
+                $tests += [int]$suite.tests
+                $failures += [int]$suite.failures
+                $errors += [int]$suite.errors
+                $skipped += [int]$suite.skipped
+              }
+              return "$Label: tests=$tests failures=$failures errors=$errors skipped=$skipped"
+            }
+            catch { return "$Label: could not parse result XML - $($_.Exception.Message)" }
+          }
+
+          $resultRoot = Join-Path "$(Build.SourcesDirectory)" '.ci-results'
+          New-Item -ItemType Directory -Force -Path $resultRoot | Out-Null
+          $resultPath = Join-Path $resultRoot 'acm-f045bc0.txt'
+          $resolved = (git -C "$(acmSource)" rev-parse HEAD).Trim()
+
+          $lines = [System.Collections.Generic.List[string]]::new()
+          $lines.Add('ACM Azure VM verification')
+          $lines.Add('Requested commit: $(acmCommit)')
+          $lines.Add("Resolved commit: $resolved")
+          $lines.Add('Agent: $(Agent.Name) / $(Agent.MachineName)')
+          $lines.Add('Azure build: $(Build.BuildNumber)')
+          $lines.Add("Exit code: $exitCode")
+          $lines.Add("Result: $(if ($exitCode -eq 0) { 'PASS' } else { 'FAIL' })")
+          $lines.Add((Get-JUnitSummary -Path (Join-Path "$(acmResults)" 'pytest-fast.xml') -Label 'Fast suite'))
+          $lines.Add((Get-JUnitSummary -Path (Join-Path "$(acmResults)" 'pytest-statistical.xml') -Label 'Statistical suite'))
+          $lines.Add('')
+          $lines.Add('Diagnostic matches:')
+
+          if (Test-Path -LiteralPath "$(acmLog)") {
+            $matches = Get-Content -LiteralPath "$(acmLog)" | Where-Object {
+              $_ -match '\bFAILED\b' -or
+              $_ -match '\bERROR\b' -or
+              $_ -match '\bException\b' -or
+              $_ -match '=+ .* passed' -or
+              $_ -match '=+ .* failed'
+            } | Select-Object -Unique
+            foreach ($match in $matches) { $lines.Add([string]$match) }
+            $lines.Add('')
+            $lines.Add('Last 300 log lines:')
+            foreach ($line in @(Get-Content -LiteralPath "$(acmLog)" -Tail 300)) { $lines.Add([string]$line) }
+          }
+          else {
+            $lines.Add('Verification log was not created.')
+          }
+
+          $lines | Set-Content -LiteralPath $resultPath -Encoding utf8
+
+          git add .ci-results/acm-f045bc0.txt
+          git commit -m "[ci-result] ACM f045bc0 verification: $(if ($exitCode -eq 0) { 'PASS' } else { 'FAIL' })"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit Azure VM verification result.' }
+          $branch = "$(Build.SourceBranch)" -replace '^refs/heads/', ''
+          git push origin "HEAD:$branch"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push Azure VM verification result back to GitHub.' }
+
+          if ($exitCode -ne 0) { exit $exitCode }
+        displayName: Build and test ACM, then write result to GitHub
 
       - task: PublishTestResults@2
-        displayName: Publish test results
+        displayName: Publish ACM pytest results
         condition: succeededOrFailed()
         inputs:
-          testResultsFormat: VSTest
-          testResultsFiles: '*.trx'
-          searchFolder: '$(Agent.TempDirectory)\TestResults'
+          testResultsFormat: JUnit
+          testResultsFiles: '*.xml'
+          searchFolder: '$(acmResults)'
           mergeTestResults: true
           failTaskOnFailedTests: true
-          testRunTitle: EOS Windows unit tests
-
-      - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
-        displayName: Capture real WPF + WebView2 visual evidence
-
-      - powershell: |
-          $diagnostics = "$(diagnosticsDirectory)"
-          New-Item -ItemType Directory -Force -Path $diagnostics | Out-Null
-          $buildLog = "$(Agent.TempDirectory)\eos-build.log"
-          if (Test-Path $buildLog) { Copy-Item $buildLog (Join-Path $diagnostics 'build.log') -Force }
-          dotnet --info | Out-File (Join-Path $diagnostics 'dotnet-info.txt') -Encoding utf8
-          git status --porcelain=v1 --branch | Out-File (Join-Path $diagnostics 'git-status.txt') -Encoding utf8
-          @(
-            "Build.SourceBranch=$(Build.SourceBranch)",
-            "Build.SourceVersion=$(Build.SourceVersion)",
-            "Agent.Name=$(Agent.Name)",
-            "Agent.MachineName=$(Agent.MachineName)"
-          ) | Out-File (Join-Path $diagnostics 'run-context.txt') -Encoding utf8
-        displayName: Collect build diagnostics
-        condition: always()
+          failTaskOnMissingResultsFile: false
+          testRunTitle: 'ACM f045bc0 · EOS Azure VM'
 
       - task: PublishPipelineArtifact@1
-        displayName: Publish screenshots, browser diagnostics and app logs
+        displayName: Publish ACM verification artifacts
         condition: always()
         inputs:
-          targetPath: '$(visualEvidenceDirectory)'
-          artifact: visual-evidence
-          publishLocation: pipeline
-
-      - task: PublishPipelineArtifact@1
-        displayName: Publish build diagnostics
-        condition: always()
-        inputs:
-          targetPath: '$(diagnosticsDirectory)'
-          artifact: build-diagnostics
+          targetPath: '$(acmArtifacts)'
+          artifact: acm-f045bc0-verification
           publishLocation: pipeline

@@ -1,0 +1,5 @@
+﻿ACM Azure VM verification started
+Requested commit: f045bc05fbc6868f1460ec2685ff8a56d20d10a7
+Agent: EOS / EOS
+Azure build: 20260823.40
+Azure branch: refs/heads/ci/acm-vm-verify-f045bc0
