@@ -11,7 +11,7 @@ pr: none
 
 jobs:
   - job: acm_verify
-    displayName: ACM 5555c13 Windows verification v2
+    displayName: ACM main aa55d12 Windows verification
     timeoutInMinutes: 60
     pool:
       name: Default
@@ -28,14 +28,14 @@ jobs:
 
       - powershell: |
           $ErrorActionPreference = 'Stop'
-          $commit = '5555c13c2006cd2f537c73ffaeb489208c00a51b'
+          $commit = 'aa55d12a1ea62c23852c01e0be38628ea82fbd1c'
           $eos = '$(Build.SourcesDirectory)'
-          $work = Join-Path '$(Agent.TempDirectory)' 'AcmVerify5555c13v2'
+          $work = Join-Path '$(Agent.TempDirectory)' 'AcmVerifyMainAa55d12'
           $source = Join-Path $work 'source'
           $uvRoot = Join-Path $work 'uv'
           $pythonRoot = Join-Path $work 'python'
           $cache = Join-Path $work 'cache'
-          $progress = Join-Path $eos '.ci-results\acm-5555c13-v2.txt'
+          $progress = Join-Path $eos '.ci-results\acm-main-aa55d12.txt'
           $fastLog = Join-Path $work 'fast.log'
           $statLog = Join-Path $work 'statistical.log'
 
@@ -46,8 +46,8 @@ jobs:
             $stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             New-Item -ItemType Directory -Force -Path (Split-Path $progress -Parent) | Out-Null
             Add-Content -LiteralPath $progress -Value "$stamp  $line" -Encoding utf8
-            git -C $eos add .ci-results/acm-5555c13-v2.txt
-            git -C $eos commit -m "[ci-progress] ACM 5555c13 v2: $line" | Out-Null
+            git -C $eos add .ci-results/acm-main-aa55d12.txt
+            git -C $eos commit -m "[ci-progress] ACM main aa55d12: $line" | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Could not commit progress.' }
             $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
             git -C $eos push origin "HEAD:$branch" | Out-Null
@@ -57,8 +57,8 @@ jobs:
           function Publish-LogTail([string]$logPath, [int]$lines) {
             if (Test-Path $logPath) {
               Get-Content $logPath -Tail $lines | Add-Content $progress
-              git -C $eos add .ci-results/acm-5555c13-v2.txt
-              git -C $eos commit -m '[ci-result] ACM 5555c13 failure detail' | Out-Null
+              git -C $eos add .ci-results/acm-main-aa55d12.txt
+              git -C $eos commit -m '[ci-result] ACM main aa55d12 failure detail' | Out-Null
               $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
               git -C $eos push origin "HEAD:$branch" | Out-Null
             }
@@ -67,7 +67,7 @@ jobs:
           if (Test-Path $work) { Remove-Item $work -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $uvRoot | Out-Null
           if (Test-Path $progress) { Remove-Item $progress -Force }
-          Report "START exact ACM $commit"
+          Report "START exact ACM main $commit"
 
           git clone --filter=blob:none --no-checkout https://github.com/bhadkamkar9snehil/ACM.git $source
           if ($LASTEXITCODE -ne 0) { Report 'CHECKOUT FAIL clone'; exit 1 }
@@ -132,4 +132,4 @@ jobs:
           finally {
             Pop-Location
           }
-        displayName: Bootstrap Python and run ACM fast + statistical suites
+        displayName: Bootstrap Python and run ACM main fast + statistical suites
