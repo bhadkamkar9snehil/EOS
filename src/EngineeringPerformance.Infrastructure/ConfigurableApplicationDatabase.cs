@@ -22,6 +22,9 @@ public sealed partial class ConfigurableApplicationDatabase(
         await inner.InitializeAsync(cancellationToken);
         if (!File.Exists(_settingsPath))
             await WriteSettingsAsync(OperationalScoringSettings.Default, cancellationToken);
+
+        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
+        await ReconcileProblemIdentitiesAsync(settings, cancellationToken);
     }
 
     public async Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default)
@@ -232,17 +235,31 @@ public sealed partial class ConfigurableApplicationDatabase(
 
     public async Task ImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default)
     {
+        var incoming = workbookService.ReadPerformance(sourcePath, reportType, year, month);
         await inner.ImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
-        await RecalculateAfterImportAsync(cancellationToken);
+
+        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
+        await RecalculateAllAsync(settings, cancellationToken);
+        foreach (var monthGroup in incoming.GroupBy(x => (x.Year, x.Month)))
+        {
+            await ReconcileMonthAsync(
+                monthGroup.Key.Year,
+                monthGroup.Key.Month,
+                monthGroup.Select(x => x.EmployeeName),
+                settings,
+                cancellationToken);
+        }
     }
 
     public Task<ImportPreview> PreviewImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default) =>
-        inner.PreviewImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
+        PreviewCanonicalImportAsync(reportType, year, month, sourcePath, cancellationToken);
 
     public async Task<int> ImportPackageAsync(int year, int month, string zipPath, CancellationToken cancellationToken = default)
     {
         var count = await inner.ImportPackageAsync(year, month, zipPath, cancellationToken);
-        await RecalculateAfterImportAsync(cancellationToken);
+        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
+        await RecalculateAllAsync(settings, cancellationToken);
+        await ReconcileProblemIdentitiesAsync(settings, cancellationToken);
         return count;
     }
 
