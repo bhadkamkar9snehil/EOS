@@ -1,4 +1,5 @@
 using EngineeringPerformance.Application;
+using EngineeringPerformance.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace EngineeringPerformance.Infrastructure;
@@ -44,7 +45,7 @@ public sealed partial class ConfigurableApplicationDatabase
             .ToListAsync(cancellationToken);
         if (slots.Count == 0) return;
 
-        var obsolete = new List<Domain.ImportedSourceFile>();
+        var obsolete = new List<ImportedSourceFile>();
         foreach (var group in slots.GroupBy(x => x.ReportType))
         {
             var authoritative = group
