@@ -1,3 +1,4 @@
+# retrigger after EOS Azure VM restart 2026-08-23
 trigger:
   batch: true
   branches:
