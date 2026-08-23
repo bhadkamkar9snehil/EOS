@@ -69,6 +69,13 @@ public partial class App : System.Windows.Application
             await _host.StartAsync();
             await _host.Services.GetRequiredService<IApplicationDatabase>().InitializeAsync();
 
+            if (_visualCapture)
+            {
+                // The synthetic visual fixture is July 2026. Pin AppState before any route renders so
+                // future CI dates cannot silently relabel July data or break month-over-month evidence.
+                await _host.Services.GetRequiredService<AppState>().SetMonthAsync(new DateTime(2026, 7, 1));
+            }
+
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
             MainWindow = mainWindow;
             mainWindow.Show();
