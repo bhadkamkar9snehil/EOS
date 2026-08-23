@@ -24,6 +24,15 @@ public sealed class LocalApplicationDatabase(
         await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;", cancellationToken);
     }
 
+    /// <summary>
+    /// A database built by the pre-migrations code (raw CREATE TABLE / ALTER TABLE calls) already
+    /// has every table and column the InitialBaseline migration would create — so running that
+    /// migration's Up() against it would fail on "table already exists". Detected by the absence
+    /// of the migrations history table alongside the presence of the old "employee" table, this
+    /// marks InitialBaseline as already applied without executing it, exactly the documented
+    /// approach for adopting migrations on an existing database. A genuinely fresh install has
+    /// neither table yet, so MigrateAsync proceeds normally and creates everything from scratch.
+    /// </summary>
     private static async Task BaselineExistingDatabaseAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
         var historyExists = await context.Database.SqlQueryRaw<int>(
@@ -46,6 +55,10 @@ public sealed class LocalApplicationDatabase(
             [baselineMigrationId, "10.0.10"], cancellationToken);
     }
 
+    /// <summary>
+    /// Names that are never part of the analysis. Seeded once, on a database that has
+    /// no exclusion table yet, so a name the user later re-includes stays re-included.
+    /// </summary>
     private static readonly string[] DefaultExclusions = ["Dhruv Varachhiya", "Snehil Bhadkamkar"];
 
     private static async Task SeedDefaultExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
@@ -59,6 +72,7 @@ public sealed class LocalApplicationDatabase(
     private static async Task<HashSet<string>> ReadExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
         var names = await context.AnalysisExclusions.Select(x => x.EmployeeName).ToListAsync(cancellationToken);
+        // Compared on normalized names: the exports spell the same person with varying spacing.
         return new HashSet<string>(names.Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
     }
 
@@ -74,6 +88,8 @@ public sealed class LocalApplicationDatabase(
         if (normalized.Length == 0) return;
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        // PersonName.Matches intentionally runs in .NET: its whitespace normalization is not
+        // provider-translatable, and this table is a tiny user-maintained set.
         var exclusions = await context.AnalysisExclusions.ToListAsync(cancellationToken);
         var matches = exclusions.Where(x => PersonName.Matches(x.EmployeeName, normalized)).ToArray();
 
@@ -85,6 +101,9 @@ public sealed class LocalApplicationDatabase(
             }
             else
             {
+                // Old databases may contain case/spacing variants created before AnalysisExclusion
+                // enforced its normalized-key invariant. Collapse the whole identity set to one
+                // deterministic normalized row while preserving the casing already stored.
                 var canonicalName = matches
                     .Select(x => PersonName.Normalize(x.EmployeeName))
                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
@@ -144,6 +163,8 @@ public sealed class LocalApplicationDatabase(
             .ToListAsync(cancellationToken);
         return employees.Select(x => new EmployeeListItem(
             x.Id, x.EmployeeCode, x.Name, x.SeniorityLevel, excluded.Contains(PersonName.Normalize(x.Name)),
+            // Consultants are always non-billable — a fact about the engagement, not a per-person
+            // preference — so it's forced here regardless of the manual flag.
             x.Email, x.IsConsultant, x.ProbationOverride ?? x.IsOnProbationFromRoster, x.ProbationOverride, x.IsConsultant || x.IsNonBillable,
             x.TeamId, x.TeamId.HasValue && teams.TryGetValue(x.TeamId.Value, out var teamName) ? teamName : null,
             x.UpdownOverride ?? x.IsUpdownFromRoster, x.UpdownOverride)).ToArray();
@@ -260,10 +281,17 @@ public sealed class LocalApplicationDatabase(
 
     public async Task<int> ImportEmployeeRosterAsync(string filePath, CancellationToken cancellationToken = default)
     {
+        // NOTE: EFCore.BulkExtensions' SQLite adapter was evaluated here (BulkInsertOrUpdateAsync)
+        // and rejected — see tests/EngineeringPerformance.Infrastructure.Tests/DatabaseTests.cs's
+        // RosterImportBulkInsertsAndUpdatesEmployees comment / docs/tailwind-grid-ci-plan.md. A
+        // batch mixing a fresh insert with an update to an existing row throws a UNIQUE constraint
+        // violation on SQLite (it emits a plain bulk INSERT rather than a true merge/upsert for
+        // that mix), so the existing dictionary-preload + per-entity SaveChangesAsync approach is
+        // kept as-is: it already solved the N+1 read problem, and SaveChangesAsync's batched write
+        // is correct where the bulk-upsert path was not.
         var roster = workbookService.ReadEmployeeRoster(filePath);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var employeesByCode = await context.Employees.ToDictionaryAsync(x => x.EmployeeCode, x => x, cancellationToken);
-        var existingEmployeeCodes = new HashSet<string>(employeesByCode.Keys, StringComparer.OrdinalIgnoreCase);
         var changed = 0;
         foreach (var entry in roster)
         {
@@ -274,7 +302,6 @@ public sealed class LocalApplicationDatabase(
                 created.SyncRosterFacts(entry.Email, entry.IsConsultant, entry.IsOnProbation, entry.IsUpdown);
                 context.Employees.Add(created);
                 employeesByCode[entry.EmployeeCode] = created;
-                existingEmployeeCodes.Add(entry.EmployeeCode);
                 changed++;
             }
             else
@@ -301,6 +328,9 @@ public sealed class LocalApplicationDatabase(
         var storedPath = Path.Combine(importDirectory, $"{(int)reportType}-{Path.GetFileName(sourcePath)}");
         File.Copy(sourcePath, storedPath, true);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        // A multi-month export (attendance/detailed timesheet) covers every month it contains data
+        // for, not just the UI's currently selected month — recording only the selected month would
+        // make the readiness indicator wrong for the other months once weekly re-uploads start.
         var coveredMonths = performance.Select(x => (Year: x.Year, Month: x.Month)).Distinct().DefaultIfEmpty((Year: year, Month: month)).ToArray();
         var existingSourceFiles = await context.ImportedSourceFiles
             .Where(x => x.ReportType == reportType && coveredMonths.Select(m => m.Year).Contains(x.Year))
@@ -310,6 +340,8 @@ public sealed class LocalApplicationDatabase(
             var previous = existingSourceFiles.GetValueOrDefault((coveredYear, coveredMonth));
             if (previous is not null) context.ImportedSourceFiles.Remove(previous);
             context.ImportedSourceFiles.Add(new ImportedSourceFile(reportType, coveredYear, coveredMonth, inspection.FileName, storedPath, inspection.SheetNames.Count));
+            // The slot row above is replaced on every re-upload; this log line is not, so a daily
+            // upload routine leaves a reviewable trail of what landed when.
             var rowsForMonth = performance.Count(x => x.Year == coveredYear && x.Month == coveredMonth);
             context.ImportAuditEntries.Add(new ImportAuditEntry(
                 reportType, coveredYear, coveredMonth, inspection.FileName, rowsForMonth, previous is not null));
@@ -322,11 +354,16 @@ public sealed class LocalApplicationDatabase(
         var existingEmployeeCodes = new HashSet<string>(
             await context.Employees.Select(x => x.EmployeeCode).ToListAsync(cancellationToken),
             StringComparer.OrdinalIgnoreCase);
+        // A multi-month export yields one row per employee per month, so the same employee code
+        // recurs many times; codes queued earlier in this batch aren't visible to a database
+        // query yet, so they're tracked here to avoid inserting a duplicate employee.
         var queuedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var newRows = 0;
         var updatedRows = 0;
         foreach (var incoming in performance)
         {
+            // Detailed timesheet and attendance rows carry their own real date, which can span many
+            // months in one export; each row lands in its own actual month, never the UI's selected one.
             var rowYear = incoming.Year;
             var rowMonth = incoming.Month;
             var key = (rowYear, rowMonth, incoming.EmployeeName);
@@ -354,6 +391,12 @@ public sealed class LocalApplicationDatabase(
             reportType, year, month, inspection.FileName, newRows, updatedRows);
     }
 
+    /// <summary>
+    /// Reads and merges the workbook exactly like ImportSourceAsync, but against a DbContext that
+    /// is never saved — EF's change tracker sees what would have been added or modified, and
+    /// discarding the context afterward is enough to throw all of it away, no explicit rollback
+    /// needed.
+    /// </summary>
     public async Task<ImportPreview> PreviewImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default)
     {
         var detectedType = workbookService.DetectReportType(sourcePath);
@@ -378,6 +421,8 @@ public sealed class LocalApplicationDatabase(
             if (!existingPerformance.TryGetValue(key, out var current))
             {
                 current = new EmployeeMonthlyPerformance { Year = incoming.Year, Month = incoming.Month, EmployeeName = incoming.EmployeeName };
+                // Not added to the context — this preview never saves, so tracking it would only
+                // cost memory for no benefit.
                 existingPerformance[key] = current;
                 Merge(current, incoming, reportType);
                 added++;
@@ -470,6 +515,8 @@ public sealed class LocalApplicationDatabase(
                 throw new InvalidDataException($"No completed peer review workbooks were accepted. {reasons}".Trim());
             }
 
+            // One returned workbook is a complete snapshot of that reviewer's contribution.
+            // If the same reviewer appears twice in one selection, the last selected workbook wins.
             var finalBatches = acceptedBatches
                 .GroupBy(x => x.ReviewerCode, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.Last())
@@ -582,9 +629,14 @@ public sealed class LocalApplicationDatabase(
                 catch (InvalidDataException ex)
                 {
                     _logger.LogWarning(ex, "Skipped {FileName} in package {ZipPath}: not a recognized report type.", fileName, zipPath);
+                    // Structured skip: file inside the package isn't a recognizable report workbook.
                     ImportSkipLog.Record(skipped, fileName, $"Unrecognized report type: {ex.Message}");
                     continue;
                 }
+                // Review workbooks are batched and imported together via ImportEngineerReviewsAsync
+                // below, not through ImportSourceAsync — that path previously bucketed a review
+                // workbook into whatever month the package's other files described, which is how a
+                // July review workbook once ended up filed as August's peer reviews.
                 if (type == ReportType.EngineerReviewWorkbook)
                 {
                     reviewFiles.Add(file);
@@ -622,6 +674,8 @@ public sealed class LocalApplicationDatabase(
         var oldest = newest.AddMonths(-Math.Max(0, monthsBack - 1));
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var excluded = await ReadExclusionsAsync(context, cancellationToken);
+        // Sargable range filter (year/month compared directly, no computed expression) so the
+        // (Year, Month, EmployeeName) index can be used instead of a full table scan.
         var rows = await context.EmployeeMonthlyPerformances
             .Where(x => (x.Year > oldest.Year || (x.Year == oldest.Year && x.Month >= oldest.Month))
                      && (x.Year < newest.Year || (x.Year == newest.Year && x.Month <= newest.Month)))
