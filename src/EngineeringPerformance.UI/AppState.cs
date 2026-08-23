@@ -102,8 +102,9 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
             var exclusionsTask = database.GetExcludedNamesAsync();
             var reviewsTask = database.GetPeerReviewsAsync(year, month);
             var teamsTask = database.GetTeamsAsync();
+            var scoringTask = database.GetOperationalScoringSettingsAsync();
 
-            await Task.WhenAll(dashboardTask, employeesTask, performanceTask, historyTask, exclusionsTask, reviewsTask, teamsTask);
+            await Task.WhenAll(dashboardTask, employeesTask, performanceTask, historyTask, exclusionsTask, reviewsTask, teamsTask, scoringTask);
             if (version != Volatile.Read(ref _refreshVersion))
             {
                 _logger.LogDebug(
@@ -114,15 +115,13 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
                 return;
             }
 
+            var scoring = await scoringTask;
             Snapshot = await dashboardTask;
             Employees = await employeesTask;
-            Performance = (await performanceTask)
-                .Select(NormalizePerformanceName)
-                .ToArray();
-            History = (await historyTask)
-                .Where(x => IsFiscalMonth(new DateTime(x.Year, x.Month, 1)))
-                .Select(NormalizePerformanceName)
-                .ToArray();
+            Performance = ConsolidatePerformance(await performanceTask, scoring);
+            History = ConsolidatePerformance(
+                (await historyTask).Where(x => IsFiscalMonth(new DateTime(x.Year, x.Month, 1))),
+                scoring);
             ExcludedNames = await exclusionsTask;
             PeerReviews = await reviewsTask;
             Teams = await teamsTask;
@@ -250,6 +249,86 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
         }
         finally { Busy = false; Changed?.Invoke(); }
     }
+
+    private static IReadOnlyList<MonthlyPerformanceItem> ConsolidatePerformance(
+        IEnumerable<MonthlyPerformanceItem> source,
+        OperationalScoringSettings scoring)
+    {
+        return source
+            .Where(x => PersonName.Normalize(x.EmployeeName).Length > 0)
+            .GroupBy(x => (x.Year, x.Month, Name: PersonName.Normalize(x.EmployeeName).ToUpperInvariant()))
+            .Select(group => MergePerformanceGroup(group.ToArray(), scoring))
+            .ToArray();
+    }
+
+    private static MonthlyPerformanceItem MergePerformanceGroup(
+        IReadOnlyList<MonthlyPerformanceItem> rows,
+        OperationalScoringSettings scoring)
+    {
+        var normalizedRows = rows.Select(NormalizePerformanceName).ToArray();
+        if (normalizedRows.Length == 1) return normalizedRows[0];
+
+        var name = PersonName.Normalize(normalizedRows[0].EmployeeName);
+        var summary = normalizedRows
+            .OrderByDescending(SummaryEvidence)
+            .ThenByDescending(x => x.OperationalScore)
+            .First();
+        var attendance = normalizedRows
+            .OrderByDescending(x => x.ExpectedTimesheetDays)
+            .ThenByDescending(x => x.PunchHours)
+            .First();
+        var detailed = normalizedRows
+            .OrderByDescending(x => x.DetailedEntries)
+            .ThenByDescending(x => x.DetailedHours)
+            .First();
+        var employeeCode = normalizedRows
+            .Select(x => x.EmployeeCode)
+            .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+        MetricInput[] metrics =
+        [
+            new("timesheet", summary.TimesheetCompletionScore, scoring.TimesheetCompletionWeight, summary.ComplianceHours > 0),
+            new("approval", summary.ApprovalScore, scoring.ApprovalCompletionWeight, summary.EnteredHours > 0),
+            new("attendance", attendance.AttendanceDisciplineScore, scoring.AttendanceDisciplineWeight, attendance.ExpectedTimesheetDays > 0)
+        ];
+        var applicable = metrics.Where(x => x.IsApplicable && x.Weight > 0m).ToArray();
+        var operationalScore = applicable.Length == 0 ? 0m : WeightedScoreCalculator.Calculate(applicable);
+
+        return new MonthlyPerformanceItem(
+            name,
+            employeeCode,
+            operationalScore,
+            summary.TimesheetCompletionScore,
+            summary.ApprovalScore,
+            attendance.AttendanceDisciplineScore,
+            summary.EnteredHours,
+            summary.ComplianceHours,
+            summary.BillableHours,
+            detailed.DetailedHours,
+            detailed.DetailedEntries,
+            detailed.UniqueProjects,
+            attendance.AttendanceDays,
+            attendance.LeaveDays,
+            attendance.MissingPunchDays,
+            attendance.LateDays,
+            attendance.EarlyDays,
+            attendance.LessDurationDays,
+            normalizedRows[0].Year,
+            normalizedRows[0].Month,
+            attendance.PunchHours,
+            attendance.AttendanceTimesheetHours,
+            attendance.TimesheetFilledDays,
+            attendance.ExpectedTimesheetDays,
+            summary.NonBillableHours,
+            summary.TrainingHours,
+            summary.ApprovedHours,
+            summary.OfficeHours,
+            summary.RawUtilization);
+    }
+
+    private static decimal SummaryEvidence(MonthlyPerformanceItem item) =>
+        item.ComplianceHours + item.EnteredHours + item.ApprovedHours + item.BillableHours +
+        item.NonBillableHours + item.TrainingHours + item.OfficeHours + item.RawUtilization;
 
     private static MonthlyPerformanceItem NormalizePerformanceName(MonthlyPerformanceItem item)
     {
