@@ -127,13 +127,30 @@ public partial class MainWindow : Window
             """);
 
         await WaitForRouteAsync(core, route.Slug, TimeSpan.FromSeconds(20));
+        await ScrollRouteAsync(core, route.Slug, 0d);
         await WaitForRenderSettleAsync(core);
 
         var fileName = $"{route.Slug}-{theme}-{viewport.Width}x{viewport.Height}.png";
-        var screenshotPath = Path.Combine(outputDirectory, fileName);
-        await using (var stream = File.Create(screenshotPath))
+        await CapturePreviewAsync(core, Path.Combine(outputDirectory, fileName));
+
+        var additionalScreenshots = new List<string>();
+        if (string.Equals(route.Slug, "performance-story", StringComparison.Ordinal))
         {
-            await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+            foreach (var (label, fraction) in new[]
+                     {
+                         ("one-third", 1d / 3d),
+                         ("two-thirds", 2d / 3d),
+                         ("bottom", 1d)
+                     })
+            {
+                await ScrollRouteAsync(core, route.Slug, fraction);
+                await WaitForRenderSettleAsync(core);
+                var scrollFileName = $"{route.Slug}-{theme}-{viewport.Width}x{viewport.Height}-{label}.png";
+                await CapturePreviewAsync(core, Path.Combine(outputDirectory, scrollFileName));
+                additionalScreenshots.Add(scrollFileName);
+            }
+            await ScrollRouteAsync(core, route.Slug, 0d);
+            await WaitForRenderSettleAsync(core);
         }
 
         var diagnosticsEncoded = await core.ExecuteScriptAsync("""
@@ -193,6 +210,7 @@ public partial class MainWindow : Window
             diagnostics.InnerWidth,
             diagnostics.InnerHeight,
             fileName,
+            additionalScreenshots,
             diagnostics.HorizontalOverflow,
             diagnostics.ClippedPlateCount,
             diagnostics.CanvasCount,
@@ -200,6 +218,27 @@ public partial class MainWindow : Window
             diagnostics.TinyTextCount,
             diagnostics.Errors ?? [],
             diagnostics.Tokens ?? new Dictionary<string, string>());
+    }
+
+    private static async Task CapturePreviewAsync(CoreWebView2 core, string screenshotPath)
+    {
+        await using var stream = File.Create(screenshotPath);
+        await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+    }
+
+    private static async Task ScrollRouteAsync(CoreWebView2 core, string slug, double fraction)
+    {
+        var selector = JsonSerializer.Serialize($".route-{slug}");
+        var fractionJson = JsonSerializer.Serialize(Math.Clamp(fraction, 0d, 1d));
+        await core.ExecuteScriptAsync($$"""
+            (() => {
+              const scroller = document.querySelector({{selector}});
+              if (!scroller) return false;
+              const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+              scroller.scrollTop = Math.round(maxScroll * {{fractionJson}});
+              return true;
+            })()
+            """);
     }
 
     private static async Task InstallDiagnosticsAsync(CoreWebView2 core)
@@ -268,6 +307,7 @@ public partial class MainWindow : Window
         int ActualInnerWidth,
         int ActualInnerHeight,
         string Screenshot,
+        IReadOnlyList<string> AdditionalScreenshots,
         bool HorizontalOverflow,
         int ClippedPlateCount,
         int CanvasCount,
