@@ -34,6 +34,29 @@ jobs:
         fetchDepth: 0
         persistCredentials: true
 
+      - powershell: |
+          $ErrorActionPreference = 'Stop'
+          $resultRoot = Join-Path "$(Build.SourcesDirectory)" '.ci-results'
+          New-Item -ItemType Directory -Force -Path $resultRoot | Out-Null
+          $heartbeat = Join-Path $resultRoot 'aps-12aadcd-started.txt'
+          @(
+            'APS Azure VM verification started',
+            'Requested commit: $(apsCommit)',
+            'Agent: $(Agent.Name) / $(Agent.MachineName)',
+            'Azure build: $(Build.BuildNumber)',
+            'Azure branch: $(Build.SourceBranch)'
+          ) | Set-Content -LiteralPath $heartbeat -Encoding utf8
+
+          git config user.name 'EOS Azure VM verifier'
+          git config user.email 'azure-vm-verifier@users.noreply.github.com'
+          git add .ci-results/aps-12aadcd-started.txt
+          git commit -m '[ci-heartbeat] APS 12aadcd verification started'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit Azure VM heartbeat.' }
+          $branch = "$(Build.SourceBranch)" -replace '^refs/heads/', ''
+          git push origin "HEAD:$branch"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push Azure VM heartbeat back to GitHub.' }
+        displayName: Report EOS Azure VM heartbeat to GitHub
+
       - task: UseDotNet@2
         displayName: Use .NET 10 SDK
         inputs:
@@ -93,11 +116,11 @@ jobs:
           $resultPath = Join-Path $resultRoot 'aps-12aadcd.txt'
 
           $lines = [System.Collections.Generic.List[string]]::new()
-          $lines.Add("APS Azure VM verification")
-          $lines.Add("Requested commit: $(apsCommit)")
+          $lines.Add('APS Azure VM verification')
+          $lines.Add('Requested commit: $(apsCommit)')
           $lines.Add("Resolved commit: $((git -C \"$(apsSource)\" rev-parse HEAD).Trim())")
-          $lines.Add("Agent: $(Agent.Name) / $(Agent.MachineName)")
-          $lines.Add("Azure build: $(Build.BuildNumber)")
+          $lines.Add('Agent: $(Agent.Name) / $(Agent.MachineName)')
+          $lines.Add('Azure build: $(Build.BuildNumber)')
           $lines.Add("Exit code: $exitCode")
           $lines.Add("Result: $(if ($exitCode -eq 0) { 'PASS' } else { 'FAIL' })")
           $lines.Add('')
@@ -126,8 +149,6 @@ jobs:
 
           $lines | Set-Content -LiteralPath $resultPath -Encoding utf8
 
-          git config user.name 'EOS Azure VM verifier'
-          git config user.email 'azure-vm-verifier@users.noreply.github.com'
           git add .ci-results/aps-12aadcd.txt
           git commit -m "[ci-result] APS 12aadcd verification: $(if ($exitCode -eq 0) { 'PASS' } else { 'FAIL' })"
           if ($LASTEXITCODE -ne 0) { throw 'Could not commit Azure VM verification result.' }
