@@ -12,27 +12,14 @@ public sealed class CanonicalPerformanceIdentityTests
     [Fact]
     public async Task Corrected_reimport_replaces_stale_name_variants_with_current_source_values()
     {
-        var folder = Path.Combine(Path.GetTempPath(), $"eos-canonical-import-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(folder);
+        var folder = CreateFolder();
         var databasePath = Path.Combine(folder, "canonical.db");
         var workbookPath = Path.Combine(folder, $"RPwiseTimesheetUtilazationReport-{Guid.NewGuid():N}.xlsx");
 
         try
         {
-            WriteMonthlySummary(workbookPath, "Asha Nair", compliance: 100m, entered: 80m, approved: 70m);
-
-            var options = new DbContextOptionsBuilder<PerformanceDbContext>()
-                .UseSqlite($"Data Source={databasePath}")
-                .Options;
-            var factory = new TestContextFactory(options);
-            var workbookService = new WorkbookService();
-            var inner = new LocalApplicationDatabase(factory, workbookService);
-            IApplicationDatabase database = new ConfigurableApplicationDatabase(
-                inner,
-                factory,
-                workbookService,
-                folder);
-
+            WriteMonthlySummary(workbookPath, [("Asha Nair", 100m, 80m, 70m)]);
+            var (database, factory) = CreateDatabase(folder, databasePath);
             await database.InitializeAsync();
 
             await using (var seed = factory.CreateDbContext())
@@ -106,17 +93,82 @@ public sealed class CanonicalPerformanceIdentityTests
         }
         finally
         {
-            SqliteConnection.ClearAllPools();
-            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            Cleanup(folder);
         }
+    }
+
+    [Fact]
+    public async Task Reimport_removes_summary_evidence_for_employee_omitted_from_current_source()
+    {
+        var folder = CreateFolder();
+        var databasePath = Path.Combine(folder, "replacement.db");
+        var firstPath = Path.Combine(folder, $"RPwiseTimesheetUtilazationReport-{Guid.NewGuid():N}.xlsx");
+        var correctedPath = Path.Combine(folder, $"RPwiseTimesheetUtilazationReport-{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            WriteMonthlySummary(firstPath,
+            [
+                ("Asha Nair", 176m, 160m, 150m),
+                ("Bimal Shah", 176m, 150m, 140m)
+            ]);
+            WriteMonthlySummary(correctedPath, [("Asha Nair", 176m, 158m, 148m)]);
+
+            var (database, factory) = CreateDatabase(folder, databasePath);
+            await database.InitializeAsync();
+            await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, firstPath);
+
+            await using (var before = factory.CreateDbContext())
+            {
+                Assert.Equal(2, await before.EmployeeMonthlyPerformances.CountAsync(x => x.Year == 2026 && x.Month == 7));
+            }
+
+            await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, correctedPath);
+
+            await using var after = factory.CreateDbContext();
+            var rows = await after.EmployeeMonthlyPerformances
+                .Where(x => x.Year == 2026 && x.Month == 7)
+                .ToListAsync();
+            var remaining = Assert.Single(rows);
+            Assert.Equal("Asha Nair", remaining.EmployeeName);
+            Assert.Equal(158m, remaining.EnteredHours);
+            Assert.DoesNotContain(rows, x => PersonName.Matches(x.EmployeeName, "Bimal Shah"));
+        }
+        finally
+        {
+            Cleanup(folder);
+        }
+    }
+
+    private static (IApplicationDatabase Database, TestContextFactory Factory) CreateDatabase(
+        string folder,
+        string databasePath)
+    {
+        var options = new DbContextOptionsBuilder<PerformanceDbContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+        var factory = new TestContextFactory(options);
+        var workbookService = new WorkbookService();
+        var inner = new LocalApplicationDatabase(factory, workbookService);
+        return (new ConfigurableApplicationDatabase(inner, factory, workbookService, folder), factory);
+    }
+
+    private static string CreateFolder()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"eos-canonical-import-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    private static void Cleanup(string folder)
+    {
+        SqliteConnection.ClearAllPools();
+        if (Directory.Exists(folder)) Directory.Delete(folder, true);
     }
 
     private static void WriteMonthlySummary(
         string path,
-        string employeeName,
-        decimal compliance,
-        decimal entered,
-        decimal approved)
+        IReadOnlyList<(string Name, decimal Compliance, decimal Entered, decimal Approved)> rows)
     {
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet("Sheet1");
@@ -130,16 +182,22 @@ public sealed class CanonicalPerformanceIdentityTests
         sheet.Cell(3, 10).Value = "Non Billable Hours";
         sheet.Cell(3, 11).Value = "Sum of Training";
         sheet.Cell(3, 13).Value = "Sum of Office Working Hours";
-        sheet.Cell(4, 1).Value = employeeName;
-        sheet.Cell(4, 2).Value = compliance;
-        sheet.Cell(4, 3).Value = 80m;
-        sheet.Cell(4, 4).Value = compliance;
-        sheet.Cell(4, 5).Value = entered;
-        sheet.Cell(4, 6).Value = approved;
-        sheet.Cell(4, 9).Value = 60m;
-        sheet.Cell(4, 10).Value = 10m;
-        sheet.Cell(4, 11).Value = 5m;
-        sheet.Cell(4, 13).Value = 75m;
+
+        for (var index = 0; index < rows.Count; index++)
+        {
+            var row = rows[index];
+            var excelRow = 4 + index;
+            sheet.Cell(excelRow, 1).Value = row.Name;
+            sheet.Cell(excelRow, 2).Value = row.Compliance;
+            sheet.Cell(excelRow, 3).Value = 0.80m;
+            sheet.Cell(excelRow, 4).Value = row.Compliance;
+            sheet.Cell(excelRow, 5).Value = row.Entered;
+            sheet.Cell(excelRow, 6).Value = row.Approved;
+            sheet.Cell(excelRow, 9).Value = Math.Min(row.Entered, 120m);
+            sheet.Cell(excelRow, 10).Value = 10m;
+            sheet.Cell(excelRow, 11).Value = 5m;
+            sheet.Cell(excelRow, 13).Value = 75m;
+        }
         workbook.SaveAs(path);
     }
 
