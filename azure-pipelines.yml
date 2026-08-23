@@ -2,23 +2,23 @@ trigger:
   batch: true
   branches:
     include:
-      - '*'
+      - ci/acm-vm-diagnose-f045bc0
+  paths:
+    exclude:
+      - .ci-results/**
 
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - '*'
+pr: none
 
 variables:
-  buildConfiguration: Release
-  visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
-  diagnosticsDirectory: '$(Agent.TempDirectory)\EosDiagnostics'
+  acmCommit: 'f045bc05fbc6868f1460ec2685ff8a56d20d10a7'
+  acmSource: '$(Agent.TempDirectory)\AcmVmDiagnose\source'
+  acmResults: '$(Agent.TempDirectory)\AcmVmDiagnose\results'
+  acmLogs: '$(Agent.TempDirectory)\AcmVmDiagnose\logs'
 
 jobs:
-  - job: windows_ci
-    displayName: Windows build, test & visual validation
-    timeoutInMinutes: 40
+  - job: acm_vm_diagnose
+    displayName: Diagnose ACM f045bc0 on EOS VM
+    timeoutInMinutes: 120
     workspace:
       clean: all
     pool:
@@ -30,117 +30,173 @@ jobs:
       - checkout: self
         clean: true
         fetchDepth: 0
-        persistCredentials: false
-
-      - powershell: ./scripts/validate-powershell.ps1
-        displayName: Validate PowerShell automation
-
-      # Project/dashboard/pipeline reconciliation mutates Azure DevOps configuration. Keep that
-      # mutation on canonical main builds only; feature branches should only build and test code.
-      - powershell: ./scripts/bootstrap-azure-devops-project.ps1
-        displayName: Reconcile Azure DevOps project configuration
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        continueOnError: true
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./scripts/ensure-shared-windows-pipelines.ps1
-        displayName: Reconcile shared Windows build pipelines
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./build/vm-health.ps1
-        displayName: VM / agent preflight
-
-      - task: UseDotNet@2
-        displayName: Use .NET SDK from global.json
-        inputs:
-          packageType: sdk
-          useGlobalJson: true
-          workingDirectory: $(Build.SourcesDirectory)
-
-      - powershell: dotnet restore EngineeringPerformance.slnx
-        displayName: Restore solution
+        persistCredentials: true
 
       - powershell: |
-          $logPath = "$(Agent.TempDirectory)\eos-build.log"
-          dotnet build EngineeringPerformance.slnx --configuration $(buildConfiguration) --no-restore 2>&1 |
-            Tee-Object -FilePath $logPath
-          $exitCode = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          $ProgressPath = Join-Path '$(Build.SourcesDirectory)' '.ci-results\acm-f045bc0-diagnostic.txt'
+          New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ProgressPath) | Out-Null
+          git config user.name 'EOS Azure VM verifier'
+          git config user.email 'azure-vm-verifier@users.noreply.github.com'
 
-          if ($exitCode -ne 0) {
-            # Re-emit compiler/MSBuild/NuGet errors through Azure logging commands so the actual
-            # diagnostic text becomes a first-class pipeline/GitHub Check annotation.
-            $diagnostics = Get-Content $logPath | Where-Object {
-              $_ -match '\berror\s+(CS|MSB|NU|NETSDK)\d+' -or
-              $_ -match ':\s+error\s+' -or
-              $_ -match '\bBuild FAILED\b'
-            } | Select-Object -Unique
-
-            foreach ($line in $diagnostics) {
-              $safe = $line.Replace("`r", ' ').Replace("`n", ' ')
-              Write-Host "##vso[task.logissue type=error]$safe"
-            }
-
-            exit $exitCode
+          function Publish-Progress {
+            param([Parameter(Mandatory)][string]$Line)
+            $stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            Add-Content -LiteralPath $ProgressPath -Value "$stamp  $Line" -Encoding utf8
+            git add .ci-results/acm-f045bc0-diagnostic.txt
+            git commit -m "[ci-progress] ACM diagnose: $Line" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not commit diagnostic progress.' }
+            $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
+            git push origin "HEAD:$branch" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not push diagnostic progress.' }
           }
-        displayName: Build complete solution
 
-      - powershell: |
-          $results = "$(Agent.TempDirectory)\TestResults"
-          New-Item -ItemType Directory -Force -Path $results | Out-Null
+          function Resolve-Uv {
+            $cmd = Get-Command uv -ErrorAction SilentlyContinue
+            if ($cmd) { return $cmd.Source }
+            $installer = Join-Path $env:TEMP 'install-uv.ps1'
+            Invoke-WebRequest 'https://astral.sh/uv/install.ps1' -OutFile $installer
+            powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
+            if ($LASTEXITCODE -ne 0) { throw "uv install failed: $LASTEXITCODE" }
+            $candidate = Join-Path $env:USERPROFILE '.local\bin\uv.exe'
+            if (-not (Test-Path -LiteralPath $candidate)) { throw 'uv.exe not found after install.' }
+            return $candidate
+          }
 
-          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=domain.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=infrastructure.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        displayName: Run tests
+          function Quote-CmdArg {
+            param([string]$Value)
+            return '"' + ($Value -replace '"','\"') + '"'
+          }
 
-      - task: PublishTestResults@2
-        displayName: Publish test results
-        condition: succeededOrFailed()
-        inputs:
-          testResultsFormat: VSTest
-          testResultsFiles: '*.trx'
-          searchFolder: '$(Agent.TempDirectory)\TestResults'
-          mergeTestResults: true
-          failTaskOnFailedTests: true
-          testRunTitle: EOS Windows unit tests
+          function Invoke-TimedProcess {
+            param(
+              [Parameter(Mandatory)][string]$FilePath,
+              [Parameter(Mandatory)][string[]]$Arguments,
+              [Parameter(Mandatory)][string]$WorkingDirectory,
+              [Parameter(Mandatory)][string]$LogPath,
+              [Parameter(Mandatory)][int]$TimeoutSeconds
+            )
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = $FilePath
+            $psi.WorkingDirectory = $WorkingDirectory
+            $psi.UseShellExecute = $false
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.CreateNoWindow = $true
+            $psi.Arguments = (($Arguments | ForEach-Object { Quote-CmdArg $_ }) -join ' ')
+            $p = New-Object System.Diagnostics.Process
+            $p.StartInfo = $psi
+            $null = $p.Start()
+            $stdoutTask = $p.StandardOutput.ReadToEndAsync()
+            $stderrTask = $p.StandardError.ReadToEndAsync()
+            $finished = $p.WaitForExit($TimeoutSeconds * 1000)
+            if (-not $finished) {
+              try { $p.Kill() } catch {}
+              $p.WaitForExit()
+            }
+            $stdout = $stdoutTask.Result
+            $stderr = $stderrTask.Result
+            @($stdout, $stderr) | Set-Content -LiteralPath $LogPath -Encoding utf8
+            if (-not $finished) { return 124 }
+            return $p.ExitCode
+          }
 
-      - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
-        displayName: Capture real WPF + WebView2 visual evidence
+          if (Test-Path -LiteralPath $ProgressPath) { Remove-Item -LiteralPath $ProgressPath -Force }
+          Publish-Progress 'START build 20260823 diagnostic; exact ACM SHA f045bc05fbc6868f1460ec2685ff8a56d20d10a7'
 
-      - powershell: |
-          $diagnostics = "$(diagnosticsDirectory)"
-          New-Item -ItemType Directory -Force -Path $diagnostics | Out-Null
-          $buildLog = "$(Agent.TempDirectory)\eos-build.log"
-          if (Test-Path $buildLog) { Copy-Item $buildLog (Join-Path $diagnostics 'build.log') -Force }
-          dotnet --info | Out-File (Join-Path $diagnostics 'dotnet-info.txt') -Encoding utf8
-          git status --porcelain=v1 --branch | Out-File (Join-Path $diagnostics 'git-status.txt') -Encoding utf8
-          @(
-            "Build.SourceBranch=$(Build.SourceBranch)",
-            "Build.SourceVersion=$(Build.SourceVersion)",
-            "Agent.Name=$(Agent.Name)",
-            "Agent.MachineName=$(Agent.MachineName)"
-          ) | Out-File (Join-Path $diagnostics 'run-context.txt') -Encoding utf8
-        displayName: Collect build diagnostics
-        condition: always()
+          foreach ($path in @('$(acmSource)','$(acmResults)','$(acmLogs)')) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $path | Out-Null
+          }
 
-      - task: PublishPipelineArtifact@1
-        displayName: Publish screenshots, browser diagnostics and app logs
-        condition: always()
-        inputs:
-          targetPath: '$(visualEvidenceDirectory)'
-          artifact: visual-evidence
-          publishLocation: pipeline
+          git clone --filter=blob:none --no-checkout https://github.com/bhadkamkar9snehil/ACM.git '$(acmSource)'
+          if ($LASTEXITCODE -ne 0) { throw 'ACM clone failed.' }
+          git -C '$(acmSource)' fetch origin '$(acmCommit)' --depth=1
+          if ($LASTEXITCODE -ne 0) { throw 'ACM exact commit fetch failed.' }
+          git -C '$(acmSource)' checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'ACM checkout failed.' }
+          $resolved = (git -C '$(acmSource)' rev-parse HEAD).Trim()
+          if ($resolved -ne '$(acmCommit)') { throw "Resolved wrong SHA: $resolved" }
+          Publish-Progress "CHECKOUT PASS $resolved"
 
-      - task: PublishPipelineArtifact@1
-        displayName: Publish build diagnostics
-        condition: always()
-        inputs:
-          targetPath: '$(diagnosticsDirectory)'
-          artifact: build-diagnostics
-          publishLocation: pipeline
+          $env:OMP_NUM_THREADS = '1'
+          $env:OPENBLAS_NUM_THREADS = '1'
+          $env:MKL_NUM_THREADS = '1'
+          $env:NUMEXPR_NUM_THREADS = '1'
+          $uv = Resolve-Uv
+          Publish-Progress "UV $(& $uv --version)"
+
+          $syncLog = Join-Path '$(acmLogs)' 'uv-sync.log'
+          $syncCode = Invoke-TimedProcess -FilePath $uv -Arguments @('sync','--locked') -WorkingDirectory '$(acmSource)' -LogPath $syncLog -TimeoutSeconds 900
+          if ($syncCode -ne 0) {
+            Publish-Progress "SYNC FAIL exit=$syncCode"
+            Get-Content -LiteralPath $syncLog -Tail 80 | Add-Content -LiteralPath $ProgressPath
+            exit 1
+          }
+          Publish-Progress 'SYNC PASS'
+
+          $fastXml = Join-Path '$(acmResults)' 'pytest-fast.xml'
+          $fastLog = Join-Path '$(acmLogs)' 'pytest-fast.log'
+          Publish-Progress 'FAST START'
+          $fastCode = Invoke-TimedProcess -FilePath $uv -Arguments @('run','pytest','tests','-m','not statistical','--tb=short','-q',"--junitxml=$fastXml") -WorkingDirectory '$(acmSource)' -LogPath $fastLog -TimeoutSeconds 1200
+          if ($fastCode -ne 0) {
+            Publish-Progress "FAST FAIL exit=$fastCode"
+            Get-Content -LiteralPath $fastLog -Tail 120 | Add-Content -LiteralPath $ProgressPath
+            git add .ci-results/acm-f045bc0-diagnostic.txt
+            git commit -m '[ci-progress] ACM fast-suite failure detail' | Out-Null
+            $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
+            git push origin "HEAD:$branch" | Out-Null
+            exit 1
+          }
+          Publish-Progress 'FAST PASS'
+
+          $collectLog = Join-Path '$(acmLogs)' 'stat-collect.log'
+          $collectCode = Invoke-TimedProcess -FilePath $uv -Arguments @('run','pytest','tests','-m','statistical','--collect-only','-q') -WorkingDirectory '$(acmSource)' -LogPath $collectLog -TimeoutSeconds 300
+          if ($collectCode -ne 0) {
+            Publish-Progress "STAT COLLECT FAIL exit=$collectCode"
+            Get-Content -LiteralPath $collectLog -Tail 120 | Add-Content -LiteralPath $ProgressPath
+            exit 1
+          }
+          $nodes = @(Get-Content -LiteralPath $collectLog | Where-Object { $_ -match '^tests[/\\].+::' } | ForEach-Object { $_.Trim() } | Select-Object -Unique)
+          Publish-Progress "STAT COLLECT PASS count=$($nodes.Count)"
+          if ($nodes.Count -eq 0) { Publish-Progress 'STAT FAIL no statistical tests collected'; exit 1 }
+
+          $failed = 0
+          $timedOut = 0
+          $index = 0
+          foreach ($node in $nodes) {
+            $index++
+            $safe = ($node -replace '[^A-Za-z0-9_.-]','_')
+            if ($safe.Length -gt 120) { $safe = $safe.Substring(0,120) }
+            $xml = Join-Path '$(acmResults)' ("stat-{0:D3}-{1}.xml" -f $index,$safe)
+            $log = Join-Path '$(acmLogs)' ("stat-{0:D3}-{1}.log" -f $index,$safe)
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            Publish-Progress "STAT $index/$($nodes.Count) START $node"
+            $code = Invoke-TimedProcess -FilePath $uv -Arguments @('run','pytest',$node,'--tb=short','-q',"--junitxml=$xml") -WorkingDirectory '$(acmSource)' -LogPath $log -TimeoutSeconds 600
+            $sw.Stop()
+            $secs = [math]::Round($sw.Elapsed.TotalSeconds,1)
+            if ($code -eq 0) {
+              Publish-Progress "STAT $index/$($nodes.Count) PASS ${secs}s $node"
+            }
+            elseif ($code -eq 124) {
+              $timedOut++
+              Publish-Progress "STAT $index/$($nodes.Count) TIMEOUT ${secs}s $node"
+            }
+            else {
+              $failed++
+              Publish-Progress "STAT $index/$($nodes.Count) FAIL exit=$code ${secs}s $node"
+              Get-Content -LiteralPath $log -Tail 60 | Add-Content -LiteralPath $ProgressPath
+              git add .ci-results/acm-f045bc0-diagnostic.txt
+              git commit -m "[ci-progress] ACM stat failure $index" | Out-Null
+              $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
+              git push origin "HEAD:$branch" | Out-Null
+            }
+          }
+
+          if ($failed -eq 0 -and $timedOut -eq 0) {
+            Publish-Progress "FINAL PASS fast=PASS statistical=$($nodes.Count)/$($nodes.Count)"
+            exit 0
+          }
+          Publish-Progress "FINAL FAIL statistical_failed=$failed statistical_timed_out=$timedOut total=$($nodes.Count)"
+          exit 1
+        displayName: Run phase-instrumented ACM verification
