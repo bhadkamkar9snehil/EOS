@@ -70,7 +70,7 @@ public sealed class UnavailableSourceFallbackTests
                 7,
                 replacement);
             Assert.NotNull(preview.Warning);
-            Assert.Contains("could not be replayed", preview.Warning, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("could not be replayed", preview.Warning!, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
