@@ -89,10 +89,11 @@ jobs:
 
           $globalJson = Join-Path $target 'global.json'
           $hasGlobalJson = Test-Path -LiteralPath $globalJson
-          $hasDotNet = $hasGlobalJson -or @(
+          $solutions = @(
             Get-ChildItem -LiteralPath $target -File -ErrorAction SilentlyContinue |
               Where-Object { $_.Extension -in '.sln', '.slnx' }
-          ).Count -gt 0
+          )
+          $hasDotNet = $hasGlobalJson -or ($solutions.Count -gt 0)
 
           Write-Host "##vso[task.setvariable variable=TargetHasGlobalJson]$($hasGlobalJson.ToString().ToLowerInvariant())"
           Write-Host "##vso[task.setvariable variable=TargetHasDotNet]$($hasDotNet.ToString().ToLowerInvariant())"
