@@ -29,7 +29,7 @@ public sealed partial class ConfigurableApplicationDatabase
             .Select(group => CombineSourceRows(group, reportType))
             .ToArray();
 
-        var coveredYears = incoming.Select(x => x.Year).Distinct().ToArray();
+        var coveredYears = incoming.Select(x => x.Year).Distinct().DefaultIfEmpty(year).ToArray();
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var existing = await context.EmployeeMonthlyPerformances
             .Where(x => coveredYears.Contains(x.Year))
@@ -140,12 +140,14 @@ public sealed partial class ConfigurableApplicationDatabase
             .Select(IdentityKey)
             .Where(x => x.Length > 0)
             .ToHashSet(StringComparer.Ordinal);
-        if (requestedKeys.Count == 0) return;
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var existingRows = await context.EmployeeMonthlyPerformances
             .Where(x => x.Year == year && x.Month == month)
             .ToListAsync(cancellationToken);
+        requestedKeys.UnionWith(existingRows.Select(x => IdentityKey(x.EmployeeName)).Where(x => x.Length > 0));
+        if (requestedKeys.Count == 0) return;
+
         var existingByIdentity = existingRows
             .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
             .Where(group => requestedKeys.Contains(group.Key))
@@ -212,6 +214,7 @@ public sealed partial class ConfigurableApplicationDatabase
                     .Select(x => x.EmployeeCode)
                     .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
             };
+            var hasAnySource = false;
 
             foreach (var type in PerformanceSourceTypes)
             {
@@ -220,6 +223,7 @@ public sealed partial class ConfigurableApplicationDatabase
                     if (currentByType[type].TryGetValue(key, out var current))
                     {
                         CopySource(replacement, current, type);
+                        hasAnySource = true;
                         replacement.EmployeeName = PersonName.Normalize(current.EmployeeName);
                         if (!string.IsNullOrWhiteSpace(current.EmployeeCode)) replacement.EmployeeCode = current.EmployeeCode;
                     }
@@ -227,15 +231,21 @@ public sealed partial class ConfigurableApplicationDatabase
                 }
 
                 var legacy = SelectLegacySource(legacyRows, type);
-                if (legacy is not null) CopySource(replacement, legacy, type);
+                if (legacy is not null)
+                {
+                    CopySource(replacement, legacy, type);
+                    hasAnySource = true;
+                }
             }
+
+            removals.AddRange(legacyRows);
+            if (!hasAnySource) continue;
 
             Recalculate(replacement, settings);
             replacements.Add(replacement);
-            removals.AddRange(legacyRows);
         }
 
-        if (replacements.Count == 0) return;
+        if (removals.Count == 0 && replacements.Count == 0) return;
 
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         if (removals.Count > 0)
@@ -243,13 +253,16 @@ public sealed partial class ConfigurableApplicationDatabase
             context.EmployeeMonthlyPerformances.RemoveRange(removals);
             await context.SaveChangesAsync(cancellationToken);
         }
-        context.EmployeeMonthlyPerformances.AddRange(replacements);
-        await context.SaveChangesAsync(cancellationToken);
+        if (replacements.Count > 0)
+        {
+            context.EmployeeMonthlyPerformances.AddRange(replacements);
+            await context.SaveChangesAsync(cancellationToken);
+        }
         await transaction.CommitAsync(cancellationToken);
 
         _logger.LogInformation(
             "Reconciled {IdentityCount} canonical performance identities for {Year:D4}-{Month:D2} from current source slots.",
-            replacements.Count,
+            requestedKeys.Count,
             year,
             month);
     }
@@ -384,12 +397,12 @@ public sealed partial class ConfigurableApplicationDatabase
             left.TrainingHours == right.TrainingHours &&
             left.OfficeHours == right.OfficeHours &&
             left.Utilization == right.Utilization &&
-            string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase),
+            IncomingCodeMatches(left.EmployeeCode, right.EmployeeCode),
         ReportType.DetailedTimesheetTransactions =>
             left.DetailedHours == right.DetailedHours &&
             left.DetailedEntries == right.DetailedEntries &&
             left.UniqueProjects == right.UniqueProjects &&
-            string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase),
+            IncomingCodeMatches(left.EmployeeCode, right.EmployeeCode),
         ReportType.AttendanceLeaveUaaTimesheet =>
             left.AttendanceDays == right.AttendanceDays &&
             left.LeaveDays == right.LeaveDays &&
@@ -401,7 +414,11 @@ public sealed partial class ConfigurableApplicationDatabase
             left.LateDays == right.LateDays &&
             left.EarlyDays == right.EarlyDays &&
             left.LessDurationDays == right.LessDurationDays &&
-            string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase),
+            IncomingCodeMatches(left.EmployeeCode, right.EmployeeCode),
         _ => true
     };
+
+    private static bool IncomingCodeMatches(string? storedCode, string? incomingCode) =>
+        string.IsNullOrWhiteSpace(incomingCode) ||
+        string.Equals(storedCode, incomingCode, StringComparison.OrdinalIgnoreCase);
 }
