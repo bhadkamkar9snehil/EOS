@@ -8,3 +8,27 @@
 2026-08-23T10:09:50Z  SYNC PASS
 2026-08-23T10:09:53Z  FAST START (1200s ceiling)
 2026-08-23T10:10:04Z  FAST FAIL exit=2
+
+=================================== ERRORS ====================================
+__________________ ERROR collecting tests/test_seed_demo.py ___________________
+ImportError while importing test module 'C:\agents\EOS\_work\_temp\AcmVmDirectUv\source\tests\test_seed_demo.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_seed_demo.py:9: in <module>
+    from test_care_replay import _make_farm  # reuse the synthetic farm fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'test_care_replay'
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\agents\EOS\_work\_temp\AcmVmDirectUv\source\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/test_seed_demo.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+
+
