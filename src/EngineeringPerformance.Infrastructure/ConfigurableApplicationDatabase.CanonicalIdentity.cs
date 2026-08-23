@@ -13,6 +13,15 @@ public sealed partial class ConfigurableApplicationDatabase
         ReportType.AttendanceLeaveUaaTimesheet
     ];
 
+    private static readonly ReportType[] SnapshotPerformanceSourceTypes =
+    [
+        ReportType.DetailedTimesheetTransactions,
+        ReportType.AttendanceLeaveUaaTimesheet
+    ];
+
+    private static bool IsSnapshotReportType(ReportType reportType) =>
+        SnapshotPerformanceSourceTypes.Contains(reportType);
+
     private async Task<ImportPreview> PreviewCanonicalImportAsync(
         ReportType reportType,
         int year,
@@ -28,26 +37,46 @@ public sealed partial class ConfigurableApplicationDatabase
             .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
             .Select(group => CombineSourceRows(group, reportType))
             .ToArray();
-        var coveredMonths = incoming
+        var incomingMonths = incoming
             .Select(x => (x.Year, x.Month))
             .Distinct()
             .DefaultIfEmpty((year, month))
             .ToArray();
-        var coveredMonthSet = coveredMonths.ToHashSet();
-        var coveredYears = coveredMonths.Select(x => x.Year).Distinct().ToArray();
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var incomingYears = incomingMonths.Select(x => x.Year).Distinct().ToArray();
+        var slots = IsSnapshotReportType(reportType)
+            ? await context.ImportedSourceFiles
+                .Where(x => x.ReportType == reportType)
+                .ToListAsync(cancellationToken)
+            : await context.ImportedSourceFiles
+                .Where(x => x.ReportType == reportType && incomingYears.Contains(x.Year))
+                .ToListAsync(cancellationToken);
+
+        var replacementMonths = (IsSnapshotReportType(reportType)
+                ? slots.Select(x => (x.Year, x.Month)).Concat(incomingMonths)
+                : incomingMonths)
+            .Distinct()
+            .ToArray();
+        var replacementMonthSet = replacementMonths.ToHashSet();
+        var replacementYears = replacementMonths.Select(x => x.Year).Distinct().ToArray();
         var existing = await context.EmployeeMonthlyPerformances
-            .Where(x => coveredYears.Contains(x.Year))
-            .ToListAsync(cancellationToken);
-        var slots = await context.ImportedSourceFiles
-            .Where(x => x.ReportType == reportType && coveredYears.Contains(x.Year))
+            .Where(x => replacementYears.Contains(x.Year))
             .ToListAsync(cancellationToken);
 
+        var authoritativeSnapshotPath = IsSnapshotReportType(reportType)
+            ? slots.OrderByDescending(x => x.ImportedUtc).ThenByDescending(x => x.Id).Select(x => x.StoredPath).FirstOrDefault()
+            : null;
         var currentSource = new Dictionary<(int Year, int Month, string Name), EmployeeMonthlyPerformance>();
         foreach (var slot in slots)
         {
+            if (authoritativeSnapshotPath is not null &&
+                !string.Equals(slot.StoredPath, authoritativeSnapshotPath, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             if (!File.Exists(slot.StoredPath)) continue;
+
             try
             {
                 foreach (var row in workbookService.ReadPerformance(slot.StoredPath, reportType, slot.Year, slot.Month)
@@ -75,7 +104,7 @@ public sealed partial class ConfigurableApplicationDatabase
             .Select(x => (x.Year, x.Month, Name: IdentityKey(x.EmployeeName)))
             .ToHashSet();
         var removedRows = currentSource
-            .Where(pair => coveredMonthSet.Contains((pair.Key.Year, pair.Key.Month)) && !incomingKeys.Contains(pair.Key))
+            .Where(pair => replacementMonthSet.Contains((pair.Key.Year, pair.Key.Month)) && !incomingKeys.Contains(pair.Key))
             .Select(pair => pair.Value)
             .ToArray();
 
@@ -152,6 +181,14 @@ public sealed partial class ConfigurableApplicationDatabase
             .Where(group => requestedKeys.Contains(group.Key))
             .ToDictionary(group => group.Key, group => group.OrderBy(x => x.Id).ToArray(), StringComparer.Ordinal);
 
+        var snapshotSlots = await context.ImportedSourceFiles.AsNoTracking()
+            .Where(x => SnapshotPerformanceSourceTypes.Contains(x.ReportType))
+            .ToListAsync(cancellationToken);
+        var authoritativeSnapshotPaths = snapshotSlots
+            .GroupBy(x => x.ReportType)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(x => x.ImportedUtc).ThenByDescending(x => x.Id).First().StoredPath);
         var slots = await context.ImportedSourceFiles.AsNoTracking()
             .Where(x => x.Year == year && x.Month == month && PerformanceSourceTypes.Contains(x.ReportType))
             .OrderBy(x => x.ImportedUtc)
@@ -162,18 +199,26 @@ public sealed partial class ConfigurableApplicationDatabase
 
         foreach (var slot in slots)
         {
-            if (!File.Exists(slot.StoredPath))
+            var sourcePath = slot.StoredPath;
+            if (IsSnapshotReportType(slot.ReportType) &&
+                authoritativeSnapshotPaths.TryGetValue(slot.ReportType, out var authoritativePath) &&
+                !string.Equals(sourcePath, authoritativePath, StringComparison.OrdinalIgnoreCase))
+            {
+                sourcePath = authoritativePath;
+            }
+
+            if (!File.Exists(sourcePath))
             {
                 _logger.LogWarning(
                     "Current {ReportType} source is missing at {StoredPath}; preserving latest persisted evidence for that source while reconciling identities.",
                     slot.ReportType,
-                    slot.StoredPath);
+                    sourcePath);
                 continue;
             }
 
             try
             {
-                currentByType[slot.ReportType] = workbookService.ReadPerformance(slot.StoredPath, slot.ReportType, year, month)
+                currentByType[slot.ReportType] = workbookService.ReadPerformance(sourcePath, slot.ReportType, year, month)
                     .Where(x => x.Year == year && x.Month == month)
                     .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
                     .ToDictionary(
@@ -188,7 +233,7 @@ public sealed partial class ConfigurableApplicationDatabase
                     exception,
                     "Could not replay current {ReportType} source {StoredPath}; preserving latest persisted evidence for that source while reconciling identities.",
                     slot.ReportType,
-                    slot.StoredPath);
+                    sourcePath);
             }
         }
 
@@ -237,10 +282,16 @@ public sealed partial class ConfigurableApplicationDatabase
                 }
             }
 
-            removals.AddRange(legacyRows);
-            if (!hasAnySource) continue;
+            if (!hasAnySource)
+            {
+                removals.AddRange(legacyRows);
+                continue;
+            }
 
             Recalculate(replacement, settings);
+            if (legacyRows.Length == 1 && SamePerformanceRow(legacyRows[0], replacement)) continue;
+
+            removals.AddRange(legacyRows);
             replacements.Add(replacement);
         }
 
@@ -381,6 +432,37 @@ public sealed partial class ConfigurableApplicationDatabase
         var applicable = metrics.Where(x => x.IsApplicable && x.Weight > 0m).ToArray();
         row.OperationalScore = applicable.Length == 0 ? 0m : WeightedScoreCalculator.Calculate(applicable);
     }
+
+    private static bool SamePerformanceRow(EmployeeMonthlyPerformance left, EmployeeMonthlyPerformance right) =>
+        left.Year == right.Year &&
+        left.Month == right.Month &&
+        string.Equals(left.EmployeeName, right.EmployeeName, StringComparison.Ordinal) &&
+        string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase) &&
+        left.OperationalScore == right.OperationalScore &&
+        left.TimesheetCompletionScore == right.TimesheetCompletionScore &&
+        left.ApprovalScore == right.ApprovalScore &&
+        left.AttendanceDisciplineScore == right.AttendanceDisciplineScore &&
+        left.ComplianceHours == right.ComplianceHours &&
+        left.EnteredHours == right.EnteredHours &&
+        left.ApprovedHours == right.ApprovedHours &&
+        left.BillableHours == right.BillableHours &&
+        left.NonBillableHours == right.NonBillableHours &&
+        left.TrainingHours == right.TrainingHours &&
+        left.OfficeHours == right.OfficeHours &&
+        left.Utilization == right.Utilization &&
+        left.DetailedHours == right.DetailedHours &&
+        left.DetailedEntries == right.DetailedEntries &&
+        left.UniqueProjects == right.UniqueProjects &&
+        left.AttendanceDays == right.AttendanceDays &&
+        left.LeaveDays == right.LeaveDays &&
+        left.PunchHours == right.PunchHours &&
+        left.AttendanceTimesheetHours == right.AttendanceTimesheetHours &&
+        left.TimesheetFilledDays == right.TimesheetFilledDays &&
+        left.ExpectedTimesheetDays == right.ExpectedTimesheetDays &&
+        left.MissingPunchDays == right.MissingPunchDays &&
+        left.LateDays == right.LateDays &&
+        left.EarlyDays == right.EarlyDays &&
+        left.LessDurationDays == right.LessDurationDays;
 
     private static bool SameSourceEvidence(
         EmployeeMonthlyPerformance left,
