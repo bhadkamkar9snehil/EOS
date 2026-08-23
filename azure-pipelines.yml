@@ -1,4 +1,3 @@
-# retrigger after EOS Azure VM confirmed online 2026-08-23 11:48 IST
 trigger:
   batch: true
   branches:
@@ -11,16 +10,58 @@ trigger:
 pr: none
 
 variables:
-  apsCommit: '12aadcd51c9d72f6a6b3c821555e00254a1a6225'
-  apsSource: '$(Agent.TempDirectory)\ApsVmVerify\source'
-  apsResults: '$(Agent.TempDirectory)\ApsVmVerify\test-results'
-  apsPublish: '$(Agent.TempDirectory)\ApsVmVerify\desktop-publish'
-  apsDiagnostics: '$(Agent.TempDirectory)\ApsVmVerify\diagnostics'
-  apsLog: '$(Agent.TempDirectory)\ApsVmVerify\verify.log'
+  - group: eos-vm-control
+  - name: azureVmServiceConnection
+    value: eos-vm-arm
+  - name: computeApiVersion
+    value: '2026-03-01'
+  - name: apsCommit
+    value: '12aadcd51c9d72f6a6b3c821555e00254a1a6225'
+  - name: apsSource
+    value: '$(Agent.TempDirectory)\ApsVmVerify\source'
+  - name: apsResults
+    value: '$(Agent.TempDirectory)\ApsVmVerify\test-results'
+  - name: apsPublish
+    value: '$(Agent.TempDirectory)\ApsVmVerify\desktop-publish'
+  - name: apsDiagnostics
+    value: '$(Agent.TempDirectory)\ApsVmVerify\diagnostics'
+  - name: apsLog
+    value: '$(Agent.TempDirectory)\ApsVmVerify\verify.log'
 
 jobs:
+  - job: repair_agent
+    displayName: Repair EOS Azure Pipelines agent out-of-band
+    pool: server
+    timeoutInMinutes: 20
+    steps:
+      - task: InvokeRESTAPI@1
+        displayName: Start or restart vstsagent service through Azure VM Run Command
+        inputs:
+          connectionType: connectedServiceNameARM
+          azureServiceConnection: '$(azureVmServiceConnection)'
+          method: POST
+          urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
+          headers: |
+            {
+              "Content-Type": "application/json"
+            }
+          body: |
+            {
+              "commandId": "RunPowerShellScript",
+              "script": [
+                "$ErrorActionPreference = 'Stop'",
+                "$services = @(Get-Service -Name 'vstsagent*' -ErrorAction Stop)",
+                "if ($services.Count -eq 0) { throw 'No Azure Pipelines agent service is installed.' }",
+                "foreach ($service in $services) { Set-Service -Name $service.Name -StartupType Automatic; if ($service.Status -eq 'Running') { Restart-Service -Name $service.Name -Force } else { Start-Service -Name $service.Name } }",
+                "Start-Sleep -Seconds 5",
+                "Get-Service -Name 'vstsagent*' | Select-Object Name,Status,StartType | Format-Table -AutoSize | Out-String | Write-Output"
+              ]
+            }
+          waitForCompletion: false
+
   - job: aps_vm_verify
     displayName: APS 12aadcd on EOS Azure VM
+    dependsOn: repair_agent
     timeoutInMinutes: 60
     workspace:
       clean: all
@@ -116,10 +157,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path $resultRoot | Out-Null
           $resultPath = Join-Path $resultRoot 'aps-12aadcd.txt'
 
+          $resolved = (git -C "$(apsSource)" rev-parse HEAD).Trim()
           $lines = [System.Collections.Generic.List[string]]::new()
           $lines.Add('APS Azure VM verification')
           $lines.Add('Requested commit: $(apsCommit)')
-          $lines.Add("Resolved commit: $((git -C \"$(apsSource)\" rev-parse HEAD).Trim())")
+          $lines.Add("Resolved commit: $resolved")
           $lines.Add('Agent: $(Agent.Name) / $(Agent.MachineName)')
           $lines.Add('Azure build: $(Build.BuildNumber)')
           $lines.Add("Exit code: $exitCode")
