@@ -101,7 +101,7 @@ public sealed partial class WorkbookService : IWorkbookService
             if (string.IsNullOrWhiteSpace(name)) continue;
             var dateCell = sheet.Cell(row, Col(columns, "Date"));
             var (rowYear, rowMonth) = dateCell.TryGetValue<DateTime>(out var date) ? (date.Year, date.Month) : (year, month);
-            var key = (name, rowYear, rowMonth);
+            var key = (name.ToUpperInvariant(), rowYear, rowMonth);
             if (!groups.TryGetValue(key, out var group)) group = (New(name, rowYear, rowMonth), new(StringComparer.OrdinalIgnoreCase));
             group.Item.DetailedEntries++;
             group.Item.DetailedHours += Number(sheet.Cell(row, Col(columns, "Total work Hours")));
@@ -124,7 +124,7 @@ public sealed partial class WorkbookService : IWorkbookService
             var dateCell = sheet.Cell(row, Col(columns, "Date"));
             var hasDate = dateCell.TryGetValue<DateTime>(out var date);
             var (rowYear, rowMonth) = hasDate ? (date.Year, date.Month) : (year, month);
-            var key = (name, rowYear, rowMonth);
+            var key = (name.ToUpperInvariant(), rowYear, rowMonth);
             if (!groups.TryGetValue(key, out var item)) groups[key] = item = New(name, rowYear, rowMonth);
             item.EmployeeCode ??= Text(sheet.Cell(row, Col(columns, "Emp No")));
             var attendDay = Number(sheet.Cell(row, Col(columns, "Attend Day")));
