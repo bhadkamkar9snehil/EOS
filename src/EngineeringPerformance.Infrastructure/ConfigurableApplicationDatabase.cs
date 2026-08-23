@@ -88,12 +88,6 @@ public sealed partial class ConfigurableApplicationDatabase(
         return rows.Count;
     }
 
-    private async Task RecalculateAfterImportAsync(CancellationToken cancellationToken)
-    {
-        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await RecalculateAllAsync(settings, cancellationToken);
-    }
-
     public async Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -244,7 +238,12 @@ public sealed partial class ConfigurableApplicationDatabase(
         await inner.ImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
 
         var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await RecalculateAllAsync(settings, cancellationToken);
+        if (IsSnapshotReportType(reportType))
+        {
+            await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
+            return;
+        }
+
         foreach (var affectedMonth in affectedMonths)
         {
             var names = incoming
@@ -266,7 +265,6 @@ public sealed partial class ConfigurableApplicationDatabase(
     {
         var count = await inner.ImportPackageAsync(year, month, zipPath, cancellationToken);
         var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await RecalculateAllAsync(settings, cancellationToken);
         await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
         return count;
     }
