@@ -60,17 +60,13 @@ public sealed partial class ConfigurableApplicationDatabase
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var coveredMonths = incoming.Select(x => (x.Year, x.Month)).Distinct().ToArray();
-        var existing = coveredMonths.Length == 0
-            ? []
-            : await context.EmployeeMonthlyPerformances
-                .Where(x => coveredMonths.Select(m => m.Year).Contains(x.Year))
-                .ToListAsync(cancellationToken);
-
-        var slots = coveredMonths.Length == 0
-            ? []
-            : await context.ImportedSourceFiles
-                .Where(x => x.ReportType == reportType && coveredMonths.Select(m => m.Year).Contains(x.Year))
-                .ToListAsync(cancellationToken);
+        var coveredYears = coveredMonths.Select(x => x.Year).Distinct().ToArray();
+        var existing = await context.EmployeeMonthlyPerformances
+            .Where(x => coveredYears.Contains(x.Year))
+            .ToListAsync(cancellationToken);
+        var slots = await context.ImportedSourceFiles
+            .Where(x => x.ReportType == reportType && coveredYears.Contains(x.Year))
+            .ToListAsync(cancellationToken);
 
         var currentSource = new Dictionary<(int Year, int Month, string Name), EmployeeMonthlyPerformance>();
         foreach (var slot in slots)
@@ -197,7 +193,6 @@ public sealed partial class ConfigurableApplicationDatabase
             .OrderBy(x => x.ImportedUtc)
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
-        var slotsByType = slots.ToDictionary(x => x.ReportType);
         var currentByType = new Dictionary<ReportType, Dictionary<string, EmployeeMonthlyPerformance>>();
         var replayedTypes = new HashSet<ReportType>();
 
