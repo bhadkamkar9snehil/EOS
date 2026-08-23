@@ -2,22 +2,25 @@ trigger:
   batch: true
   branches:
     include:
-      - main
+      - '*'
 
 pr:
   autoCancel: true
   branches:
     include:
-      - main
+      - '*'
 
 variables:
   buildConfiguration: Release
   visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
+  diagnosticsDirectory: '$(Agent.TempDirectory)\EosDiagnostics'
 
 jobs:
   - job: windows_ci
     displayName: Windows build, test & visual validation
     timeoutInMinutes: 40
+    workspace:
+      clean: all
     pool:
       name: Default
       demands:
@@ -26,13 +29,24 @@ jobs:
     steps:
       - checkout: self
         clean: true
+        fetchDepth: 0
+        persistCredentials: false
 
       - powershell: ./scripts/validate-powershell.ps1
         displayName: Validate PowerShell automation
 
+      # Project/dashboard/pipeline reconciliation mutates Azure DevOps configuration. Keep that
+      # mutation on canonical main builds only; feature branches should only build and test code.
       - powershell: ./scripts/bootstrap-azure-devops-project.ps1
         displayName: Reconcile Azure DevOps project configuration
+        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
         continueOnError: true
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+      - powershell: ./scripts/ensure-shared-windows-pipelines.ps1
+        displayName: Reconcile shared Windows build pipelines
+        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
         env:
           SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 
@@ -56,7 +70,6 @@ jobs:
           $exitCode = $LASTEXITCODE
 
           if ($exitCode -ne 0) {
-            # A plain PowerShell failure is reported back to GitHub as only "exited with code 1".
             # Re-emit compiler/MSBuild/NuGet errors through Azure logging commands so the actual
             # diagnostic text becomes a first-class pipeline/GitHub Check annotation.
             $diagnostics = Get-Content $logPath | Where-Object {
@@ -75,11 +88,14 @@ jobs:
         displayName: Build complete solution
 
       - powershell: |
-          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=domain.trx" --results-directory "$(Agent.TempDirectory)\TestResults"
+          $results = "$(Agent.TempDirectory)\TestResults"
+          New-Item -ItemType Directory -Force -Path $results | Out-Null
+
+          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=domain.trx" --results-directory $results
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=infrastructure.trx" --results-directory "$(Agent.TempDirectory)\TestResults"
+          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=infrastructure.trx" --results-directory $results
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory "$(Agent.TempDirectory)\TestResults"
+          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         displayName: Run tests
 
@@ -97,10 +113,34 @@ jobs:
       - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
         displayName: Capture real WPF + WebView2 visual evidence
 
+      - powershell: |
+          $diagnostics = "$(diagnosticsDirectory)"
+          New-Item -ItemType Directory -Force -Path $diagnostics | Out-Null
+          $buildLog = "$(Agent.TempDirectory)\eos-build.log"
+          if (Test-Path $buildLog) { Copy-Item $buildLog (Join-Path $diagnostics 'build.log') -Force }
+          dotnet --info | Out-File (Join-Path $diagnostics 'dotnet-info.txt') -Encoding utf8
+          git status --porcelain=v1 --branch | Out-File (Join-Path $diagnostics 'git-status.txt') -Encoding utf8
+          @(
+            "Build.SourceBranch=$(Build.SourceBranch)",
+            "Build.SourceVersion=$(Build.SourceVersion)",
+            "Agent.Name=$(Agent.Name)",
+            "Agent.MachineName=$(Agent.MachineName)"
+          ) | Out-File (Join-Path $diagnostics 'run-context.txt') -Encoding utf8
+        displayName: Collect build diagnostics
+        condition: always()
+
       - task: PublishPipelineArtifact@1
         displayName: Publish screenshots, browser diagnostics and app logs
         condition: always()
         inputs:
           targetPath: '$(visualEvidenceDirectory)'
           artifact: visual-evidence
+          publishLocation: pipeline
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish build diagnostics
+        condition: always()
+        inputs:
+          targetPath: '$(diagnosticsDirectory)'
+          artifact: build-diagnostics
           publishLocation: pipeline
