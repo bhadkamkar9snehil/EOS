@@ -236,16 +236,24 @@ public sealed partial class ConfigurableApplicationDatabase(
     public async Task ImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default)
     {
         var incoming = workbookService.ReadPerformance(sourcePath, reportType, year, month);
+        var affectedMonths = incoming
+            .Select(x => (x.Year, x.Month))
+            .Distinct()
+            .DefaultIfEmpty((year, month))
+            .ToArray();
         await inner.ImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
 
         var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
         await RecalculateAllAsync(settings, cancellationToken);
-        foreach (var monthGroup in incoming.GroupBy(x => (x.Year, x.Month)))
+        foreach (var affectedMonth in affectedMonths)
         {
+            var names = incoming
+                .Where(x => x.Year == affectedMonth.Year && x.Month == affectedMonth.Month)
+                .Select(x => x.EmployeeName);
             await ReconcileMonthAsync(
-                monthGroup.Key.Year,
-                monthGroup.Key.Month,
-                monthGroup.Select(x => x.EmployeeName),
+                affectedMonth.Year,
+                affectedMonth.Month,
+                names,
                 settings,
                 cancellationToken);
         }
