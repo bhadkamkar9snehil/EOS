@@ -13,36 +13,7 @@ public sealed partial class ConfigurableApplicationDatabase
         ReportType.AttendanceLeaveUaaTimesheet
     ];
 
-    async Task IApplicationDatabase.InitializeAsync(CancellationToken cancellationToken)
-    {
-        await InitializeAsync(cancellationToken);
-        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await ReconcileProblemIdentitiesAsync(settings, cancellationToken);
-    }
-
-    async Task IApplicationDatabase.ImportSourceAsync(
-        ReportType reportType,
-        int year,
-        int month,
-        string sourcePath,
-        CancellationToken cancellationToken)
-    {
-        var incoming = workbookService.ReadPerformance(sourcePath, reportType, year, month);
-        await ImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
-
-        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        foreach (var monthGroup in incoming.GroupBy(x => (x.Year, x.Month)))
-        {
-            await ReconcileMonthAsync(
-                monthGroup.Key.Year,
-                monthGroup.Key.Month,
-                monthGroup.Select(x => x.EmployeeName),
-                settings,
-                cancellationToken);
-        }
-    }
-
-    async Task<ImportPreview> IApplicationDatabase.PreviewImportSourceAsync(
+    private async Task<ImportPreview> PreviewCanonicalImportAsync(
         ReportType reportType,
         int year,
         int month,
@@ -58,9 +29,8 @@ public sealed partial class ConfigurableApplicationDatabase
             .Select(group => CombineSourceRows(group, reportType))
             .ToArray();
 
+        var coveredYears = incoming.Select(x => x.Year).Distinct().ToArray();
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var coveredMonths = incoming.Select(x => (x.Year, x.Month)).Distinct().ToArray();
-        var coveredYears = coveredMonths.Select(x => x.Year).Distinct().ToArray();
         var existing = await context.EmployeeMonthlyPerformances
             .Where(x => coveredYears.Contains(x.Year))
             .ToListAsync(cancellationToken);
@@ -74,16 +44,21 @@ public sealed partial class ConfigurableApplicationDatabase
             if (!File.Exists(slot.StoredPath)) continue;
             try
             {
-                var rows = workbookService.ReadPerformance(slot.StoredPath, reportType, slot.Year, slot.Month)
-                    .Where(x => x.Year == slot.Year && x.Month == slot.Month)
-                    .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
-                    .Select(group => CombineSourceRows(group, reportType));
-                foreach (var row in rows)
+                foreach (var row in workbookService.ReadPerformance(slot.StoredPath, reportType, slot.Year, slot.Month)
+                             .Where(x => x.Year == slot.Year && x.Month == slot.Month)
+                             .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
+                             .Select(group => CombineSourceRows(group, reportType)))
+                {
                     currentSource[(row.Year, row.Month, IdentityKey(row.EmployeeName))] = row;
+                }
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
             {
-                _logger.LogWarning(exception, "Could not replay current {ReportType} source {StoredPath} while previewing canonical import identity.", reportType, slot.StoredPath);
+                _logger.LogWarning(
+                    exception,
+                    "Could not replay current {ReportType} source {StoredPath} while previewing canonical import identity.",
+                    reportType,
+                    slot.StoredPath);
             }
         }
 
@@ -106,9 +81,8 @@ public sealed partial class ConfigurableApplicationDatabase
                 continue;
             }
 
-            var current = currentSource.GetValueOrDefault(key)
-                ?? SelectLegacySource(legacyRows, reportType);
-            if (current is null || !SourceSnapshot(current, reportType).Equals(SourceSnapshot(row, reportType)))
+            var current = currentSource.GetValueOrDefault(key) ?? SelectLegacySource(legacyRows, reportType);
+            if (current is null || !SameSourceEvidence(current, row, reportType))
             {
                 updated++;
                 if (sampleUpdated.Count < 10) sampleUpdated.Add(PersonName.Normalize(row.EmployeeName));
@@ -131,18 +105,6 @@ public sealed partial class ConfigurableApplicationDatabase
             sampleUpdated);
     }
 
-    async Task<int> IApplicationDatabase.ImportPackageAsync(
-        int year,
-        int month,
-        string zipPath,
-        CancellationToken cancellationToken)
-    {
-        var imported = await ImportPackageAsync(year, month, zipPath, cancellationToken);
-        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await ReconcileProblemIdentitiesAsync(settings, cancellationToken);
-        return imported;
-    }
-
     private async Task ReconcileProblemIdentitiesAsync(
         OperationalScoringSettings settings,
         CancellationToken cancellationToken)
@@ -151,7 +113,8 @@ public sealed partial class ConfigurableApplicationDatabase
         var rows = await context.EmployeeMonthlyPerformances.AsNoTracking().ToListAsync(cancellationToken);
         var problemGroups = rows
             .GroupBy(x => (x.Year, x.Month, Name: IdentityKey(x.EmployeeName)))
-            .Where(group => group.Count() > 1 || group.Any(x => !string.Equals(x.EmployeeName, PersonName.Normalize(x.EmployeeName), StringComparison.Ordinal)))
+            .Where(group => group.Count() > 1 || group.Any(x =>
+                !string.Equals(x.EmployeeName, PersonName.Normalize(x.EmployeeName), StringComparison.Ordinal)))
             .GroupBy(group => (group.Key.Year, group.Key.Month))
             .ToArray();
 
@@ -200,25 +163,31 @@ public sealed partial class ConfigurableApplicationDatabase
         {
             if (!File.Exists(slot.StoredPath))
             {
-                _logger.LogWarning("Current {ReportType} source is missing at {StoredPath}; preserving legacy evidence for that source while reconciling identities.", slot.ReportType, slot.StoredPath);
+                _logger.LogWarning(
+                    "Current {ReportType} source is missing at {StoredPath}; preserving latest persisted evidence for that source while reconciling identities.",
+                    slot.ReportType,
+                    slot.StoredPath);
                 continue;
             }
 
             try
             {
-                var rows = workbookService.ReadPerformance(slot.StoredPath, slot.ReportType, year, month)
+                currentByType[slot.ReportType] = workbookService.ReadPerformance(slot.StoredPath, slot.ReportType, year, month)
                     .Where(x => x.Year == year && x.Month == month)
                     .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
                     .ToDictionary(
                         group => group.Key,
                         group => CombineSourceRows(group, slot.ReportType),
                         StringComparer.Ordinal);
-                currentByType[slot.ReportType] = rows;
                 replayedTypes.Add(slot.ReportType);
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
             {
-                _logger.LogWarning(exception, "Could not replay current {ReportType} source {StoredPath}; preserving legacy evidence for that source while reconciling identities.", slot.ReportType, slot.StoredPath);
+                _logger.LogWarning(
+                    exception,
+                    "Could not replay current {ReportType} source {StoredPath}; preserving latest persisted evidence for that source while reconciling identities.",
+                    slot.ReportType,
+                    slot.StoredPath);
             }
         }
 
@@ -230,10 +199,19 @@ public sealed partial class ConfigurableApplicationDatabase
             legacyRows ??= [];
             if (legacyRows.Length == 0 && currentByType.Values.All(map => !map.ContainsKey(key))) continue;
 
-            var replacement = new EmployeeMonthlyPerformance { Year = year, Month = month };
-            var fallbackName = legacyRows.Select(x => PersonName.Normalize(x.EmployeeName)).FirstOrDefault(x => x.Length > 0) ?? key;
-            replacement.EmployeeName = fallbackName;
-            replacement.EmployeeCode = legacyRows.Select(x => x.EmployeeCode).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+            var replacement = new EmployeeMonthlyPerformance
+            {
+                Year = year,
+                Month = month,
+                EmployeeName = legacyRows
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => PersonName.Normalize(x.EmployeeName))
+                    .FirstOrDefault(x => x.Length > 0) ?? key,
+                EmployeeCode = legacyRows
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => x.EmployeeCode)
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+            };
 
             foreach (var type in PerformanceSourceTypes)
             {
@@ -285,9 +263,7 @@ public sealed partial class ConfigurableApplicationDatabase
         var rows = source.ToArray();
         if (rows.Length == 0) throw new InvalidOperationException("At least one source row is required.");
         if (rows.Length == 1) return rows[0];
-
-        if (reportType == ReportType.MonthlyTimesheetSummary)
-            return rows[^1];
+        if (reportType == ReportType.MonthlyTimesheetSummary) return rows[^1];
 
         var combined = new EmployeeMonthlyPerformance
         {
@@ -310,7 +286,7 @@ public sealed partial class ConfigurableApplicationDatabase
             combined.PunchHours = rows.Sum(x => x.PunchHours);
             combined.AttendanceTimesheetHours = rows.Sum(x => x.AttendanceTimesheetHours);
             combined.TimesheetFilledDays = rows.Sum(x => x.TimesheetFilledDays);
-            combined.ExpectedTimesheetDays = rows.Max(x => x.ExpectedTimesheetDays);
+            combined.ExpectedTimesheetDays = rows.Sum(x => x.ExpectedTimesheetDays);
             combined.MissingPunchDays = rows.Sum(x => x.MissingPunchDays);
             combined.LateDays = rows.Sum(x => x.LateDays);
             combined.EarlyDays = rows.Sum(x => x.EarlyDays);
@@ -323,28 +299,26 @@ public sealed partial class ConfigurableApplicationDatabase
 
     private static EmployeeMonthlyPerformance? SelectLegacySource(
         IReadOnlyCollection<EmployeeMonthlyPerformance> rows,
-        ReportType type) => type switch
-    {
-        ReportType.MonthlyTimesheetSummary => rows
-            .OrderByDescending(SummaryEvidence)
-            .ThenBy(x => x.Id)
-            .FirstOrDefault(),
-        ReportType.DetailedTimesheetTransactions => rows
-            .OrderByDescending(x => x.DetailedEntries)
-            .ThenByDescending(x => x.DetailedHours)
-            .ThenBy(x => x.Id)
-            .FirstOrDefault(),
-        ReportType.AttendanceLeaveUaaTimesheet => rows
-            .OrderByDescending(x => x.ExpectedTimesheetDays)
-            .ThenByDescending(x => x.PunchHours)
-            .ThenBy(x => x.Id)
-            .FirstOrDefault(),
-        _ => null
-    };
+        ReportType type) => rows
+            .Where(row => HasSourceEvidence(row, type))
+            .OrderByDescending(row => row.Id)
+            .FirstOrDefault();
 
-    private static decimal SummaryEvidence(EmployeeMonthlyPerformance item) =>
-        item.ComplianceHours + item.EnteredHours + item.ApprovedHours + item.BillableHours +
-        item.NonBillableHours + item.TrainingHours + item.OfficeHours + item.Utilization;
+    private static bool HasSourceEvidence(EmployeeMonthlyPerformance row, ReportType type) => type switch
+    {
+        ReportType.MonthlyTimesheetSummary =>
+            row.ComplianceHours != 0m || row.EnteredHours != 0m || row.ApprovedHours != 0m ||
+            row.BillableHours != 0m || row.NonBillableHours != 0m || row.TrainingHours != 0m ||
+            row.OfficeHours != 0m || row.Utilization != 0m,
+        ReportType.DetailedTimesheetTransactions =>
+            row.DetailedHours != 0m || row.DetailedEntries != 0 || row.UniqueProjects != 0,
+        ReportType.AttendanceLeaveUaaTimesheet =>
+            row.AttendanceDays != 0m || row.LeaveDays != 0m || row.PunchHours != 0m ||
+            row.AttendanceTimesheetHours != 0m || row.TimesheetFilledDays != 0m ||
+            row.ExpectedTimesheetDays != 0m || row.MissingPunchDays != 0 || row.LateDays != 0 ||
+            row.EarlyDays != 0 || row.LessDurationDays != 0,
+        _ => false
+    };
 
     private static void CopySource(
         EmployeeMonthlyPerformance target,
@@ -396,41 +370,38 @@ public sealed partial class ConfigurableApplicationDatabase
         row.OperationalScore = applicable.Length == 0 ? 0m : WeightedScoreCalculator.Calculate(applicable);
     }
 
-    private static object SourceSnapshot(EmployeeMonthlyPerformance row, ReportType type) => type switch
+    private static bool SameSourceEvidence(
+        EmployeeMonthlyPerformance left,
+        EmployeeMonthlyPerformance right,
+        ReportType type) => type switch
     {
-        ReportType.MonthlyTimesheetSummary => new
-        {
-            row.ComplianceHours,
-            row.EnteredHours,
-            row.ApprovedHours,
-            row.BillableHours,
-            row.NonBillableHours,
-            row.TrainingHours,
-            row.OfficeHours,
-            row.Utilization,
-            row.EmployeeCode
-        },
-        ReportType.DetailedTimesheetTransactions => new
-        {
-            row.DetailedHours,
-            row.DetailedEntries,
-            row.UniqueProjects,
-            row.EmployeeCode
-        },
-        ReportType.AttendanceLeaveUaaTimesheet => new
-        {
-            row.AttendanceDays,
-            row.LeaveDays,
-            row.PunchHours,
-            row.AttendanceTimesheetHours,
-            row.TimesheetFilledDays,
-            row.ExpectedTimesheetDays,
-            row.MissingPunchDays,
-            row.LateDays,
-            row.EarlyDays,
-            row.LessDurationDays,
-            row.EmployeeCode
-        },
-        _ => new { row.EmployeeCode }
+        ReportType.MonthlyTimesheetSummary =>
+            left.ComplianceHours == right.ComplianceHours &&
+            left.EnteredHours == right.EnteredHours &&
+            left.ApprovedHours == right.ApprovedHours &&
+            left.BillableHours == right.BillableHours &&
+            left.NonBillableHours == right.NonBillableHours &&
+            left.TrainingHours == right.TrainingHours &&
+            left.OfficeHours == right.OfficeHours &&
+            left.Utilization == right.Utilization &&
+            string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase),
+        ReportType.DetailedTimesheetTransactions =>
+            left.DetailedHours == right.DetailedHours &&
+            left.DetailedEntries == right.DetailedEntries &&
+            left.UniqueProjects == right.UniqueProjects &&
+            string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase),
+        ReportType.AttendanceLeaveUaaTimesheet =>
+            left.AttendanceDays == right.AttendanceDays &&
+            left.LeaveDays == right.LeaveDays &&
+            left.PunchHours == right.PunchHours &&
+            left.AttendanceTimesheetHours == right.AttendanceTimesheetHours &&
+            left.TimesheetFilledDays == right.TimesheetFilledDays &&
+            left.ExpectedTimesheetDays == right.ExpectedTimesheetDays &&
+            left.MissingPunchDays == right.MissingPunchDays &&
+            left.LateDays == right.LateDays &&
+            left.EarlyDays == right.EarlyDays &&
+            left.LessDurationDays == right.LessDurationDays &&
+            string.Equals(left.EmployeeCode, right.EmployeeCode, StringComparison.OrdinalIgnoreCase),
+        _ => true
     };
 }
