@@ -1,0 +1,72 @@
+﻿APS Azure VM verification
+Requested commit: 12aadcd51c9d72f6a6b3c821555e00254a1a6225
+Resolved commit: 12aadcd51c9d72f6a6b3c821555e00254a1a6225
+Agent: EOS / EOS
+Azure build: 20260823.25
+Exit code: 1
+Result: FAIL
+
+Diagnostic matches:
+C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(487,68): error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(703,28): error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+Build FAILED.
+error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension 
+##vso[task.logissue type=error]Build FAILED.
+APS solution build failed with exit code 1.
++         throw "APS solution build failed with exit code $buildExitCod ...
+    + FullyQualifiedErrorId : APS solution build failed with exit code 1.
+
+Last 300 log lines:
+
+=== Restore APS solution ===
+  Determining projects to restore...
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Application\APS.Application.csproj (in 1.44 sec).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Planning\APS.Planning.csproj (in 14.99 sec).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Domain\APS.Domain.csproj (in 2 ms).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Infrastructure\APS.Infrastructure.csproj (in 16.12 sec).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.DesktopHost\APS.DesktopHost.csproj (in 2.53 sec).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.UI.Tests\APS.UI.Tests.csproj (in 869 ms).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.Planning.Tests\APS.Planning.Tests.csproj (in 545 ms).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.Architecture.Tests\APS.Architecture.Tests.csproj (in 1 ms).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj (in 2 ms).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.Infrastructure.Tests\APS.Infrastructure.Tests.csproj (in 2.33 sec).
+  Restored C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Service\APS.Service.csproj (in 2.51 sec).
+
+=== Build APS solution ===
+  APS.Domain -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Domain\bin\Release\net10.0\APS.Domain.dll
+  APS.Architecture.Tests -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.Architecture.Tests\bin\Release\net10.0\APS.Architecture.Tests.dll
+  APS.Application -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Application\bin\Release\net10.0\APS.Application.dll
+C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(487,68): error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(703,28): error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+  APS.Planning -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Planning\bin\Release\net10.0\APS.Planning.dll
+  APS.Infrastructure -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.Infrastructure\bin\Release\net10.0\APS.Infrastructure.dll
+  APS.Planning.Tests -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.Planning.Tests\bin\Release\net10.0\APS.Planning.Tests.dll
+  APS.Infrastructure.Tests -> C:\agents\EOS\_work\_temp\ApsVmVerify\source\tests\APS.Infrastructure.Tests\bin\Release\net10.0\APS.Infrastructure.Tests.dll
+
+Build FAILED.
+
+C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(487,68): error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(703,28): error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:52.63
+##vso[task.logissue 
+type=error]C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(487,68): 
+error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension 
+method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a 
+using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+##vso[task.logissue 
+type=error]C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\Components\Pages\FiniteSchedule.razor(703,28): 
+error CS1061: 'PlannerWorkspaceState' does not contain a definition for 'ClearSelection' and no accessible extension 
+method 'ClearSelection' accepting a first argument of type 'PlannerWorkspaceState' could be found (are you missing a 
+using directive or an assembly reference?) [C:\agents\EOS\_work\_temp\ApsVmVerify\source\src\APS.UI\APS.UI.csproj]
+##vso[task.logissue type=error]Build FAILED.
+APS solution build failed with exit code 1.
+At C:\agents\EOS\_work\_temp\ApsVmVerify\source\build\verify.ps1:64 char:9
++         throw "APS solution build failed with exit code $buildExitCod ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (APS solution bu...th exit code 1.:String) [], RuntimeException
+    + FullyQualifiedErrorId : APS solution build failed with exit code 1.
+ 
+

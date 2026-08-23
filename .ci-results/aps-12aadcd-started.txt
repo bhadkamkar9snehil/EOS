@@ -1,0 +1,5 @@
+﻿APS Azure VM verification started
+Requested commit: 12aadcd51c9d72f6a6b3c821555e00254a1a6225
+Agent: EOS / EOS
+Azure build: 20260823.25
+Azure branch: refs/heads/ci/aps-vm-verify-12aadcd

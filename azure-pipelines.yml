@@ -2,23 +2,67 @@ trigger:
   batch: true
   branches:
     include:
-      - '*'
+      - ci/aps-vm-verify-12aadcd
+  paths:
+    exclude:
+      - .ci-results/**
 
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - '*'
+pr: none
 
 variables:
-  buildConfiguration: Release
-  visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
-  diagnosticsDirectory: '$(Agent.TempDirectory)\EosDiagnostics'
+  - group: eos-vm-control
+  - name: azureVmServiceConnection
+    value: eos-vm-arm
+  - name: computeApiVersion
+    value: '2026-03-01'
+  - name: apsCommit
+    value: '12aadcd51c9d72f6a6b3c821555e00254a1a6225'
+  - name: apsSource
+    value: '$(Agent.TempDirectory)\ApsVmVerify\source'
+  - name: apsResults
+    value: '$(Agent.TempDirectory)\ApsVmVerify\test-results'
+  - name: apsPublish
+    value: '$(Agent.TempDirectory)\ApsVmVerify\desktop-publish'
+  - name: apsDiagnostics
+    value: '$(Agent.TempDirectory)\ApsVmVerify\diagnostics'
+  - name: apsLog
+    value: '$(Agent.TempDirectory)\ApsVmVerify\verify.log'
 
 jobs:
-  - job: windows_ci
-    displayName: Windows build, test & visual validation
-    timeoutInMinutes: 40
+  - job: repair_agent
+    displayName: Repair EOS Azure Pipelines agent out-of-band
+    pool: server
+    timeoutInMinutes: 20
+    steps:
+      - task: InvokeRESTAPI@1
+        displayName: Start or restart vstsagent service through Azure VM Run Command
+        inputs:
+          connectionType: connectedServiceNameARM
+          azureServiceConnection: '$(azureVmServiceConnection)'
+          method: POST
+          urlSuffix: '/subscriptions/$(AZURE_SUBSCRIPTION_ID)/resourceGroups/$(AZURE_RESOURCE_GROUP)/providers/Microsoft.Compute/virtualMachines/$(AZURE_VM_NAME)/runCommand?api-version=$(computeApiVersion)'
+          headers: |
+            {
+              "Content-Type": "application/json"
+            }
+          body: |
+            {
+              "commandId": "RunPowerShellScript",
+              "script": [
+                "$ErrorActionPreference = 'Stop'",
+                "$services = @(Get-Service -Name 'vstsagent*' -ErrorAction Stop)",
+                "if ($services.Count -eq 0) { throw 'No Azure Pipelines agent service is installed.' }",
+                "foreach ($service in $services) { Set-Service -Name $service.Name -StartupType Automatic; if ($service.Status -eq 'Running') { Restart-Service -Name $service.Name -Force } else { Start-Service -Name $service.Name } }",
+                "Start-Sleep -Seconds 5",
+                "Get-Service -Name 'vstsagent*' | Select-Object Name,Status,StartType | Format-Table -AutoSize | Out-String | Write-Output"
+              ]
+            }
+          waitForCompletion: false
+
+  - job: aps_vm_verify
+    displayName: APS 12aadcd on EOS Azure VM
+    dependsOn: repair_agent
+    timeoutInMinutes: 60
     workspace:
       clean: all
     pool:
@@ -30,117 +74,130 @@ jobs:
       - checkout: self
         clean: true
         fetchDepth: 0
-        persistCredentials: false
+        persistCredentials: true
 
-      - powershell: ./scripts/validate-powershell.ps1
-        displayName: Validate PowerShell automation
+      - powershell: |
+          $ErrorActionPreference = 'Stop'
+          $resultRoot = Join-Path "$(Build.SourcesDirectory)" '.ci-results'
+          New-Item -ItemType Directory -Force -Path $resultRoot | Out-Null
+          $heartbeat = Join-Path $resultRoot 'aps-12aadcd-started.txt'
+          @(
+            'APS Azure VM verification started',
+            'Requested commit: $(apsCommit)',
+            'Agent: $(Agent.Name) / $(Agent.MachineName)',
+            'Azure build: $(Build.BuildNumber)',
+            'Azure branch: $(Build.SourceBranch)'
+          ) | Set-Content -LiteralPath $heartbeat -Encoding utf8
 
-      # Project/dashboard/pipeline reconciliation mutates Azure DevOps configuration. Keep that
-      # mutation on canonical main builds only; feature branches should only build and test code.
-      - powershell: ./scripts/bootstrap-azure-devops-project.ps1
-        displayName: Reconcile Azure DevOps project configuration
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        continueOnError: true
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./scripts/ensure-shared-windows-pipelines.ps1
-        displayName: Reconcile shared Windows build pipelines
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./build/vm-health.ps1
-        displayName: VM / agent preflight
+          git config user.name 'EOS Azure VM verifier'
+          git config user.email 'azure-vm-verifier@users.noreply.github.com'
+          git add .ci-results/aps-12aadcd-started.txt
+          git commit -m '[ci-heartbeat] APS 12aadcd verification started'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit Azure VM heartbeat.' }
+          $branch = "$(Build.SourceBranch)" -replace '^refs/heads/', ''
+          git push origin "HEAD:$branch"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push Azure VM heartbeat back to GitHub.' }
+        displayName: Report EOS Azure VM heartbeat to GitHub
 
       - task: UseDotNet@2
-        displayName: Use .NET SDK from global.json
+        displayName: Use .NET 10 SDK
         inputs:
           packageType: sdk
-          useGlobalJson: true
-          workingDirectory: $(Build.SourcesDirectory)
-
-      - powershell: dotnet restore EngineeringPerformance.slnx
-        displayName: Restore solution
+          version: 10.0.x
 
       - powershell: |
-          $logPath = "$(Agent.TempDirectory)\eos-build.log"
-          dotnet build EngineeringPerformance.slnx --configuration $(buildConfiguration) --no-restore 2>&1 |
-            Tee-Object -FilePath $logPath
-          $exitCode = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          $root = Split-Path -Parent "$(apsSource)"
+          if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
 
-          if ($exitCode -ne 0) {
-            # Re-emit compiler/MSBuild/NuGet errors through Azure logging commands so the actual
-            # diagnostic text becomes a first-class pipeline/GitHub Check annotation.
-            $diagnostics = Get-Content $logPath | Where-Object {
+          git clone --filter=blob:none --no-checkout https://github.com/bhadkamkar9snehil/APS.git "$(apsSource)"
+          if ($LASTEXITCODE -ne 0) { throw "APS clone failed with exit code $LASTEXITCODE." }
+          git -C "$(apsSource)" fetch origin "$(apsCommit)" --depth=1
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch APS commit $(apsCommit)." }
+          git -C "$(apsSource)" checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Could not check out APS commit $(apsCommit)." }
+
+          $resolved = (git -C "$(apsSource)" rev-parse HEAD).Trim()
+          if ($resolved -ne "$(apsCommit)") { throw "Resolved APS commit $resolved does not match requested $(apsCommit)." }
+          Write-Host "APS requested/resolved commit: $resolved"
+          Write-Host "Azure agent: $(Agent.Name) / $(Agent.MachineName)"
+        displayName: Resolve exact APS integration head
+
+      - powershell: |
+          $ErrorActionPreference = 'Continue'
+          foreach ($path in @("$(apsResults)", "$(apsPublish)", "$(apsDiagnostics)")) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $path | Out-Null
+          }
+          $logParent = Split-Path -Parent "$(apsLog)"
+          New-Item -ItemType Directory -Force -Path $logParent | Out-Null
+
+          $exitCode = 0
+          try {
+            Push-Location "$(apsSource)"
+            & ./build/verify.ps1 `
+              -Configuration Release `
+              -ResultsDirectory "$(apsResults)" `
+              -PublishDirectory "$(apsPublish)" `
+              -DiagnosticsDirectory "$(apsDiagnostics)" *>&1 |
+              Tee-Object -FilePath "$(apsLog)"
+            $exitCode = $LASTEXITCODE
+            if ($null -eq $exitCode) { $exitCode = 0 }
+          }
+          catch {
+            $_ | Out-String | Tee-Object -FilePath "$(apsLog)" -Append | Write-Host
+            $exitCode = 1
+          }
+          finally {
+            Pop-Location
+          }
+
+          $resultRoot = Join-Path "$(Build.SourcesDirectory)" '.ci-results'
+          New-Item -ItemType Directory -Force -Path $resultRoot | Out-Null
+          $resultPath = Join-Path $resultRoot 'aps-12aadcd.txt'
+
+          $resolved = (git -C "$(apsSource)" rev-parse HEAD).Trim()
+          $lines = [System.Collections.Generic.List[string]]::new()
+          $lines.Add('APS Azure VM verification')
+          $lines.Add('Requested commit: $(apsCommit)')
+          $lines.Add("Resolved commit: $resolved")
+          $lines.Add('Agent: $(Agent.Name) / $(Agent.MachineName)')
+          $lines.Add('Azure build: $(Build.BuildNumber)')
+          $lines.Add("Exit code: $exitCode")
+          $lines.Add("Result: $(if ($exitCode -eq 0) { 'PASS' } else { 'FAIL' })")
+          $lines.Add('')
+          $lines.Add('Diagnostic matches:')
+
+          if (Test-Path -LiteralPath "$(apsLog)") {
+            $matches = Get-Content -LiteralPath "$(apsLog)" | Where-Object {
               $_ -match '\berror\s+(CS|MSB|NU|NETSDK)\d+' -or
               $_ -match ':\s+error\s+' -or
-              $_ -match '\bBuild FAILED\b'
+              $_ -match '\bFAILED\b' -or
+              $_ -match '\bFailed!\b' -or
+              $_ -match '\bException\b' -or
+              $_ -match 'Test Run Failed' -or
+              $_ -match 'Passed!' -or
+              $_ -match 'Build succeeded' -or
+              $_ -match 'Build FAILED'
             } | Select-Object -Unique
-
-            foreach ($line in $diagnostics) {
-              $safe = $line.Replace("`r", ' ').Replace("`n", ' ')
-              Write-Host "##vso[task.logissue type=error]$safe"
-            }
-
-            exit $exitCode
+            foreach ($match in $matches) { $lines.Add([string]$match) }
+            $lines.Add('')
+            $lines.Add('Last 300 log lines:')
+            foreach ($line in @(Get-Content -LiteralPath "$(apsLog)" -Tail 300)) { $lines.Add([string]$line) }
           }
-        displayName: Build complete solution
+          else {
+            $lines.Add('Verification log was not created.')
+          }
 
-      - powershell: |
-          $results = "$(Agent.TempDirectory)\TestResults"
-          New-Item -ItemType Directory -Force -Path $results | Out-Null
+          $lines | Set-Content -LiteralPath $resultPath -Encoding utf8
 
-          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=domain.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=infrastructure.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        displayName: Run tests
+          git add .ci-results/aps-12aadcd.txt
+          git commit -m "[ci-result] APS 12aadcd verification: $(if ($exitCode -eq 0) { 'PASS' } else { 'FAIL' })"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit Azure VM verification result.' }
+          $branch = "$(Build.SourceBranch)" -replace '^refs/heads/', ''
+          git push origin "HEAD:$branch"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push Azure VM verification result back to GitHub.' }
 
-      - task: PublishTestResults@2
-        displayName: Publish test results
-        condition: succeededOrFailed()
-        inputs:
-          testResultsFormat: VSTest
-          testResultsFiles: '*.trx'
-          searchFolder: '$(Agent.TempDirectory)\TestResults'
-          mergeTestResults: true
-          failTaskOnFailedTests: true
-          testRunTitle: EOS Windows unit tests
-
-      - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
-        displayName: Capture real WPF + WebView2 visual evidence
-
-      - powershell: |
-          $diagnostics = "$(diagnosticsDirectory)"
-          New-Item -ItemType Directory -Force -Path $diagnostics | Out-Null
-          $buildLog = "$(Agent.TempDirectory)\eos-build.log"
-          if (Test-Path $buildLog) { Copy-Item $buildLog (Join-Path $diagnostics 'build.log') -Force }
-          dotnet --info | Out-File (Join-Path $diagnostics 'dotnet-info.txt') -Encoding utf8
-          git status --porcelain=v1 --branch | Out-File (Join-Path $diagnostics 'git-status.txt') -Encoding utf8
-          @(
-            "Build.SourceBranch=$(Build.SourceBranch)",
-            "Build.SourceVersion=$(Build.SourceVersion)",
-            "Agent.Name=$(Agent.Name)",
-            "Agent.MachineName=$(Agent.MachineName)"
-          ) | Out-File (Join-Path $diagnostics 'run-context.txt') -Encoding utf8
-        displayName: Collect build diagnostics
-        condition: always()
-
-      - task: PublishPipelineArtifact@1
-        displayName: Publish screenshots, browser diagnostics and app logs
-        condition: always()
-        inputs:
-          targetPath: '$(visualEvidenceDirectory)'
-          artifact: visual-evidence
-          publishLocation: pipeline
-
-      - task: PublishPipelineArtifact@1
-        displayName: Publish build diagnostics
-        condition: always()
-        inputs:
-          targetPath: '$(diagnosticsDirectory)'
-          artifact: build-diagnostics
-          publishLocation: pipeline
+          if ($exitCode -ne 0) { exit $exitCode }
+        displayName: Verify APS and write result back to GitHub
