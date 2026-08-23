@@ -24,7 +24,7 @@ public sealed partial class ConfigurableApplicationDatabase(
             await WriteSettingsAsync(OperationalScoringSettings.Default, cancellationToken);
 
         var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await ReconcileProblemIdentitiesAsync(settings, cancellationToken);
+        await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
     }
 
     public async Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default)
