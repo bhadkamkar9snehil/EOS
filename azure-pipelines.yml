@@ -2,145 +2,134 @@ trigger:
   batch: true
   branches:
     include:
-      - '*'
+      - ci/acm-vm-verify-5555c13-v2
+  paths:
+    exclude:
+      - .ci-results/**
 
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - '*'
-
-variables:
-  buildConfiguration: Release
-  visualEvidenceDirectory: '$(Agent.TempDirectory)\VisualEvidence'
-  diagnosticsDirectory: '$(Agent.TempDirectory)\EosDiagnostics'
+pr: none
 
 jobs:
-  - job: windows_ci
-    displayName: Windows build, test & visual validation
-    timeoutInMinutes: 40
-    workspace:
-      clean: all
+  - job: acm_verify
+    displayName: ACM 5555c13 Windows verification v2
+    timeoutInMinutes: 60
     pool:
       name: Default
       demands:
         - Agent.Name -equals EOS
+    workspace:
+      clean: all
 
     steps:
       - checkout: self
         clean: true
         fetchDepth: 0
-        persistCredentials: false
-
-      - powershell: ./scripts/validate-powershell.ps1
-        displayName: Validate PowerShell automation
-
-      # Project/dashboard/pipeline reconciliation mutates Azure DevOps configuration. Keep that
-      # mutation on canonical main builds only; feature branches should only build and test code.
-      - powershell: ./scripts/bootstrap-azure-devops-project.ps1
-        displayName: Reconcile Azure DevOps project configuration
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        continueOnError: true
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./scripts/ensure-shared-windows-pipelines.ps1
-        displayName: Reconcile shared Windows build pipelines
-        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-        env:
-          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-      - powershell: ./build/vm-health.ps1
-        displayName: VM / agent preflight
-
-      - task: UseDotNet@2
-        displayName: Use .NET SDK from global.json
-        inputs:
-          packageType: sdk
-          useGlobalJson: true
-          workingDirectory: $(Build.SourcesDirectory)
-
-      - powershell: dotnet restore EngineeringPerformance.slnx
-        displayName: Restore solution
+        persistCredentials: true
 
       - powershell: |
-          $logPath = "$(Agent.TempDirectory)\eos-build.log"
-          dotnet build EngineeringPerformance.slnx --configuration $(buildConfiguration) --no-restore 2>&1 |
-            Tee-Object -FilePath $logPath
-          $exitCode = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          $commit = '5555c13c2006cd2f537c73ffaeb489208c00a51b'
+          $eos = '$(Build.SourcesDirectory)'
+          $work = Join-Path '$(Agent.TempDirectory)' 'AcmVerify5555c13v2'
+          $source = Join-Path $work 'source'
+          $uvRoot = Join-Path $work 'uv'
+          $pythonRoot = Join-Path $work 'python'
+          $cache = Join-Path $work 'cache'
+          $progress = Join-Path $eos '.ci-results\acm-5555c13-v2.txt'
+          $fastLog = Join-Path $work 'fast.log'
+          $statLog = Join-Path $work 'statistical.log'
 
-          if ($exitCode -ne 0) {
-            # Re-emit compiler/MSBuild/NuGet errors through Azure logging commands so the actual
-            # diagnostic text becomes a first-class pipeline/GitHub Check annotation.
-            $diagnostics = Get-Content $logPath | Where-Object {
-              $_ -match '\berror\s+(CS|MSB|NU|NETSDK)\d+' -or
-              $_ -match ':\s+error\s+' -or
-              $_ -match '\bBuild FAILED\b'
-            } | Select-Object -Unique
+          git -C $eos config user.name 'EOS Azure VM verifier'
+          git -C $eos config user.email 'azure-vm-verifier@users.noreply.github.com'
 
-            foreach ($line in $diagnostics) {
-              $safe = $line.Replace("`r", ' ').Replace("`n", ' ')
-              Write-Host "##vso[task.logissue type=error]$safe"
-            }
-
-            exit $exitCode
+          function Report([string]$line) {
+            $stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            New-Item -ItemType Directory -Force -Path (Split-Path $progress -Parent) | Out-Null
+            Add-Content -LiteralPath $progress -Value "$stamp  $line" -Encoding utf8
+            git -C $eos add .ci-results/acm-5555c13-v2.txt
+            git -C $eos commit -m "[ci-progress] ACM 5555c13 v2: $line" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not commit progress.' }
+            $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
+            git -C $eos push origin "HEAD:$branch" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not push progress.' }
           }
-        displayName: Build complete solution
 
-      - powershell: |
-          $results = "$(Agent.TempDirectory)\TestResults"
-          New-Item -ItemType Directory -Force -Path $results | Out-Null
+          function Publish-LogTail([string]$logPath, [int]$lines) {
+            if (Test-Path $logPath) {
+              Get-Content $logPath -Tail $lines | Add-Content $progress
+              git -C $eos add .ci-results/acm-5555c13-v2.txt
+              git -C $eos commit -m '[ci-result] ACM 5555c13 failure detail' | Out-Null
+              $branch = '$(Build.SourceBranch)' -replace '^refs/heads/', ''
+              git -C $eos push origin "HEAD:$branch" | Out-Null
+            }
+          }
 
-          dotnet test tests/EngineeringPerformance.Domain.Tests/EngineeringPerformance.Domain.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=domain.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.Infrastructure.Tests/EngineeringPerformance.Infrastructure.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=infrastructure.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test tests/EngineeringPerformance.UI.Tests/EngineeringPerformance.UI.Tests.csproj --configuration $(buildConfiguration) --no-build --no-restore --logger "trx;LogFileName=ui.trx" --results-directory $results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        displayName: Run tests
+          if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $uvRoot | Out-Null
+          if (Test-Path $progress) { Remove-Item $progress -Force }
+          Report "START exact ACM $commit"
 
-      - task: PublishTestResults@2
-        displayName: Publish test results
-        condition: succeededOrFailed()
-        inputs:
-          testResultsFormat: VSTest
-          testResultsFiles: '*.trx'
-          searchFolder: '$(Agent.TempDirectory)\TestResults'
-          mergeTestResults: true
-          failTaskOnFailedTests: true
-          testRunTitle: EOS Windows unit tests
+          git clone --filter=blob:none --no-checkout https://github.com/bhadkamkar9snehil/ACM.git $source
+          if ($LASTEXITCODE -ne 0) { Report 'CHECKOUT FAIL clone'; exit 1 }
+          git -C $source fetch origin $commit --depth=1
+          if ($LASTEXITCODE -ne 0) { Report 'CHECKOUT FAIL fetch'; exit 1 }
+          git -C $source checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { Report 'CHECKOUT FAIL checkout'; exit 1 }
+          $resolved = (git -C $source rev-parse HEAD).Trim()
+          if ($resolved -ne $commit) { Report "CHECKOUT FAIL resolved=$resolved"; exit 1 }
+          Report "CHECKOUT PASS $resolved"
 
-      - powershell: ./scripts/capture-ui.ps1 -OutputDirectory "$(visualEvidenceDirectory)"
-        displayName: Capture real WPF + WebView2 visual evidence
+          $zip = Join-Path $uvRoot 'uv.zip'
+          $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+          if (-not $curl) { Report 'UV FAIL curl.exe unavailable'; exit 1 }
+          & $curl.Source -L --fail --silent --show-error https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip -o $zip
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $zip)) { Report "UV DOWNLOAD FAIL exit=$LASTEXITCODE"; exit 1 }
+          Expand-Archive -LiteralPath $zip -DestinationPath $uvRoot -Force
+          $uv = (Get-ChildItem $uvRoot -Filter uv.exe -Recurse | Select-Object -First 1).FullName
+          if (-not $uv) { Report 'UV FAIL executable missing'; exit 1 }
+          Report "UV READY $(& $uv --version)"
 
-      - powershell: |
-          $diagnostics = "$(diagnosticsDirectory)"
-          New-Item -ItemType Directory -Force -Path $diagnostics | Out-Null
-          $buildLog = "$(Agent.TempDirectory)\eos-build.log"
-          if (Test-Path $buildLog) { Copy-Item $buildLog (Join-Path $diagnostics 'build.log') -Force }
-          dotnet --info | Out-File (Join-Path $diagnostics 'dotnet-info.txt') -Encoding utf8
-          git status --porcelain=v1 --branch | Out-File (Join-Path $diagnostics 'git-status.txt') -Encoding utf8
-          @(
-            "Build.SourceBranch=$(Build.SourceBranch)",
-            "Build.SourceVersion=$(Build.SourceVersion)",
-            "Agent.Name=$(Agent.Name)",
-            "Agent.MachineName=$(Agent.MachineName)"
-          ) | Out-File (Join-Path $diagnostics 'run-context.txt') -Encoding utf8
-        displayName: Collect build diagnostics
-        condition: always()
+          $env:UV_PYTHON_INSTALL_DIR = $pythonRoot
+          $env:UV_CACHE_DIR = $cache
+          $env:OMP_NUM_THREADS = '1'
+          $env:OPENBLAS_NUM_THREADS = '1'
+          $env:MKL_NUM_THREADS = '1'
+          $env:NUMEXPR_NUM_THREADS = '1'
 
-      - task: PublishPipelineArtifact@1
-        displayName: Publish screenshots, browser diagnostics and app logs
-        condition: always()
-        inputs:
-          targetPath: '$(visualEvidenceDirectory)'
-          artifact: visual-evidence
-          publishLocation: pipeline
+          Push-Location $source
+          try {
+            Report 'PYTHON 3.12 INSTALL START'
+            & $uv python install 3.12
+            if ($LASTEXITCODE -ne 0) { Report "PYTHON INSTALL FAIL exit=$LASTEXITCODE"; exit 1 }
+            Report 'PYTHON 3.12 INSTALL PASS'
 
-      - task: PublishPipelineArtifact@1
-        displayName: Publish build diagnostics
-        condition: always()
-        inputs:
-          targetPath: '$(diagnosticsDirectory)'
-          artifact: build-diagnostics
-          publishLocation: pipeline
+            Report 'SYNC START locked'
+            & $uv sync --locked --python 3.12
+            if ($LASTEXITCODE -ne 0) { Report "SYNC FAIL exit=$LASTEXITCODE"; exit 1 }
+            Report 'SYNC PASS'
+
+            Report 'FAST START'
+            & $uv run --python 3.12 pytest tests -m 'not statistical' --tb=short -q *>&1 | Tee-Object -FilePath $fastLog
+            $fastCode = $LASTEXITCODE
+            if ($fastCode -ne 0) {
+              Report "FAST FAIL exit=$fastCode"
+              Publish-LogTail $fastLog 180
+              exit $fastCode
+            }
+            Report 'FAST PASS'
+
+            Report 'STATISTICAL START'
+            & $uv run --python 3.12 pytest tests -m statistical --tb=short -q *>&1 | Tee-Object -FilePath $statLog
+            $statCode = $LASTEXITCODE
+            if ($statCode -ne 0) {
+              Report "STATISTICAL FAIL exit=$statCode"
+              Publish-LogTail $statLog 240
+              exit $statCode
+            }
+            Report 'STATISTICAL PASS'
+            Report 'FINAL PASS fast=PASS statistical=PASS'
+          }
+          finally {
+            Pop-Location
+          }
+        displayName: Bootstrap Python and run ACM fast + statistical suites
