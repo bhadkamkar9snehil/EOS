@@ -10,7 +10,7 @@ namespace EngineeringPerformance.Infrastructure.Tests;
 public sealed class CanonicalStartupRecoveryTests
 {
     [Fact]
-    public async Task Initialize_rebuilds_persisted_month_from_active_source_slot()
+    public async Task Initialize_rebuilds_persisted_month_from_active_source_slot_and_then_is_idempotent()
     {
         var folder = Path.Combine(Path.GetTempPath(), $"eos-startup-recovery-{Guid.NewGuid():N}");
         Directory.CreateDirectory(folder);
@@ -60,12 +60,25 @@ public sealed class CanonicalStartupRecoveryTests
                 folder);
             await database.InitializeAsync();
 
-            await using var verify = factory.CreateDbContext();
-            var row = await verify.EmployeeMonthlyPerformances.SingleAsync(x => x.Year == 2026 && x.Month == 7);
-            Assert.Equal("Asha Nair", row.EmployeeName);
-            Assert.Equal(100m, row.ComplianceHours);
-            Assert.Equal(80m, row.EnteredHours);
-            Assert.Equal(70m, row.ApprovedHours);
+            int repairedId;
+            await using (var verify = factory.CreateDbContext())
+            {
+                var row = await verify.EmployeeMonthlyPerformances.SingleAsync(x => x.Year == 2026 && x.Month == 7);
+                repairedId = row.Id;
+                Assert.Equal("Asha Nair", row.EmployeeName);
+                Assert.Equal(100m, row.ComplianceHours);
+                Assert.Equal(80m, row.EnteredHours);
+                Assert.Equal(70m, row.ApprovedHours);
+            }
+
+            await database.InitializeAsync();
+
+            await using var secondVerify = factory.CreateDbContext();
+            var unchanged = await secondVerify.EmployeeMonthlyPerformances.SingleAsync(x => x.Year == 2026 && x.Month == 7);
+            Assert.Equal(repairedId, unchanged.Id);
+            Assert.Equal(100m, unchanged.ComplianceHours);
+            Assert.Equal(80m, unchanged.EnteredHours);
+            Assert.Equal(70m, unchanged.ApprovedHours);
         }
         finally
         {
