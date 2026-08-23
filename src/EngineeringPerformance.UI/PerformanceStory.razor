@@ -475,17 +475,31 @@
         return effects;
     }
 
-    private static decimal WeightedEffect(
+    private decimal WeightedEffect(
         IEnumerable<MonthlyPerformanceItem> current,
         IEnumerable<MonthlyPerformanceItem> previous,
         Func<MonthlyPerformanceItem, decimal> selector,
         Func<MonthlyPerformanceItem, bool> applicable,
         decimal weight)
     {
-        var now = current.Where(applicable).Select(selector).ToArray();
-        var before = previous.Where(applicable).Select(selector).ToArray();
+        var now = current.Select(x => WeightedContribution(x, selector, applicable, weight)).ToArray();
+        var before = previous.Select(x => WeightedContribution(x, selector, applicable, weight)).ToArray();
         if (now.Length == 0 || before.Length == 0) return 0m;
-        return decimal.Round((now.Average() - before.Average()) * weight / 100m, 1);
+        return decimal.Round(now.Average() - before.Average(), 1);
+    }
+
+    private decimal WeightedContribution(
+        MonthlyPerformanceItem item,
+        Func<MonthlyPerformanceItem, decimal> selector,
+        Func<MonthlyPerformanceItem, bool> applicable,
+        decimal weight)
+    {
+        if (!applicable(item) || weight <= 0m) return 0m;
+        var applicableWeight = 0m;
+        if (item.HasSummaryData) applicableWeight += _settings.TimesheetCompletionWeight;
+        if (ApprovalApplicable(item)) applicableWeight += _settings.ApprovalCompletionWeight;
+        if (item.ExpectedTimesheetDays > 0) applicableWeight += _settings.AttendanceDisciplineWeight;
+        return applicableWeight <= 0m ? 0m : selector(item) * weight / applicableWeight;
     }
 
     private bool NeedsAttention(PersonSignal person) =>
