@@ -28,8 +28,14 @@ public sealed partial class ConfigurableApplicationDatabase
             .GroupBy(x => IdentityKey(x.EmployeeName), StringComparer.Ordinal)
             .Select(group => CombineSourceRows(group, reportType))
             .ToArray();
+        var coveredMonths = incoming
+            .Select(x => (x.Year, x.Month))
+            .Distinct()
+            .DefaultIfEmpty((year, month))
+            .ToArray();
+        var coveredMonthSet = coveredMonths.ToHashSet();
+        var coveredYears = coveredMonths.Select(x => x.Year).Distinct().ToArray();
 
-        var coveredYears = incoming.Select(x => x.Year).Distinct().DefaultIfEmpty(year).ToArray();
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var existing = await context.EmployeeMonthlyPerformances
             .Where(x => coveredYears.Contains(x.Year))
@@ -65,6 +71,14 @@ public sealed partial class ConfigurableApplicationDatabase
         var existingByIdentity = existing
             .GroupBy(x => (x.Year, x.Month, Name: IdentityKey(x.EmployeeName)))
             .ToDictionary(x => x.Key, x => x.ToArray());
+        var incomingKeys = incoming
+            .Select(x => (x.Year, x.Month, Name: IdentityKey(x.EmployeeName)))
+            .ToHashSet();
+        var removedRows = currentSource
+            .Where(pair => coveredMonthSet.Contains((pair.Key.Year, pair.Key.Month)) && !incomingKeys.Contains(pair.Key))
+            .Select(pair => pair.Value)
+            .ToArray();
+
         var added = 0;
         var updated = 0;
         var unchanged = 0;
@@ -93,6 +107,13 @@ public sealed partial class ConfigurableApplicationDatabase
             }
         }
 
+        var sampleRemoved = removedRows
+            .Select(x => PersonName.Normalize(x.EmployeeName))
+            .Where(x => x.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .ToArray();
+
         return new ImportPreview(
             reportType,
             year,
@@ -102,31 +123,9 @@ public sealed partial class ConfigurableApplicationDatabase
             updated,
             unchanged,
             sampleAdded,
-            sampleUpdated);
-    }
-
-    private async Task ReconcileProblemIdentitiesAsync(
-        OperationalScoringSettings settings,
-        CancellationToken cancellationToken)
-    {
-        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var rows = await context.EmployeeMonthlyPerformances.AsNoTracking().ToListAsync(cancellationToken);
-        var problemGroups = rows
-            .GroupBy(x => (x.Year, x.Month, Name: IdentityKey(x.EmployeeName)))
-            .Where(group => group.Count() > 1 || group.Any(x =>
-                !string.Equals(x.EmployeeName, PersonName.Normalize(x.EmployeeName), StringComparison.Ordinal)))
-            .GroupBy(group => (group.Key.Year, group.Key.Month))
-            .ToArray();
-
-        foreach (var month in problemGroups)
-        {
-            await ReconcileMonthAsync(
-                month.Key.Year,
-                month.Key.Month,
-                month.Select(group => group.First().EmployeeName),
-                settings,
-                cancellationToken);
-        }
+            sampleUpdated,
+            removedRows.Length,
+            sampleRemoved);
     }
 
     private async Task ReconcileMonthAsync(
