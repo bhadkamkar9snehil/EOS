@@ -36,16 +36,45 @@ public sealed class PerformanceStoryTests : BunitContext
         Assert.Equal("—", heatmapRow.Children[2].TextContent.Trim());
     }
 
+    [Fact]
+    public async Task Approval_remains_applicable_when_entered_hours_exist_without_compliance_hours()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var database = new FakeApplicationDatabase
+        {
+            MonthlyPerformance =
+            [
+                Performance("Asha Nair", 2026, 7, 82m, enteredHours: 160m, approvalScore: 75m, complianceHours: 0m)
+            ],
+            History =
+            [
+                Performance("Asha Nair", 2026, 6, 80m, enteredHours: 160m, approvalScore: 70m, complianceHours: 0m)
+            ]
+        };
+        var state = new AppState(database);
+        await state.SetMonthAsync(new DateTime(2026, 7, 1));
+        Services.AddSingleton<IApplicationDatabase>(database);
+        Services.AddSingleton(state);
+
+        var page = Render<PerformanceStory>();
+
+        var heatmapRow = page.FindAll("button")
+            .Single(button => button.TextContent.Contains("Asha Nair", StringComparison.Ordinal));
+        Assert.Equal("75", heatmapRow.Children[2].TextContent.Trim());
+        Assert.Contains("Approval completion", page.Markup);
+    }
+
     private static MonthlyPerformanceItem Performance(
         string name,
         int year,
         int month,
         decimal score,
         decimal enteredHours,
-        decimal approvalScore) => new(
+        decimal approvalScore,
+        decimal complianceHours = 176m) => new(
             name, "E-001", score,
             90m, approvalScore, 90m,
-            enteredHours, 176m, 0m, enteredHours,
+            enteredHours, complianceHours, 0m, enteredHours,
             enteredHours > 0 ? 20 : 0, enteredHours > 0 ? 2 : 0, 20m, 0m,
             0, 0, 0, 0,
             year, month, 160m, enteredHours,
