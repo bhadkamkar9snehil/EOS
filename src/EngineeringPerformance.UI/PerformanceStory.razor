@@ -544,7 +544,7 @@
             : $"right:50%;width:{width}%;background:var(--color-critical)";
     }
 
-    private static bool ApprovalApplicable(MonthlyPerformanceItem item) => item.HasSummaryData && item.EnteredHours > 0m;
+    private static bool ApprovalApplicable(MonthlyPerformanceItem item) => item.EnteredHours > 0m;
 
     private static string HeatClass(decimal value) => value switch
     {
