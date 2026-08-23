@@ -68,6 +68,7 @@ public sealed class CanonicalPerformanceIdentityTests
                 workbookPath);
             Assert.Equal(0, preview.RowsAdded);
             Assert.Equal(1, preview.RowsUpdated);
+            Assert.Equal(0, preview.RowsRemoved);
 
             await database.ImportSourceAsync(
                 ReportType.MonthlyTimesheetSummary,
@@ -123,6 +124,15 @@ public sealed class CanonicalPerformanceIdentityTests
                 Assert.Equal(2, await before.EmployeeMonthlyPerformances.CountAsync(x => x.Year == 2026 && x.Month == 7));
             }
 
+            var preview = await database.PreviewImportSourceAsync(
+                ReportType.MonthlyTimesheetSummary,
+                2026,
+                7,
+                correctedPath);
+            Assert.Equal(1, preview.RowsUpdated);
+            Assert.Equal(1, preview.RowsRemoved);
+            Assert.Contains("Bimal Shah", preview.SampleRemoved ?? []);
+
             await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, correctedPath);
 
             await using var after = factory.CreateDbContext();
@@ -163,6 +173,15 @@ public sealed class CanonicalPerformanceIdentityTests
                     .Where(x => x.Year == 2026 && x.Month == 7)
                     .ToListAsync());
             }
+
+            var preview = await database.PreviewImportSourceAsync(
+                ReportType.MonthlyTimesheetSummary,
+                2026,
+                7,
+                emptyPath);
+            Assert.Equal(0, preview.TotalRows);
+            Assert.Equal(1, preview.RowsRemoved);
+            Assert.Contains("Asha Nair", preview.SampleRemoved ?? []);
 
             await database.ImportSourceAsync(ReportType.MonthlyTimesheetSummary, 2026, 7, emptyPath);
 
