@@ -15,7 +15,7 @@ public sealed class CanonicalPerformanceIdentityTests
         var folder = Path.Combine(Path.GetTempPath(), $"eos-canonical-import-{Guid.NewGuid():N}");
         Directory.CreateDirectory(folder);
         var databasePath = Path.Combine(folder, "canonical.db");
-        var workbookPath = Path.Combine(folder, "RPwiseTimesheetUtilazationReport01-Aug-2026_00_00_00.xlsx");
+        var workbookPath = Path.Combine(folder, $"RPwiseTimesheetUtilazationReport-{Guid.NewGuid():N}.xlsx");
 
         try
         {
