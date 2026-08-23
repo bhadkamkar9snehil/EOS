@@ -16,19 +16,16 @@
 # protected resources before variable-group values are available, so service-connection names must
 # not be sourced from a variable group.
 #
-# ONE-SHOT RECOVERY TRIGGER: temporarily enabled to repair the EOS agent after the VM was started.
+# This is deliberately manual-only. Normal build/test/visual CI lives in azure-pipelines.yml.
 
-trigger:
-  branches:
-    include:
-      - main
+trigger: none
 pr: none
 
 parameters:
   - name: operation
     displayName: VM operation
     type: string
-    default: repair-agent
+    default: status
     values:
       - status
       - start
@@ -52,6 +49,8 @@ jobs:
     timeoutInMinutes: 20
 
     steps:
+      # This operation is pure ARM control-plane state; it does not require the guest OS or Azure
+      # VM Agent to be healthy. The response includes VM and VM-Agent instance-view information.
       - ${{ if eq(parameters.operation, 'status') }}:
         - task: InvokeRESTAPI@1
           displayName: Read VM instance view
@@ -92,6 +91,8 @@ jobs:
             body: '{}'
             waitForCompletion: false
 
+      # The remaining operations use Azure VM Run Command. Authentication and ingress happen
+      # through Azure Resource Manager + the Azure VM Agent, not through RDP/SSH/WinRM.
       - ${{ if eq(parameters.operation, 'health') }}:
         - task: InvokeRESTAPI@1
           displayName: Collect guest health
