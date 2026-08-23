@@ -68,6 +68,7 @@ public sealed partial class ConfigurableApplicationDatabase
             ? slots.OrderByDescending(x => x.ImportedUtc).ThenByDescending(x => x.Id).Select(x => x.StoredPath).FirstOrDefault()
             : null;
         var currentSource = new Dictionary<(int Year, int Month, string Name), EmployeeMonthlyPerformance>();
+        var currentReplayUnavailable = false;
         foreach (var slot in slots)
         {
             if (authoritativeSnapshotPath is not null &&
@@ -75,7 +76,11 @@ public sealed partial class ConfigurableApplicationDatabase
             {
                 continue;
             }
-            if (!File.Exists(slot.StoredPath)) continue;
+            if (!File.Exists(slot.StoredPath))
+            {
+                currentReplayUnavailable = true;
+                continue;
+            }
 
             try
             {
@@ -89,6 +94,7 @@ public sealed partial class ConfigurableApplicationDatabase
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
             {
+                currentReplayUnavailable = true;
                 _logger.LogWarning(
                     exception,
                     "Could not replay current {ReportType} source {StoredPath} while previewing canonical import identity.",
@@ -142,6 +148,9 @@ public sealed partial class ConfigurableApplicationDatabase
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(10)
             .ToArray();
+        var warning = currentReplayUnavailable
+            ? "The current stored source could not be replayed, so additional removals may not be visible in this preview. Review the replacement file carefully before continuing."
+            : null;
 
         return new ImportPreview(
             reportType,
@@ -154,7 +163,8 @@ public sealed partial class ConfigurableApplicationDatabase
             sampleAdded,
             sampleUpdated,
             removedRows.Length,
-            sampleRemoved);
+            sampleRemoved,
+            warning);
     }
 
     private async Task ReconcileMonthAsync(
@@ -196,6 +206,7 @@ public sealed partial class ConfigurableApplicationDatabase
             .ToListAsync(cancellationToken);
         var currentByType = new Dictionary<ReportType, Dictionary<string, EmployeeMonthlyPerformance>>();
         var replayedTypes = new HashSet<ReportType>();
+        var unavailableTypes = new HashSet<ReportType>();
 
         foreach (var slot in slots)
         {
@@ -209,6 +220,7 @@ public sealed partial class ConfigurableApplicationDatabase
 
             if (!File.Exists(sourcePath))
             {
+                unavailableTypes.Add(slot.ReportType);
                 _logger.LogWarning(
                     "Current {ReportType} source is missing at {StoredPath}; preserving latest persisted evidence for that source while reconciling identities.",
                     slot.ReportType,
@@ -229,6 +241,7 @@ public sealed partial class ConfigurableApplicationDatabase
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
             {
+                unavailableTypes.Add(slot.ReportType);
                 _logger.LogWarning(
                     exception,
                     "Could not replay current {ReportType} source {StoredPath}; preserving latest persisted evidence for that source while reconciling identities.",
@@ -270,6 +283,17 @@ public sealed partial class ConfigurableApplicationDatabase
                         hasAnySource = true;
                         replacement.EmployeeName = PersonName.Normalize(current.EmployeeName);
                         if (!string.IsNullOrWhiteSpace(current.EmployeeCode)) replacement.EmployeeCode = current.EmployeeCode;
+                    }
+                    continue;
+                }
+
+                if (unavailableTypes.Contains(type))
+                {
+                    var persisted = legacyRows.OrderByDescending(x => x.Id).FirstOrDefault();
+                    if (persisted is not null)
+                    {
+                        CopySource(replacement, persisted, type);
+                        hasAnySource = true;
                     }
                     continue;
                 }
