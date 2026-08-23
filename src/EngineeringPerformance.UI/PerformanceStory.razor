@@ -149,7 +149,7 @@
                         <line x1="8" x2="96" y1="@Svg(MomentumY(0))" y2="@Svg(MomentumY(0))" stroke="var(--color-ink-soft)" stroke-width=".42" />
                         <text x="12" y="9" fill="var(--color-muted)" font-size="2.45">RECOVERING</text>
                         <text x="79" y="9" fill="var(--color-muted)" font-size="2.45">LEADING</text>
-                        <text x="12" y="56" fill="var(--color-muted)" font-size="2.45">CRITICAL</text>
+                        <text x="10" y="56" fill="var(--color-muted)" font-size="2.25">BELOW TARGET / FALLING</text>
                         <text x="80" y="56" fill="var(--color-muted)" font-size="2.45">SLIPPING</text>
                         @foreach (var person in _people.Where(x => x.Delta is not null))
                         {
@@ -228,7 +228,7 @@
                             <button type="button" class="@($"grid w-full grid-cols-[minmax(9rem,1.5fr)_repeat(4,minmax(4rem,1fr))_4rem] items-center gap-1 border-b border-line-soft px-2 py-1.5 text-left transition-colors duration-100 hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : "")}")" @onclick="() => Focus(row.Name)">
                                 <span class="truncate text-xs font-medium text-ink">@row.Name</span>
                                 @HeatCell(row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
-                                @HeatCell(row.Item.ApprovalScore, row.Item.HasSummaryData)
+                                @HeatCell(row.Item.ApprovalScore, ApprovalApplicable(row.Item))
                                 @HeatCell(row.Item.AttendanceDisciplineScore, row.Item.ExpectedTimesheetDays > 0)
                                 @HeatCell(row.Item.Utilization, row.Item.HasSummaryData)
                                 <b class="@($"metric text-right text-xs {Analytics.BandTextClass(Analytics.ScoreBand(row.Score))}")">@Analytics.Format(row.Score, "0")</b>
@@ -261,7 +261,7 @@
                     </div>
                     <div class="mt-4 flex flex-col gap-4">
                         @FingerprintMetric("Timesheet completion", Focused.Item.TimesheetCompletionScore, 95m, Median(x => x.TimesheetCompletionScore, x => x.HasSummaryData), Focused.Item.HasSummaryData)
-                        @FingerprintMetric("Approval completion", Focused.Item.ApprovalScore, 95m, Median(x => x.ApprovalScore, x => x.HasSummaryData), Focused.Item.HasSummaryData)
+                        @FingerprintMetric("Approval completion", Focused.Item.ApprovalScore, 95m, Median(x => x.ApprovalScore, ApprovalApplicable), ApprovalApplicable(Focused.Item))
                         @FingerprintMetric("Attendance discipline", Focused.Item.AttendanceDisciplineScore, 95m, Median(x => x.AttendanceDisciplineScore, x => x.ExpectedTimesheetDays > 0), Focused.Item.ExpectedTimesheetDays > 0)
                         @FingerprintMetric("Utilization", Focused.Item.Utilization, Analytics.UtilizationTarget, Median(x => x.Utilization, x => x.HasSummaryData), Focused.Item.HasSummaryData)
                     </div>
@@ -343,7 +343,7 @@
                             <text x="52" y="64" text-anchor="middle" fill="var(--color-muted)" font-size="2.35">OPERATIONAL SCORE →</text>
                         </svg>
                     </div>
-                    <p class="label-instrument mt-2">Peer Y-axis uses the evidence-adjusted conservative rating floor, not the raw average.</p>
+                    <p class="label-instrument mt-2">Peer Y-axis and reference line both use the evidence-adjusted conservative rating floor.</p>
                 }
             </div>
         </section>
@@ -360,7 +360,6 @@
     private IReadOnlyList<PeerPoint> _peerPoints = [];
     private string? _focusName;
     private decimal _teamScore;
-    private decimal? _previousTeamScore;
     private decimal? _teamDelta;
     private decimal _momentumRange = 10m;
     private decimal _capacityXMax = 10m;
@@ -397,19 +396,19 @@
 
         var previousRows = State.History
             .Where(x => x.Year == PreviousMonth.Year && x.Month == PreviousMonth.Month)
-            .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(x => PersonName.Normalize(x.EmployeeName), StringComparer.OrdinalIgnoreCase)
             .Select(x => x.First())
             .ToArray();
-        _previousTeamScore = previousRows.Length == 0 ? null : decimal.Round(previousRows.Average(x => x.OperationalScore), 1);
-        _teamDelta = _previousTeamScore is null ? null : decimal.Round(_teamScore - _previousTeamScore.Value, 1);
+        var previousTeamScore = previousRows.Length == 0 ? (decimal?)null : decimal.Round(previousRows.Average(x => x.OperationalScore), 1);
+        _teamDelta = previousTeamScore is null ? null : decimal.Round(_teamScore - previousTeamScore.Value, 1);
 
-        var previousScores = previousRows.ToDictionary(x => x.EmployeeName, x => x.OperationalScore, StringComparer.OrdinalIgnoreCase);
+        var previousScores = previousRows.ToDictionary(x => PersonName.Normalize(x.EmployeeName), x => x.OperationalScore, StringComparer.OrdinalIgnoreCase);
         _alerts = Analytics.Anomalies(State.Performance, previousScores);
 
         _people = State.Performance
             .Select(item =>
             {
-                var previous = previousScores.TryGetValue(item.EmployeeName, out var score) ? score : (decimal?)null;
+                var previous = previousScores.TryGetValue(PersonName.Normalize(item.EmployeeName), out var score) ? score : (decimal?)null;
                 var delta = previous is null ? null : decimal.Round(item.OperationalScore - previous.Value, 1);
                 var personAlerts = _alerts.Where(x => PersonName.Matches(x.EmployeeName, item.EmployeeName)).ToArray();
                 var severity = personAlerts.Sum(x => x.Level == AlertLevel.Critical ? 14m : x.Level == AlertLevel.Serious ? 8m : 3m);
@@ -418,7 +417,7 @@
                     + ExceptionCount(item)
                     + Math.Min(30m, Math.Abs(item.ReconciliationVariance)) * .2m
                     + severity;
-                return new PersonSignal(item, previous, delta, personAlerts.Length, priority);
+                return new PersonSignal(item, delta, personAlerts.Length, priority);
             })
             .OrderByDescending(x => x.Priority)
             .ThenBy(x => x.Score)
@@ -430,7 +429,7 @@
         var largestUtilization = _people.Where(x => x.Item.HasSummaryData).Select(x => x.Item.Utilization).DefaultIfEmpty(0m).Max();
         _capacityYMax = Math.Max(120m, Math.Ceiling(largestUtilization / 10m) * 10m);
 
-        var monthly = State.History.Concat(State.Performance)
+        _trend = State.History.Concat(State.Performance)
             .Where(x => new DateTime(x.Year, x.Month, 1) <= State.SelectedMonth)
             .GroupBy(x => (x.Year, x.Month, Name: PersonName.Normalize(x.EmployeeName)))
             .Select(x => x.First())
@@ -442,12 +441,10 @@
                 decimal.Round(group.Average(x => x.OperationalScore), 1)))
             .TakeLast(6)
             .ToArray();
-        _trend = monthly;
 
         _driverEffects = BuildDriverEffects(previousRows);
 
         var peerSummary = Analytics.Peers(State.PeerReviews);
-        _peerAverage = peerSummary.AverageRating <= 0 ? 3m : peerSummary.AverageRating;
         _peerPoints = peerSummary.Standings
             .Select(standing =>
             {
@@ -457,6 +454,7 @@
             .Where(x => x is not null)
             .Select(x => x!)
             .ToArray();
+        _peerAverage = _peerPoints.Count == 0 ? 3m : decimal.Round(_peerPoints.Average(x => x.PeerScore), 2);
 
         if (_focusName is null || _people.All(x => !PersonName.Matches(x.Name, _focusName)))
             _focusName = AttentionRows.FirstOrDefault()?.Name ?? _people.FirstOrDefault()?.Name;
@@ -469,7 +467,7 @@
         var effects = new List<DriverEffect>
         {
             new("Timesheet completion", WeightedEffect(State.Performance, previous, x => x.TimesheetCompletionScore, x => x.HasSummaryData, _settings.TimesheetCompletionWeight)),
-            new("Approval completion", WeightedEffect(State.Performance, previous, x => x.ApprovalScore, x => x.HasSummaryData, _settings.ApprovalCompletionWeight)),
+            new("Approval completion", WeightedEffect(State.Performance, previous, x => x.ApprovalScore, ApprovalApplicable, _settings.ApprovalCompletionWeight)),
             new("Attendance discipline", WeightedEffect(State.Performance, previous, x => x.AttendanceDisciplineScore, x => x.ExpectedTimesheetDays > 0, _settings.AttendanceDisciplineWeight))
         };
         var residual = decimal.Round(_teamDelta.Value - effects.Sum(x => x.Effect), 1);
@@ -500,7 +498,7 @@
         if (person.Delta is <= -5m) return $"Score down {Analytics.Format(Math.Abs(person.Delta.Value), "0.#")} points";
         if (person.Item.TimesheetCompletionScore < 70m && person.Item.HasSummaryData) return "Low timesheet completion";
         if (person.Item.AttendanceDisciplineScore < 70m && person.Item.ExpectedTimesheetDays > 0) return "Attendance discipline";
-        if (person.Item.ApprovalScore < 70m && person.Item.HasSummaryData) return "Approval completion";
+        if (person.Item.ApprovalScore < 70m && ApprovalApplicable(person.Item)) return "Approval completion";
         return "Low operational score";
     }
 
@@ -546,6 +544,8 @@
             : $"right:50%;width:{width}%;background:var(--color-critical)";
     }
 
+    private static bool ApprovalApplicable(MonthlyPerformanceItem item) => item.HasSummaryData && item.EnteredHours > 0m;
+
     private static string HeatClass(decimal value) => value switch
     {
         >= 85m => "bg-good-soft text-good",
@@ -579,7 +579,7 @@
     private sealed record TrendPoint(string Label, string ShortLabel, decimal Score);
     private sealed record DriverEffect(string Label, decimal Effect);
     private sealed record PeerPoint(string Name, decimal OperationalScore, decimal PeerScore, int Reviews);
-    private sealed record PersonSignal(MonthlyPerformanceItem Item, decimal? PreviousScore, decimal? Delta, int AlertCount, decimal Priority)
+    private sealed record PersonSignal(MonthlyPerformanceItem Item, decimal? Delta, int AlertCount, decimal Priority)
     {
         public string Name => Item.EmployeeName;
         public decimal Score => Item.OperationalScore;
