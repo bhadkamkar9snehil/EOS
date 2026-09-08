@@ -1391,7 +1391,7 @@ a[href],
   container-name: dashboard-module;
   container-type: inline-size;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.75rem;
   border-top: 1px solid var(--color-line-soft);
 }
 
@@ -1424,7 +1424,7 @@ a[href],
   white-space: nowrap;
 }
 
-.pulse-label { margin-top: 0.5rem; }
+.pulse-label { margin-top: 0.375rem; }
 .pulse-comparison { display: none; margin-top: 0.25rem; white-space: nowrap; }
 
 .distribution-detail { display: none; }
@@ -1467,18 +1467,18 @@ a[href],
   white-space: nowrap;
 }
 .distribution-band { min-width: 0; }
-.distribution-band-heading { display: flex; align-items: baseline; gap: 0.375rem; }
+.distribution-band-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.375rem; }
 .distribution-range {
   font-size: var(--text-2xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.distribution-share { margin-top: 0.125rem; white-space: nowrap; }
+.distribution-share { white-space: nowrap; }
 .distribution-track {
   position: relative;
   height: 2rem;
-  margin-top: 0.5rem;
+  margin-top: 0.375rem;
   border-radius: var(--radius-md);
 }
 .distribution-dot {
@@ -1495,13 +1495,13 @@ a[href],
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.625rem;
-  margin-top: 0.75rem;
+  margin-top: 0.375rem;
 }
 .trend-card {
   container-name: trend-card;
   container-type: inline-size;
   min-width: 0;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 .trend-heading {
   display: flex;
@@ -1524,13 +1524,13 @@ a[href],
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   min-width: 0;
 }
 .trend-context { display: none; color: var(--ui-muted); white-space: nowrap; }
 .trend-context > small { color: inherit; }
-.trend-spark { display: none; height: 2rem; margin-top: 0.25rem; }
-.utilization-meter { display: none; position: relative; height: 0.5rem; margin-top: 0.75rem; overflow: visible; }
+.trend-spark { display: none; height: 1.125rem; margin-top: 0.1875rem; }
+.utilization-meter { display: none; position: relative; height: 0.5rem; margin-top: 0.375rem; overflow: visible; }
 .utilization-value {
   position: absolute;
   inset-block: 0;
@@ -1547,11 +1547,11 @@ a[href],
   background: var(--color-muted);
 }
 
-.readiness-detail { display: none; flex-direction: column; gap: 0.375rem; margin-top: 0.75rem; }
+.readiness-detail { display: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem 0.75rem; margin-top: 0.5rem; }
 .readiness-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.75rem; }
 .readiness-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-soft); }
 .readiness-row > i { flex: none; width: 0.5rem; height: 0.5rem; }
-.readiness-summary { display: flex; align-items: baseline; gap: 0.375rem; margin-top: 0.625rem; }
+.readiness-summary { display: flex; align-items: baseline; gap: 0.375rem; margin-top: 0.5rem; }
 .readiness-lamps { display: flex; align-items: center; gap: 0.25rem; margin-left: auto; }
 .readiness-lamps > i { display: block; width: 0.4375rem; height: 0.4375rem; }
 
@@ -1598,7 +1598,7 @@ a[href],
 }
 
 @container dashboard-module (min-width: 8.5rem) {
-  .readiness-detail { display: flex; }
+  .readiness-detail { display: grid; }
   .readiness-summary { display: none; }
 }
 

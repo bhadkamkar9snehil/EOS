@@ -69,6 +69,7 @@
         ? { animation: false, animationDuration: 0, animationDurationUpdate: 0 }
         : { animation: true, animationDuration: 620, animationEasing: 'cubicOut', animationDurationUpdate: 260 };
     const initials = name => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join('');
+    const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
     const signed = (value, digits = 1) => `${value > 0 ? '+' : ''}${(+value).toFixed(digits)}`;
     const bandColor = (band, p) => {
         switch (String(band || '').toLowerCase()) {
@@ -348,13 +349,18 @@
                     },
                     itemStyle: { color },
                     emphasis: { focus: 'series', lineStyle: { width: chartStroke('strong'), opacity: 1 } },
+                    // Only the highlighted lines (selected person, attention-lens rows) get an end
+                    // label. Labelling all ~20 engineers packed into a 60-100 band was the actual
+                    // bug: shiftY has to stack them into an unreadable column with no line connecting
+                    // a label back to its own series, so "the names don't align" wasn't a font-size
+                    // problem, it was too many labels for the space.
                     endLabel: {
-                        show: true,
-                        formatter: x => x.value == null ? '' : `${initials(s.name)}  ${(+x.value).toFixed(0)}`,
+                        show: isSelected || isAttention,
+                        formatter: x => x.value == null ? '' : `${firstName(s.name)}  ${(+x.value).toFixed(0)}`,
                         color,
-                        fontSize: compact ? (isSelected || isAttention ? 10 : 9) : large ? (isSelected || isAttention ? 13 : 11) : (isSelected || isAttention ? 11.5 : 9.5),
-                        fontWeight: isSelected ? 750 : isAttention ? 650 : 520,
-                        distance: compact ? 4 : large ? 8 : 6
+                        fontSize: compact ? (isSelected ? 12 : 11) : large ? (isSelected ? 15 : 13) : (isSelected ? 13.5 : 12),
+                        fontWeight: isSelected ? 750 : 650,
+                        distance: compact ? 5 : large ? 10 : 7
                     },
                     labelLayout: { moveOverlap: 'shiftY' },
                     z: isSelected ? 5 : isAttention ? 3 : 1
@@ -368,7 +374,9 @@
 
             chart.setOption({
                 ...(silent ? { animation: false } : motion()),
-                grid: compact ? { left: 35, right: 78, top: 12, bottom: 32 } : large ? { left: 52, right: 122, top: 22, bottom: 50 } : { left: 44, right: 104, top: 18, bottom: 42 },
+                // Right margin sized for "Firstname 99" end labels, not the old two-letter
+                // initials - now that only the highlighted lines carry a label there's room.
+                grid: compact ? { left: 35, right: 96, top: 12, bottom: 32 } : large ? { left: 52, right: 150, top: 22, bottom: 50 } : { left: 44, right: 128, top: 18, bottom: 42 },
                 tooltip: {
                     ...tip(p), trigger: 'axis',
                     formatter: params => `<strong>${params[0]?.axisValueLabel || ''}</strong><br/>${params.filter(x => x.value != null).sort((a, b) => b.value - a.value).slice(0, 8).map(x => `${x.marker}${x.seriesName}: <b>${(+x.value).toFixed(1)}</b>`).join('<br/>')}`

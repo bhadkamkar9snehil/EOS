@@ -73,6 +73,20 @@
         return chart;
     }
 
+    // A flex/grid-derived container (anything sized via flex-1/h-full rather than a fixed
+    // chart-bay-* height class) isn't guaranteed to have its final size the instant a chart
+    // draws into it - especially on a redraw triggered by a focus change, where several
+    // siblings are reflowing in the same pass. One requestAnimationFrame wasn't always enough;
+    // two back-to-back covers a layout that takes more than a single frame to settle. Cheap
+    // no-op if the chart was already sized correctly.
+    function deferredResize(chart) {
+        requestAnimationFrame(() => {
+            if (chart.isDisposed()) return;
+            chart.resize();
+            requestAnimationFrame(() => { if (!chart.isDisposed()) chart.resize(); });
+        });
+    }
+
     function registerThemeUpdater(id, updater) { if (typeof updater === 'function') themeUpdaters.set(id, updater); }
 
     function dispose(id) {
@@ -121,7 +135,8 @@
         const chart = ensure(id); if (!chart) return;
         const styledData = p => series.map((s,i) => {
             const color = roleColor(s.role, i, p);
-            return {name:s.name,value:s.values,lineStyle:{color,width:2},areaStyle:{color,opacity:.11},itemStyle:{color}};
+            return {name:s.name,value:s.values,symbol:s.dashed?'none':'circle',
+                lineStyle:{color,width:2,type:s.dashed?'dashed':'solid'},areaStyle:{color,opacity:s.dashed?0:.11},itemStyle:{color}};
         });
         const applyTheme = p => chart.setOption({animationDurationUpdate:0,tooltip:tooltip(p),radar:[{axisName:{color:p.ink,fontSize:11.5},splitLine:{lineStyle:{color:p.grid}},axisLine:{lineStyle:{color:p.grid}}}],series:[{data:styledData(p)}]}, {lazyUpdate:true,silent:true});
         const p = palette();
@@ -131,6 +146,7 @@
             series:[{type:'radar',data:styledData(p)}]
         }, true);
         registerThemeUpdater(id, applyTheme);
+        deferredResize(chart);
     }
 
     function scatter(id, points, ceilingX, targetY) {
@@ -195,6 +211,17 @@
         return `rgb(${r(ar+(br-ar)*t)},${r(ag+(bg-ag)*t)},${r(ab+(bb-ab)*t)})`; };
     const onFill = bestTextColor;
     const heatFill = (value,p) => p.heatScale[Math.max(0,Math.min(p.heatScale.length-1,Math.floor((Math.max(0,Math.min(100,Number(value)))/100)*p.heatScale.length)))] || p.heatScale[0];
+    // The same four colours and the same 55/70/85 breakpoints as Analytics.ScoreBand /
+    // BandTextClass / BandBgClass on the C# side - i.e. this is not a borrowed gradient, it's
+    // literally the app's one severity scale for 0-100 scores, so a heatmap cell always means
+    // the same thing a Score Distribution dot or a band label already means elsewhere.
+    const severityColor = (value,p) => {
+        const stops=[p.critical,p.serious,p.warning,p.good], breaks=[0,55,70,85,100];
+        const v=Math.max(0,Math.min(100,value));
+        let i=0; while(i<breaks.length-2 && v>=breaks[i+1]) i++;
+        const span=breaks[i+1]-breaks[i]||1;
+        return mixHex(stops[i],stops[i+1],(v-breaks[i])/span);
+    };
     const buildHeatData = (xCategories,yCategories,cells,p) => {
         const source = new Map(cells.map(c=>[`${c.x}:${c.y}`,c]));
         const data=[];
@@ -202,11 +229,19 @@
             const c=source.get(`${x}:${y}`);
             const state=c?.state==='na'?'na':c&&c.value!=null?'measured':'missing';
             const numeric=state==='measured'?Number(c.value):null;
-            const fill=state==='measured'?heatFill(numeric,p):state==='na'?p.naSurface:p.missingSurface;
+            // c.severity opts a cell into the shared red-to-green severity gradient instead of the
+            // default sequential blue magnitude scale (heatFill) - use it for "good vs bad" data
+            // (scores, health checks); leave it unset for true density/volume heatmaps where
+            // "more" isn't "worse".
+            const fill=state==='measured'?(c.severity?severityColor(numeric,p):heatFill(numeric,p)):state==='na'?p.naSurface:p.missingSurface;
+            // c.focused gives the redraw a reason to exist: clicking a point elsewhere on the page
+            // focuses a person, which re-triggers every chart including this one - rather than
+            // fight that (or have it silently redraw nothing differently), the focused row now
+            // actually shows the focus, the same way every other chart on the page already does.
             data.push({
                 value:[x,y,state==='measured'?numeric:-1], tooltip:c?.tooltip||(state==='na'?`${yCategories[y]} · ${xCategories[x]}: Not applicable`:`${yCategories[y]} · ${xCategories[x]}: No source data`), state,
-                itemStyle:{color:fill,borderColor:p.surface,borderWidth:1,borderRadius:2,opacity:state==='na'?.5:1,...(state==='missing'?{decal:{symbol:'rect',symbolSize:1,dashArrayX:[1,0],dashArrayY:[2,3],color:p.axis}}:{})},
-                label:{show:true,color:state==='measured'?onFill(fill):p.muted,fontSize:11,fontWeight:600,formatter:state==='measured'?numeric.toFixed(1):'—'}
+                itemStyle:{color:fill,borderColor:c?.focused?p.ink:p.surface,borderWidth:c?.focused?2:1,borderRadius:2,opacity:state==='na'?.5:1,...(state==='missing'?{decal:{symbol:'rect',symbolSize:1,dashArrayX:[1,0],dashArrayY:[2,3],color:p.axis}}:{})},
+                label:{show:true,color:state==='measured'?onFill(fill):p.muted,fontSize:11,fontWeight:c?.focused?750:600,formatter:state==='measured'?numeric.toFixed(1):'—'}
             });
         }
         return data;
@@ -214,11 +249,20 @@
 
     function heatmap(id, xCategories, yCategories, cells, drillable) {
         const chart=ensure(id); if(!chart)return;
-        const applyTheme=p=>chart.setOption({animationDurationUpdate:0,tooltip:tooltip(p),xAxis:{axisLabel:{fontSize:11,color:p.inkSoft},axisLine:{lineStyle:{color:p.axis}}},yAxis:{axisLabel:{fontSize:11.5,color:p.ink},axisLine:{show:false}},series:[{data:buildHeatData(xCategories,yCategories,cells,p)}]}, {lazyUpdate:true,silent:true});
+        // interval:0 forces every column label to render instead of ECharts silently dropping
+        // ones it thinks would overlap (which is what was happening with 4 narrow columns) -
+        // rotated so they still fit without actually colliding.
+        const xLabel=p=>({interval:0,rotate:20,fontSize:11,color:p.inkSoft});
+        // Prefixes each row with its rank (1 = worst) purely as a display label - the
+        // underlying category value yCategories[i] is left untouched so the click handler's
+        // drill(yCategories[...]) below still resolves to a real, matchable person name.
+        const yLabel=p=>({fontSize:11.5,color:p.ink,formatter:(value,index)=>`${yCategories.length-index}. ${value}`});
+        const applyTheme=p=>chart.setOption({animationDurationUpdate:0,tooltip:tooltip(p),xAxis:{axisLabel:xLabel(p),axisLine:{lineStyle:{color:p.axis}}},yAxis:{axisLabel:yLabel(p),axisLine:{show:false}},series:[{data:buildHeatData(xCategories,yCategories,cells,p)}]}, {lazyUpdate:true,silent:true});
         const p=palette();
-        chart.setOption({...animation(),tooltip:{...tooltip(p),position:'top',formatter:x=>`<strong>${x.data.tooltip}</strong>${drillable&&x.data.state==='measured'?'<br/><span style="opacity:.72">Click to open profile</span>':''}`},grid:{left:150,right:12,top:10,bottom:34},xAxis:{type:'category',data:xCategories,splitArea:{show:false},axisLabel:{fontSize:11,color:p.inkSoft},axisLine:{lineStyle:{color:p.axis}}},yAxis:{type:'category',data:yCategories,axisLabel:{fontSize:11.5,color:p.ink},axisLine:{show:false},splitArea:{show:false}},series:[{type:'heatmap',data:buildHeatData(xCategories,yCategories,cells,p),cursor:drillable?'pointer':'default',emphasis:{itemStyle:{shadowBlur:7,shadowColor:'rgba(0,0,0,.18)'}}}]},true);
+        chart.setOption({...animation(),tooltip:{...tooltip(p),position:'top',formatter:x=>`<strong>${x.data.tooltip}</strong>${drillable&&x.data.state==='measured'?'<br/><span style="opacity:.72">Click to open profile</span>':''}`},grid:{left:162,right:12,top:10,bottom:44},xAxis:{type:'category',data:xCategories,splitArea:{show:false},axisLabel:xLabel(p),axisLine:{lineStyle:{color:p.axis}}},yAxis:{type:'category',data:yCategories,axisLabel:yLabel(p),axisLine:{show:false},splitArea:{show:false}},series:[{type:'heatmap',data:buildHeatData(xCategories,yCategories,cells,p),cursor:drillable?'pointer':'default',emphasis:{itemStyle:{shadowBlur:7,shadowColor:'rgba(0,0,0,.18)'}}}]},true);
         chart.off('click'); if(drillable)chart.on('click',x=>{if(x.componentType==='series'&&x.data?.state==='measured')drill(yCategories[x.data.value[1]]);});
         registerThemeUpdater(id,applyTheme);
+        deferredResize(chart);
     }
 
     function network(id,nodes,links,hubName) {

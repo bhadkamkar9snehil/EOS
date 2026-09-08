@@ -72,8 +72,13 @@ public sealed class LocalApplicationDatabase(
     private static async Task<HashSet<string>> ReadExclusionsAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
         var names = await context.AnalysisExclusions.Select(x => x.EmployeeName).ToListAsync(cancellationToken);
+        // TODO: consultants need their own analysis method (different targets/expectations than
+        // regular engineers). Until that exists, fold them into the same exclusion set used
+        // everywhere else so they don't skew team-wide figures. Remove this once a dedicated
+        // consultant analysis lands, rather than keeping them permanently lumped in here.
+        var consultantNames = await context.Employees.Where(x => x.IsConsultant).Select(x => x.Name).ToListAsync(cancellationToken);
         // Compared on normalized names: the exports spell the same person with varying spacing.
-        return new HashSet<string>(names.Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
+        return new HashSet<string>(names.Concat(consultantNames).Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<IReadOnlyList<string>> GetExcludedNamesAsync(CancellationToken cancellationToken = default)

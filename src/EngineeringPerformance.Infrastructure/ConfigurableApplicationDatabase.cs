@@ -212,7 +212,14 @@ public sealed partial class ConfigurableApplicationDatabase(
     private static async Task<HashSet<string>> ReadExcludedNamesAsync(PerformanceDbContext context, CancellationToken cancellationToken)
     {
         var names = await context.AnalysisExclusions.Select(x => x.EmployeeName).ToListAsync(cancellationToken);
-        return new HashSet<string>(names.Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
+        // TODO: consultants need their own analysis method (different targets/expectations than
+        // regular engineers). Until that exists, fold them into the same exclusion set used
+        // everywhere else so they don't skew team-wide figures. Remove this once a dedicated
+        // consultant analysis lands, rather than keeping them permanently lumped in here.
+        // (Kept in sync with LocalApplicationDatabase.ReadExclusionsAsync - this class
+        // reimplements the query methods rather than delegating to `inner` for them.)
+        var consultantNames = await context.Employees.Where(x => x.IsConsultant).Select(x => x.Name).ToListAsync(cancellationToken);
+        return new HashSet<string>(names.Concat(consultantNames).Select(PersonName.Normalize), StringComparer.OrdinalIgnoreCase);
     }
 
     private static MonthlyPerformanceItem Project(EmployeeMonthlyPerformance x) => new(

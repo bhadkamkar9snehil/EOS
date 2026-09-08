@@ -58,8 +58,8 @@
                             <div class="distribution-band-heading">
                                 <strong class="@($"metric text-metric-sm {Analytics.BandTextClass(band.CssClass)}")">@members.Count</strong>
                                 <span class="@($"distribution-range {Analytics.BandTextClass(band.CssClass)}")">@band.Label</span>
+                                <span class="adaptive-secondary distribution-share"><span class="tabular-nums">@BandShare(members.Count)%</span> of team</span>
                             </div>
-                            <div class="adaptive-secondary distribution-share"><span class="tabular-nums">@BandShare(members.Count)%</span> of team</div>
                             <div class="track distribution-track" aria-label="@members.Count people scoring @band.Label">
                                 @for (var i = 0; i < members.Count; i++)
                                 {
@@ -150,8 +150,12 @@
         @* The aside is widened to 400px: the Attention Lens carries a per-person
            fingerprint and rhythm strip, and at 360px the name column was being
            squeezed to a couple of characters. *@
-        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]">
-            <div class="plate p-4">
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
+            @* flex flex-col + the well below as flex-1: the grid row stretches this card to
+               match Attention Lens's height (5 rows of people), and a fixed chart-bay height
+               left that extra height as dead space under the chart instead of the chart
+               actually using it - same fix already applied to Operational Fingerprint. *@
+            <div class="plate p-4 flex flex-col">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <div class="panel-eyebrow">Distribution</div>
@@ -184,18 +188,14 @@
                 <div class="label-instrument mt-2 flex gap-4">
                     <span>X · accountable hours (30d)</span><span>Y · utilization (%)</span>
                 </div>
-                <div class="well mt-1.5 p-2">
-                    <div id="atlas-field" class="chart-bay chart-bay-xl" aria-label="Workforce performance field"></div>
+                <div class="well mt-1.5 flex-1 p-2">
+                    <div id="atlas-field" class="chart-bay h-full min-h-[20rem]" aria-label="Workforce performance field"></div>
                 </div>
             </div>
 
-            @* Each entry is a small self-contained instrument stacked over two lines
-               rather than a seven-column grid. The previous single-line layout spent
-               ~300px of a 328px panel on fixed columns, leaving almost nothing for the
-               name — every person rendered as "C…" over "L…". Splitting the diagnostic
-               strip onto its own line gives the identity line the width it needs, and
-               the bar legend is stated once in the header instead of being crushed into
-               four abbreviations sharing 88px. *@
+            @* Just the matrix - a separate name list above it was showing the same five people
+               twice for no reason once Score joined the other four columns here. Row labels
+               carry the rank; click any cell to focus that person (same as the old row click). *@
             <aside class="plate attention-lens flex flex-col p-4">
                 <div class="panel-head">
                     <div>
@@ -203,76 +203,16 @@
                         <h2 class="panel-title">Attention lens</h2>
                     </div>
                 </div>
-                <p class="label-instrument -mt-1 mb-2">Bars · completion, approval, attendance, utilization</p>
-
-                <div class="grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_4.75rem] items-center gap-x-2 border-b border-line px-1.5 pb-1.5 label-instrument" aria-hidden="true">
-                    <span class="text-center">#</span><span></span><span>Engineer</span><span class="text-right">Score</span>
+                <div class="well mt-2 flex-1 p-2">
+                    <div id="attention-heatmap" class="chart-bay h-full min-h-[16rem]" aria-label="Completion, approval, attendance, utilization and overall score for each flagged engineer"></div>
                 </div>
-                @* flex-1 + justify-around, matching the fix already applied and documented for
-                   Movement River / Operational Fingerprint further down this file. The lens is
-                   capped at five rows, so without this the list sat at its natural ~440px inside a
-                   column sized by the ~540px chart beside it, leaving dead space at the bottom on
-                   every render. *@
-                <ol class="flex flex-1 flex-col justify-around divide-y divide-line-soft">
-                    @for (var i = 0; i < AttentionRows.Count; i++)
-                    {
-                        var row = AttentionRows[i];
-                        <li class="@($"group cursor-pointer rounded-md px-1.5 py-1.5 transition-colors duration-100 ease-press hover:bg-surface-inset {(IsFocused(row.Name) ? "bg-primary-soft" : string.Empty)}")" role="button" tabindex="0" aria-label="Focus @row.Name in the Atlas" @onclick="() => Focus(row.Name)" @onkeydown="args => HandleAttentionKey(args, row.Name)">
-                            <div class="grid grid-cols-[1.25rem_2rem_minmax(0,1fr)_4.75rem] items-center gap-x-2">
-                                <span class="label-instrument text-center tabular-nums">@(i + 1)</span>
-                                <span class="well flex h-7 w-7 items-center justify-center !rounded-full font-display text-3xs font-semibold text-ink-soft">@Analytics.Initials(row.Name)</span>
-                                <span class="flex min-w-0 flex-col">
-                                    <strong class="truncate text-sm font-medium text-ink">@row.Name</strong>
-                                    <small class="truncate text-2xs text-muted">@EmployeeContext(row.Name)</small>
-                                </span>
-                                <span class="flex items-baseline justify-end gap-1" title="Operational score; arrow shows change from the previous loaded month">
-                                    <strong class="metric text-metric-sm">@Analytics.Format(row.Score, "0")</strong>
-                                    @if (row.Delta is not null && row.Delta != 0)
-                                    {
-                                        <small class="@($"metric-delta {(row.Delta > 0 ? "text-good" : "text-critical")}")">@(row.Delta > 0 ? "↑" : "↓")@Analytics.Format(Math.Abs(row.Delta.Value), "0")</small>
-                                    }
-                                </span>
-                            </div>
-
-                            @* One recessed readout bay holding both instruments, with a hairline
-                               divider between them instead of the pair floating unlabeled on the
-                               plate — the earlier version was two clusters of bare bars with
-                               nothing distinguishing what each was, or where one stopped and the
-                               other began. *@
-                            @* w-fit, not a stretched full-width bar: sized to its own content so the
-                               two instruments sit close together under the avatar instead of being
-                               yanked apart by ml-auto across the row's full width, leaving a dead
-                               gap in the middle. Also shorter (py-1) — the previous version's
-                               padding plus the row's own gap made every entry noticeably taller
-                               than the information in it needed. *@
-                            <div class="ml-[3.75rem] mt-1 flex items-center gap-2">
-                            <div class="well inline-flex min-w-0 items-end gap-2.5 px-2 py-1">
-                                <span class="flex items-end gap-1.5" aria-label="Completion, approval, attendance and utilization diagnostic fingerprint">
-                                    @MiniFingerprint("Completion", row.Item.TimesheetCompletionScore, row.Item.HasSummaryData)
-                                    @MiniFingerprint("Approval", row.Item.ApprovalScore, row.Item.HasSummaryData)
-                                    @MiniFingerprint("Attendance", row.Item.AttendanceDisciplineScore, true)
-                                    @MiniFingerprint("Utilization", row.Item.Utilization, row.Item.HasSummaryData)
-                                </span>
-                                <span class="h-5 w-px shrink-0 self-center bg-line-soft"></span>
-                                <span class="flex flex-col items-center gap-[3px]">
-                                    <span class="flex h-4 items-end gap-[2px]" title="Weekly attendance-discipline rhythm" aria-label="Weekly attendance discipline rhythm">
-                                        @foreach (var value in WeeklyRhythm(row.Name))
-                                        {
-                                            <i class="@($"block w-1 rounded-xs {(value < 65 ? "bg-critical" : "bg-petrol")}")" style="@($"height:{Analytics.CssPct(value)}")"></i>
-                                        }
-                                    </span>
-                                    <span class="label-micro">Rhythm</span>
-                                </span>
-                            </div>
-                            <button type="button" class="ml-auto shrink-0 text-sm text-muted opacity-0 transition-opacity duration-100 hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100" title="Open @row.Name portrait" aria-label="Open @row.Name portrait" @onclick:stopPropagation="true" @onclick="() => OpenPortrait(row.Name)">↗</button>
-                            </div>
-                        </li>
-                    }
-                </ol>
             </aside>
         </section>
 
-        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-2">
+        @* Same column template as the Workforce-field/Attention-lens row above, so Operational
+           Fingerprint lines up at exactly the same width as Attention Lens instead of the two
+           right-hand rails drifting to different widths. *@
+        <section class="grid grid-cols-1 gap-4 @@4xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
             <div class="plate p-4">
                 <div class="panel-head">
                     <div>
@@ -296,34 +236,33 @@
                them. Rows are spaced with justify-around rather than a fixed gap, so they
                always occupy the full bay regardless of exactly how tall it ends up. *@
             <div class="plate flex flex-col p-4">
+                @* The context label ("whole team" vs "X vs team") used to float between the
+                   eyebrow and the legend, where it visually paired with "Profile" into a
+                   confusing "PROFILE ... TEAM PROFILE" - now it lives with the rest of the
+                   contextual info on the right, same place Workforce Field puts its "Team
+                   view"/focused-person state. *@
                 <div class="panel-head">
                     <div>
                         <div class="panel-eyebrow">Profile</div>
                         <h2 class="panel-title">Operational fingerprint</h2>
                     </div>
-                    <small class="label-instrument">@FingerprintLabel</small>
-                    <div class="ml-auto flex items-center gap-3 text-2xs text-ink-soft">
-                        <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-ink-soft"></i>Median</span>
-                        <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full bg-line"></i>Middle 50%</span>
-                        <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full bg-primary"></i>@(FocusItem is null ? "Team" : FocusItem.EmployeeName)</span>
+                    <div class="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-ink-soft">
+                        <span class="label-instrument text-muted">@FingerprintLabel</span>
+                        <span class="flex items-center gap-1"><i class="h-1.5 w-3 rounded-full" style="background:var(--color-chart-1)"></i>Team median</span>
+                        <span class="flex items-center gap-1"><i class="h-0 w-3 border-t-2 border-dashed" style="border-color:var(--color-chart-3)"></i>Target</span>
+                        <span class="flex items-center gap-1"><i class="h-1.5 w-1.5 rounded-full" style="background:var(--color-chart-2)"></i>@(FocusItem is null ? "Team" : FocusItem.EmployeeName)</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-[7rem_1fr_4.5rem] gap-2 pl-3 label-instrument">
-                    <span>Dimension</span><span>Distribution / target</span><span class="text-right">Current</span>
+                @* A radar reads as an actual "fingerprint" (the panel's own name) - the person's or
+                   team's shape laid directly over the median shape and the target ring - which a
+                   row of independent bullet bars never did despite the name. *@
+                <div class="well mt-2 flex flex-1 flex-col p-2">
+                    <div id="fingerprint-radar" class="chart-bay h-full min-h-[16rem]"></div>
                 </div>
-                <div class="well mt-1.5 flex flex-1 flex-col justify-around gap-1 p-3">
+                <div class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-0.5 px-1 text-2xs tabular-nums text-muted">
                     @foreach (var metric in FingerprintMetrics)
                     {
-                        <div class="grid grid-cols-[7rem_1fr_4.5rem] items-center gap-2">
-                            <label class="text-xs font-medium text-ink-soft">@metric.Label</label>
-                            <span class="relative block h-5" title="@metric.Tooltip">
-                                <i class="absolute inset-y-1.5 rounded-full bg-line" style="@QuartileStyle(metric)"></i>
-                                <i class="absolute inset-y-0 w-0.5 bg-ink-soft" style="@($"left:{Analytics.CssPct(metric.Median)}")"></i>
-                                <i class="absolute inset-y-0 w-0.5 border-l-2 border-dashed border-muted" style="@($"left:{Analytics.CssPct(metric.Target)}")"></i>
-                                <i class="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-well bg-primary" style="@($"left:{Analytics.CssPct(metric.Value)}")"></i>
-                            </span>
-                            <strong class="text-right text-sm font-semibold tabular-nums text-ink" title="Target: @metric.TargetLabel">@metric.Display</strong>
-                        </div>
+                        <span title="@metric.Tooltip"><b class="font-semibold text-ink-soft">@metric.Label</b> @metric.Display</span>
                     }
                 </div>
             </div>
@@ -459,6 +398,15 @@
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-attendance", AttendanceTrend, "attendance");
         await JS.InvokeVoidAsync("epaAtlas.sparkline", "pulse-completion", CompletionTrend, "timesheet");
 
+        var fingerprint = FingerprintMetrics;
+        await JS.InvokeVoidAsync("epaCharts.radar", "fingerprint-radar", fingerprint.Select(x => x.Label).ToArray(), 100.0,
+            new object[]
+            {
+                new { name = "Team median", role = "categorical-1", values = fingerprint.Select(x => (double)x.Median).ToArray() },
+                new { name = "Target", role = "categorical-3", dashed = true, values = fingerprint.Select(x => (double)x.Target).ToArray() },
+                new { name = FocusItem is null ? "Team" : FocusItem.EmployeeName, role = "categorical-2", values = fingerprint.Select(x => (double)x.Value).ToArray() }
+            });
+
         var previousRows = State.History
             .Where(x => x.Year == Previous.Year && x.Month == Previous.Month)
             .GroupBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
@@ -494,6 +442,21 @@
         // zone to another stops meaning their behavior actually changed.
         var fieldMedian = State.History.Count > 0 ? Median(State.History.Select(x => x.PunchHours)) : Median(State.Performance.Select(x => x.PunchHours));
         await JS.InvokeVoidAsync("epaAtlas.performanceField", "atlas-field", fieldPoints, (double)fieldMax, (double)Analytics.UtilizationTarget, (double)fieldMedian, _focusName);
+
+        // Reversed so rank #1 (top of the list) lands at the top row of the heatmap too -
+        // ECharts' category axis renders index 0 at the bottom, like a normal chart axis.
+        var attentionCategories = new[] { "Completion", "Approval", "Attendance", "Utilization", "Score" };
+        var attentionRanked = AttentionRows.Reverse().ToArray();
+        var attentionCells = attentionRanked.SelectMany((row, y) => new object[]
+        {
+            HeatCell(0, y, row.Name, "Completion", row.Item.TimesheetCompletionScore, row.Item.HasSummaryData),
+            HeatCell(1, y, row.Name, "Approval", row.Item.ApprovalScore, row.Item.HasSummaryData),
+            HeatCell(2, y, row.Name, "Attendance", row.Item.AttendanceDisciplineScore, true),
+            HeatCell(3, y, row.Name, "Utilization", row.Item.Utilization, row.Item.HasSummaryData),
+            HeatCell(4, y, row.Name, "Overall score", row.Score, true)
+        }).ToArray();
+        await JS.InvokeVoidAsync("epaCharts.registerDrilldown", _selfRef);
+        await JS.InvokeVoidAsync("epaCharts.heatmap", "attention-heatmap", attentionCategories, attentionRanked.Select(x => x.Name).ToArray(), attentionCells, true);
 
         var attentionNames = AttentionRows.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var riverSeries = State.Performance.Select((item, index) => new
@@ -541,7 +504,7 @@
             return new FieldMovement(previous.PunchHours, previous.Utilization, current.PunchHours, current.Utilization, hoursDelta, utilizationDelta);
         }
     }
-    private string FingerprintLabel => FocusItem is null ? "Team profile" : $"{FocusItem.EmployeeName} vs team distribution";
+    private string FingerprintLabel => FocusItem is null ? "Whole team" : $"{FocusItem.EmployeeName} vs team";
 
     private decimal Average(Func<MonthlyPerformanceItem, decimal> selector, bool summaryOnly = false)
     {
@@ -656,20 +619,11 @@
     }
     private static int ExceptionCount(MonthlyPerformanceItem item) => item.MissingPunchDays + item.LateDays + item.EarlyDays + item.LessDurationDays;
 
-    private string EmployeeContext(string name)
-    {
-        var employee = State.Employees.FirstOrDefault(x => PersonName.Matches(x.Name, name));
-        if (employee is null) return "Engineer";
-        return !string.IsNullOrWhiteSpace(employee.TeamName) ? employee.TeamName! : $"Level {employee.SeniorityLevel}";
-    }
+    private object HeatCell(int x, int y, string name, string label, decimal value, bool available) => available
+        ? new { x, y, value = (double)Math.Round(value, 1), severity = true, focused = IsFocused(name), tooltip = $"{name} · {label}: {Analytics.Format(value, "0")}%" }
+        : new { x, y, state = "na", tooltip = $"{name} · {label}: no source data" };
 
-    private IReadOnlyList<decimal> WeeklyRhythm(string name)
-    {
-        var values = State.WeeklyPerformance.Where(x => x.ExpectedDays > 0 && PersonName.Matches(x.EmployeeName, name)).OrderBy(x => x.WeekStart).Select(x => x.AttendanceDisciplineScore).ToArray();
-        if (values.Length > 0) return values;
-        var item = State.Performance.FirstOrDefault(x => PersonName.Matches(x.EmployeeName, name));
-        return item is null ? new[] { 0m } : new[] { item.AttendanceDisciplineScore };
-    }
+
 
     private bool IsReady(ReportType type) => State.Snapshot?.SourceSlots.Any(x => x.ReportType == type && x.Status == SourceStatus.Uploaded) == true;
     private bool[] ReadinessStates =>
@@ -703,13 +657,19 @@
             var selected = FocusItem;
             var workloadHours = State.Performance.Select(x => x.Workload()).ToArray();
             var workloadIndex = State.Performance.Select(WorkloadIndex).ToArray();
+            var workloadValue = selected is null ? Median(workloadIndex) : WorkloadIndex(selected);
+            var workloadDisplay = selected is null ? $"{Analytics.Format(Median(workloadHours),"0.0")} h/d" : $"{Analytics.Format(selected.Workload(),"0.0")} h/d";
+            var workloadMedianHours = Median(workloadHours);
+            var workloadQ1Hours = Percentile(workloadHours, .25m);
+            var workloadQ3Hours = Percentile(workloadHours, .75m);
             return new[]
             {
                 BuildFingerprint("Completion", summary.Select(x=>x.TimesheetCompletionScore).ToArray(), selected is { HasSummaryData:true } ? selected.TimesheetCompletionScore : Average(x=>x.TimesheetCompletionScore,true), 95m, v=>$"{Analytics.Format(v,"0")}%", "95%"),
                 BuildFingerprint("Approval", summary.Select(x=>x.ApprovalScore).ToArray(), selected is { HasSummaryData:true } ? selected.ApprovalScore : Average(x=>x.ApprovalScore,true), 90m, v=>$"{Analytics.Format(v,"0")}%", "90%"),
                 BuildFingerprint("Attendance", State.Performance.Select(x=>x.AttendanceDisciplineScore).ToArray(), selected?.AttendanceDisciplineScore ?? Average(x=>x.AttendanceDisciplineScore), 95m, v=>$"{Analytics.Format(v,"0")}%", "95%"),
                 BuildFingerprint("Utilization", summary.Select(x=>x.Utilization).ToArray(), selected is { HasSummaryData:true } ? selected.Utilization : Average(x=>x.Utilization,true), Analytics.UtilizationTarget, v=>$"{Analytics.Format(v,"0")}%", $"{Analytics.Format(Analytics.UtilizationTarget,"0")}%"),
-                new FingerprintMetric("Workload", selected is null ? Median(workloadIndex) : WorkloadIndex(selected), Median(workloadIndex), Percentile(workloadIndex,.25m), Percentile(workloadIndex,.75m), selected is null ? $"{Analytics.Format(Median(workloadHours),"0.0")} h/d" : $"{Analytics.Format(selected.Workload(),"0.0")} h/d", 100m, $"≤ {Analytics.Format(Analytics.WorkloadCeiling,"0")} h/d", "Workload index is relative to the accountable-hours ceiling")
+                new FingerprintMetric("Workload", workloadValue, Median(workloadIndex), Percentile(workloadIndex,.25m), Percentile(workloadIndex,.75m), workloadDisplay, 100m, $"≤ {Analytics.Format(Analytics.WorkloadCeiling,"0")} h/d",
+                    $"Workload: {workloadDisplay} · team median {Analytics.Format(workloadMedianHours,"0.0")} h/d · middle 50% {Analytics.Format(workloadQ1Hours,"0.0")}–{Analytics.Format(workloadQ3Hours,"0.0")} h/d · index relative to {Analytics.Format(Analytics.WorkloadCeiling,"0")} h/d ceiling")
             };
         }
     }
@@ -717,10 +677,12 @@
     private static FingerprintMetric BuildFingerprint(string label, IReadOnlyCollection<decimal> values, decimal value, decimal target, Func<decimal,string> display, string targetLabel)
     {
         var safe = values.Count == 0 ? new[] { 0m } : values.ToArray();
-        return new FingerprintMetric(label, Math.Clamp(value,0,100), Percentile(safe,.5m), Percentile(safe,.25m), Percentile(safe,.75m), display(value), Math.Clamp(target,0,100), targetLabel, $"{label}: {display(value)} · target {targetLabel}");
+        var median = Percentile(safe, .5m);
+        var q1 = Percentile(safe, .25m);
+        var q3 = Percentile(safe, .75m);
+        return new FingerprintMetric(label, Math.Clamp(value,0,100), median, q1, q3, display(value), Math.Clamp(target,0,100), targetLabel,
+            $"{label}: {display(value)} · team median {display(median)} · middle 50% {display(q1)}–{display(q3)} · target {targetLabel}");
     }
-
-    private static string QuartileStyle(FingerprintMetric metric) => $"left:{Analytics.CssPct(metric.Q1)};width:{Analytics.CssPct(metric.Q3 - metric.Q1)}";
 
     private static decimal WorkloadIndex(MonthlyPerformanceItem item) => Analytics.WorkloadCeiling <= 0 ? 0 : Math.Clamp(item.Workload() * 100m / Analytics.WorkloadCeiling, 0, 100);
     private static decimal Median(IEnumerable<decimal> source) => Percentile(source.ToArray(), .5m);
@@ -746,24 +708,10 @@
     private void ClearFocus() { _focusName = null; _chartsPending = true; }
     private void OpenPortrait(string name) => Navigation.NavigateTo($"/employee/{Uri.EscapeDataString(name)}");
     private void OpenFocusedPortrait() { if (FocusItem is not null) OpenPortrait(FocusItem.EmployeeName); }
-    private void HandleAttentionKey(KeyboardEventArgs args, string name)
-    {
-        if (args.Key is "Enter" or " ") Focus(name);
-    }
     private RenderFragment ReadinessLight(string label, bool ready, bool optional = false) =>
         @<div class="readiness-row" title="@label: @(ready ? "ready" : optional ? "optional evidence missing" : "required evidence missing")">
             <span class="text-ink-soft">@label</span><i class="@($"h-2 w-2 {(ready ? "lamp text-good" : optional ? "lamp text-warning" : "lamp-off")}")"></i>
         </div>;
-    // A single diagnostic rail — an engraved socket with the reading standing in it — plus a
-    // one-letter caption sitting directly under it. The header states the four names once, but a
-    // reader scanning a specific row shouldn't have to look back up to decode which bar is which.
-    private RenderFragment MiniFingerprint(string label, decimal value, bool available) =>
-        @<span class="flex flex-col items-center gap-1">
-            <span class="track relative block h-5 w-2 overflow-hidden !rounded-xs" title="@label: @(available ? Analytics.Format(value,"0") + "%" : "No source")">
-                <i class="@($"absolute inset-x-0 bottom-0 rounded-xs {(!available || value < 65 ? "bg-critical" : "bg-good")}")" style="@($"height:{Analytics.CssPct(available ? value : 0)}")"></i>
-            </span>
-            <span class="label-micro">@label[0]</span>
-        </span>;
 
     public async ValueTask DisposeAsync()
     {
