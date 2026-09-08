@@ -319,6 +319,7 @@
 
 @code {
     private static readonly string[] AtlasChartIds = ["pulse-attendance", "pulse-completion", "atlas-field", "atlas-river"];
+    private static readonly string[] EchartsIds = ["attention-heatmap", "fingerprint-radar"];
     private string? _focusName;
     private string? _renderedSignature;
     private bool _chartsPending;
@@ -717,6 +718,7 @@
     {
         State.Changed -= OnStateChanged;
         foreach (var id in AtlasChartIds) { try { await JS.InvokeVoidAsync("epaAtlas.dispose", id); } catch (JSDisconnectedException) { } }
+        foreach (var id in EchartsIds) { try { await JS.InvokeVoidAsync("epaCharts.dispose", id); } catch (JSDisconnectedException) { } }
         _selfRef?.Dispose();
     }
 
