@@ -17,7 +17,7 @@ public sealed class LocalApplicationDiagnostics(
     public ApplicationDiagnosticsInfo GetInfo()
     {
         var databaseSize = File.Exists(paths.DatabasePath)
-            ? FormatSize(new FileInfo(paths.DatabasePath).Length)
+            ? FileSizeFormat.Format(new FileInfo(paths.DatabasePath).Length)
             : "(not found)";
 
         var version = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
@@ -142,19 +142,5 @@ public sealed class LocalApplicationDiagnostics(
         using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var destination = entry.Open();
         source.CopyTo(destination);
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        double size = bytes;
-        string[] units = ["B", "KB", "MB", "GB"];
-        var unit = 0;
-        while (size >= 1024 && unit < units.Length - 1)
-        {
-            size /= 1024;
-            unit++;
-        }
-
-        return $"{size:0.##} {units[unit]}";
     }
 }

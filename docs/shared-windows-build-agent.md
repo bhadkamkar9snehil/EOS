@@ -30,7 +30,7 @@ Azure DevOps project/bootstrap mutation is restricted to canonical `main` runs. 
 
 ### APS CI
 
-The APS repository owns its own `azure-pipelines.yml` and `build/verify.ps1`, but targets this same Windows agent. It builds APS on any branch, runs planning/UI tests and performs a self-contained Windows desktop publish smoke test.
+The APS repository owns its own `azure-pipelines.yml` and `build/verify.ps1`, but targets this same Windows agent. It builds APS on any branch, runs its solution-registered test projects and performs a self-contained Windows desktop publish smoke test.
 
 ### Windows Build Lab
 

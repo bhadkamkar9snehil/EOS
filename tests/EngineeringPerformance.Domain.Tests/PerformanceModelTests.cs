@@ -16,6 +16,18 @@ public sealed class NameAndScoringTests
         Assert.True(PersonName.Matches("Dhruv  Varachhiya", "dhruv varachhiya"));
 
     [Fact]
+    public void AnalysisExclusionNormalizesItsPrimaryKey()
+    {
+        var exclusion = new AnalysisExclusion("  Jane   DOE  ");
+
+        Assert.Equal("Jane DOE", exclusion.EmployeeName);
+    }
+
+    [Fact]
+    public void AnalysisExclusionRejectsMissingNames() =>
+        Assert.Throws<ArgumentException>(() => new AnalysisExclusion("   "));
+
+    [Fact]
     public void MissingUtilizationDataIsExcludedFromTheWeightingRatherThanScoredZero()
     {
         // Present on attendance only: no compliance hours, so no timesheet or approval source.

@@ -22,6 +22,9 @@ public sealed partial class ConfigurableApplicationDatabase(
         await inner.InitializeAsync(cancellationToken);
         if (!File.Exists(_settingsPath))
             await WriteSettingsAsync(OperationalScoringSettings.Default, cancellationToken);
+
+        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
+        await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
     }
 
     public async Task<OperationalScoringSettings> GetOperationalScoringSettingsAsync(CancellationToken cancellationToken = default)
@@ -83,12 +86,6 @@ public sealed partial class ConfigurableApplicationDatabase(
         }
         await context.SaveChangesAsync(cancellationToken);
         return rows.Count;
-    }
-
-    private async Task RecalculateAfterImportAsync(CancellationToken cancellationToken)
-    {
-        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
-        await RecalculateAllAsync(settings, cancellationToken);
     }
 
     public async Task<IReadOnlyList<MonthlyPerformanceItem>> GetMonthlyPerformanceAsync(int year, int month, CancellationToken cancellationToken = default)
@@ -239,17 +236,43 @@ public sealed partial class ConfigurableApplicationDatabase(
 
     public async Task ImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default)
     {
+        var incoming = workbookService.ReadPerformance(sourcePath, reportType, year, month);
+        var affectedMonths = incoming
+            .Select(x => (x.Year, x.Month))
+            .Distinct()
+            .DefaultIfEmpty((year, month))
+            .ToArray();
         await inner.ImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
-        await RecalculateAfterImportAsync(cancellationToken);
+
+        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
+        if (IsSnapshotReportType(reportType))
+        {
+            await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
+            return;
+        }
+
+        foreach (var affectedMonth in affectedMonths)
+        {
+            var names = incoming
+                .Where(x => x.Year == affectedMonth.Year && x.Month == affectedMonth.Month)
+                .Select(x => x.EmployeeName);
+            await ReconcileMonthAsync(
+                affectedMonth.Year,
+                affectedMonth.Month,
+                names,
+                settings,
+                cancellationToken);
+        }
     }
 
     public Task<ImportPreview> PreviewImportSourceAsync(ReportType reportType, int year, int month, string sourcePath, CancellationToken cancellationToken = default) =>
-        inner.PreviewImportSourceAsync(reportType, year, month, sourcePath, cancellationToken);
+        PreviewCanonicalImportAsync(reportType, year, month, sourcePath, cancellationToken);
 
     public async Task<int> ImportPackageAsync(int year, int month, string zipPath, CancellationToken cancellationToken = default)
     {
         var count = await inner.ImportPackageAsync(year, month, zipPath, cancellationToken);
-        await RecalculateAfterImportAsync(cancellationToken);
+        var settings = await GetOperationalScoringSettingsAsync(cancellationToken);
+        await ReconcileAllSourceMonthsAsync(settings, cancellationToken);
         return count;
     }
 

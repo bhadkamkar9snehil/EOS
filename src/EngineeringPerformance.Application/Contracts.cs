@@ -167,7 +167,9 @@ public sealed record ScoringPreset(string Name, OperationalScoringSettings Setti
 public sealed record ImportPreview(
     ReportType ReportType, int Year, int Month, int TotalRows,
     int RowsAdded, int RowsUpdated, int RowsUnchanged,
-    IReadOnlyList<string> SampleAdded, IReadOnlyList<string> SampleUpdated);
+    IReadOnlyList<string> SampleAdded, IReadOnlyList<string> SampleUpdated,
+    int RowsRemoved = 0, IReadOnlyList<string>? SampleRemoved = null,
+    string? Warning = null);
 
 public sealed record EmployeeListItem(
     int Id, string EmployeeCode, string Name, int SeniorityLevel, bool IsExcluded,

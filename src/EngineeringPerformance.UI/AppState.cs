@@ -116,9 +116,14 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
 
             Snapshot = await dashboardTask;
             Employees = await employeesTask;
-            Performance = await performanceTask;
+            // Canonical identity is owned by the database/import boundary. AppState only normalizes
+            // presentation whitespace; it must not infer source recency from metric magnitude.
+            Performance = (await performanceTask)
+                .Select(NormalizePerformanceName)
+                .ToArray();
             History = (await historyTask)
                 .Where(x => IsFiscalMonth(new DateTime(x.Year, x.Month, 1)))
+                .Select(NormalizePerformanceName)
                 .ToArray();
             ExcludedNames = await exclusionsTask;
             PeerReviews = await reviewsTask;
@@ -246,6 +251,14 @@ public sealed class AppState(IApplicationDatabase database, ILogger<AppState>? l
             IsError = true;
         }
         finally { Busy = false; Changed?.Invoke(); }
+    }
+
+    private static MonthlyPerformanceItem NormalizePerformanceName(MonthlyPerformanceItem item)
+    {
+        var normalized = PersonName.Normalize(item.EmployeeName);
+        return string.Equals(normalized, item.EmployeeName, StringComparison.Ordinal)
+            ? item
+            : item with { EmployeeName = normalized };
     }
 
     private static DateTime DefaultReportingMonth()

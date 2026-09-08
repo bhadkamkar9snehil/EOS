@@ -123,7 +123,10 @@ public sealed class AnalysisExclusion
     private AnalysisExclusion() { }
     public AnalysisExclusion(string employeeName)
     {
-        EmployeeName = string.IsNullOrWhiteSpace(employeeName) ? throw new ArgumentException("A value is required.", nameof(employeeName)) : employeeName.Trim();
+        var normalized = PersonName.Normalize(employeeName);
+        EmployeeName = normalized.Length == 0
+            ? throw new ArgumentException("A value is required.", nameof(employeeName))
+            : normalized;
         CreatedUtc = DateTime.UtcNow;
     }
     public string EmployeeName { get; private set; } = string.Empty;

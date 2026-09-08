@@ -72,7 +72,7 @@
                     <div class="group grid grid-cols-[1fr_10rem_6rem] items-center gap-2 px-3 py-2 text-sm transition-colors duration-100 ease-press hover:bg-surface-inset">
                         <span class="truncate font-mono text-2xs text-ink" title="@backup.FileName">@backup.FileName</span>
                         <span class="tabular-nums text-ink-soft">@backup.CreatedUtc.ToLocalTime().ToString("g")</span>
-                        <span class="tabular-nums text-ink-soft">@FormatSize(backup.SizeBytes)</span>
+                        <span class="tabular-nums text-ink-soft">@FileSizeFormat.Format(backup.SizeBytes)</span>
                     </div>
                 }
             </div>
@@ -93,7 +93,7 @@
         {
             var result = await Backups.ExportBackupAsync();
             await RefreshListAsync();
-            State.ShowMessage($"Backup created: {Path.GetFileName(result.FilePath)} ({FormatSize(result.SizeBytes)}).");
+            State.ShowMessage($"Backup created: {Path.GetFileName(result.FilePath)} ({FileSizeFormat.Format(result.SizeBytes)}).");
         });
     }
 
@@ -104,7 +104,7 @@
         await State.RunAsync(async () =>
         {
             var result = await Backups.ExportBackupAsync(folder);
-            State.ShowMessage($"Backup created: {result.FilePath} ({FormatSize(result.SizeBytes)}).");
+            State.ShowMessage($"Backup created: {result.FilePath} ({FileSizeFormat.Format(result.SizeBytes)}).");
         });
     }
 
@@ -121,12 +121,5 @@
             await RefreshListAsync();
             State.ShowMessage($"Restore complete. Previous database saved to {result.SafetyBackupPath}. Please restart EOS now for the restored data to take effect.");
         });
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
-        return $"{bytes / (1024.0 * 1024.0):0.#} MB";
     }
 }
