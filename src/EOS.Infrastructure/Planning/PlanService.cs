@@ -220,93 +220,22 @@ public sealed class PlanService(EosDbContext db)
     /// </summary>
     public async Task<PlanView> RecomputeAsync(int projectId, DateOnly? statusDate = null, CancellationToken ct = default)
     {
-        var project = await db.Projects.SingleOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new PlanException($"Project {projectId} not found.");
-        var tasks = await db.Tasks.Where(t => t.ProjectId == projectId).OrderBy(t => t.SortOrder).ToListAsync(ct);
-        var links = await db.TaskLinks.Where(l => l.ProjectId == projectId).ToListAsync(ct);
-        var taskIds = tasks.Select(t => t.Id).ToHashSet();
-        var assignments = await db.TaskAssignments.Where(a => taskIds.Contains(a.TaskId)).ToListAsync(ct);
-        var warnings = new List<string>();
         var today = statusDate ?? DateOnly.FromDateTime(DateTime.Today);
-
-        var resolver = await new SettingsStore(db).LoadResolverAsync(ct);
-        var chain = SettingsResolver.Chain(projectId: projectId.ToString());
-        var estimatedDrives = resolver.Get<bool>(SettingKeys.EstimatedWorkDrivesSchedule, chain, today);
-        var defaultDuration = resolver.Get<int>(SettingKeys.DefaultTaskDurationDays, chain, today);
-        var unassignedCrew = resolver.Get<int>(SettingKeys.UnassignedCrewSize, chain, today);
-        var pickup = resolver.Get<string>(SettingKeys.LostAllEngineersRule, chain, today) == "none" ? PickupRule.None : PickupRule.AfterOwnTasks;
-        var cal = await ConfigurationService.LoadCalendarAsync(db, project.CalendarId, ct);
-
-        var hasChildren = tasks.Where(t => t.ParentId is not null).Select(t => t.ParentId!.Value).ToHashSet();
-        var leaves = tasks.Where(t => !hasChildren.Contains(t.Id)).ToList();
-        var leafIds = leaves.Select(t => t.Id).ToHashSet();
-
-        var scheduleTasks = new List<ScheduleTask>();
-        var unassigned = 0;
-        foreach (var t in leaves)
-        {
-            var crew = assignments.Where(a => a.TaskId == t.Id && a.PersonId is not null)
-                .Select(a => new CrewMember(a.PersonId!.Value.ToString(), a.Units, 1m, a.FromDate, a.ToDate)).ToList();
-            if (assignments.Any(a => a.TaskId == t.Id && a.PersonId is null))
-                warnings.Add($"Task '{t.Name}' has a placeholder skill need but no named engineer.");
-
-            var remainingFactor = t.PercentComplete is > 0 and < 1 ? 1m - t.PercentComplete : 1m;
-            var work = t.Kind == TaskKinds.Milestone ? 0m : t.WorkHours * remainingFactor;
-            int? fixedDays = t.Kind == TaskKinds.Milestone ? null : t.FixedDurationDays;
-            if (fixedDays is not null && t.WorkIsEstimated && estimatedDrives) fixedDays = null;
-            if (fixedDays is not null && t.PercentComplete is > 0 and < 1) fixedDays = Math.Max(1, (int)Math.Ceiling(fixedDays.Value * (double)remainingFactor));
-
-            var snet = t.StartNoEarlierThan;
-            if (t.PercentComplete is > 0 and < 1 && (snet is null || snet < today)) snet = today;
-
-            if (t.PercentComplete >= 1m && t.Kind == TaskKinds.Task)
-            {
-                // Finished work keeps its real dates as fixed facts.
-                var s = t.ActualStart ?? t.PlannedStart ?? t.StartNoEarlierThan;
-                var f = t.ActualFinish ?? t.PlannedFinish ?? s;
-                if (s is { } sd && f is { } fd && fd >= sd)
-                {
-                    fixedDays = Math.Max(1, cal.WorkingDaysBetween(cal.OnOrAfter(sd), cal.OnOrBefore(fd)) + 1);
-                    snet = sd; work = 0m;
-                }
-                else { fixedDays = 1; work = 0m; }
-            }
-            else if (t.Kind == TaskKinds.Task && work == 0m && fixedDays is null)
-            {
-                fixedDays = defaultDuration;
-                warnings.Add($"Task '{t.Name}' has no work or duration; assumed {defaultDuration} day(s).");
-            }
-
-            if (crew.Count == 0 && work > 0m && fixedDays is null)
-            {
-                unassigned++;
-                crew = Enumerable.Range(1, Math.Max(1, unassignedCrew)).Select(i => new CrewMember($"unassigned-{i}")).ToList();
-            }
-
-            var deps = links.Where(l => l.SuccessorId == t.Id && leafIds.Contains(l.PredecessorId))
-                .Select(l => new TaskDependency(l.PredecessorId.ToString(), (LinkType)l.Type, l.LagDays)).ToList();
-            scheduleTasks.Add(new ScheduleTask(t.Id.ToString(), t.Name, work, [], crew)
-            {
-                Dependencies = deps, FixedDurationDays = fixedDays, StartNoEarlierThan = snet,
-            });
-        }
-        if (unassigned > 0) warnings.Add($"{unassigned} task(s) have no assigned engineer; a default crew of {unassignedCrew} is assumed.");
-
-        DateOnly projectStart = project.PoStart
-            ?? tasks.Where(t => t.PlannedStart is not null).Select(t => t.PlannedStart!.Value).DefaultIfEmpty(today).Min();
+        var built = await PlanScheduleBuilder.BuildAsync(db, projectId, today, ct);
 
         ScheduleResult schedule;
-        try { schedule = Scheduler.Compute(scheduleTasks, cal, projectStart, new SchedulingOptions(pickup)); }
+        try { schedule = Scheduler.Compute(built.Plan.Tasks, built.Calendar, built.Plan.Start, built.Options); }
         catch (SchedulingException ex) { throw new PlanException(ex.Message); }
 
-        foreach (var t in leaves)
+        foreach (var t in built.Leaves)
         {
             var r = schedule.Tasks[t.Id.ToString()];
             t.ScheduledStart = r.Start; t.ScheduledFinish = r.Finish;
             t.TotalFloatDays = r.TotalFloatDays; t.IsCritical = r.IsCritical;
         }
-        RollUp(tasks, hasChildren);
+        RollUp(built.Tasks, built.HasChildren);
         await db.SaveChangesAsync(ct);
-        return await BuildViewAsync(project, warnings, ct);
+        return await BuildViewAsync(built.Project, built.Warnings, ct);
     }
 
     public async Task<PlanView> GetPlanAsync(int projectId, CancellationToken ct = default)
