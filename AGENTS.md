@@ -5,7 +5,12 @@ Read `docs/SPEC.md` before changing behaviour. If code and spec disagree, fix on
 ## Rules
 1. **Nothing is hard-coded.** Hours, calendars, thresholds, scales, weights and vocabularies are settings
    (`EOS.Domain.Settings`). Code may carry **seed defaults** only, in `SettingDefaults`.
-2. **Skill ratings change only by explicit human action** (spec §9.5). No import, formula or event may write a rating.
+2. **Skill ratings change only by explicit human action** (spec §9.5). No formula, event, schedule or training/task
+   record may write a rating. Loading a human-made assessment workbook is itself an explicit user action: it is recorded
+   as an `Assessment` transaction with `import:` as its source, and a re-import never overwrites a rating a person has
+   since changed manually. All changes go through `SkillRatingService`.
+8. **No heredocs in shell commands** (they corrupt content on this machine). Write files with the Write tool; run scripts from files.
+9. **Importers never lock source files** (read into memory) and never read credential columns.
 3. **No secrets.** Importers read whitelisted columns only; never read/store/log username/password columns
    (spec §24.9). Do not paste credentials from source workbooks anywhere.
 4. **Scenarios never mutate plans.** Only an approved scenario promotes to a new baseline (spec §15.9).

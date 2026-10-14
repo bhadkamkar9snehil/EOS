@@ -9,6 +9,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EOS.Domain.Tests/EOS.Domain.Tests.csproj" />
+    <Project Path="tests/EOS.Infrastructure.Tests/EOS.Infrastructure.Tests.csproj" />
     <Project Path="tests/EOS.Scheduling.Tests/EOS.Scheduling.Tests.csproj" />
   </Folder>
 </Solution>
