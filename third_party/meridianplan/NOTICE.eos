@@ -1,0 +1,7 @@
+Vendored from https://github.com/wieslawsoltes/MeridianPlan
+Commit: 3704572d1d193f431eb652c660ce5e85486813e6 (6 Sep 2026)
+License: MIT (see LICENSE in this directory). Copyright (c) 2026 Meridian Plan contributors.
+Vendored on 14 Oct 2026 for EOS V2. This is a snapshot owned by this repository; upstream is not tracked.
+EOS: modifications are recorded in docs/ENGINE_PORT.md and in git history under third_party/meridianplan.
+This project is not Oracle or Primavera software (as stated upstream) and EOS does not use those names.
+Removed: .github/ (GitHub Actions workflow; not used - self-hosted GitLab CI only).

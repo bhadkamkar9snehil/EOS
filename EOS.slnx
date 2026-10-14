@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EOS.Application/EOS.Application.csproj" />
+    <Project Path="src/EOS.Cli/EOS.Cli.csproj" />
+    <Project Path="src/EOS.Domain/EOS.Domain.csproj" />
+    <Project Path="src/EOS.Infrastructure/EOS.Infrastructure.csproj" />
+    <Project Path="src/EOS.Scheduling/EOS.Scheduling.csproj" />
+    <Project Path="src/EOS.Server/EOS.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EOS.Domain.Tests/EOS.Domain.Tests.csproj" />
+    <Project Path="tests/EOS.Scheduling.Tests/EOS.Scheduling.Tests.csproj" />
+  </Folder>
+</Solution>

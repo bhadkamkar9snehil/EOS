@@ -1,0 +1,33 @@
+# EOS V2 CI. Self-hosted GitLab runners only (no GitHub Actions / third-party CI).
+# Linux jobs run on the VM shell runner (tag: shell; concurrent=1, so jobs queue).
+# Windows jobs (Playwright/WebView2 UI tests, desktop shell) will use the runner on 10.2.6.42 (tags: windows, powershell).
+
+stages:
+  - build
+  - test
+
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+build:
+  stage: build
+  tags: [shell]
+  script:
+    - dotnet --version
+    - dotnet build EOS.slnx -c Release --nologo
+
+test:
+  stage: test
+  tags: [shell]
+  needs: [build]
+  script:
+    - dotnet test EOS.slnx -c Release --nologo --logger "trx;LogFileName=results.trx" --results-directory TestResults
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths:
+      - TestResults/
+    reports:
+      junit: TestResults/*.trx

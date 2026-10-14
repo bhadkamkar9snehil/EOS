@@ -1,0 +1,31 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.log
+publish/
+artifacts/
+
+## Local data (never commit databases, backups or imports)
+*.db
+*.db-shm
+*.db-wal
+/data/
+/local/
+*.bak
+
+## Secrets
+.env
+*.env
+appsettings.Local.json
+secrets.json
+
+## Tooling
+node_modules/
+.idea/
+.vscode/
+*.swp
+.claude/settings.local.json
