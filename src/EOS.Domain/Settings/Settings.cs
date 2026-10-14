@@ -66,6 +66,7 @@ public static class SettingKeys
     // Scheduling and what-if
     public const string FactorProfile = "scheduling.factorProfile";   // "compat" | "realistic" | custom name
     public const string WholeDayRule = "scheduling.wholeDayRule";
+    public const string LostAllEngineersRule = "scheduling.lostAllEngineersRule";   // "afterOwnTasks" | "none" (spec §14.2 rule 4)
 
     // Project health
     public const string HealthAtRiskDelayRatio = "health.atRiskDelayRatio";
@@ -107,6 +108,7 @@ public static class SettingDefaults
 
         [SettingKeys.FactorProfile] = "\"compat\"",
         [SettingKeys.WholeDayRule] = "true",
+        [SettingKeys.LostAllEngineersRule] = "\"afterOwnTasks\"",
 
         [SettingKeys.HealthAtRiskDelayRatio] = "0.4",
         [SettingKeys.HealthModerateDelayRatio] = "0.15",
