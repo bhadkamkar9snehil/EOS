@@ -7,6 +7,8 @@
     <div class="page-head">
         <div><h1>Combined Gantt</h1><p class="muted">Every project with a plan, on one timeline. Bars are the scheduled plan; the grey line under a bar is the saved baseline.</p></div>
         <div class="actions">
+            <label style="margin:0">View
+                <select @bind="_view" @bind:after="Build"><option value="project">By project</option><option value="engineer">By engineer</option></select></label>
             <label style="margin:0">Detail
                 <select @bind="_detail" @bind:after="Build">
                     <option value="0">Projects only</option>
@@ -34,6 +36,7 @@
     private List<GanttChart.Row> _rows = [];
     private int _detail = 1, _dayWidth = 4;
     private bool _hideDone;
+    private string _view = "project";
 
     protected override async Task LoadAsync()
     {
@@ -46,9 +49,25 @@
         Build();
     }
 
+    /// <summary>One lane per engineer: a summary bar over everything they are assigned to, then each task tagged with its project.</summary>
+    private void BuildByEngineer()
+    {
+        var items = (_plans ?? []).SelectMany(p => p.Tasks.Where(t => !t.IsSummary && t.Start is not null && !(_hideDone && t.PercentComplete >= 1m))
+            .SelectMany(t => t.Assignments.Where(a => a.PersonName is not null).Select(a => (Person: a.PersonName!, Plan: p, Task: t)))).ToList();
+        foreach (var g in items.GroupBy(x => x.Person).OrderBy(g => g.Key))
+        {
+            var start = g.Min(x => x.Task.Start); var finish = g.Max(x => x.Task.Finish);
+            _rows.Add(new GanttChart.Row(g.Key, 0, start, finish, 0, false, true, Tooltip: $"{g.Count()} assigned tasks"));
+            if (_detail == 0) continue;
+            foreach (var x in g.OrderBy(x => x.Task.Start))
+                _rows.Add(new GanttChart.Row($"{x.Plan.ProjectNo} · {x.Task.Name}", 1, x.Task.Start, x.Task.Finish, x.Task.PercentComplete, x.Task.IsCritical, false, false, x.Task.Wbs + " " + x.Task.Name, "/projects/" + x.Plan.ProjectId));
+        }
+    }
+
     private void Build()
     {
         _rows = [];
+        if (_view == "engineer") { BuildByEngineer(); return; }
         foreach (var p in (_plans ?? []).OrderBy(p => p.Start))
         {
             if (_hideDone && p.Progress >= 1m) continue;
