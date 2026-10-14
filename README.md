@@ -38,8 +38,14 @@ dotnet run --project src\EOS.Server
 dotnet run --project src\EOS.Cli -- version
 ```
 
+## What works today
+- Web UI (Blazor Server): Command Center, Projects (editable WBS, assignments, dependencies, baseline), Combined Gantt, Capacity & Load, What-if workbench, Demand & Pipeline, People, Skills matrix (manual ratings only), Training, Infrastructure, Alerts, Reports (CSV/Excel), Imports (preview then commit), Settings (settings, calendars, vocabularies, custom fields, aliases, tokens, backups, audit).
+- REST API at `/api/v1` (catalogue at `/openapi/v1.json`), MCP at `/mcp`, CLI `eos` (local mode: `eos help`).
+- Importers for the agility workbook, training tracker, ERP master, task tracker and VM inventory; no credentials are ever read.
+- Not yet: CLI as API client, V1 data migration, MS Project import, MeridianPlan UI embedding, report extras.
+
 ## Hosting
-Target: Ubuntu VM `ubuntusb`, systemd unit `eos`, port 8095, LAN + Tailscale only (spec §25).
+Target: Ubuntu VM `ubuntusb`, systemd unit `eos`, port 8095, LAN + Tailscale only (spec §25). Files and steps: `deploy/README.md`.
 
 ## Versioning
 `main` = latest. One commit per iteration (`area: change`). Annotated tags `vX.Y.Z`.
