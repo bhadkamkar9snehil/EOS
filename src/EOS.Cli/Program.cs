@@ -254,6 +254,123 @@ try
             return 0;
         }
 
+        case ("token", "create") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            Console.WriteLine(await new EOS.Infrastructure.Security.TokenService(db).CreateAsync(argv[2], actor));
+            Console.Error.WriteLine("Store this token now; it is shown once.");
+            return 0;
+        }
+
+        case ("token", "list"):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            foreach (var t in await new EOS.Infrastructure.Security.TokenService(db).ListAsync())
+                Console.WriteLine($"{t.Id,-4}{t.Name,-24}{t.CreatedUtc:yyyy-MM-dd}  last used {(t.LastUsedUtc?.ToString("yyyy-MM-dd HH:mm") ?? "never"),-18}{(t.Revoked ? " REVOKED" : "")}");
+            return 0;
+        }
+
+        case ("token", "revoke") when argv.Count >= 3 && int.TryParse(argv[2], out var tokenId):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            await new EOS.Infrastructure.Security.TokenService(db).RevokeAsync(tokenId, actor);
+            Console.WriteLine($"Token {tokenId} revoked.");
+            return 0;
+        }
+
+        case ("dashboard", _):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var cc = await new EOS.Infrastructure.Insights.DashboardService(db).GetAsync(DateOnly.FromDateTime(DateTime.Today));
+            if (json) { Console.WriteLine(JsonSerializer.Serialize(cc, new JsonSerializerOptions { WriteIndented = true })); return 0; }
+            var k = cc.Kpis;
+            Console.WriteLine($"Projects {k.ActiveProjects} active, {k.AtRiskProjects} at risk, {k.DelayedTasks} delayed tasks");
+            Console.WriteLine($"People   {k.OverAllocatedEngineers} over-allocated, {k.FreePlannedHoursNext4Weeks:N0} free planned h next 4 weeks, {k.OpenGaps} open gaps, {k.OpenDoubts} open doubts");
+            Console.WriteLine($"Infra    {k.VmsRunning} VMs running / {k.VmsRunning + k.VmsOff}, {k.HostsLowOnDisk} hosts low on disk");
+            foreach (var h in cc.Projects) Console.WriteLine($"  {h.ProjectNo,-12}{h.Health,-14}late {h.DelayedTasks}/{h.OpenTasks}  progress {h.ProgressActual * 100:0}%");
+            return 0;
+        }
+
+        case ("alert", "list"):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var alerts = await new EOS.Infrastructure.Insights.AlertService(db).EvaluateAsync(DateOnly.FromDateTime(DateTime.Today));
+            if (json) { Console.WriteLine(JsonSerializer.Serialize(alerts, new JsonSerializerOptions { WriteIndented = true })); return 0; }
+            foreach (var a in alerts) Console.WriteLine($"{a.Rule,-5}{a.Severity,-9}{Trim(a.Subject, 30),-32}{a.Message}");
+            return 0;
+        }
+
+        case ("capacity", _):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var weeks = int.TryParse(TakeOption("--weeks"), out var wk) ? wk : 8;
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var rows = await new EOS.Infrastructure.Capacity.CapacityService(db).GetWeeklyLoadAsync(today, today.AddDays(weeks * 7));
+            if (json) { Console.WriteLine(JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true })); return 0; }
+            var starts = rows.Select(r => r.WeekStart).Distinct().OrderBy(d => d).ToList();
+            Console.WriteLine($"{"",-24}" + string.Join(" ", starts.Select(s => s.ToString("dd/MM").PadLeft(6))));
+            foreach (var g in rows.GroupBy(r => r.PersonName).OrderBy(g => g.Key))
+                Console.WriteLine($"{Trim(g.Key, 22),-24}" + string.Join(" ", starts.Select(s => (g.FirstOrDefault(r => r.WeekStart == s)?.AllocatedHours ?? 0).ToString("0").PadLeft(6))));
+            return 0;
+        }
+
+        case ("report", "list"):
+            foreach (var r in EOS.Infrastructure.Reports.ReportService.Catalogue) Console.WriteLine($"{r.Id,-24}{r.Code,-7}{r.Name}");
+            return 0;
+
+        case ("report", "run") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var svc = new EOS.Infrastructure.Reports.ReportService(db);
+            var table = await svc.RunAsync(argv[2], new EOS.Infrastructure.Reports.ReportParameters(DateOnly.FromDateTime(DateTime.Today)));
+            var xlsx = TakeOption("--xlsx"); var csv = TakeOption("--csv");
+            if (xlsx is not null) { File.WriteAllBytes(xlsx, EOS.Infrastructure.Reports.ReportService.ToXlsx(table)); Console.WriteLine($"Wrote {xlsx} ({table.Rows.Count} rows)"); }
+            else if (csv is not null) { File.WriteAllText(csv, EOS.Infrastructure.Reports.ReportService.ToCsv(table)); Console.WriteLine($"Wrote {csv} ({table.Rows.Count} rows)"); }
+            else Console.WriteLine(EOS.Infrastructure.Reports.ReportService.ToCsv(table));
+            return 0;
+        }
+
+        case ("scenario", "analyse") when argv.Count >= 3:
+        {
+            // eos scenario analyse <personCode>:<fromProjectNo>:<toProjectNo>:<yyyy-MM-dd>[:percent] [...] [--name text]
+            using var db = EosDatabase.Open(dbPath);
+            var moves = new List<EOS.Infrastructure.Capacity.MoveInput>();
+            foreach (var spec in argv.Skip(2))
+            {
+                var p = spec.Split(':');
+                if (p.Length < 4) throw new ArgumentException($"Bad move '{spec}'. Use personCode:fromProjectNo:toProjectNo:yyyy-MM-dd[:percent].");
+                var person = await db.People.SingleOrDefaultAsync(x => x.Code == p[0]) ?? throw new ArgumentException($"No person with code {p[0]}.");
+                var from = await db.Projects.SingleOrDefaultAsync(x => x.ProjectNo == p[1]) ?? throw new ArgumentException($"No project {p[1]}.");
+                var to = await db.Projects.SingleOrDefaultAsync(x => x.ProjectNo == p[2]) ?? throw new ArgumentException($"No project {p[2]}.");
+                moves.Add(new(person.Id, from.Id, to.Id, DateOnly.Parse(p[3]), p.Length > 4 ? decimal.Parse(p[4]) / 100m : 1m));
+            }
+            var s = await new EOS.Infrastructure.Capacity.ScenarioService(db).AnalyseAsync(moves, TakeOption("--name") ?? "CLI what-if", actor);
+            if (json) { Console.WriteLine(JsonSerializer.Serialize(s, new JsonSerializerOptions { WriteIndented = true })); return 0; }
+            Console.WriteLine($"Scenario #{s.Id} {s.Name} [{s.Status}]");
+            foreach (var v in s.Verdict) Console.WriteLine("  " + v);
+            foreach (var p in s.Projects.Where(p => p.SlipDays != 0)) Console.WriteLine($"  {p.ProjectNo}: {p.BaselineFinish:dd MMM yyyy} -> {p.ScenarioFinish:dd MMM yyyy} ({p.SlipDays:+0;-0})");
+            return 0;
+        }
+
+        case ("scenario", "approve" or "reject" or "apply") when argv.Count >= 3 && int.TryParse(argv[2], out var scenarioId):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var svc = new EOS.Infrastructure.Capacity.ScenarioService(db);
+            var s = argv[1] == "apply" ? await svc.ApplyAsync(scenarioId, actor) : await svc.DecideAsync(scenarioId, argv[1] == "approve", actor, reason);
+            Console.WriteLine($"Scenario #{s.Id} is now {s.Status}.");
+            return 0;
+        }
+
+        case ("backup", "create"):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var dir = TakeOption("--dir") ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(dbPath))!, "backups");
+            var file = await new EOS.Infrastructure.Operations.BackupService(db).CreateAsync(dir, actor);
+            EOS.Infrastructure.Operations.BackupService.ApplyRetention(dir);
+            Console.WriteLine($"{file.Path} ({file.SizeBytes / 1024 / 1024.0:0.0} MB)");
+            return 0;
+        }
+
         default:
             Console.Error.WriteLine($"Unknown command: {string.Join(' ', argv)}");
             PrintHelp();
@@ -288,4 +405,12 @@ void PrintHelp()
     Console.WriteLine("  eos alias resolve <alias> <personCode> [--source tracker]   map initials to a person");
     Console.WriteLine("  eos training summary                 Know / don't know / need-to-discuss per person");
     Console.WriteLine("  eos alias list");
+    Console.WriteLine("  eos token create <name>|list|revoke <id>       access tokens (the name is the actor on every change)");
+    Console.WriteLine("  eos dashboard [--json]                         the Command Center in text");
+    Console.WriteLine("  eos alert list [--json]");
+    Console.WriteLine("  eos capacity [--weeks 8] [--json]              weekly allocated hours per engineer");
+    Console.WriteLine("  eos report list | run <id> [--csv f | --xlsx f]");
+    Console.WriteLine("  eos scenario analyse <personCode:fromNo:toNo:yyyy-MM-dd[:pct]>... [--name t]");
+    Console.WriteLine("  eos scenario approve|reject|apply <id> [--reason t]");
+    Console.WriteLine("  eos backup create [--dir path]");
 }

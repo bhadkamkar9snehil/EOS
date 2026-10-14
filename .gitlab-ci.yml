@@ -5,6 +5,7 @@
 stages:
   - build
   - test
+  - deploy
 
 variables:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
@@ -31,3 +32,15 @@ test:
       - TestResults/
     reports:
       junit: TestResults/*.trx
+
+deploy:
+  stage: deploy
+  tags: [shell]
+  needs: [test]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  script:
+    - sh deploy/deploy.sh
+  environment:
+    name: production

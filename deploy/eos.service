@@ -1,0 +1,28 @@
+[Unit]
+Description=EOS V2 (engineering operations server)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eos
+Group=eos
+WorkingDirectory=/opt/eos/app
+ExecStart=/usr/bin/dotnet /opt/eos/app/EOS.Server.dll
+Restart=on-failure
+RestartSec=5
+# Reachable from the office LAN and Tailscale only (see deploy/README.md for the firewall rule).
+Environment=ASPNETCORE_URLS=http://0.0.0.0:8095
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+Environment=EOS__DataDirectory=/var/lib/eos
+Environment=EOS__BackupDirectory=/var/lib/eos/backups
+# Keeps the journal readable: SQL statements are logged at Information by default.
+Environment=Logging__LogLevel__Microsoft.EntityFrameworkCore=Warning
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/eos
+
+[Install]
+WantedBy=multi-user.target

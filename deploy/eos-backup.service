@@ -1,0 +1,9 @@
+[Unit]
+Description=EOS V2 nightly database backup
+
+[Service]
+Type=oneshot
+User=eos
+Group=eos
+Environment=EOS_DB=/var/lib/eos/eos.db
+ExecStart=/usr/bin/dotnet /opt/eos/cli/EOS.Cli.dll --actor backup-timer backup create --dir /var/lib/eos/backups

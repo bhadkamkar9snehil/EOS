@@ -1,0 +1,3 @@
+#!/bin/sh
+# `eos` on the server: runs the CLI against the production database.
+EOS_DB="${EOS_DB:-/var/lib/eos/eos.db}" exec dotnet /opt/eos/cli/EOS.Cli.dll "$@"

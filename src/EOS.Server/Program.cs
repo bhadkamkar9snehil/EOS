@@ -81,6 +81,7 @@ PlanningApi.Map(api);
 PeopleApi.Map(api);
 CapacityApi.Map(api);
 OpsApi.Map(api);
+EOS.Server.Mcp.McpEndpoint.Map(app);
 app.MapGet("/openapi/v1.json", (EndpointDataSource endpoints) => Results.Json(ApiCatalog.Build(endpoints, version))).AllowAnonymous();
 
 // MapStaticAssets serves wwwroot and the framework scripts (blazor.web.js) in every environment, not only Development.

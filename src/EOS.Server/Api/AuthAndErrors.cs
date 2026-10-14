@@ -61,7 +61,7 @@ public sealed class TokenAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        if (Request.Path.StartsWithSegments("/api")) { Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; }
+        if (Request.Path.StartsWithSegments("/api") || Request.Path.StartsWithSegments("/mcp")) { Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; }
         Response.Redirect("/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
         return Task.CompletedTask;
     }
