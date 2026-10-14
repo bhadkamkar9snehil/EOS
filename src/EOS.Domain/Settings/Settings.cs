@@ -86,6 +86,8 @@ public static class SettingKeys
     public const string HealthModerateDelayRatio = "health.moderateDelayRatio";
     public const string HealthAtRiskVarianceDays = "health.atRiskVarianceDays";
     public const string HealthModerateVarianceDays = "health.moderateVarianceDays";
+    public const string HealthAtRiskProgressGapPoints = "health.atRiskProgressGapPoints";
+    public const string HealthModerateProgressGapPoints = "health.moderateProgressGapPoints";
 
     // Infrastructure
     public const string HostDiskFreeWarnFraction = "infra.diskFreeWarnFraction";
@@ -135,6 +137,8 @@ public static class SettingDefaults
         [SettingKeys.AlertDoubtOpenDays] = "14",
         [SettingKeys.AlertBusFactorMax] = "3",
 
+        [SettingKeys.HealthAtRiskProgressGapPoints] = "25",
+        [SettingKeys.HealthModerateProgressGapPoints] = "10",
         [SettingKeys.HealthAtRiskDelayRatio] = "0.4",
         [SettingKeys.HealthModerateDelayRatio] = "0.15",
         [SettingKeys.HealthAtRiskVarianceDays] = "20",
