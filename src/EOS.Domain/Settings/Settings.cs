@@ -67,6 +67,19 @@ public static class SettingKeys
     public const string FactorProfile = "scheduling.factorProfile";   // "compat" | "realistic" | custom name
     public const string WholeDayRule = "scheduling.wholeDayRule";
     public const string LostAllEngineersRule = "scheduling.lostAllEngineersRule";   // "afterOwnTasks" | "none" (spec §14.2 rule 4)
+    public const string EstimatedWorkDrivesSchedule = "scheduling.estimatedWorkDrivesSchedule";   // imported tasks: dates (false) or derived work (true)
+    public const string DefaultTaskDurationDays = "scheduling.defaultTaskDurationDays";           // a task with no work and no duration
+    public const string UnassignedCrewSize = "scheduling.unassignedCrewSize";                     // people assumed on a task with no assignment
+
+    // Alerts (spec §22)
+    public const string AlertTrackerStaleDays = "alerts.trackerStaleDays";
+    public const string AlertDemandStartWarnDays = "alerts.demandStartWarnDays";
+    public const string AlertMaxConcurrentProjects = "alerts.maxConcurrentProjects";
+    public const string AlertIdleDays = "alerts.idleDays";
+    public const string AlertPendingApprovalDays = "alerts.pendingApprovalDays";
+    public const string AlertDoubtUnassignedDays = "alerts.doubtUnassignedDays";
+    public const string AlertDoubtOpenDays = "alerts.doubtOpenDays";
+    public const string AlertBusFactorMax = "alerts.busFactorMax";
 
     // Project health
     public const string HealthAtRiskDelayRatio = "health.atRiskDelayRatio";
@@ -109,6 +122,18 @@ public static class SettingDefaults
         [SettingKeys.FactorProfile] = "\"compat\"",
         [SettingKeys.WholeDayRule] = "true",
         [SettingKeys.LostAllEngineersRule] = "\"afterOwnTasks\"",
+        [SettingKeys.EstimatedWorkDrivesSchedule] = "false",
+        [SettingKeys.DefaultTaskDurationDays] = "1",
+        [SettingKeys.UnassignedCrewSize] = "1",
+
+        [SettingKeys.AlertTrackerStaleDays] = "7",
+        [SettingKeys.AlertDemandStartWarnDays] = "14",
+        [SettingKeys.AlertMaxConcurrentProjects] = "2",
+        [SettingKeys.AlertIdleDays] = "14",
+        [SettingKeys.AlertPendingApprovalDays] = "3",
+        [SettingKeys.AlertDoubtUnassignedDays] = "2",
+        [SettingKeys.AlertDoubtOpenDays] = "14",
+        [SettingKeys.AlertBusFactorMax] = "3",
 
         [SettingKeys.HealthAtRiskDelayRatio] = "0.4",
         [SettingKeys.HealthModerateDelayRatio] = "0.15",

@@ -1,5 +1,10 @@
 using EOS.Domain.Audit;
+using EOS.Domain.Capacity;
+using EOS.Domain.Configuration;
+using EOS.Domain.Hosting;
 using EOS.Domain.People;
+using EOS.Domain.Planning;
+using EOS.Domain.Projects;
 using EOS.Domain.Skills;
 using EOS.Domain.Training;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +25,7 @@ public sealed class SettingRow
     public string? Reason { get; set; }
 }
 
-public sealed class EosDbContext(DbContextOptions<EosDbContext> options) : DbContext(options)
+public sealed partial class EosDbContext(DbContextOptions<EosDbContext> options) : DbContext(options)
 {
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Person> People => Set<Person>();
@@ -34,8 +39,38 @@ public sealed class EosDbContext(DbContextOptions<EosDbContext> options) : DbCon
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<SettingRow> Settings => Set<SettingRow>();
 
+    public DbSet<VocabularyItem> Vocabulary => Set<VocabularyItem>();
+    public DbSet<WorkCalendarDef> Calendars => Set<WorkCalendarDef>();
+    public DbSet<CalendarException> CalendarExceptions => Set<CalendarException>();
+    public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
+    public DbSet<CustomFieldValue> CustomFieldValues => Set<CustomFieldValue>();
+
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Opportunity> Opportunities => Set<Opportunity>();
+    public DbSet<RiskIssue> RiskIssues => Set<RiskIssue>();
+    public DbSet<AmcTicket> AmcTickets => Set<AmcTicket>();
+
+    public DbSet<PlanTask> Tasks => Set<PlanTask>();
+    public DbSet<TaskLink> TaskLinks => Set<TaskLink>();
+    public DbSet<TaskAssignment> TaskAssignments => Set<TaskAssignment>();
+    public DbSet<Baseline> Baselines => Set<Baseline>();
+    public DbSet<BaselineTask> BaselineTasks => Set<BaselineTask>();
+
+    public DbSet<Leave> Leaves => Set<Leave>();
+    public DbSet<Demand> Demands => Set<Demand>();
+    public DbSet<Allocation> Allocations => Set<Allocation>();
+    public DbSet<Scenario> Scenarios => Set<Scenario>();
+    public DbSet<ResourceMovement> Movements => Set<ResourceMovement>();
+    public DbSet<ChangeGapEntry> ChangeGapLog => Set<ChangeGapEntry>();
+
+    public DbSet<Host> Hosts => Set<Host>();
+    public DbSet<HostDisk> HostDisks => Set<HostDisk>();
+    public DbSet<ProjectHost> ProjectHosts => Set<ProjectHost>();
+    public DbSet<HostedSystem> HostedSystems => Set<HostedSystem>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
+        OnModelCreatingDelivery(b);
         b.Entity<Team>(e =>
         {
             e.HasIndex(x => x.Name).IsUnique();

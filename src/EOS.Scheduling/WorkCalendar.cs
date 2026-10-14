@@ -10,14 +10,17 @@ public sealed class WorkCalendar
     private const int SearchLimitDays = 3660;
     private readonly bool[] _works = new bool[7];
     private readonly HashSet<DateOnly> _holidays;
+    private readonly HashSet<DateOnly> _workingOverrides;
 
-    public WorkCalendar(decimal hoursPerDay, IEnumerable<DayOfWeek> workDays, IEnumerable<DateOnly>? holidays = null)
+    public WorkCalendar(decimal hoursPerDay, IEnumerable<DayOfWeek> workDays, IEnumerable<DateOnly>? holidays = null,
+        IEnumerable<DateOnly>? workingOverrides = null)
     {
         if (hoursPerDay <= 0) throw new ArgumentOutOfRangeException(nameof(hoursPerDay), "Hours per day must be positive.");
         HoursPerDay = hoursPerDay;
         foreach (var d in workDays) _works[(int)d] = true;
         if (!_works.Any(x => x)) throw new ArgumentException("A calendar needs at least one working weekday.", nameof(workDays));
         _holidays = [.. holidays ?? []];
+        _workingOverrides = [.. workingOverrides ?? []];
     }
 
     public decimal HoursPerDay { get; }
@@ -28,7 +31,9 @@ public sealed class WorkCalendar
     public static WorkCalendar MondayToFriday(decimal hoursPerDay = 8m) => new(hoursPerDay,
         [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday]);
 
-    public bool IsWorkingDay(DateOnly date) => _works[(int)date.DayOfWeek] && !_holidays.Contains(date);
+    /// <summary>A holiday wins over a working override; an override makes a normally non-working day work.</summary>
+    public bool IsWorkingDay(DateOnly date) =>
+        !_holidays.Contains(date) && (_works[(int)date.DayOfWeek] || _workingOverrides.Contains(date));
 
     public DateOnly OnOrAfter(DateOnly date)
     {

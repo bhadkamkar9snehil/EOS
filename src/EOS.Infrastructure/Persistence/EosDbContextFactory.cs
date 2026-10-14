@@ -23,6 +23,7 @@ public static class EosDatabase
         var db = new EosDbContext(options);
         db.Database.Migrate();
         db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+        EOS.Infrastructure.Configuration.ConfigurationService.SeedDefaults(db);
         return db;
     }
 
@@ -33,6 +34,7 @@ public static class EosDatabase
         connection.Open();
         var db = new EosDbContext(new DbContextOptionsBuilder<EosDbContext>().UseSqlite(connection).Options);
         db.Database.EnsureCreated();
+        EOS.Infrastructure.Configuration.ConfigurationService.SeedDefaults(db);
         return (db, connection);
     }
 }
