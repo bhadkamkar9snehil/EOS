@@ -1,0 +1,72 @@
+@page "/infrastructure"
+@inherits EosPage
+@using EOS.Infrastructure.Hosting
+@using EOS.Infrastructure.Projects
+<PageTitle>Infrastructure · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div><h1>Infrastructure</h1><p class="muted">Servers and virtual machines, who they serve, disk headroom and backups. No credentials are stored anywhere in EOS.</p></div>
+        <div class="actions">
+            <select @bind="_filter"><option value="">All</option><option value="server">Servers</option><option value="vm">VMs</option><option value="low">Low disk</option><option value="reclaim">Reclaim candidates</option><option value="nobackup">Needs backup</option></select>
+            <input type="search" placeholder="Search…" @bind="_search" @bind:event="oninput" style="width:200px" />
+        </div>
+    </div>
+
+    @if (Loading && _hosts is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_hosts!.Count == 0) { <div class="empty">No hosts. Import the server and VM inventory under Imports.</div> }
+    else
+    {
+        <div class="plate"><div class="tablewrap" style="max-height:72vh;overflow:auto"><table class="grid">
+            <thead><tr><th>Name</th><th>IP</th><th>Kind</th><th>State</th><th>On</th><th>Purpose</th><th class="num">RAM</th><th>Disks (free / total GB)</th><th>Projects</th><th>Backup</th></tr></thead>
+            <tbody>
+            @foreach (var h in Rows)
+            {
+                <tr class="@(h.State == "Off" ? "muted" : "")">
+                    <td><b>@h.Name</b></td><td>@h.Ip</td><td>@h.Kind</td>
+                    <td>@if (h.State == "On" || h.State == "Running") { <Badge Kind="good">@h.State</Badge> } else { <Badge>@h.State</Badge> }</td>
+                    <td class="muted">@h.ParentIp</td><td>@h.Purpose</td><td class="num">@h.RamGb</td>
+                    <td>@foreach (var d in h.Disks) { <span class="heat @(d.FreeFraction < 0.15m ? "high" : "none")" title="@d.CapturedOn">@d.Drive @d.FreeGb.ToString("0")/@d.TotalGb.ToString("0")</span> <text> </text> }</td>
+                    <td>@foreach (var p in h.Projects) { <a href="/projects/@p.ProjectId" title="@p.Role">@p.ProjectNo</a> <text> </text> }</td>
+                    <td>@(h.NeedBackup == true ? (h.LastBackupOn?.ToString("dd MMM yy") ?? "none yet") : "")</td>
+                </tr>
+            }
+            </tbody></table></div>
+        <p class="muted">@Rows.Count() of @_hosts.Count hosts</p></div>
+
+        <div class="plate" style="margin-top:16px"><h2>Link a host to a project</h2>
+            <div class="form-row">
+                <div class="field"><label>Host</label><select @bind="_linkHost"><option value="0">–</option>@foreach (var h in _hosts) { <option value="@h.Id">@h.Name @h.Ip</option> }</select></div>
+                <div class="field"><label>Project</label><select @bind="_linkProject"><option value="0">–</option>@foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo</option> }</select></div>
+                <div class="field"><label>Role</label><input @bind="_role" style="width:120px" /></div>
+                <button class="secondary" @onclick="Link">Link</button>
+            </div></div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<HostRow>? _hosts; private IReadOnlyList<HostRow> _reclaim = [];
+    private IReadOnlyList<ProjectSummary> _projects = [];
+    private string _filter = "", _search = "", _role = "Test"; private int _linkHost, _linkProject;
+
+    private IEnumerable<HostRow> Rows => (_hosts ?? []).Where(h =>
+        (_filter switch
+        {
+            "server" => h.Kind == "server", "vm" => h.Kind == "vm",
+            "low" => h.Disks.Any(d => d.FreeFraction < 0.15m),
+            "reclaim" => _reclaim.Any(r => r.Id == h.Id),
+            "nobackup" => h.NeedBackup == true && h.LastBackupOn is null,
+            _ => true,
+        }) && (_search.Length == 0 || h.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (h.Ip ?? "").Contains(_search) || (h.Purpose ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task LoadAsync()
+    {
+        _hosts = await Q(sp => sp.GetRequiredService<HostService>().ListAsync());
+        _reclaim = await Q(sp => sp.GetRequiredService<HostService>().ReclaimListAsync());
+        _projects = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true));
+    }
+
+    private Task Link() => _linkHost == 0 || _linkProject == 0 ? Task.CompletedTask
+        : Act((sp, a) => sp.GetRequiredService<HostService>().LinkAsync(_linkProject, _linkHost, _role, a), "Linked.");
+}

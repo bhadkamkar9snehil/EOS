@@ -1,0 +1,73 @@
+@page "/reports"
+@inherits EosPage
+@using EOS.Infrastructure.Projects
+@using EOS.Infrastructure.Reports
+<PageTitle>Reports · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head"><div><h1>Reports</h1><p class="muted">Run a report on screen, or download it as CSV or Excel.</p></div></div>
+
+    <div class="grid-2">
+        <div class="plate"><h2>Catalogue</h2>
+            <table class="grid"><tbody>
+            @foreach (var r in ReportService.Catalogue)
+            {
+                <tr class="clickable @(_def?.Id == r.Id ? "sel" : "")" @onclick="() => Pick(r)"><td class="muted">@r.Code</td><td><b>@r.Name</b><div class="muted">@r.Description</div></td></tr>
+            }
+            </tbody></table>
+        </div>
+        <div class="plate">
+            @if (_def is null) { <div class="empty">Pick a report.</div> }
+            else
+            {
+                <h2>@_def.Name</h2>
+                <div class="form-row">
+                    @if (_def.Parameters.Contains("project")) { <div class="field"><label>Project</label><select @bind="_project"><option value="0">All</option>@foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo</option> }</select></div> }
+                    @if (_def.Parameters.Contains("from")) { <div class="field"><label>From</label><input type="date" @bind="_from" /></div> }
+                    @if (_def.Parameters.Contains("to")) { <div class="field"><label>To</label><input type="date" @bind="_to" /></div> }
+                    @if (_def.Parameters.Contains("months")) { <div class="field"><label>Months</label><input type="number" @bind="_months" style="width:70px" /></div> }
+                    <button @onclick="Run">Run</button>
+                    <button class="secondary" disabled="@(_table is null)" @onclick="Csv">CSV</button>
+                    <button class="secondary" disabled="@(_table is null)" @onclick="Xlsx">Excel</button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_table is not null)
+    {
+        <div class="plate" style="margin-top:16px"><h2>@_table.Name <span class="muted" style="text-transform:none;letter-spacing:0">(@_table.Rows.Count rows)</span></h2>
+            <div class="tablewrap" style="max-height:70vh;overflow:auto"><table class="grid">
+                <thead><tr>@foreach (var c in _table.Columns) { <th>@c</th> }</tr></thead>
+                <tbody>@foreach (var row in _table.Rows.Take(500)) { <tr>@foreach (var v in row) { <td>@Fmt(v)</td> }</tr> }</tbody>
+            </table></div>
+            @if (_table.Rows.Count > 500) { <p class="muted">First 500 rows shown; download for the full set.</p> }
+        </div>
+    }
+</div>
+
+@code {
+    private ReportDefinition? _def; private ReportTable? _table;
+    private IReadOnlyList<ProjectSummary> _projects = [];
+    private int _project, _months = 3; private DateTime _from = DateTime.Today.AddMonths(-1), _to = DateTime.Today.AddMonths(3);
+
+    protected override async Task LoadAsync() => _projects = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true));
+
+    private void Pick(ReportDefinition r) { _def = r; _table = null; }
+    private ReportParameters Parameters() => new(AsOf, DateOnly.FromDateTime(_from), DateOnly.FromDateTime(_to), _project == 0 ? null : _project, null, _months);
+
+    private async Task Run()
+    {
+        var id = _def!.Id; var p = Parameters();
+        await Act(async (sp, _) => _table = await sp.GetRequiredService<ReportService>().RunAsync(id, p), reload: false);
+    }
+
+    private Task Csv() => Download(_table!.Id + ".csv", "text/csv", System.Text.Encoding.UTF8.GetBytes(ReportService.ToCsv(_table)));
+    private Task Xlsx() => Download(_table!.Id + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ReportService.ToXlsx(_table!));
+
+    private static string Fmt(object? v) => v switch
+    {
+        null => "", DateOnly d => d.ToString("dd MMM yyyy"), DateTime d => d.ToString("dd MMM yyyy HH:mm"),
+        decimal m => m.ToString("0.##"), double f => f.ToString("0.##"), _ => v.ToString() ?? "",
+    };
+}

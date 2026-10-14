@@ -1,0 +1,98 @@
+@page "/demand"
+@inherits EosPage
+@using EOS.Domain.Capacity
+@using EOS.Infrastructure.Persistence
+@using EOS.Infrastructure.Projects
+<PageTitle>Demand &amp; Pipeline · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head"><div><h1>Demand &amp; Pipeline</h1><p class="muted">Skill demand per project and expected opportunities against the engineers who could fill it.</p></div></div>
+
+    @if (Loading && _demand is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="plate"><h2>Add demand</h2>
+            <div class="form-row">
+                <div class="field"><label>Project</label><select @bind="_project"><option value="0">–</option>@foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo</option> }</select></div>
+                <div class="field"><label>Skill</label><select @bind="_skill"><option value="0">–</option>@foreach (var s in _skills) { <option value="@s.Id">@s.Name</option> }</select></div>
+                <div class="field"><label>Min level</label><input type="number" @bind="_min" style="width:70px" /></div>
+                <div class="field"><label>Hours / week</label><input type="number" @bind="_hours" style="width:90px" /></div>
+                <div class="field"><label>From</label><input type="date" @bind="_start" /></div>
+                <div class="field"><label>To</label><input type="date" @bind="_end" /></div>
+                <button @onclick="Add">Add</button>
+            </div></div>
+
+        <div class="plate"><h2>Demand lines</h2>
+            @if (_demand!.Count == 0) { <div class="empty">No demand recorded.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>For</th><th>Skill</th><th class="num">Min</th><th class="num">h/wk</th><th>Period</th><th>Status</th><th class="num">Eligible</th><th>Best candidate</th><th></th></tr></thead><tbody>
+                @foreach (var d in _demand)
+                {
+                    <tr class="clickable" @onclick="() => Candidates(d.Id)"><td>@(d.ProjectNo ?? "pipeline")</td><td>@d.SkillName</td><td class="num">@d.MinLevel</td><td class="num">@d.HoursPerWeek.ToString("0.#")</td>
+                        <td>@d.Start.ToString("dd MMM yy") – @d.End.ToString("dd MMM yy")</td><td><Badge Kind="@(d.Status == "Filled" ? "good" : d.Status.StartsWith("Gap") ? "bad" : "warn")">@d.Status</Badge></td>
+                        <td class="num">@d.EligibleCount</td><td>@d.BestPerson</td><td><button class="icon" @onclick:stopPropagation @onclick="() => Remove(d.Id)">✕</button></td></tr>
+                }
+                </tbody></table>
+            }
+        </div>
+
+        @if (_cands is not null)
+        {
+            <div class="plate"><h2>Ranked candidates</h2>
+                <table class="grid"><thead><tr><th>Engineer</th><th class="num">Rating</th><th class="num">Free h/wk</th><th class="num">Score</th><th>Notes</th></tr></thead><tbody>
+                @foreach (var c in _cands) { <tr><td><a href="/people/@c.PersonId">@c.Name</a></td><td class="num">@c.Rating</td><td class="num">@c.FreePlannedHoursPerWeek.ToString("0")</td><td class="num">@c.Score.ToString("0.#")</td><td class="muted">@string.Join("; ", c.Reasons)</td></tr> }
+                </tbody></table></div>
+        }
+
+        <div class="grid-2">
+            <div class="plate"><h2>Pipeline</h2>
+                @if (_pipeline.Count == 0) { <div class="empty">No opportunities.</div> }
+                else
+                {
+                    <table class="grid"><thead><tr><th>Opportunity</th><th>Stage</th><th class="num">Win %</th><th class="num">Weighted h</th><th>Booking</th></tr></thead><tbody>
+                    @foreach (var o in _pipeline) { <tr><td><b>@o.Code</b> @o.Name</td><td>@o.Stage</td><td class="num">@((o.WinProbability * 100).ToString("0"))</td><td class="num">@o.WeightedHours.ToString("0")</td><td>@o.LikelyBookingMonth?.ToString("MMM yy")</td></tr> }
+                    </tbody></table>
+                }
+            </div>
+            <div class="plate"><h2>Supply vs demand · 6 months</h2>
+                @{ var skillsWithDemand = _sd.Where(r => r.ProjectDemandHours + r.PipelineHours > 0).Select(r => r.SkillId).ToHashSet(); }
+                @if (skillsWithDemand.Count == 0) { <div class="empty">No skill demand yet.</div> }
+                else
+                {
+                    <table class="grid"><thead><tr><th>Skill</th>@foreach (var m in _sd.Select(r => r.Month).Distinct().OrderBy(x => x)) { <th class="num">@m.ToString("MMM")</th> }</tr></thead><tbody>
+                    @foreach (var s in _sd.Where(r => skillsWithDemand.Contains(r.SkillId)).GroupBy(r => r.SkillName))
+                    { <tr><td>@s.Key</td>@foreach (var r in s.OrderBy(x => x.Month)) { <td class="num"><span class="@(r.GapHours > 0 ? "slip-pos" : "slip-neg")">@r.GapHours.ToString("+0;-0;0")</span></td> }</tr> }
+                    </tbody></table>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<DemandView>? _demand; private IReadOnlyList<Candidate>? _cands;
+    private IReadOnlyList<OpportunityView> _pipeline = []; private IReadOnlyList<SupplyDemandRow> _sd = [];
+    private IReadOnlyList<ProjectSummary> _projects = []; private List<(int Id, string Name)> _skills = [];
+    private int _project, _skill, _min = 3; private decimal _hours = 20; private DateTime _start = DateTime.Today, _end = DateTime.Today.AddMonths(2);
+
+    protected override async Task LoadAsync()
+    {
+        var first = new DateOnly(AsOf.Year, AsOf.Month, 1);
+        _demand = await Q(sp => sp.GetRequiredService<DemandService>().ListAsync());
+        _pipeline = await Q(sp => sp.GetRequiredService<PipelineService>().ListAsync());
+        _sd = await Q(sp => sp.GetRequiredService<PipelineService>().SupplyDemandAsync(first, 6));
+        _projects = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true));
+        _skills = (await Q(sp => sp.GetRequiredService<EosDbContext>().Skills.AsNoTracking().OrderBy(s => s.Name).Select(s => new { s.Id, s.Name }).ToListAsync())).Select(s => (s.Id, s.Name)).ToList();
+        _start = AsOf.ToDateTime(TimeOnly.MinValue); _end = _start.AddMonths(2);
+    }
+
+    private Task Add() => Act((sp, a) => sp.GetRequiredService<DemandService>().AddAsync(new Demand
+    {
+        ProjectId = _project == 0 ? null : _project, SkillId = _skill, MinLevel = _min, HoursPerWeek = _hours,
+        StartDate = DateOnly.FromDateTime(_start), EndDate = DateOnly.FromDateTime(_end),
+    }, a), "Demand added.");
+    private Task Remove(int id) => Act((sp, a) => sp.GetRequiredService<DemandService>().DeleteAsync(id, a));
+    private Task Candidates(int id) => Act(async (sp, _) => _cands = await sp.GetRequiredService<DemandService>().RankCandidatesAsync(id), reload: false);
+}

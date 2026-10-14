@@ -1,0 +1,78 @@
+@page "/people"
+@inherits EosPage
+@using EOS.Infrastructure.People
+<PageTitle>People · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div><h1>People</h1><p class="muted">Engineers, teams and availability. Click a name for skills, projects, leave and capacity.</p></div>
+        <div class="actions">
+            <input type="search" placeholder="Search…" @bind="_search" @bind:event="oninput" style="width:220px" />
+            <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" @bind="_inactive" @bind:after="Reload" /> include inactive</label>
+            <button class="secondary" @onclick="() => _adding = !_adding">Add person</button>
+        </div>
+    </div>
+
+    @if (_adding)
+    {
+        <div class="plate"><h2>New person</h2><div class="form-row">
+            <div class="field"><label>Code</label><input @bind="_code" style="width:90px" /></div>
+            <div class="field"><label>Full name</label><input @bind="_name" /></div>
+            <div class="field"><label>Role</label><input @bind="_role" /></div>
+            <div class="field"><label>Team</label><select @bind="_team"><option value="0">–</option>@foreach (var t in _teams) { <option value="@t.Id">@t.Name</option> }</select></div>
+            <button @onclick="Create">Create</button>
+        </div></div>
+    }
+
+    @if (Loading && _rows is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="plate"><div class="tablewrap"><table class="grid">
+            <thead><tr><th>Code</th><th>Name</th><th>Team</th><th>Role</th><th>Location</th><th class="num">Availability</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var p in Filtered)
+            {
+                <tr class="clickable" @onclick="() => Open(p.Id)">
+                    <td class="muted">@p.Code</td><td><b>@p.FullName</b></td><td>@p.Team</td><td>@p.RoleTitle</td><td>@p.BaseLocation</td>
+                    <td class="num">@((p.AvailabilityFraction * 100).ToString("0"))%</td>
+                    <td>@if (!p.IsActive) { <Badge>inactive</Badge> } @if (p.IsUnverified) { <Badge Kind="warn" Title="Created from a workbook and not yet confirmed">unverified</Badge> }</td>
+                </tr>
+            }
+            </tbody></table></div></div>
+
+        <div class="plate"><h2>Teams</h2>
+            <table class="grid"><thead><tr><th>Team</th><th>Leader</th><th class="num">Members</th></tr></thead><tbody>
+            @foreach (var t in _teams) { <tr><td>@t.Name</td><td>@t.LeaderName</td><td class="num">@t.Members</td></tr> }
+            </tbody></table>
+            <div class="form-row" style="margin-top:8px"><div class="field"><label>New team</label><input @bind="_newTeam" /></div><button class="secondary" @onclick="AddTeam">Add team</button></div>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<PersonRow>? _rows;
+    private List<(int Id, string Name, string? LeaderName, int Members)> _teams = [];
+    private string _search = "", _code = "", _name = "", _role = "", _newTeam = "";
+    private bool _inactive, _adding; private int _team;
+
+    private IEnumerable<PersonRow> Filtered => (_rows ?? []).Where(p => _search.Length == 0 || p.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase) || p.Code.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task LoadAsync()
+    {
+        var inactive = _inactive;
+        _rows = await Q(sp => sp.GetRequiredService<PeopleService>().ListAsync(inactive));
+        _teams = (await Q(sp => sp.GetRequiredService<PeopleService>().ListTeamsAsync())).Select(t => (t.Id, t.Name, t.LeaderName, t.Members)).ToList();
+    }
+
+    private void Open(int id) => Nav.NavigateTo("/people/" + id);
+
+    private Task Create() => Act(async (sp, a) =>
+    {
+        await sp.GetRequiredService<PeopleService>().CreateAsync(new EOS.Domain.People.Person
+        { Code = _code.Trim(), FullName = _name.Trim(), RoleTitle = string.IsNullOrWhiteSpace(_role) ? null : _role.Trim(), TeamId = _team == 0 ? null : _team }, a);
+        _adding = false; _code = _name = _role = "";
+    }, "Person added.");
+
+    private Task AddTeam() => Act(async (sp, a) => { await sp.GetRequiredService<PeopleService>().CreateTeamAsync(_newTeam.Trim(), a); _newTeam = ""; }, "Team added.");
+}

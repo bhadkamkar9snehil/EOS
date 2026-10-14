@@ -1,0 +1,37 @@
+@page "/alerts"
+@inherits EosPage
+<PageTitle>Alerts · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head"><div><h1>Alerts</h1><p class="muted">Evaluated live against the rules and thresholds in Settings. Nothing here is stored; fix the cause and the alert goes away.</p></div></div>
+
+    @if (Loading && _alerts is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_alerts!.Count == 0) { <div class="plate"><div class="empty">Nothing flagged.</div></div> }
+    else
+    {
+        @foreach (var g in _alerts.GroupBy(a => a.Severity).OrderByDescending(g => g.Key))
+        {
+            <div class="plate"><h2>@g.Key <span class="muted">(@g.Count())</span></h2>
+                <table class="grid"><tbody>
+                @foreach (var a in g) { <tr><td class="sev-@a.Severity" style="white-space:nowrap">@a.Rule</td><td><b>@Link(a)</b></td><td>@a.Message</td></tr> }
+                </tbody></table></div>
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<Alert>? _alerts;
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _alerts = await Q(sp => sp.GetRequiredService<AlertService>().EvaluateAsync(asOf));
+    }
+
+    private RenderFragment Link(Alert a) => b =>
+    {
+        var href = a.SubjectKind switch { "project" when a.SubjectId is not null => "/projects/" + a.SubjectId, "person" when a.SubjectId is not null => "/people/" + a.SubjectId, _ => null };
+        if (href is null) b.AddContent(0, a.Subject);
+        else { b.OpenElement(1, "a"); b.AddAttribute(2, "href", href); b.AddContent(3, a.Subject); b.CloseElement(); }
+    };
+}

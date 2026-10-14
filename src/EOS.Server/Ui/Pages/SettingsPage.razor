@@ -1,0 +1,204 @@
+@page "/settings"
+@inherits EosPage
+@using EOS.Domain.Audit
+@using EOS.Domain.Configuration
+@using EOS.Domain.People
+@using EOS.Domain.Settings
+@using EOS.Infrastructure.Configuration
+@using EOS.Infrastructure.Operations
+@using EOS.Infrastructure.Persistence
+@using EOS.Infrastructure.Security
+@using EOS.Server.Hosting
+@inject EosOptions Options
+<PageTitle>Settings · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head"><div><h1>Settings</h1><p class="muted">Everything is data: thresholds, hours, calendars, vocabularies, custom fields. Changes are effective-dated, need a reason and are audited.</p></div></div>
+
+    <div class="tabs">
+        @foreach (var t in new[] { "settings", "calendars", "vocabularies", "fields", "aliases", "tokens", "backups", "audit" })
+        {
+            <button class="tab @(_tab == t ? "on" : "")" @onclick="() => _tab = t">@(char.ToUpper(t[0]) + t[1..])</button>
+        }
+    </div>
+
+    @if (Loading && _settings is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_tab == "settings")
+    {
+        <div class="plate">
+            <div class="form-row">
+                <input type="search" placeholder="Filter settings…" @bind="_filter" @bind:event="oninput" style="width:260px" />
+                <span class="muted">Scope: global. Team, person and project overrides are available through the API and CLI.</span>
+            </div>
+            <div class="tablewrap" style="max-height:62vh;overflow:auto"><table class="grid">
+                <thead><tr><th>Key</th><th>Effective value</th><th>Seed default</th><th></th></tr></thead><tbody>
+                @foreach (var s in _settings!.Where(s => _filter.Length == 0 || s.Key.Contains(_filter, StringComparison.OrdinalIgnoreCase)))
+                {
+                    <tr><td><code>@s.Key</code></td>
+                    <td>@if (_editKey == s.Key) { <input @bind="_editValue" style="width:260px" /> } else { <span>@s.Effective</span> }</td>
+                    <td class="muted">@s.Default</td>
+                    <td style="white-space:nowrap">@if (_editKey == s.Key)
+                    {
+                        <input @bind="_editReason" placeholder="Reason (required)" style="width:200px" />
+                        <button class="icon" @onclick="SaveSetting">Save</button><button class="icon" @onclick="() => _editKey = null">✕</button>
+                    } else { <button class="icon" @onclick="() => StartEdit(s)">Edit</button> }</td></tr>
+                }
+                </tbody></table></div>
+            <p class="muted">Values are JSON (numbers plain, text in quotes, lists in brackets).</p>
+        </div>
+    }
+    else if (_tab == "calendars")
+    {
+        @foreach (var c in _calendars)
+        {
+            <div class="plate"><h2>@c.Calendar.Name @if (c.Calendar.IsDefault) { <Badge Kind="good">default</Badge> }</h2>
+                <p>@c.Calendar.HoursPerDay h/day · working days (0=Sun…6=Sat): <b>@c.Calendar.WorkDays</b></p>
+                <div class="form-row">
+                    <div class="field"><label>Hours / day</label><input type="number" @bind="_calHours" style="width:80px" /></div>
+                    <div class="field"><label>Working days</label><input @bind="_calDays" style="width:140px" /></div>
+                    <button class="secondary" @onclick="() => SaveCalendar(c.Calendar)">Update</button>
+                </div>
+                <h2 style="margin-top:12px">Holidays and working overrides</h2>
+                @foreach (var x in c.Exceptions.OrderBy(x => x.Date)) { <div>@x.Date.ToString("ddd dd MMM yyyy") <span class="muted">@(x.IsWorking ? "working day" : "holiday") @x.Note</span> <button class="icon" @onclick="() => RemoveHoliday(x.Id)">✕</button></div> }
+                <div class="form-row" style="margin-top:8px">
+                    <div class="field"><label>Date</label><input type="date" @bind="_holiday" /></div>
+                    <div class="field"><label>Note</label><input @bind="_holidayNote" /></div>
+                    <button class="secondary" @onclick="() => AddHoliday(c.Calendar.Id)">Add holiday</button>
+                </div>
+            </div>
+        }
+    }
+    else if (_tab == "vocabularies")
+    {
+        <div class="grid-2">
+        @foreach (var (kind, items) in _vocab!)
+        {
+            <div class="plate"><h2>@kind</h2>
+                @foreach (var v in items) { <div style="@(v.IsActive ? "" : "opacity:.5")">@v.Value <button class="icon" @onclick="() => ToggleVocab(v.Id, !v.IsActive)">@(v.IsActive ? "Hide" : "Show")</button></div> }
+                <div class="form-row" style="margin-top:6px"><input @bind="_newVocab[kind]" placeholder="New value" /><button class="secondary" @onclick="() => AddVocab(kind)">Add</button></div>
+            </div>
+        }
+        </div>
+    }
+    else if (_tab == "fields")
+    {
+        <div class="plate"><h2>Custom fields</h2>
+            <table class="grid"><thead><tr><th>Entity</th><th>Key</th><th>Label</th><th>Type</th><th>Choices</th></tr></thead><tbody>
+            @foreach (var f in _fields) { <tr><td>@f.EntityKind</td><td><code>@f.Key</code></td><td>@f.Label</td><td>@f.Type</td><td class="muted">@f.Options</td></tr> }
+            </tbody></table>
+            <div class="form-row" style="margin-top:8px">
+                <div class="field"><label>Entity</label><select @bind="_fEntity"><option>person</option><option>project</option><option>task</option><option>host</option></select></div>
+                <div class="field"><label>Key</label><input @bind="_fKey" style="width:120px" /></div>
+                <div class="field"><label>Label</label><input @bind="_fLabel" /></div>
+                <div class="field"><label>Type</label><select @bind="_fType">@foreach (var t in Enum.GetValues<CustomFieldType>()) { <option value="@t">@t</option> }</select></div>
+                <div class="field"><label>Choices (a|b|c)</label><input @bind="_fOptions" /></div>
+                <button class="secondary" @onclick="AddField">Add field</button>
+            </div></div>
+    }
+    else if (_tab == "aliases")
+    {
+        <div class="plate"><h2>Name aliases</h2>
+            <p class="muted">Workbooks that write initials (“DT”, “HM”) need a mapping to a person. Unresolved ones are listed first.</p>
+            <table class="grid"><thead><tr><th>Alias</th><th>Source</th><th>Person</th></tr></thead><tbody>
+            @foreach (var a in _aliases.OrderBy(a => a.PersonId.HasValue).ThenBy(a => a.Alias))
+            {
+                <tr><td><b>@a.Alias</b></td><td>@a.Source</td><td><select value="@(a.PersonId ?? 0)" @onchange="e => MapAlias(a.Id, e.Value)"><option value="0">(unresolved)</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select></td></tr>
+            }
+            </tbody></table></div>
+    }
+    else if (_tab == "tokens")
+    {
+        <div class="plate"><h2>Access tokens</h2>
+            <p class="muted">Each token is a named person or tool: CLI, MCP, browser sign-in. The name is recorded on everything it changes.</p>
+            <table class="grid"><thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody>
+            @foreach (var t in _tokens) { <tr class="@(t.Revoked ? "muted" : "")"><td>@t.Name</td><td>@t.CreatedUtc.ToString("dd MMM yy")</td><td>@t.LastUsedUtc?.ToString("dd MMM yy HH:mm")</td><td>@if (t.Revoked) { <Badge>revoked</Badge> } else { <button class="icon" @onclick="() => Revoke(t.Id)">Revoke</button> }</td></tr> }
+            </tbody></table>
+            <div class="form-row" style="margin-top:8px"><div class="field"><label>New token for</label><input @bind="_tokenName" placeholder="e.g. snehil-cli" /></div><button @onclick="NewToken">Create token</button></div>
+            @if (_newToken is not null) { <div class="plate warn"><b>Copy this now — it is shown once:</b><br /><code>@_newToken</code></div> }
+        </div>
+    }
+    else if (_tab == "backups")
+    {
+        <div class="plate"><h2>Backups</h2>
+            <p class="muted">Stored in <code>@Options.BackupDirectory</code>. A nightly timer also takes one on the server.</p>
+            <button @onclick="Backup">Back up now</button>
+            <table class="grid" style="margin-top:8px"><thead><tr><th>File</th><th class="num">Size</th><th>Created</th></tr></thead><tbody>
+            @foreach (var b in _backups) { <tr><td>@b.Name</td><td class="num">@((b.SizeBytes / 1024.0 / 1024.0).ToString("0.0")) MB</td><td>@b.CreatedUtc.ToString("dd MMM yy HH:mm")</td></tr> }
+            </tbody></table></div>
+    }
+    else if (_tab == "audit")
+    {
+        <div class="plate"><h2>Audit log <span class="muted" style="text-transform:none;letter-spacing:0">(latest 200)</span></h2>
+            <div class="tablewrap" style="max-height:70vh;overflow:auto"><table class="grid"><thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Subject</th><th>Detail</th></tr></thead><tbody>
+            @foreach (var a in _audit) { <tr><td class="muted">@a.AtUtc.ToString("dd MMM HH:mm")</td><td>@a.Actor</td><td>@a.Action</td><td>@a.SubjectKind @a.SubjectId</td><td class="muted">@a.Detail</td></tr> }
+            </tbody></table></div></div>
+    }
+</div>
+
+@code {
+    private record SettingRowView(string Key, string? Effective, string Default);
+    private string _tab = "settings", _filter = "";
+    private List<SettingRowView>? _settings;
+    private string? _editKey; private string _editValue = "", _editReason = "";
+    private IReadOnlyList<(WorkCalendarDef Calendar, IReadOnlyList<CalendarException> Exceptions)> _calendars = [];
+    private decimal _calHours = 8; private string _calDays = "1,2,3,4,5,6"; private DateTime _holiday = DateTime.Today; private string _holidayNote = "";
+    private Dictionary<string, IReadOnlyList<VocabularyItem>>? _vocab; private Dictionary<string, string> _newVocab = [];
+    private IReadOnlyList<CustomFieldDefinition> _fields = [];
+    private string _fEntity = "person", _fKey = "", _fLabel = "", _fOptions = ""; private CustomFieldType _fType;
+    private List<PersonAlias> _aliases = []; private List<(int Id, string Name)> _people = [];
+    private List<(int Id, string Name, DateTime CreatedUtc, DateTime? LastUsedUtc, bool Revoked)> _tokens = [];
+    private string _tokenName = ""; private string? _newToken;
+    private IReadOnlyList<BackupFile> _backups = [];
+    private List<AuditEvent> _audit = [];
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        var resolver = await Q(sp => sp.GetRequiredService<SettingsStore>().LoadResolverAsync());
+        _settings = SettingDefaults.All.OrderBy(kv => kv.Key).Select(kv => new SettingRowView(kv.Key, resolver.ResolveJson(kv.Key, SettingsResolver.Chain(), asOf), kv.Value)).ToList();
+        _calendars = await Q(sp => sp.GetRequiredService<AdminService>().CalendarsAsync());
+        if (_calendars.Count > 0) { _calHours = _calendars[0].Calendar.HoursPerDay; _calDays = _calendars[0].Calendar.WorkDays; }
+        var vocab = await Q(sp => sp.GetRequiredService<AdminService>().VocabulariesAsync());
+        _vocab = vocab.ToDictionary(kv => kv.Key, kv => kv.Value);
+        foreach (var k in _vocab.Keys) _newVocab.TryAdd(k, "");
+        _fields = await Q(sp => sp.GetRequiredService<AdminService>().FieldsAsync());
+        _aliases = await Q(sp => sp.GetRequiredService<EosDbContext>().PersonAliases.AsNoTracking().ToListAsync());
+        _people = (await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }).ToListAsync())).Select(p => (p.Id, p.FullName)).ToList();
+        _tokens = (await Q(sp => sp.GetRequiredService<TokenService>().ListAsync())).ToList();
+        _backups = BackupService.List(Options.BackupDirectory);
+        _audit = await Q(sp => sp.GetRequiredService<EosDbContext>().AuditEvents.AsNoTracking().OrderByDescending(a => a.Id).Take(200).ToListAsync());
+    }
+
+    private void StartEdit(SettingRowView s) { _editKey = s.Key; _editValue = s.Effective ?? s.Default; _editReason = ""; }
+    private async Task SaveSetting()
+    {
+        var key = _editKey!; var value = _editValue; var reason = _editReason;
+        await Act((sp, a) => sp.GetRequiredService<SettingsStore>().SetAsync(key, new SettingScope(SettingScopeKind.Global), value, AsOf, a, reason), "Setting saved.");
+        _editKey = null;
+    }
+
+    private Task SaveCalendar(WorkCalendarDef c) => Act((sp, a) => sp.GetRequiredService<AdminService>().SaveCalendarAsync(
+        new WorkCalendarDef { Id = c.Id, Name = c.Name, HoursPerDay = _calHours, WorkDays = _calDays, IsDefault = c.IsDefault }, a), "Calendar saved.");
+    private Task AddHoliday(int id) => Act((sp, a) => sp.GetRequiredService<AdminService>().SetHolidayAsync(id, DateOnly.FromDateTime(_holiday), false, _holidayNote, a), "Holiday added.");
+    private Task RemoveHoliday(int id) => Act((sp, a) => sp.GetRequiredService<AdminService>().RemoveHolidayAsync(id, a));
+
+    private Task AddVocab(string kind) => Act(async (sp, a) => { await sp.GetRequiredService<AdminService>().AddValueAsync(kind, _newVocab[kind], null, a); _newVocab[kind] = ""; }, "Value added.");
+    private Task ToggleVocab(int id, bool active) => Act((sp, a) => sp.GetRequiredService<AdminService>().SetActiveAsync(id, active, a));
+
+    private Task AddField() => Act((sp, a) => sp.GetRequiredService<AdminService>().AddFieldAsync(
+        new CustomFieldDefinition { EntityKind = _fEntity, Key = _fKey.Trim(), Label = _fLabel.Trim(), Type = _fType, Options = string.IsNullOrWhiteSpace(_fOptions) ? null : _fOptions }, a), "Field added.");
+
+    private Task MapAlias(int aliasId, object? v) => Act(async (sp, a) =>
+    {
+        var db = sp.GetRequiredService<EosDbContext>();
+        var alias = await db.PersonAliases.SingleAsync(x => x.Id == aliasId);
+        alias.PersonId = int.TryParse(v?.ToString(), out var pid) && pid != 0 ? pid : null;
+        db.AuditEvents.Add(new AuditEvent { AtUtc = DateTime.UtcNow, Actor = a, Action = "alias.map", SubjectKind = "alias", SubjectId = alias.Alias, Detail = $"-> person {alias.PersonId}" });
+        await db.SaveChangesAsync();
+    }, "Alias mapped. Re-run the import to apply it.");
+
+    private Task Revoke(int id) => Act((sp, a) => sp.GetRequiredService<TokenService>().RevokeAsync(id, a), "Token revoked.");
+    private Task NewToken() => Act(async (sp, a) => { _newToken = await sp.GetRequiredService<TokenService>().CreateAsync(_tokenName.Trim(), a); _tokenName = ""; });
+    private Task Backup() => Act(async (sp, a) => await sp.GetRequiredService<BackupService>().CreateAsync(Options.BackupDirectory, a), "Backup created.");
+}

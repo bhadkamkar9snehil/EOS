@@ -18,6 +18,8 @@ using EOS.Server.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+// Lets `dotnet run` outside Development (and any non-published start) find the framework's blazor script; harmless when published.
+builder.WebHost.UseStaticWebAssets();
 
 // Listen address: explicit config (ASPNETCORE_URLS / --urls) wins. Production binds to the Tailscale and LAN addresses only (spec §25.9).
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
@@ -61,7 +63,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseExceptionHandler(builder => builder.Run(ErrorMapping.HandleAsync));
-app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -82,6 +83,8 @@ CapacityApi.Map(api);
 OpsApi.Map(api);
 app.MapGet("/openapi/v1.json", (EndpointDataSource endpoints) => Results.Json(ApiCatalog.Build(endpoints, version))).AllowAnonymous();
 
+// MapStaticAssets serves wwwroot and the framework scripts (blazor.web.js) in every environment, not only Development.
+app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<EOS.Server.Ui.App>().AddInteractiveServerRenderMode().RequireAuthorization();
 
 app.Run();

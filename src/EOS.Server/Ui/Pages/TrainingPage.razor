@@ -1,0 +1,79 @@
+@page "/training"
+@inherits EosPage
+@using EOS.Domain.Training
+@using EOS.Infrastructure.People
+@using EOS.Infrastructure.Training
+<PageTitle>Training · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head"><div><h1>Training &amp; knowledge</h1><p class="muted">Who knows which X-Force modules, where the team is thin, and open doubts with mentors.</p></div></div>
+
+    @if (Loading && _summary is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="grid-2">
+            <div class="plate"><h2>Knowledge by engineer</h2>
+                @if (_summary!.Count == 0) { <div class="empty">No training data. Import the training workbook under Imports.</div> }
+                else
+                {
+                    <table class="grid"><thead><tr><th>Engineer</th><th class="num">Know</th><th class="num">Don't know</th><th class="num">Discuss</th><th class="num">Coverage</th><th>Level</th></tr></thead><tbody>
+                    @foreach (var r in _summary) { <tr><td><a href="/people/@r.PersonId">@r.Name</a></td><td class="num">@r.Known</td><td class="num">@r.DontKnow</td><td class="num">@r.NeedToDiscuss</td><td class="num">@((r.KnowFraction * 100).ToString("0"))%</td><td>@r.Level</td></tr> }
+                    </tbody></table>
+                }
+            </div>
+            <div class="plate"><h2>Thinnest module coverage</h2>
+                <table class="grid"><thead><tr><th>Module</th><th class="num">Known by</th></tr></thead><tbody>
+                @foreach (var c in _coverage!) { <tr><td>@c.Module <span class="muted">@c.SubModule</span></td><td class="num">@c.KnownBy / @c.People</td></tr> }
+                </tbody></table>
+            </div>
+        </div>
+
+        <div class="plate" style="margin-top:16px"><h2>Doubts</h2>
+            <div class="form-row">
+                <div class="field"><label>Module</label><input @bind="_module" /></div>
+                <div class="field"><label>Sub-module</label><input @bind="_sub" /></div>
+                <div class="field"><label>Doubt</label><input @bind="_text" style="width:300px" /></div>
+                <div class="field"><label>Raised by</label><select @bind="_by"><option value="0">–</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select></div>
+                <button class="secondary" @onclick="Raise">Raise doubt</button>
+            </div>
+            <table class="grid"><thead><tr><th>Module</th><th>Doubt</th><th>Raised</th><th>Mentor</th><th>Status</th><th></th></tr></thead><tbody>
+            @foreach (var d in _doubts!)
+            {
+                <tr><td>@d.Module <span class="muted">@d.SubModule</span></td><td>@d.Text</td><td class="muted">@d.RaisedByName @d.RaisedOn?.ToString("dd MMM yy")</td><td>@d.AssignedToName</td><td>@d.Result</td>
+                    <td style="white-space:nowrap">
+                    @if (d.Result != DoubtResult.Solved)
+                    {
+                        <select @onchange="e => Assign(d.Id, e.Value)"><option value="">Assign mentor…</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select>
+                        <button class="icon" @onclick="() => Resolve(d.Id)">Solved</button>
+                    }</td></tr>
+            }
+            </tbody></table>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<KnowledgeRow>? _summary; private IReadOnlyList<ModuleCoverage>? _coverage; private IReadOnlyList<Doubt>? _doubts;
+    private List<(int Id, string Name)> _people = [];
+    private string _module = "", _sub = "", _text = ""; private int _by;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _summary = await Q(sp => sp.GetRequiredService<TrainingService>().SummaryAsync(asOf));
+        _coverage = await Q(sp => sp.GetRequiredService<TrainingService>().CoverageAsync(15));
+        _doubts = await Q(sp => sp.GetRequiredService<TrainingService>().DoubtsAsync());
+        _people = (await Q(sp => sp.GetRequiredService<PeopleService>().ListAsync())).Select(p => (p.Id, p.FullName)).ToList();
+    }
+
+    private Task Raise() => Act(async (sp, a) =>
+    {
+        await sp.GetRequiredService<TrainingService>().RaiseAsync(_module.Trim(), _sub.Trim(), _text.Trim(), _by == 0 ? null : _by, AsOf, a);
+        _module = _sub = _text = "";
+    }, "Doubt raised.");
+
+    private Task Assign(int doubtId, object? v) => int.TryParse(v?.ToString(), out var mentor)
+        ? Act((sp, a) => sp.GetRequiredService<TrainingService>().AssignAsync(doubtId, mentor, AsOf, a), "Mentor assigned.") : Task.CompletedTask;
+    private Task Resolve(int id) => Act((sp, a) => sp.GetRequiredService<TrainingService>().ResolveAsync(id, DoubtResult.Solved, AsOf, null, a), "Marked solved.");
+}

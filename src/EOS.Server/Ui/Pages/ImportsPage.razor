@@ -1,0 +1,79 @@
+@page "/imports"
+@inherits EosPage
+@using EOS.Infrastructure.Importing
+@using EOS.Infrastructure.Persistence
+<PageTitle>Imports · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head"><div><h1>Imports</h1><p class="muted">Bring workbooks in. Every import is previewed first (nothing is saved), then committed. Imports are repeatable: running one again updates, it never duplicates, and it never overwrites what you changed by hand.</p></div></div>
+
+    <div class="plate">
+        <div class="form-row">
+            <div class="field"><label>What is this workbook?</label>
+                <select @bind="_kind">
+                    <option value="agility">SSM operational agility (people, skills, projects)</option>
+                    <option value="training">Training tracker (modules, knowledge, doubts)</option>
+                    <option value="erp">ERP project master</option>
+                    <option value="tracker">Project task tracker (WBS)</option>
+                    <option value="vms">Server and VM inventory</option>
+                </select></div>
+            <div class="field"><label>Workbook (.xlsx)</label><InputFile OnChange="Picked" accept=".xlsx" /></div>
+            <button @onclick="() => Run(false)" disabled="@(_file is null)">Preview</button>
+            <button class="secondary" @onclick="() => Run(true)" disabled="@(_file is null || _report is null || _report.Committed)">Commit</button>
+        </div>
+        @if (_file is not null) { <p class="muted">@_file.Name · @(_file.Size / 1024) KB</p> }
+    </div>
+
+    @if (_report is { } r)
+    {
+        <div class="plate"><h2>@(r.Committed ? "Imported" : "Preview — nothing saved yet") · @r.Kind</h2>
+            <table class="grid"><thead><tr><th>Entity</th><th class="num">Added</th><th class="num">Updated</th><th class="num">Unchanged</th></tr></thead><tbody>
+            @foreach (var (k, c) in r.Counts.OrderBy(x => x.Key)) { <tr><td>@k</td><td class="num">@c.Added</td><td class="num">@c.Updated</td><td class="num">@c.Unchanged</td></tr> }
+            </tbody></table>
+            @if (r.Unresolved.Count > 0) { <h2 style="margin-top:12px">Unresolved people (@r.Unresolved.Count) <span class="muted" style="text-transform:none;letter-spacing:0">— map them with an alias under Settings → Aliases</span></h2><p>@string.Join(", ", r.Unresolved)</p> }
+            @if (r.Warnings.Count > 0) { <h2 style="margin-top:12px">Warnings (@r.Warnings.Count)</h2><ul>@foreach (var w in r.Warnings.Take(60)) { <li>@w</li> }</ul> }
+        </div>
+    }
+
+    <div class="plate"><h2>Recent imports</h2>
+        <table class="grid"><tbody>
+        @foreach (var a in _recent) { <tr><td class="muted">@a.AtUtc.ToString("dd MMM yy HH:mm")</td><td>@a.Actor</td><td>@a.Action</td><td>@a.SubjectKind</td><td class="muted">@a.Detail</td></tr> }
+        </tbody></table></div>
+</div>
+
+@code {
+    private string _kind = "agility";
+    private IBrowserFile? _file;
+    private ImportReport? _report;
+    private List<EOS.Domain.Audit.AuditEvent> _recent = [];
+
+    protected override async Task LoadAsync() =>
+        _recent = await Q(sp => sp.GetRequiredService<EosDbContext>().AuditEvents.AsNoTracking().Where(a => a.Action.StartsWith("import")).OrderByDescending(a => a.Id).Take(12).ToListAsync());
+
+    private void Picked(InputFileChangeEventArgs e) { _file = e.File; _report = null; }
+
+    private async Task Run(bool commit)
+    {
+        if (_file is null) return;
+        var temp = Path.Combine(Path.GetTempPath(), $"eos-import-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            await using (var fs = File.Create(temp)) await _file.OpenReadStream(64 * 1024 * 1024).CopyToAsync(fs);
+            var kind = _kind;
+            await Act(async (sp, actor) =>
+            {
+                var db = sp.GetRequiredService<EosDbContext>();
+                _report = kind switch
+                {
+                    "agility" => await new AgilityWorkbookImporter(db).ImportAsync(temp, commit, actor),
+                    "training" => await new TrainingWorkbookImporter(db).ImportAsync(temp, commit, actor),
+                    "erp" => await new ErpProjectImporter(db).ImportAsync(temp, commit, actor),
+                    "tracker" => await new TrackerImporter(db).ImportAsync(temp, commit, actor),
+                    _ => await new InfrastructureImporter(db).ImportAsync(temp, commit, actor),
+                };
+            }, commit ? "Import committed." : "Preview ready. Nothing was saved.");
+        }
+        catch (IOException ex) { State.ShowToast("Could not read the file: " + ex.Message, error: true); }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
+}
