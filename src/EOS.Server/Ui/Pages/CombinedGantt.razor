@@ -1,0 +1,63 @@
+@page "/gantt"
+@inherits EosPage
+@using EOS.Infrastructure.Projects
+<PageTitle>Combined Gantt · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div><h1>Combined Gantt</h1><p class="muted">Every project with a plan, on one timeline. Bars are the scheduled plan; the grey line under a bar is the saved baseline.</p></div>
+        <div class="actions">
+            <label style="margin:0">Detail
+                <select @bind="_detail" @bind:after="Build">
+                    <option value="0">Projects only</option>
+                    <option value="1">Projects + top-level phases</option>
+                    <option value="9">Everything</option>
+                </select></label>
+            <label style="margin:0">Zoom
+                <select @bind="_dayWidth"><option value="2">Quarter</option><option value="4">Months</option><option value="7">Weeks</option><option value="14">Days</option></select></label>
+            <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" @bind="_hideDone" @bind:after="Build" /> hide completed</label>
+        </div>
+    </div>
+
+    @if (Loading && _plans is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="plate"><GanttChart Rows="@_rows" Today="@AsOf" DayWidth="@_dayWidth" LabelWidth="340" /></div>
+        <p class="muted">@_plans!.Count projects with plans.</p>
+    }
+</div>
+
+@code {
+    private List<PlanView>? _plans;
+    private Dictionary<int, string> _health = [];
+    private List<GanttChart.Row> _rows = [];
+    private int _detail = 1, _dayWidth = 4;
+    private bool _hideDone;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        var projects = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true));
+        _plans = [];
+        foreach (var p in projects.Where(p => p.HasPlan))
+            _plans.Add(await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(p.Id)));
+        _health = (await Q(sp => sp.GetRequiredService<HealthService>().GetAllAsync(asOf))).ToDictionary(h => h.ProjectId, h => h.Health);
+        Build();
+    }
+
+    private void Build()
+    {
+        _rows = [];
+        foreach (var p in (_plans ?? []).OrderBy(p => p.Start))
+        {
+            if (_hideDone && p.Progress >= 1m) continue;
+            var h = _health.GetValueOrDefault(p.ProjectId);
+            _rows.Add(new GanttChart.Row($"{p.ProjectNo}  {p.ProjectName}", 0, p.Start, p.Finish, p.Progress, h == "At Risk", true,
+                Tooltip: $"{p.ProjectNo} {p.ProjectName} · {h}", Href: "/projects/" + p.ProjectId));
+            if (_detail == 0) continue;
+            foreach (var t in p.Tasks.Where(t => t.Level <= _detail))
+                _rows.Add(new GanttChart.Row(t.Name, t.Level + 1, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary, t.Kind == "milestone", t.Wbs + " " + t.Name));
+        }
+    }
+}

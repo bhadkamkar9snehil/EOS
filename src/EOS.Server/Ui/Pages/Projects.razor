@@ -1,0 +1,108 @@
+@page "/projects"
+@inherits EosPage
+@using EOS.Infrastructure.Projects
+<PageTitle>Projects · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div><h1>Projects</h1><p class="muted">The ERP project master plus live delivery plans. Click a project for its plan, Gantt, team and environments.</p></div>
+        <div class="actions">
+            <input type="search" placeholder="Search number, name, customer…" @bind="_search" @bind:event="oninput" @bind:after="Apply" style="width:260px" />
+            <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" @bind="_withPlan" @bind:after="Apply" /> with a plan</label>
+            <button class="secondary" @onclick="RecomputeAll">Recompute all plans</button>
+            <button class="secondary" @onclick="() => _adding = !_adding">New project</button>
+        </div>
+    </div>
+
+    @if (_adding)
+    {
+        <div class="plate">
+            <h2>New project</h2>
+            <div class="form-row">
+                <div class="field"><label>Project number</label><input @bind="_newNo" /></div>
+                <div class="field"><label>Name</label><input @bind="_newName" style="width:340px" /></div>
+                <div class="field"><label>Customer</label><input @bind="_newCustomer" /></div>
+                <div class="field"><label>Product line</label><input @bind="_newProduct" list="products" /></div>
+                <div class="field"><label>Start date</label><input type="date" @bind="_newStart" /></div>
+                <button @onclick="Create">Create</button>
+            </div>
+            <datalist id="products">@foreach (var p in _products) { <option value="@p" /> }</datalist>
+        </div>
+    }
+
+    @if (Loading && _rows is null) { <p class="muted">Loading…</p> }
+    else if (_filtered.Count == 0) { <div class="empty">No projects match. Import the ERP project master and the tracker under Imports, or create a project.</div> }
+    else
+    {
+        <div class="plate"><div class="tablewrap">
+            <table class="grid">
+                <thead><tr><th>Project</th><th>Name</th><th>Customer</th><th>Product</th><th>ERP</th><th>Tracker status</th><th>Technical manager</th><th class="num">Tasks</th><th>Health</th></tr></thead>
+                <tbody>
+                @foreach (var p in _filtered.Take(400))
+                {
+                    <tr class="clickable" @onclick="() => Open(p.Id)">
+                        <td><b>@p.ProjectNo</b></td>
+                        <td>@Short(p.Name, 70)</td>
+                        <td>@p.Customer</td>
+                        <td>@p.ProductLine</td>
+                        <td>@p.ErpStatus</td>
+                        <td>@p.TrackerStatus</td>
+                        <td>@p.TechnicalManager</td>
+                        <td class="num">@(p.TaskCount == 0 ? "–" : p.TaskCount)</td>
+                        <td>@if (_health.TryGetValue(p.Id, out var h)) { <HealthBadge Health="@h" /> }</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">@_filtered.Count of @_rows!.Count projects@(_filtered.Count > 400 ? " (first 400 shown; narrow the search)" : "")</p></div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<ProjectSummary>? _rows;
+    private List<ProjectSummary> _filtered = [];
+    private Dictionary<int, string> _health = [];
+    private List<string> _products = [];
+    private string _search = ""; private bool _withPlan = true;
+    private bool _adding; private string _newNo = "", _newName = "", _newCustomer = "", _newProduct = ""; private DateTime? _newStart;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _rows = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync());
+        _health = (await Q(sp => sp.GetRequiredService<HealthService>().GetAllAsync(asOf))).ToDictionary(h => h.ProjectId, h => h.Health);
+        _products = (await Q(sp => sp.GetRequiredService<EOS.Infrastructure.Persistence.EosDbContext>().Vocabulary
+            .Where(v => v.Kind == "project.productLine" && v.IsActive).OrderBy(v => v.SortOrder).Select(v => v.Value).ToListAsync()));
+        Apply();
+    }
+
+    private void Apply()
+    {
+        var s = _search.Trim().ToLowerInvariant();
+        _filtered = (_rows ?? []).Where(p => (!_withPlan || p.HasPlan) &&
+            (s.Length == 0 || p.ProjectNo.ToLower().Contains(s) || p.Name.ToLower().Contains(s) || (p.Customer ?? "").ToLower().Contains(s))).ToList();
+    }
+
+    private async Task Create() =>
+        await Act(async (sp, actor) =>
+        {
+            var p = await sp.GetRequiredService<ProjectService>().CreateAsync(new EOS.Domain.Projects.Project
+            {
+                ProjectNo = _newNo.Trim(), Name = _newName.Trim(), Customer = Null(_newCustomer), ProductLine = Null(_newProduct),
+                PoStart = _newStart is { } d ? DateOnly.FromDateTime(d) : null, TrackerStatus = "Entered",
+            }, actor);
+            _adding = false; _newNo = _newName = _newCustomer = _newProduct = ""; _newStart = null;
+            Nav.NavigateTo("/projects/" + p.Id);
+        }, "Project created.");
+
+    private Task RecomputeAll() => Act(async (sp, _) =>
+    {
+        var problems = await sp.GetRequiredService<PlanService>().RecomputeAllAsync(AsOf);
+        foreach (var p in problems) State.ShowToast(p, error: true);
+    }, "All plans scheduled.");
+
+    private void Open(int id) => Nav.NavigateTo("/projects/" + id);
+    private static string? Null(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+}

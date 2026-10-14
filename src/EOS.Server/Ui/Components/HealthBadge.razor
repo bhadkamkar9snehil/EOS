@@ -1,0 +1,7 @@
+<Badge Kind="@KindFor(Health)" Title="@Title">@Health</Badge>
+
+@code {
+    [Parameter, EditorRequired] public string Health { get; set; } = "";
+    [Parameter] public string? Title { get; set; }
+    public static string KindFor(string? h) => h switch { "At Risk" => "bad", "Moderate Risk" => "warn", "On Track" => "good", _ => "" };
+}

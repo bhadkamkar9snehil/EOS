@@ -108,4 +108,13 @@ input[type=number] { width: 90px; } label { color: var(--muted); font-size: 12px
 .gantt .bar-task { fill: #5b8fc9; } .gantt .bar-crit { fill: var(--bad); } .gantt .bar-done { fill: var(--good); } .gantt .bar-sum { fill: #3b4658; }
 .gantt .today { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; } .gantt .gridline { stroke: var(--line); stroke-width: 1; } .gantt .weekend { fill: rgba(0,0,0,.04); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 0; } .legend i { display: inline-block; width: 12px; height: 8px; border-radius: 2px; margin-right: 5px; }
+/* plan grid */
+button.icon { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 0 6px; min-width: 0; height: 22px; line-height: 20px; font-size: 12px; margin-right: 2px; }
+button.icon:hover { color: var(--ink); border-color: var(--accent); }
+input.cell { width: 64px; padding: 2px 4px; text-align: right; background: transparent; border: 1px solid transparent; }
+input.cell:hover, input.cell:focus { border-color: var(--line); background: var(--plate); }
+tr.sel td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+tr.crit td:nth-child(2) { border-left: 3px solid var(--bad); }
+.plate.warn { border-left: 3px solid var(--warn); }
+.tabs button.tab { }
 @media (prefers-reduced-motion: no-preference) { .rail a, button { transition: background .12s, filter .12s; } }

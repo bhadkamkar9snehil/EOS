@@ -22,6 +22,11 @@ internal static class ImportRunner
             Detail = string.Join("; ", report.Counts.Select(c => $"{c.Key} +{c.Value.Added}/~{c.Value.Updated}/={c.Value.Unchanged}")),
         });
         await db.SaveChangesAsync(ct);
+        if (commit && kind == "task tracker workbook")
+        {
+            // Imported plans have no dates until scheduled; schedule every project that has tasks so Gantt, load and health work at once.
+            await new Planning.PlanService(db).RecomputeAllAsync(null, ct);
+        }
         if (commit) await tx.CommitAsync(ct);
         else { await tx.RollbackAsync(ct); db.ChangeTracker.Clear(); }
         return report;

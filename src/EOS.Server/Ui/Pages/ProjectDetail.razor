@@ -1,0 +1,297 @@
+@page "/projects/{Id:int}"
+@inherits EosPage
+@using EOS.Infrastructure.Hosting
+@using EOS.Infrastructure.Persistence
+@using Microsoft.EntityFrameworkCore
+<PageTitle>@(_plan?.ProjectNo ?? "Project") · EOS</PageTitle>
+
+<div class="page">
+    @if (Loading && _plan is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_plan is not null)
+    {
+        <div class="page-head">
+            <div>
+                <h1>@_plan.ProjectNo <span class="muted" style="font-weight:400">@_plan.ProjectName</span></h1>
+                <p class="muted">
+                    @(_plan.Start?.ToString("dd MMM yyyy") ?? "unscheduled") → @(_plan.Finish?.ToString("dd MMM yyyy") ?? "–") ·
+                    @((_plan.Progress * 100).ToString("0"))% complete · @_plan.Tasks.Count tasks
+                    @if (_health is not null) { <text> · </text><HealthBadge Health="@_health.Health" Title="@string.Join("; ", _health.Reasons)" /> }
+                </p>
+            </div>
+            <div class="actions">
+                <button class="secondary" @onclick="Recompute">Recompute schedule</button>
+                <button class="secondary" @onclick="SaveBaseline">Save baseline</button>
+                <a class="btn secondary" href="/projects">All projects</a>
+            </div>
+        </div>
+
+        @foreach (var w in _plan.Warnings) { <div class="plate warn">@w</div> }
+
+        <div class="tabs">
+            @foreach (var t in new[] { "plan", "gantt", "team", "environments", "baseline" })
+            {
+                <button class="tab @(_tab == t ? "on" : "")" @onclick="() => _tab = t">@(char.ToUpper(t[0]) + t[1..])</button>
+            }
+        </div>
+
+        @if (_tab == "plan")
+        {
+            <div class="plate">
+                <div class="form-row">
+                    <div class="field"><label>Add task</label><input @bind="_newTask" placeholder="Task name" style="width:320px" /></div>
+                    <div class="field"><label>Work (h)</label><input type="number" @bind="_newWork" style="width:90px" /></div>
+                    <button @onclick="AddTask">Add</button>
+                    <span class="muted">Added after the selected row@(_selected is null ? "" : " (" + Sel()!.Wbs + ")"), or at the end.</span>
+                </div>
+            </div>
+            @if (_plan.Tasks.Count == 0) { <div class="empty">No tasks. Add one above, or import this project's plan from the ERP/tracker under Imports.</div> }
+            else
+            {
+                <div class="plate"><div class="tablewrap" style="max-height:70vh;overflow:auto">
+                    <table class="grid">
+                        <thead><tr><th>WBS</th><th>Task</th><th class="num">Work h</th><th class="num">%</th><th>Start</th><th>Finish</th><th class="num">Float</th><th>Status</th><th>Assigned</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var t in _plan.Tasks)
+                        {
+                            <tr class="@(_selected == t.Id ? "sel" : "") @(t.IsCritical ? "crit" : "")" @onclick="() => _selected = t.Id">
+                                <td class="muted">@t.Wbs</td>
+                                <td style="padding-left:@(6 + t.Level * 14)px;@(t.IsSummary ? "font-weight:650" : "")">
+                                    @if (_editing == t.Id)
+                                    {
+                                        <input @bind="_editName" style="width:280px" />
+                                        <button class="secondary" @onclick="() => SaveName(t.Id)">OK</button>
+                                    }
+                                    else { <span @ondblclick="() => StartEdit(t)">@t.Name</span> }
+                                    @if (t.Origin != "eos") { <span class="muted" title="Imported from @t.Origin"> ⟵ @t.Origin</span> }
+                                </td>
+                                <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" value="@t.WorkHours" @onchange="e => SetWork(t.Id, e.Value)" /> } else { @t.WorkHours.ToString("0.#") }</td>
+                                <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" min="0" max="100" value="@((t.PercentComplete * 100).ToString("0"))" @onchange="e => SetPct(t.Id, e.Value)" /> } else { @((t.PercentComplete * 100).ToString("0")) }</td>
+                                <td>@t.Start?.ToString("dd MMM yy")</td>
+                                <td>@t.Finish?.ToString("dd MMM yy")</td>
+                                <td class="num">@t.TotalFloatDays</td>
+                                <td>@t.Status</td>
+                                <td>@string.Join(", ", t.Assignments.Select(a => (a.PersonName ?? "◌ " + a.PlaceholderSkill) + (a.Units == 1 ? "" : $" {a.Units * 100:0}%")))</td>
+                                <td style="white-space:nowrap">
+                                    <button class="icon" title="Move up" @onclick="() => Move(t.Id, MoveDirection.Up)">↑</button>
+                                    <button class="icon" title="Move down" @onclick="() => Move(t.Id, MoveDirection.Down)">↓</button>
+                                    <button class="icon" title="Indent" @onclick="() => Move(t.Id, MoveDirection.Indent)">→</button>
+                                    <button class="icon" title="Outdent" @onclick="() => Move(t.Id, MoveDirection.Outdent)">←</button>
+                                    <button class="icon" title="Delete" @onclick="() => Delete(t.Id)">✕</button>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div></div>
+
+                @if (Sel() is { } s)
+                {
+                    <div class="grid-2">
+                        <div class="plate">
+                            <h2>Assign engineer to “@s.Name”</h2>
+                            <div class="form-row">
+                                <div class="field"><label>Engineer</label>
+                                    <select @bind="_assignPerson"><option value="0">–</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option>}</select></div>
+                                <div class="field"><label>Units %</label><input type="number" @bind="_assignUnits" style="width:80px" /></div>
+                                <button @onclick="() => Assign(s.Id)">Assign</button>
+                            </div>
+                            @foreach (var a in s.Assignments)
+                            {
+                                <div>@(a.PersonName ?? "◌ " + a.PlaceholderSkill) @(a.Units * 100)% <button class="icon" @onclick="() => Unassign(a.Id)">✕</button></div>
+                            }
+                        </div>
+                        <div class="plate">
+                            <h2>Dependencies of “@s.Name”</h2>
+                            @foreach (var l in _plan.Links.Where(l => l.SuccessorId == s.Id || l.PredecessorId == s.Id))
+                            {
+                                <div>@LinkText(l, s.Id) <button class="icon" @onclick="() => RemoveLink(l.Id)">✕</button></div>
+                            }
+                            <div class="form-row">
+                                <div class="field"><label>Predecessor</label>
+                                    <select @bind="_linkPred"><option value="0">–</option>@foreach (var t in _plan.Tasks.Where(t => t.Id != s.Id)) { <option value="@t.Id">@t.Wbs @Short(t.Name, 40)</option>}</select></div>
+                                <div class="field"><label>Type</label><select @bind="_linkType"><option value="0">FS</option><option value="1">SS</option><option value="2">FF</option><option value="3">SF</option></select></div>
+                                <div class="field"><label>Lag (d)</label><input type="number" @bind="_linkLag" style="width:70px" /></div>
+                                <button @onclick="() => AddLink(s.Id)">Link</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+        else if (_tab == "gantt")
+        {
+            <div class="plate"><GanttChart Rows="@_ganttRows" Today="@AsOf" /></div>
+        }
+        else if (_tab == "team")
+        {
+            <div class="plate">
+                <h2>Engineers on this project</h2>
+                @if (_team.Count == 0) { <div class="empty">Nobody is assigned yet. Select a task in the Plan tab and assign an engineer.</div> }
+                else
+                {
+                    <table class="grid"><thead><tr><th>Engineer</th><th class="num">Tasks</th><th class="num">Planned h</th></tr></thead><tbody>
+                    @foreach (var m in _team) { <tr><td>@m.Name</td><td class="num">@m.Tasks</td><td class="num">@m.Hours.ToString("N0")</td></tr> }
+                    </tbody></table>
+                }
+            </div>
+        }
+        else if (_tab == "environments")
+        {
+            <div class="plate">
+                <h2>Hosts and virtual machines</h2>
+                @if (_hosts.Count == 0) { <div class="empty">No host is linked to this project. Link machines under Infrastructure.</div> }
+                else
+                {
+                    <table class="grid"><thead><tr><th>Name</th><th>IP</th><th>Kind</th><th>State</th><th>Purpose</th><th>Role</th></tr></thead><tbody>
+                    @foreach (var h in _hosts) { <tr><td>@h.Name</td><td>@h.Ip</td><td>@h.Kind</td><td>@h.State</td><td>@h.Purpose</td><td>@h.Projects.FirstOrDefault(p => p.ProjectId == Id).Role</td></tr> }
+                    </tbody></table>
+                }
+            </div>
+        }
+        else if (_tab == "baseline")
+        {
+            <div class="plate">
+                <h2>Baseline variance</h2>
+                @if (_variance is null) { <div class="empty">No baseline saved. Use “Save baseline” once the schedule is agreed.</div> }
+                else
+                {
+                    <p>@_variance.BaselineName · baseline finish @_variance.BaselineFinish?.ToString("dd MMM yyyy") · now @_variance.CurrentFinish?.ToString("dd MMM yyyy") · <b>@(_variance.FinishVarianceDays?.ToString("+0;-0;0") ?? "–") d</b></p>
+                    <div class="tablewrap" style="max-height:60vh;overflow:auto"><table class="grid"><thead><tr><th>WBS</th><th>Task</th><th>Baseline finish</th><th>Current finish</th><th class="num">Δ days</th><th class="num">Δ work h</th></tr></thead><tbody>
+                    @foreach (var r in _variance.Rows.Where(r => r.FinishVarianceDays is not (null or 0) || r.WorkVarianceHours != 0))
+                    { <tr><td>@r.Wbs</td><td>@Short(r.Name, 60)</td><td>@r.BaselineFinish?.ToString("dd MMM yy")</td><td>@r.CurrentFinish?.ToString("dd MMM yy")</td><td class="num">@r.FinishVarianceDays</td><td class="num">@r.WorkVarianceHours.ToString("+0.#;-0.#;0")</td></tr> }
+                    </tbody></table></div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private PlanView? _plan;
+    private ProjectHealthView? _health;
+    private BaselineVariance? _variance;
+    private List<GanttChart.Row> _ganttRows = [];
+    private List<(int Id, string Name)> _people = [];
+    private List<(string Name, int Tasks, decimal Hours)> _team = [];
+    private IReadOnlyList<HostRow> _hosts = [];
+    private string _tab = "plan";
+    private int? _selected, _editing;
+    private string _newTask = "", _editName = "";
+    private decimal _newWork;
+    private int _assignPerson; private decimal _assignUnits = 100;
+    private int _linkPred, _linkType, _linkLag;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _plan = await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(Id));
+        _health = await Q(async sp => _plan.Tasks.Count == 0 ? null : await sp.GetRequiredService<HealthService>().GetAsync(Id, asOf));
+        _hosts = await Q(sp => sp.GetRequiredService<HostService>().ListAsync(Id));
+        _people = await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, Name = p.FullName }).ToListAsync())
+            is { } list ? list.Select(p => (p.Id, p.Name)).ToList() : [];
+        try { _variance = await Q(sp => sp.GetRequiredService<PlanService>().GetBaselineVarianceAsync(Id)); } catch (PlanException) { _variance = null; }
+
+        _ganttRows = _plan.Tasks.Select(t => new GanttChart.Row(t.Name, t.Level, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary,
+            t.Kind == "milestone", t.Wbs + " " + t.Name)).ToList();
+        _team = _plan.Tasks.Where(t => !t.IsSummary).SelectMany(t => t.Assignments.Where(a => a.PersonName is not null).Select(a => (a.PersonName!, t.Id, Hours: t.WorkHours * a.Units)))
+            .GroupBy(x => x.Item1).Select(g => (g.Key, g.Count(), g.Sum(x => x.Hours))).OrderByDescending(x => x.Item3).ToList();
+    }
+
+    private PlanTaskView? Sel() => _selected is { } id ? _plan?.Tasks.FirstOrDefault(t => t.Id == id) : null;
+    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+    private string LinkText(LinkView l, int self)
+    {
+        string N(int id) => _plan!.Tasks.FirstOrDefault(t => t.Id == id) is { } t ? $"{t.Wbs} {Short(t.Name, 30)}" : "?";
+        var type = new[] { "FS", "SS", "FF", "SF" }[l.Type];
+        return l.SuccessorId == self ? $"after {N(l.PredecessorId)} ({type}{(l.LagDays != 0 ? l.LagDays.ToString("+0;-0") : "")})" : $"before {N(l.SuccessorId)} ({type})";
+    }
+
+    private Task Recompute() => Act((sp, _) => sp.GetRequiredService<PlanService>().RecomputeAsync(Id, AsOf), "Schedule recomputed.");
+    private Task SaveBaseline() => Act((sp, a) => sp.GetRequiredService<PlanService>().CreateBaselineAsync(Id, "Baseline " + AsOf.ToString("yyyy-MM-dd"), a), "Baseline saved.");
+
+    private async Task AddTask()
+    {
+        if (string.IsNullOrWhiteSpace(_newTask)) return;
+        var after = _selected; var name = _newTask.Trim(); var work = _newWork;
+        var parent = Sel()?.ParentId;
+        await Act(async (sp, a) =>
+        {
+            var plans = sp.GetRequiredService<PlanService>();
+            await plans.AddTaskAsync(Id, name, a, parent, after, work);
+            await plans.RecomputeAsync(Id, AsOf);
+        }, "Task added.");
+        _newTask = ""; _newWork = 0;
+    }
+
+    private void StartEdit(PlanTaskView t) { _editing = t.Id; _editName = t.Name; }
+    private async Task SaveName(int id)
+    {
+        var name = _editName; _editing = null;
+        await Patch(id, new TaskPatch { Name = name });
+    }
+    private Task SetWork(int id, object? v) => decimal.TryParse(v?.ToString(), out var h) ? Patch(id, new TaskPatch { WorkHours = h }) : Task.CompletedTask;
+    private Task SetPct(int id, object? v) => decimal.TryParse(v?.ToString(), out var p) ? Patch(id, new TaskPatch { PercentComplete = Math.Clamp(p, 0, 100) / 100m }) : Task.CompletedTask;
+
+    private Task Patch(int id, TaskPatch patch) => Act(async (sp, a) =>
+    {
+        var plans = sp.GetRequiredService<PlanService>();
+        await plans.UpdateTaskAsync(id, patch, a);
+        await plans.RecomputeAsync(Id, AsOf);
+    });
+
+    private Task Move(int id, MoveDirection d) => Act(async (sp, a) =>
+    {
+        var plans = sp.GetRequiredService<PlanService>();
+        await plans.MoveTaskAsync(id, d, a);
+        await plans.RecomputeAsync(Id, AsOf);
+    });
+
+    private Task Delete(int id) => Act(async (sp, a) =>
+    {
+        var plans = sp.GetRequiredService<PlanService>();
+        await plans.DeleteTaskAsync(id, a);
+        if (_selected == id) _selected = null;
+        await plans.RecomputeAsync(Id, AsOf);
+    }, "Task deleted.");
+
+    private Task Assign(int taskId)
+    {
+        if (_assignPerson == 0) { State.ShowToast("Pick an engineer.", error: true); return Task.CompletedTask; }
+        var person = _assignPerson; var units = _assignUnits / 100m;
+        return Act(async (sp, a) =>
+        {
+            var plans = sp.GetRequiredService<PlanService>();
+            await plans.AssignAsync(taskId, person, units, a);
+            await plans.RecomputeAsync(Id, AsOf);
+        }, "Assigned.");
+    }
+
+    private Task Unassign(int assignmentId) => Act(async (sp, a) =>
+    {
+        var plans = sp.GetRequiredService<PlanService>();
+        await plans.UnassignAsync(assignmentId, a);
+        await plans.RecomputeAsync(Id, AsOf);
+    });
+
+    private Task AddLink(int succ)
+    {
+        if (_linkPred == 0) return Task.CompletedTask;
+        var pred = _linkPred; var type = _linkType; var lag = _linkLag;
+        return Act(async (sp, a) =>
+        {
+            var plans = sp.GetRequiredService<PlanService>();
+            await plans.AddLinkAsync(pred, succ, type, lag, a);
+            await plans.RecomputeAsync(Id, AsOf);
+        }, "Linked.");
+    }
+
+    private Task RemoveLink(int id) => Act(async (sp, a) =>
+    {
+        var plans = sp.GetRequiredService<PlanService>();
+        await plans.RemoveLinkAsync(id, a);
+        await plans.RecomputeAsync(Id, AsOf);
+    });
+}

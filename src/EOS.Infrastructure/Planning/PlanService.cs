@@ -238,6 +238,18 @@ public sealed class PlanService(EosDbContext db)
         return await BuildViewAsync(built.Project, built.Warnings, ct);
     }
 
+    /// <summary>Schedules every project that has tasks. A project whose plan cannot be scheduled is reported, not fatal.</summary>
+    public async Task<IReadOnlyList<string>> RecomputeAllAsync(DateOnly? statusDate = null, CancellationToken ct = default)
+    {
+        var problems = new List<string>();
+        foreach (var id in await db.Tasks.Select(t => t.ProjectId).Distinct().ToListAsync(ct))
+        {
+            try { await RecomputeAsync(id, statusDate, ct); }
+            catch (PlanException ex) { problems.Add($"project {id}: {ex.Message}"); }
+        }
+        return problems;
+    }
+
     public async Task<PlanView> GetPlanAsync(int projectId, CancellationToken ct = default)
     {
         var project = await db.Projects.AsNoTracking().SingleOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new PlanException($"Project {projectId} not found.");

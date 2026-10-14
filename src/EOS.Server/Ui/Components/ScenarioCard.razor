@@ -1,0 +1,32 @@
+<div class="plate">
+    <h2>Scenario #@S.Id · @S.Name <Badge Kind="@(S.Status == "Applied" ? "good" : S.Status == "Approved" ? "warn" : "")">@S.Status</Badge></h2>
+    <ul class="verdict">@foreach (var v in S.Verdict) { <li>@v</li> }</ul>
+    @foreach (var w in S.Warnings) { <div class="plate warn">@w</div> }
+    @if (S.RequiresLeadershipApproval && S.Status == "Draft") { <p class="muted">This scenario pushes a project's finish beyond the configured threshold; record an approval before applying.</p> }
+    <div class="tablewrap"><table class="grid">
+        <thead><tr><th>Project</th><th>Baseline finish</th><th>Scenario finish</th><th class="num">Slip (d)</th></tr></thead>
+        <tbody>
+        @foreach (var p in S.Projects)
+        {
+            <tr><td><b>@p.ProjectNo</b> <span class="muted">@p.Name</span></td><td>@p.BaselineFinish.ToString("dd MMM yyyy")</td><td>@p.ScenarioFinish.ToString("dd MMM yyyy")</td>
+                <td class="num"><span class="@(p.SlipDays > 0 ? "slip-pos" : p.SlipDays < 0 ? "slip-neg" : "")">@p.SlipDays.ToString("+0;-0;0")</span></td></tr>
+        }
+        </tbody></table></div>
+    <div class="actions" style="margin-top:10px">
+        @if (S.Status is "Draft" or "Analysed")
+        {
+            <button class="secondary" @onclick="() => OnDecide.InvokeAsync((S.Id, true))">Approve</button>
+            <button class="secondary" @onclick="() => OnDecide.InvokeAsync((S.Id, false))">Reject</button>
+        }
+        @if (S.Status is "Approved" or "Draft" or "Analysed")
+        {
+            <button @onclick="() => OnApply.InvokeAsync(S.Id)">Apply to plans</button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ScenarioView S { get; set; } = null!;
+    [Parameter] public EventCallback<(int Id, bool Approve)> OnDecide { get; set; }
+    [Parameter] public EventCallback<int> OnApply { get; set; }
+}

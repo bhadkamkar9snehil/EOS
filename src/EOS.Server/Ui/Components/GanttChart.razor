@@ -1,0 +1,127 @@
+@using System.Globalization
+
+@* A dependency-free SVG Gantt: label column (HTML, sticky) + scrollable time area (SVG). Used for a single plan and for the combined portfolio view. *@
+@if (Rows.Count == 0)
+{
+    <div class="empty">Nothing to draw yet. Schedule a plan to see bars.</div>
+}
+else
+{
+    <div class="gantt-wrap" style="display:flex">
+        <div class="gantt-labels" style="width:@(LabelWidth)px;flex:none">
+            <div style="height:@(HeaderHeight)px;border-bottom:1px solid var(--line)"></div>
+            @foreach (var r in Rows)
+            {
+                <div class="gl @(r.IsSummary ? "sum" : "")" style="height:@(RowHeight)px;line-height:@(RowHeight)px;padding-left:@(6 + r.Level * 14)px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;@(r.IsSummary ? "font-weight:650" : "")" title="@r.Tooltip">
+                    @if (r.Href is not null) { <a href="@r.Href">@r.Label</a> } else { @r.Label }
+                </div>
+            }
+        </div>
+        <div class="gantt" style="flex:1;min-width:0">
+            <svg width="@Width" height="@(HeaderHeight + Rows.Count * RowHeight)" role="img" aria-label="Gantt chart">
+                @* month and week header *@
+                @foreach (var m in Months)
+                {
+                    @Txt(m.X + 4, 14, "dim", m.Label)
+                    <line class="gridline" x1="@m.X" x2="@m.X" y1="0" y2="@(HeaderHeight + Rows.Count * RowHeight)" />
+                }
+                @if (DayWidth >= 5)
+                {
+                    @foreach (var w in Weekends)
+                    {
+                        <rect class="weekend" x="@w" y="@HeaderHeight" width="@(DayWidth * 1)" height="@(Rows.Count * RowHeight)" />
+                    }
+                }
+                @for (var i = 0; i < Rows.Count; i++)
+                {
+                    var r = Rows[i];
+                    var y = HeaderHeight + i * RowHeight;
+                    <line class="gridline" x1="0" x2="@Width" y1="@(y + RowHeight)" y2="@(y + RowHeight)" style="opacity:.5" />
+                    @if (r.BaseStart is { } bs && r.BaseFinish is { } bf)
+                    {
+                        <rect x="@X(bs)" y="@(y + RowHeight - 6)" width="@Math.Max(2, X(bf) - X(bs) + DayWidth)" height="3" fill="var(--muted)" opacity=".55"><title>Baseline @bs.ToString("dd MMM") – @bf.ToString("dd MMM yyyy")</title></rect>
+                    }
+                    @if (r.Start is { } s && r.Finish is { } f)
+                    {
+                        var x = X(s);
+                        var w = Math.Max(DayWidth, X(f) - x + DayWidth);
+                        if (r.IsMilestone)
+                        {
+                            <polygon points="@Diamond(x + DayWidth / 2.0, y + RowHeight / 2.0, 7)" class="bar-sum"><title>@r.Label — @s.ToString("dd MMM yyyy")</title></polygon>
+                        }
+                        else if (r.IsSummary)
+                        {
+                            <rect class="bar-sum" x="@x" y="@(y + 6)" width="@w" height="6" rx="1"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%)</title></rect>
+                            <polygon points="@($"{x},{y + 12} {x + 6},{y + 12} {x},{y + 18}")" class="bar-sum" />
+                            <polygon points="@($"{x + w},{y + 12} {x + w - 6},{y + 12} {x + w},{y + 18}")" class="bar-sum" />
+                        }
+                        else
+                        {
+                            <rect class="@(r.Critical ? "bar-crit" : r.Progress >= 1 ? "bar-done" : "bar-task")" x="@x" y="@(y + 4)" width="@w" height="@(RowHeight - 11)" rx="3" opacity=".85"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%@(r.Status is null ? "" : ", " + r.Status))</title></rect>
+                            @if (r.Progress > 0 && r.Progress < 1)
+                            {
+                                <rect x="@x" y="@(y + 4)" width="@(w * (double)r.Progress)" height="@(RowHeight - 11)" rx="3" fill="rgba(0,0,0,.28)" />
+                            }
+                        }
+                    }
+                }
+                @if (Today is { } t && t >= MinDate && t <= MaxDate)
+                {
+                    <line class="today" x1="@(X(t) + DayWidth / 2)" x2="@(X(t) + DayWidth / 2)" y1="@HeaderHeight" y2="@(HeaderHeight + Rows.Count * RowHeight)" />
+                    @Txt(X(t) + 3, HeaderHeight - 4, "", "today", "fill:var(--accent);font-weight:700")
+                }
+            </svg>
+        </div>
+    </div>
+    <div class="legend">
+        <span><i style="background:#5b8fc9"></i>task</span><span><i style="background:var(--bad)"></i>critical</span>
+        <span><i style="background:var(--good)"></i>complete</span><span><i style="background:#3b4658"></i>summary / milestone</span>
+        <span><i style="background:var(--muted);height:3px"></i>baseline</span>
+    </div>
+}
+
+@code {
+    public sealed record Row(
+        string Label, int Level, DateOnly? Start, DateOnly? Finish, decimal Progress, bool Critical, bool IsSummary, bool IsMilestone = false,
+        string? Tooltip = null, string? Href = null, string? Status = null, DateOnly? BaseStart = null, DateOnly? BaseFinish = null);
+
+    [Parameter, EditorRequired] public IReadOnlyList<Row> Rows { get; set; } = [];
+    [Parameter] public DateOnly? Today { get; set; }
+    [Parameter] public int DayWidth { get; set; } = 6;
+    [Parameter] public int RowHeight { get; set; } = 24;
+    [Parameter] public int LabelWidth { get; set; } = 300;
+
+    private const int HeaderHeight = 28;
+    private DateOnly MinDate, MaxDate;
+    private int Width;
+    private List<(int X, string Label)> Months = [];
+    private List<int> Weekends = [];
+
+    protected override void OnParametersSet()
+    {
+        var dates = Rows.SelectMany(r => new[] { r.Start, r.Finish, r.BaseStart, r.BaseFinish }).Where(d => d is not null).Select(d => d!.Value).ToList();
+        if (Today is { } t) dates.Add(t);
+        if (dates.Count == 0) { MinDate = MaxDate = DateOnly.FromDateTime(DateTime.Today); Width = 100; Months = []; Weekends = []; return; }
+        MinDate = dates.Min().AddDays(-3);
+        MaxDate = dates.Max().AddDays(10);
+        Width = (MaxDate.DayNumber - MinDate.DayNumber + 1) * DayWidth;
+
+        Months = [];
+        for (var m = new DateOnly(MinDate.Year, MinDate.Month, 1); m <= MaxDate; m = m.AddMonths(1))
+            Months.Add((Math.Max(0, X(m)), m.ToString("MMM yyyy", CultureInfo.InvariantCulture)));
+
+        Weekends = [];
+        if (DayWidth >= 5)
+            for (var d = MinDate; d <= MaxDate; d = d.AddDays(1))
+                if (d.DayOfWeek == DayOfWeek.Sunday) Weekends.Add(X(d));
+    }
+
+    private int X(DateOnly d) => (d.DayNumber - MinDate.DayNumber) * DayWidth;
+
+    /// <summary>SVG text. Razor reserves the &lt;text&gt; tag, so it is emitted as encoded markup.</summary>
+    private static MarkupString Txt(int x, int y, string cls, string text, string? style = null) =>
+        new($"<text x=\"{x}\" y=\"{y}\" class=\"{cls}\"{(style is null ? "" : $" style=\"{style}\"")}>{System.Net.WebUtility.HtmlEncode(text)}</text>");
+
+    private static string Diamond(double cx, double cy, double r) =>
+        string.Create(CultureInfo.InvariantCulture, $"{cx},{cy - r} {cx + r},{cy} {cx},{cy + r} {cx - r},{cy}");
+}

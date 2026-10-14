@@ -7,8 +7,9 @@ public sealed class UiState
     public string? Toast { get; private set; }
     public bool ToastIsError { get; private set; }
     public event Action? Changed;
+    public event Action? AsOfChanged;
 
-    public void SetAsOf(DateOnly date) { AsOf = date; Changed?.Invoke(); }
+    public void SetAsOf(DateOnly date) { AsOf = date; AsOfChanged?.Invoke(); Changed?.Invoke(); }
     public void ShowToast(string message, bool error = false) { Toast = message; ToastIsError = error; Changed?.Invoke(); }
     public void ClearToast() { Toast = null; Changed?.Invoke(); }
 }

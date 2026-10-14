@@ -1,0 +1,125 @@
+@page "/whatif"
+@inherits EosPage
+@using EOS.Infrastructure.Persistence
+@using EOS.Infrastructure.Projects
+<PageTitle>What-if · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div><h1>What-if workbench</h1><p class="muted">Move an engineer (or part of one) from one project to another from a date, and see every project's new finish before anything changes. Nothing is written until you approve and apply.</p></div>
+    </div>
+
+    @if (Loading && _projects is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="plate">
+            <h2>Moves</h2>
+            <div class="form-row">
+                <div class="field"><label>Engineer</label><select @bind="_person"><option value="0">–</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select></div>
+                <div class="field"><label>From project</label><select @bind="_from"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo @Short(p.Name, 30)</option> }</select></div>
+                <div class="field"><label>To project</label><select @bind="_to"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo @Short(p.Name, 30)</option> }</select></div>
+                <div class="field"><label>Effective</label><input type="date" @bind="_date" /></div>
+                <div class="field"><label>% of engineer</label><input type="number" @bind="_pct" style="width:80px" min="1" max="100" /></div>
+                <button class="secondary" @onclick="AddMove">Add move</button>
+            </div>
+            @foreach (var (m, i) in _moves.Select((m, i) => (m, i)))
+            {
+                <div>@Name(m.PersonId) · @ProjNo(m.FromProjectId) → @ProjNo(m.ToProjectId) · from @m.Date.ToString("dd MMM yyyy") · @(m.Percent * 100)% <button class="icon" @onclick="() => _moves.RemoveAt(i)">✕</button></div>
+            }
+            <div class="form-row" style="margin-top:10px">
+                <div class="field"><label>Scenario name</label><input @bind="_name" style="width:300px" /></div>
+                <button @onclick="Analyse" disabled="@(_moves.Count == 0)">Analyse</button>
+            </div>
+        </div>
+
+        @if (_result is { } r) { <ScenarioCard S="@r" OnDecide="Decide" OnApply="Apply" /> }
+
+        <div class="grid-2">
+            <div class="plate">
+                <h2>Release analysis · who can be freed for a project</h2>
+                <div class="form-row">
+                    <div class="field"><label>Target project</label><select @bind="_target"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo @Short(p.Name, 30)</option> }</select></div>
+                    <div class="field"><label>Analysis date</label><input type="date" @bind="_analysisDate" /></div>
+                    <button class="secondary" @onclick="Release">Analyse</button>
+                    <button class="secondary" @onclick="Push">Build push plan</button>
+                </div>
+                @if (_release is not null)
+                {
+                    <div class="tablewrap"><table class="grid"><thead><tr><th>Engineer</th><th>Now on</th><th>Free from</th><th>Earliest no-delay move</th><th class="num">Cost (d)</th><th class="num">Gain to target (d)</th><th></th></tr></thead><tbody>
+                    @foreach (var x in _release)
+                    {
+                        <tr class="@(x.Eligible ? "" : "muted")"><td>@x.PersonName</td><td>@x.ProjectNo</td><td>@x.LastDayOnCurrentWork.AddDays(1).ToString("dd MMM yy")</td><td>@x.EarliestNoDelayMove?.ToString("dd MMM yy")</td>
+                            <td class="num">@x.CostIfMovedOnAnalysisDate</td><td class="num">@x.GainToTargetIfMovedOnAnalysisDate</td><td>@(x.Eligible ? (x.TooLateToHelp ? "too late" : "") : x.EligibilityNote)</td></tr>
+                    }
+                    </tbody></table></div>
+                }
+                @if (_push is not null)
+                {
+                    <h2 style="margin-top:14px">Push plan for @_push.TargetProjectNo</h2>
+                    @if (_push.Steps.Count == 0) { <div class="empty">No sequence of moves pulls this project in.</div> }
+                    else
+                    {
+                        <table class="grid"><thead><tr><th>#</th><th>Engineer</th><th>From</th><th>On</th><th class="num">Target slip after (d)</th></tr></thead><tbody>
+                        @foreach (var s in _push.Steps) { <tr><td>@s.Step</td><td>@s.PersonName</td><td>@s.FromProjectNo</td><td>@s.Date.ToString("dd MMM yy")</td><td class="num">@s.TargetSlipDays</td></tr> }
+                        </tbody></table>
+                        <button style="margin-top:8px" @onclick="LoadPush">Load these moves into the workbench</button>
+                    }
+                }
+            </div>
+            <div class="plate">
+                <h2>Saved scenarios</h2>
+                @if (_scenarios.Count == 0) { <div class="empty">None yet.</div> }
+                else
+                {
+                    <table class="grid"><tbody>
+                    @foreach (var s in _scenarios)
+                    {
+                        <tr class="clickable" @onclick="() => Open(s.Id)"><td>#@s.Id <b>@s.Name</b><div class="muted">@s.Moves.Count move(s) · @s.CreatedBy · @s.CreatedUtc.ToString("dd MMM HH:mm")</div></td><td><Badge Kind="@(s.Status == "Applied" ? "good" : s.Status == "Approved" ? "warn" : "")">@s.Status</Badge></td></tr>
+                    }
+                    </tbody></table>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<ProjectSummary>? _projects;
+    private List<(int Id, string Name)> _people = [];
+    private List<MoveInput> _moves = [];
+    private ScenarioView? _result;
+    private IReadOnlyList<ScenarioView> _scenarios = [];
+    private IReadOnlyList<ReleaseRowView>? _release; private PushPlanView? _push;
+    private int _person, _from, _to, _target; private DateTime _date = DateTime.Today; private decimal _pct = 100;
+    private DateTime _analysisDate = DateTime.Today.AddDays(7);
+    private string _name = "What-if " + DateTime.Today.ToString("dd MMM");
+
+    protected override async Task LoadAsync()
+    {
+        _projects = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true));
+        var list = await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }).ToListAsync());
+        _people = list.Select(p => (p.Id, p.FullName)).ToList();
+        _scenarios = await Q(sp => sp.GetRequiredService<ScenarioService>().ListAsync());
+        _date = AsOf.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private string Name(int id) => _people.FirstOrDefault(p => p.Id == id).Name ?? "?";
+    private string ProjNo(int id) => _projects?.FirstOrDefault(p => p.Id == id)?.ProjectNo ?? "?";
+    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+
+    private void AddMove()
+    {
+        if (_person == 0 || _from == 0 || _to == 0) { State.ShowToast("Pick an engineer and both projects.", error: true); return; }
+        _moves.Add(new MoveInput(_person, _from, _to, DateOnly.FromDateTime(_date), Math.Clamp(_pct, 1, 100) / 100m));
+    }
+
+    private Task Analyse() => Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().AnalyseAsync(_moves, _name, a, today: AsOf));
+    private Task Open(int id) => Act(async (sp, _) => _result = await sp.GetRequiredService<ScenarioService>().GetAsync(id), reload: false);
+    private Task Decide((int Id, bool Approve) d) => Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().DecideAsync(d.Id, d.Approve, a, null), d.Approve ? "Approved." : "Rejected.");
+    private Task Apply(int id) => Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().ApplyAsync(id, a, AsOf), "Applied: assignments rewritten and plans recomputed.");
+
+    private Task Release() => _target == 0 ? Task.CompletedTask : Act(async (sp, _) => _release = await sp.GetRequiredService<ScenarioService>().ReleaseAnalysisAsync(_target, DateOnly.FromDateTime(_analysisDate), AsOf), reload: false);
+    private Task Push() => _target == 0 ? Task.CompletedTask : Act(async (sp, _) => _push = await sp.GetRequiredService<ScenarioService>().PushPlanAsync(_target, DateOnly.FromDateTime(_analysisDate), 10, AsOf), reload: false);
+    private void LoadPush() { if (_push is not null) { _moves = _push.Moves.ToList(); _name = "Push plan " + _push.TargetProjectNo; } }
+}

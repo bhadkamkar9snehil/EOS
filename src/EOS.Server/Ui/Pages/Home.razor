@@ -1,3 +1,149 @@
 @page "/"
+@inherits EosPage
 <PageTitle>Command Center · EOS</PageTitle>
-<div class="page"><h1>Command Center</h1><p class="muted">Loading…</p></div>
+
+<div class="page">
+    <div class="page-head">
+        <div>
+            <h1>Command Center</h1>
+            <p class="muted">Delivery, capacity, skills and infrastructure at a glance · as of @AsOf.ToString("dd MMM yyyy")</p>
+        </div>
+        <div class="actions">
+            <a class="btn secondary" href="/whatif">New what-if</a>
+            <a class="btn secondary" href="/gantt">Combined Gantt</a>
+        </div>
+    </div>
+
+    @if (Loading && _cc is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_cc is not null)
+    {
+        var k = _cc.Kpis;
+        <div class="kpis">
+            <a class="kpi" href="/projects"><div class="v">@k.ActiveProjects</div><div class="l">Active projects</div></a>
+            <a class="kpi @(k.AtRiskProjects > 0 ? "bad" : "good")" href="/projects"><div class="v">@k.AtRiskProjects</div><div class="l">At-risk projects</div></a>
+            <div class="kpi @(k.DelayedTasks > 0 ? "warn" : "good")"><div class="v">@k.DelayedTasks</div><div class="l">Delayed tasks</div></div>
+            <a class="kpi @(k.OverAllocatedEngineers > 0 ? "bad" : "good")" href="/capacity"><div class="v">@k.OverAllocatedEngineers</div><div class="l">Over-allocated engineers</div></a>
+            <a class="kpi" href="/capacity"><div class="v">@k.FreePlannedHoursNext4Weeks.ToString("N0")</div><div class="l">Free planned h · next 4 wks</div></a>
+            <a class="kpi @(k.OpenGaps > 0 ? "warn" : "")" href="/demand"><div class="v">@k.OpenGaps</div><div class="l">Open gaps</div></a>
+            <a class="kpi @(k.PendingApprovals > 0 ? "warn" : "")" href="/whatif"><div class="v">@k.PendingApprovals</div><div class="l">Pending approvals</div></a>
+            <a class="kpi" href="/training"><div class="v">@k.OpenDoubts</div><div class="l">Open doubts</div></a>
+            <a class="kpi" href="/infrastructure"><div class="v">@k.VmsRunning<span class="muted" style="font-size:14px"> / @(k.VmsRunning + k.VmsOff)</span></div><div class="l">VMs running / total</div></a>
+            <a class="kpi @(k.HostsLowOnDisk > 0 ? "bad" : "good")" href="/infrastructure"><div class="v">@k.HostsLowOnDisk</div><div class="l">Hosts low on disk</div></a>
+        </div>
+
+        <div class="grid-2">
+            <div class="plate">
+                <h2>Project health</h2>
+                @if (_cc.Projects.Count == 0) { <div class="empty">No project has a plan yet. Import the tracker or build a plan under Projects.</div> }
+                else
+                {
+                    <div class="tablewrap"><table class="grid">
+                        <thead><tr><th>Project</th><th>Health</th><th class="num">Late / open</th><th class="num">Variance (d)</th><th class="num">Progress</th></tr></thead>
+                        <tbody>
+                        @foreach (var h in _cc.Projects)
+                        {
+                            <tr class="clickable" @onclick="() => Open(h.ProjectId)">
+                                <td><b>@h.ProjectNo</b><div class="muted">@Short(h.Name, 46)</div></td>
+                                <td><HealthBadge Health="@h.Health" Title="@string.Join("; ", h.Reasons)" /></td>
+                                <td class="num">@h.DelayedTasks / @h.OpenTasks</td>
+                                <td class="num">@(h.ScheduleVarianceDays?.ToString("+0;-0;0") ?? "–")</td>
+                                <td class="num">@((h.ProgressActual * 100).ToString("0"))%</td>
+                            </tr>
+                        }
+                        </tbody></table></div>
+                }
+            </div>
+
+            <div class="plate">
+                <h2>Alerts <a href="/alerts" class="muted" style="text-transform:none;letter-spacing:0">(@_cc.Alerts.Count)</a></h2>
+                @if (_cc.Alerts.Count == 0) { <div class="empty">Nothing flagged. </div> }
+                else
+                {
+                    <div class="tablewrap" style="max-height:340px;overflow-y:auto"><table class="grid"><tbody>
+                    @foreach (var a in _cc.Alerts.Take(14))
+                    {
+                        <tr><td class="sev-@a.Severity" style="white-space:nowrap">@a.Rule</td><td><b>@a.Subject</b><div class="muted">@a.Message</div></td></tr>
+                    }
+                    </tbody></table></div>
+                }
+            </div>
+        </div>
+
+        <div class="plate" style="margin-top:16px">
+            <h2>Engineer load · next 8 weeks <span class="muted" style="text-transform:none;letter-spacing:0">(hours allocated vs weekly capacity)</span></h2>
+            @if (_people.Count == 0) { <div class="empty">No engineers yet.</div> }
+            else
+            {
+                <div class="tablewrap"><table class="grid">
+                    <thead><tr><th>Engineer</th>@foreach (var w in _weeks) { <th class="num">@w.ToString("dd MMM")</th> }</tr></thead>
+                    <tbody>
+                    @foreach (var p in _people)
+                    {
+                        <tr><td><a href="/people/@p.Id">@p.Name</a></td>
+                        @foreach (var w in _weeks)
+                        {
+                            var cell = _cc.LoadNext8Weeks.FirstOrDefault(x => x.PersonId == p.Id && x.WeekStart == w);
+                            <td class="num">@if (cell is null || cell.AllocatedHours == 0) { <span class="heat none">–</span> } else { <span class="heat @cell.Band" title="@cell.AllocatedHours.ToString("0.#") h of @cell.CapacityHours.ToString("0.#") h">@cell.AllocatedHours.ToString("0")</span> }</td>
+                        }</tr>
+                    }
+                    </tbody></table></div>
+            }
+        </div>
+
+        <div class="grid-2" style="margin-top:16px">
+            <div class="plate">
+                <h2>Supply vs demand · next 3 months <span class="muted" style="text-transform:none;letter-spacing:0">(gap hours; red = short)</span></h2>
+                @{ var demandSkills = _cc.SupplyDemand.Where(r => r.ProjectDemandHours + r.PipelineHours > 0).Select(r => r.SkillId).ToHashSet();
+                   var gaps = _cc.SupplyDemand.Where(r => demandSkills.Contains(r.SkillId)).ToList(); }
+                @if (gaps.Count == 0) { <div class="empty">No skill demand recorded yet. Add demand lines under Demand &amp; Pipeline.</div> }
+                else
+                {
+                    <div class="tablewrap"><table class="grid">
+                        <thead><tr><th>Skill</th>@foreach (var m in _months) { <th class="num">@m.ToString("MMM")</th> }<th class="num">Deployable</th></tr></thead>
+                        <tbody>
+                        @foreach (var s in gaps.GroupBy(r => r.SkillName))
+                        {
+                            <tr><td>@s.Key</td>
+                            @foreach (var m in _months)
+                            {
+                                var r = s.FirstOrDefault(x => x.Month == m);
+                                <td class="num">@if (r is null) { <span class="muted">–</span> } else { <span class="@(r.GapHours > 0 ? "slip-pos" : "slip-neg")" title="demand @(r.ProjectDemandHours + r.PipelineHours) h, supply @r.SupplyHours h">@r.GapHours.ToString("+0;-0;0")</span> }</td>
+                            }
+                            <td class="num">@s.First().DeployableCount</td></tr>
+                        }
+                        </tbody></table></div>
+                }
+            </div>
+            <div class="plate">
+                <h2>Upcoming milestones · 30 days</h2>
+                @if (_cc.Milestones.Count == 0) { <div class="empty">No milestones scheduled in the next 30 days.</div> }
+                else
+                {
+                    <table class="grid"><tbody>
+                    @foreach (var m in _cc.Milestones) { <tr><td class="num" style="white-space:nowrap">@m.Date?.ToString("dd MMM")</td><td><b>@m.ProjectNo</b> @m.Name</td></tr> }
+                    </tbody></table>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CommandCenter? _cc;
+    private List<(int Id, string Name)> _people = [];
+    private List<DateOnly> _weeks = [];
+    private List<DateOnly> _months = [];
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _cc = await Q(sp => sp.GetRequiredService<DashboardService>().GetAsync(asOf));
+        _people = _cc.LoadNext8Weeks.GroupBy(r => r.PersonId).Select(g => (g.Key, g.First().PersonName)).OrderBy(p => p.Item2).ToList();
+        _weeks = _cc.LoadNext8Weeks.Select(r => r.WeekStart).Distinct().OrderBy(d => d).ToList();
+        _months = _cc.SupplyDemand.Select(r => r.Month).Distinct().OrderBy(d => d).ToList();
+    }
+
+    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+    private void Open(int projectId) => Nav.NavigateTo("/projects/" + projectId);
+}

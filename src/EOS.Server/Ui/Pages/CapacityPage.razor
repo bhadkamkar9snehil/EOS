@@ -1,0 +1,72 @@
+@page "/capacity"
+@inherits EosPage
+<PageTitle>Capacity &amp; Load · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div><h1>Capacity &amp; Load</h1><p class="muted">Who is booked where. Load is allocated hours against the calendar capacity of each engineer (hours and calendars are configurable under Settings).</p></div>
+        <div class="actions">
+            <label style="margin:0">Weeks <select @bind="_weeks" @bind:after="Reload"><option value="8">8</option><option value="12">12</option><option value="26">26</option></select></label>
+        </div>
+    </div>
+
+    @if (Loading && _load is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="plate">
+            <h2>Weekly load</h2>
+            @if (_people.Count == 0) { <div class="empty">No engineers yet. Import the agility workbook under Imports.</div> }
+            else
+            {
+                <div class="tablewrap"><table class="grid">
+                    <thead><tr><th>Engineer</th>@foreach (var w in _weekStarts) { <th class="num">@w.ToString("dd MMM")</th> }</tr></thead>
+                    <tbody>
+                    @foreach (var p in _people)
+                    {
+                        <tr><td><a href="/people/@p.Id">@p.Name</a></td>
+                        @foreach (var w in _weekStarts)
+                        {
+                            var c = _load!.FirstOrDefault(x => x.PersonId == p.Id && x.WeekStart == w);
+                            <td class="num">@if (c is null || c.AllocatedHours == 0) { <span class="heat none">–</span> } else {
+                                <span class="heat @c.Band" title="@string.Join(", ", c.ByProject.Select(b => b.ProjectNo + " " + b.Hours.ToString("0.#") + "h")) · cap @c.CapacityHours.ToString("0.#") h">@c.AllocatedHours.ToString("0")</span> }</td>
+                        }</tr>
+                    }
+                    </tbody></table></div>
+                <p class="muted">Cell = allocated hours that week. Colour band = load against capacity (thresholds are settings <code>load.*</code>). Hover for the project split.</p>
+            }
+        </div>
+
+        <div class="plate">
+            <h2>Monthly capacity · free planned hours</h2>
+            <div class="tablewrap"><table class="grid">
+                <thead><tr><th>Engineer</th><th>Team</th><th>Month</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Planned</th><th class="num">Allocated</th><th class="num">Free (planned)</th><th class="num">Load</th></tr></thead>
+                <tbody>
+                @foreach (var r in _capacity!)
+                {
+                    <tr><td>@r.PersonName</td><td>@r.Team</td><td>@r.Month.ToString("MMM yyyy")</td>
+                        <td class="num">@r.AvailableHours.ToString("0")</td><td class="num">@r.LeaveHours.ToString("0")</td><td class="num">@r.PlannedHours.ToString("0")</td>
+                        <td class="num">@r.AllocatedHours.ToString("0")</td><td class="num">@((r.PlannedHours - r.AllocatedHours).ToString("0"))</td>
+                        <td class="num"><span class="heat @r.Band">@((r.LoadVsPlanned * 100).ToString("0"))%</span></td></tr>
+                }
+                </tbody></table></div>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<WeeklyLoadRow>? _load;
+    private IReadOnlyList<CapacityRow>? _capacity;
+    private List<(int Id, string Name)> _people = [];
+    private List<DateOnly> _weekStarts = [];
+    private int _weeks = 12;
+
+    protected override async Task LoadAsync()
+    {
+        var from = AsOf; var to = from.AddDays(_weeks * 7);
+        _load = await Q(sp => sp.GetRequiredService<CapacityService>().GetWeeklyLoadAsync(from, to));
+        _capacity = await Q(sp => sp.GetRequiredService<CapacityService>().GetCapacityAsync(from, from.AddMonths(3)));
+        _people = _load.GroupBy(r => r.PersonId).Select(g => (g.Key, g.First().PersonName)).OrderBy(p => p.Item2).ToList();
+        _weekStarts = _load.Select(r => r.WeekStart).Distinct().OrderBy(d => d).ToList();
+    }
+}
