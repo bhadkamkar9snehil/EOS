@@ -39,7 +39,22 @@ internal static class WorkbookReading
         var cell = ws.Cell(row, col);
         if (cell.IsEmpty()) return null;
         if (cell.TryGetValue<DateTime>(out var dt)) return DateOnly.FromDateTime(dt);
-        return DateOnly.TryParse(cell.GetString().Trim(), System.Globalization.CultureInfo.InvariantCulture,
+        return ParseDateText(cell.GetString());
+    }
+
+    private static readonly string[] DateFormats =
+    [
+        "dd-MMM-yy", "dd-MMM-yyyy", "d-MMM-yy", "d-MMM-yyyy", "dd-MMMM-yy", "dd-MMMM-yyyy", "d-MMMM-yy", "d-MMMM-yyyy",
+        "dd MMM yyyy", "d MMM yyyy", "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "yyyy-MM-dd", "dd.MM.yyyy",
+    ];
+
+    /// <summary>Tolerant text date reader: "05-Sept-26", "17-July-26", "14-09-2026", "2026-09-14". Returns null for 0, "-" and junk.</summary>
+    public static DateOnly? ParseDateText(string? text)
+    {
+        var s = (text ?? "").Trim();
+        if (s.Length < 6) return null;                                  // "0", "-", "NA"
+        s = System.Text.RegularExpressions.Regex.Replace(s, "(?i)sept(?!ember)", "Sep");
+        return DateOnly.TryParseExact(s, DateFormats, System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.None, out var d) ? d : null;
     }
 

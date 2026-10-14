@@ -402,7 +402,9 @@ public sealed class PlanService(EosDbContext db)
             t.ScheduledStart = starts.Count > 0 ? starts.Min() : null;
             t.ScheduledFinish = finishes.Count > 0 ? finishes.Max() : null;
             t.WorkHours = kids.Sum(k => k.WorkHours);
-            t.PercentComplete = t.WorkHours > 0 ? kids.Sum(k => k.WorkHours * k.PercentComplete) / t.WorkHours : kids.Average(k => k.PercentComplete);
+            // Weight by work; a child with no work still counts (as 1 h) so it cannot be ignored in the roll-up.
+            var weight = kids.Sum(k => Math.Max(k.WorkHours, 1m));
+            t.PercentComplete = kids.Sum(k => Math.Max(k.WorkHours, 1m) * k.PercentComplete) / weight;
             var floats = kids.Where(k => k.TotalFloatDays is not null).Select(k => k.TotalFloatDays!.Value).ToList();
             t.TotalFloatDays = floats.Count > 0 ? floats.Min() : null;
             t.IsCritical = kids.Any(k => k.IsCritical);
@@ -434,7 +436,7 @@ public sealed class PlanService(EosDbContext db)
     }
 
     /// <summary>Renumbers SortOrder 1..n depth-first from the parent/order structure.</summary>
-    private async Task NormaliseAsync(int projectId, CancellationToken ct)
+    public async Task NormaliseAsync(int projectId, CancellationToken ct)
     {
         var tasks = await db.Tasks.Where(t => t.ProjectId == projectId).ToListAsync(ct);
         var byParent = tasks.GroupBy(t => t.ParentId).ToDictionary(g => g.Key ?? 0, g => g.OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToList());

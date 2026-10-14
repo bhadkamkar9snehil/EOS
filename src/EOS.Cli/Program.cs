@@ -3,6 +3,8 @@ using System.Text.Json;
 using EOS.Domain.Settings;
 using EOS.Infrastructure.Importing;
 using EOS.Infrastructure.Persistence;
+using EOS.Infrastructure.Planning;
+using EOS.Infrastructure.Projects;
 using EOS.Infrastructure.Skills;
 using Microsoft.EntityFrameworkCore;
 
@@ -127,6 +129,90 @@ try
             return 0;
         }
 
+        case ("import", "erp") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var report = await new ErpProjectImporter(db).ImportAsync(argv[2], commit, actor);
+            Console.Write(report.ToText());
+            if (!commit) Console.WriteLine("Re-run with --commit to save.");
+            return 0;
+        }
+
+        case ("import", "tracker") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var report = await new TrackerImporter(db).ImportAsync(argv[2], commit, actor);
+            Console.Write(report.ToText());
+            if (!commit) Console.WriteLine("Re-run with --commit to save.");
+            return 0;
+        }
+
+        case ("import", "vms") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var report = await new InfrastructureImporter(db).ImportAsync(argv[2], commit, actor);
+            Console.Write(report.ToText());
+            if (!commit) Console.WriteLine("Re-run with --commit to save.");
+            return 0;
+        }
+
+        case ("project", "list"):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var search = TakeOption("--search");
+            var rows = await new ProjectService(db).ListAsync(search, withPlanOnly: TakeFlag("--with-plan"));
+            if (json) Console.WriteLine(JsonSerializer.Serialize(rows));
+            else
+            {
+                Console.WriteLine($"{"Project",-18}{"Name",-44}{"Product",-10}{"ERP",-7}{"Tracker",-18}{"Tasks",6}");
+                foreach (var p in rows)
+                    Console.WriteLine($"{p.ProjectNo,-18}{Trim(p.Name, 42),-44}{p.ProductLine,-10}{p.ErpStatus,-7}{p.TrackerStatus,-18}{p.TaskCount,6}");
+                Console.WriteLine($"{rows.Count} projects");
+            }
+            return 0;
+        }
+
+        case ("plan", "show" or "recompute") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var project = await db.Projects.SingleOrDefaultAsync(p => p.ProjectNo == argv[2]) ?? throw new ArgumentException($"No project {argv[2]}.");
+            var plans = new PlanService(db);
+            var plan = argv[1] == "recompute" ? await plans.RecomputeAsync(project.Id) : await plans.GetPlanAsync(project.Id);
+            if (json) { Console.WriteLine(JsonSerializer.Serialize(plan)); return 0; }
+            Console.WriteLine($"{plan.ProjectNo}  {plan.ProjectName}   {plan.Start:dd MMM yyyy} -> {plan.Finish:dd MMM yyyy}   progress {plan.Progress:P0}");
+            foreach (var t in plan.Tasks)
+                Console.WriteLine($"{new string(' ', (t.Level - 1) * 2)}{t.Wbs,-6}{Trim(t.Name, 46 - (t.Level - 1) * 2),-46} {t.Start:dd-MMM-yy} {t.Finish:dd-MMM-yy} {t.PercentComplete,5:P0} {t.Status,-12}{(t.IsCritical ? "CRIT" : ""),-5}{string.Join(",", t.Assignments.Select(a => a.PersonName?.Split(' ')[0]))}");
+            foreach (var w in plan.Warnings) Console.WriteLine($"  WARN {w}");
+            return 0;
+        }
+
+        case ("host", "list"):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var hosts = await db.Hosts.OrderBy(h => h.Kind).ThenBy(h => h.Ip).ToListAsync();
+            var disks = await db.HostDisks.ToListAsync();
+            Console.WriteLine($"{"Kind",-9}{"IP",-16}{"Name",-40}{"State",-10}{"Owner",-22}Notes");
+            foreach (var h in hosts.Where(h => !h.Removed))
+            {
+                var low = disks.Where(d => d.HostId == h.Id && d.TotalGb > 0 && d.FreeGb / d.TotalGb < 0.10m).Select(d => $"{d.Drive}: {d.FreeGb:0.#}/{d.TotalGb:0.#} GB free").ToList();
+                Console.WriteLine($"{h.Kind,-9}{h.Ip,-16}{Trim(h.Name, 38),-40}{h.State,-10}{Trim(h.OwnerName ?? "", 20),-22}{(low.Count > 0 ? "LOW DISK " + string.Join(", ", low) : "")}{(h.MarkedForDeletion == true ? " reclaim?" : "")}");
+            }
+            return 0;
+        }
+
+        case ("alias", "resolve") when argv.Count >= 4:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var person = await db.People.SingleOrDefaultAsync(p => p.Code == argv[3]) ?? throw new ArgumentException($"No person with code {argv[3]}.");
+            var source = TakeOption("--source") ?? "tracker";
+            var alias = await db.PersonAliases.SingleOrDefaultAsync(a => a.Alias == argv[2] && a.Source == source);
+            if (alias is null) db.PersonAliases.Add(new EOS.Domain.People.PersonAlias { Alias = argv[2], Source = source, Kind = EOS.Domain.People.AliasKind.Initials, PersonId = person.Id });
+            else alias.PersonId = person.Id;
+            await db.SaveChangesAsync();
+            Console.WriteLine($"{argv[2]} ({source}) -> {person.FullName}. Re-run the import to apply it.");
+            return 0;
+        }
+
         case ("training", "summary"):
         {
             using var db = EosDatabase.Open(dbPath);
@@ -178,6 +264,8 @@ catch (SkillRatingException ex) { Console.Error.WriteLine(ex.Message); return 1;
 catch (ArgumentException ex) { Console.Error.WriteLine(ex.Message); return 1; }
 catch (FileNotFoundException ex) { Console.Error.WriteLine($"File not found: {ex.FileName}"); return 3; }
 
+static string Trim(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "~";
+
 void PrintHelp()
 {
     Console.WriteLine($"eos {version} — EOS V2 command line (local mode; database: {dbPath})");
@@ -191,6 +279,13 @@ void PrintHelp()
     Console.WriteLine("  eos person list [--json]");
     Console.WriteLine("  eos skill matrix");
     Console.WriteLine("  eos skill rate <personCode> <skillCode> <rating> --reason <text>   (manual rating change)");
+    Console.WriteLine("  eos import erp <file.xlsx> [--commit]        ERP project master (454 projects)");
+    Console.WriteLine("  eos import tracker <file.xlsx> [--commit]    LPP projects, task plans, AMC tickets");
+    Console.WriteLine("  eos import vms <file.xlsx> [--commit]        servers, VMs, disks, demo systems (credentials never read)");
+    Console.WriteLine("  eos project list [--search text] [--with-plan] [--json]");
+    Console.WriteLine("  eos plan show|recompute <projectNo> [--json]");
+    Console.WriteLine("  eos host list");
+    Console.WriteLine("  eos alias resolve <alias> <personCode> [--source tracker]   map initials to a person");
     Console.WriteLine("  eos training summary                 Know / don't know / need-to-discuss per person");
     Console.WriteLine("  eos alias list");
 }
