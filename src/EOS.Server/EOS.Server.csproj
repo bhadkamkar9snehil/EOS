@@ -3,6 +3,11 @@
   <ItemGroup>
     <ProjectReference Include="..\EOS.Application\EOS.Application.csproj" />
     <ProjectReference Include="..\EOS.Infrastructure\EOS.Infrastructure.csproj" />
+    <ProjectReference Include="..\EOS.Scheduling\EOS.Scheduling.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EOS.Server.Tests" />
   </ItemGroup>
 
   <PropertyGroup>

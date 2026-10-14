@@ -1,0 +1,50 @@
+@inherits LayoutComponentBase
+@inject UiState State
+@implements IDisposable
+
+<div class="shell">
+    <nav class="rail" aria-label="Main">
+        <a class="brand" href="/" aria-label="EOS home"><span class="mark">E</span><span class="word">EOS</span></a>
+        <div class="nav-group">
+            <NavLink href="/" Match="NavLinkMatch.All"><i>◈</i><span>Command Center</span></NavLink>
+            <NavLink href="/projects"><i>▤</i><span>Projects</span></NavLink>
+            <NavLink href="/gantt"><i>▦</i><span>Combined Gantt</span></NavLink>
+            <NavLink href="/capacity"><i>▥</i><span>Capacity &amp; Load</span></NavLink>
+            <NavLink href="/whatif"><i>⇄</i><span>What-if</span></NavLink>
+            <NavLink href="/demand"><i>◎</i><span>Demand &amp; Pipeline</span></NavLink>
+        </div>
+        <div class="nav-group">
+            <NavLink href="/people"><i>☺</i><span>People</span></NavLink>
+            <NavLink href="/skills"><i>★</i><span>Skills</span></NavLink>
+            <NavLink href="/training"><i>✎</i><span>Training</span></NavLink>
+        </div>
+        <div class="nav-group">
+            <NavLink href="/infrastructure"><i>▣</i><span>Infrastructure</span></NavLink>
+            <NavLink href="/alerts"><i>!</i><span>Alerts</span></NavLink>
+            <NavLink href="/reports"><i>≣</i><span>Reports</span></NavLink>
+            <NavLink href="/imports"><i>⇪</i><span>Imports</span></NavLink>
+            <NavLink href="/settings"><i>⚙</i><span>Settings</span></NavLink>
+        </div>
+    </nav>
+    <div class="main">
+        <header class="topbar">
+            <div class="asof">
+                <label for="asof">As of</label>
+                <input id="asof" type="date" value="@State.AsOf.ToString("yyyy-MM-dd")" @onchange="OnAsOf" />
+            </div>
+            <form class="signout" method="post" action="/auth/logout" onsubmit="eosSignOut(event)"><button type="submit" class="ghost">Sign out</button></form>
+        </header>
+        <main>@Body</main>
+        @if (State.Toast is not null)
+        {
+            <div class="toast @(State.ToastIsError ? "error" : "")" role="status" @onclick="State.ClearToast">@State.Toast</div>
+        }
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnChanged;
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+    private void OnAsOf(ChangeEventArgs e) { if (DateOnly.TryParse(e.Value?.ToString(), out var d)) State.SetAsOf(d); }
+    public void Dispose() => State.Changed -= OnChanged;
+}
