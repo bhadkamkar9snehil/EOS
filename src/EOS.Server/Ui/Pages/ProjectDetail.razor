@@ -29,7 +29,7 @@
         @foreach (var w in _plan.Warnings) { <div class="plate warn">@w</div> }
 
         <div class="tabs">
-            @foreach (var t in new[] { "plan", "gantt", "team", "environments", "baseline" })
+            @foreach (var t in new[] { "plan", "gantt", "team", "environments", "baseline", "details" })
             {
                 <button class="tab @(_tab == t ? "on" : "")" @onclick="() => _tab = t">@(char.ToUpper(t[0]) + t[1..])</button>
             }
@@ -149,6 +149,36 @@
                 }
             </div>
         }
+        else if (_tab == "details" && _proj is not null)
+        {
+            <div class="plate"><h2>Project details</h2>
+                <div class="form-row">
+                    <div class="field"><label>Name</label><input @bind="_proj.Name" style="width:420px" /></div>
+                    <div class="field"><label>Customer</label><input @bind="_proj.Customer" /></div>
+                    <div class="field"><label>Product line</label><input @bind="_proj.ProductLine" /></div>
+                    <div class="field"><label>Site</label><input @bind="_proj.SiteLocation" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="field"><label>ERP status</label><input @bind="_proj.ErpStatus" /></div>
+                    <div class="field"><label>Tracker status</label><input @bind="_proj.TrackerStatus" /></div>
+                    <div class="field"><label>Project manager</label><input @bind="_proj.ProjectManager" /></div>
+                    <div class="field"><label>Technical manager</label><input @bind="_proj.TechnicalManager" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="field"><label>PO start</label><input type="date" @bind="_proj.PoStart" /></div>
+                    <div class="field"><label>PO end</label><input type="date" @bind="_proj.PoEnd" /></div>
+                    <div class="field"><label>Contractual end</label><input type="date" @bind="_proj.ContractualEnd" /></div>
+                    <div class="field"><label>Planned end</label><input type="date" @bind="_proj.PlannedEnd" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="field"><label>Health override</label>
+                        <select @bind="_proj.HealthOverride"><option value="">(computed)</option><option>On Track</option><option>Moderate Risk</option><option>At Risk</option></select></div>
+                    <div class="field"><label>Override reason</label><input @bind="_proj.HealthOverrideReason" style="width:320px" /></div>
+                    <div class="field"><label>Notes</label><input @bind="_proj.Notes" style="width:320px" /></div>
+                </div>
+                <button @onclick="SaveProject">Save details</button>
+            </div>
+        }
         else if (_tab == "baseline")
         {
             <div class="plate">
@@ -170,6 +200,7 @@
 @code {
     [Parameter] public int Id { get; set; }
 
+    private EOS.Domain.Projects.Project? _proj;
     private PlanView? _plan;
     private ProjectHealthView? _health;
     private BaselineVariance? _variance;
@@ -190,6 +221,7 @@
         _plan = await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(Id));
         _health = await Q(async sp => _plan.Tasks.Count == 0 ? null : await sp.GetRequiredService<HealthService>().GetAsync(Id, asOf));
         _hosts = await Q(sp => sp.GetRequiredService<HostService>().ListAsync(Id));
+        _proj = await Q(sp => sp.GetRequiredService<EosDbContext>().Projects.AsNoTracking().SingleAsync(p => p.Id == Id));
         _people = await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, Name = p.FullName }).ToListAsync())
             is { } list ? list.Select(p => (p.Id, p.Name)).ToList() : [];
         try { _variance = await Q(sp => sp.GetRequiredService<PlanService>().GetBaselineVarianceAsync(Id)); } catch (PlanException) { _variance = null; }
@@ -207,6 +239,14 @@
         string N(int id) => _plan!.Tasks.FirstOrDefault(t => t.Id == id) is { } t ? $"{t.Wbs} {Short(t.Name, 30)}" : "?";
         var type = new[] { "FS", "SS", "FF", "SF" }[l.Type];
         return l.SuccessorId == self ? $"after {N(l.PredecessorId)} ({type}{(l.LagDays != 0 ? l.LagDays.ToString("+0;-0") : "")})" : $"before {N(l.SuccessorId)} ({type})";
+    }
+
+    private Task SaveProject()
+    {
+        var p = _proj!;
+        if (string.IsNullOrWhiteSpace(p.HealthOverride)) { p.HealthOverride = null; p.HealthOverrideReason = null; }
+        else if (string.IsNullOrWhiteSpace(p.HealthOverrideReason)) { State.ShowToast("A health override needs a reason.", error: true); return Task.CompletedTask; }
+        return Act((sp, a) => sp.GetRequiredService<EOS.Infrastructure.Projects.ProjectService>().UpdateAsync(p, a), "Project saved.");
     }
 
     private Task Recompute() => Act((sp, _) => sp.GetRequiredService<PlanService>().RecomputeAsync(Id, AsOf), "Schedule recomputed.");
