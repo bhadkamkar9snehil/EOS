@@ -1214,6 +1214,39 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.ToTable("RiskIssues");
                 });
 
+            modelBuilder.Entity("EOS.Domain.Security.ApiToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastUsedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("ApiTokens");
+                });
+
             modelBuilder.Entity("EOS.Domain.Skills.PersonSkill", b =>
                 {
                     b.Property<int>("Id")

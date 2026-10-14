@@ -115,5 +115,11 @@ public sealed partial class EosDbContext
         });
         b.Entity<ProjectHost>(e => e.HasIndex(x => new { x.ProjectId, x.HostId, x.Role }).IsUnique());
         b.Entity<HostedSystem>(e => e.HasIndex(x => x.ProjectId));
+
+        b.Entity<EOS.Domain.Security.ApiToken>(e =>
+        {
+            e.HasIndex(x => x.Hash).IsUnique();
+            e.HasIndex(x => x.Name);
+        });
     }
 }

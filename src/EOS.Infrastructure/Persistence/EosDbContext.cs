@@ -68,6 +68,8 @@ public sealed partial class EosDbContext(DbContextOptions<EosDbContext> options)
     public DbSet<ProjectHost> ProjectHosts => Set<ProjectHost>();
     public DbSet<HostedSystem> HostedSystems => Set<HostedSystem>();
 
+    public DbSet<EOS.Domain.Security.ApiToken> ApiTokens => Set<EOS.Domain.Security.ApiToken>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         OnModelCreatingDelivery(b);
