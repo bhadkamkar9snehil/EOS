@@ -1,0 +1,550 @@
+@page "/planner"
+@inherits EosPage
+@implements IAsyncDisposable
+@using System.Globalization
+@using EOS.Infrastructure.Projects
+<PageTitle>Planner · EOS</PageTitle>
+
+<SectionContent SectionName="sidebar">
+    @if (_session is not null)
+    {
+        <div class="bench">
+            <div class="bench-head">
+                <div class="label">Engineers</div>
+                <input type="search" placeholder="Search" aria-label="Search engineers" @bind="_benchSearch" @bind:event="oninput" />
+                <select aria-label="Skill filter" @bind="_skillFilter"><option value="">Any skill</option>@foreach (var s in _skillNames) { <option>@s</option> }</select>
+            </div>
+            <div class="bench-list">
+                @foreach (var p in Bench())
+                {
+                    var used = _draft.Any(a => a.PersonId == p.Id);
+                    <div class="pcard @(used ? "used" : "")" draggable="true" @ondragstart="() => StartDrag(p.Id)" @ondragend="EndDrag" title="Drag onto a task, or click + to add to the selected tasks">
+                        <span class="avatar" style="background:@Color(p.Id)">@p.Initials</span>
+                        <div class="pcard-main">
+                            <div class="pcard-name">@p.Name</div>
+                            <div class="pcard-meta">@(p.Experience == 0 ? "unrated" : "experience " + p.Experience) · @((p.Availability * 100).ToString("0"))%</div>
+                            <div class="strip" aria-label="Load, next weeks">
+                                @foreach (var c in StripFor(p.Id)) { <i class="@c.Cls" title="@c.Tip"></i> }
+                            </div>
+                            <div class="chips">@foreach (var s in p.Skills.OrderByDescending(s => s.Rating).Take(3)) { <span class="chip" title="@s.Name @s.Rating">@Short(s.Name, 14) @s.Rating</span> }</div>
+                        </div>
+                        <button class="iconbtn add" aria-label="Add @p.Name to selected tasks" title="Add to selected tasks" @onclick="() => AssignToSelection(p.Id)"><Icon Name="plus" Size="16" /></button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</SectionContent>
+
+<SectionContent SectionName="tabs">
+    <div class="tabs" role="tablist">
+        <button class="@(_tab == "plan" ? "on" : "")" @onclick='() => _tab = "plan"'>Plan</button>
+        <button class="@(_tab == "load" ? "on" : "")" @onclick='() => _tab = "load"'>Load</button>
+        <button class="@(_tab == "changes" ? "on" : "")" @onclick='() => _tab = "changes"'>Changes @(_changes > 0 ? $"· {_changes}" : "")</button>
+    </div>
+    <select aria-label="Project" value="@_projectId" @onchange="OnProject">
+        @foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo · @Short(Names.Short(p.Name), 40)</option> }
+    </select>
+    <span class="seg" role="group" aria-label="Multiple engineers on a task">
+        <button class="@(!_relay ? "on" : "")" @onclick="() => _relay = false" title="Engineers work the same dates together">Parallel</button>
+        <button class="@(_relay ? "on" : "")" @onclick="() => _relay = true" title="Engineers take turns across the task's dates">Relay</button>
+    </span>
+    <span class="spacer"></span>
+    <button class="secondary iconbtn" aria-label="Undo" title="Undo" disabled="@(_undo.Count == 0)" @onclick="Undo"><Icon Name="undo" Size="16" /></button>
+    <button class="secondary iconbtn" aria-label="Redo" title="Redo" disabled="@(_redo.Count == 0)" @onclick="Redo"><Icon Name="redo" Size="16" /></button>
+    <button class="secondary" disabled="@(_changes == 0)" @onclick="Reset">Reset</button>
+    <button disabled="@(_changes == 0)" @onclick="Commit">Commit to plan</button>
+</SectionContent>
+
+<SectionContent SectionName="rightbar">
+    @if (_result is not null && _session is not null)
+    {
+        <div class="impact">
+            <div class="label">Impact</div>
+            <div class="slip @(_result.SlipDays > 0 ? "bad" : _result.SlipDays < 0 ? "good" : "")">
+                <span class="slip-v">@(_result.SlipDays == 0 ? "No change" : _result.SlipDays.ToString("+0;-0") + " d")</span>
+                <span class="slip-l">project finish</span>
+            </div>
+            <div class="finish">@_result.BaseFinish.ToString("dd MMM yyyy") <span class="muted">→</span> <b>@_result.Finish.ToString("dd MMM yyyy")</b></div>
+
+            <label class="switch"><input type="checkbox" checked="@_experience" @onchange="OnExperience" /> <span>Adjust for experience</span></label>
+
+            @if (_result.Warnings.Count > 0)
+            {
+                <div class="label" style="margin-top:16px">Warnings</div>
+                @foreach (var w in _result.Warnings) { <div class="warnrow">@w</div> }
+            }
+
+            <div class="label" style="margin-top:16px">Tasks that move</div>
+            @if (_result.Moved.Count == 0) { <div class="muted">Nothing moves.</div> }
+            @foreach (var m in _result.Moved.Where(m => Task(m.TaskId) is { IsSummary: false }).Take(8))
+            {
+                <button class="movrow" @onclick="() => Focus(m.TaskId)"><span class="movname">@Short(Task(m.TaskId)!.Name, 34)</span><span class="@(m.SlipDays > 0 ? "slip-pos" : "slip-neg")">@m.SlipDays.ToString("+0;-0")</span></button>
+            }
+
+            <div class="label" style="margin-top:16px">Engineers</div>
+            @foreach (var p in _result.People.OrderByDescending(p => p.PeakAfter))
+            {
+                var pct = Math.Min(160m, p.PeakAfter * 100);
+                <div class="engrow">
+                    <div class="engtop"><span>@p.Name</span><span class="@(p.OverAfter > 0 ? "slip-pos" : "muted")">@((p.PeakAfter * 100).ToString("0"))%</span></div>
+                    <div class="meter"><i class="@(p.PeakAfter > 1.0001m ? "over" : p.PeakAfter > 0.85m ? "warn" : "")" style="width:@(Math.Min(100m, pct).ToString("0", CultureInfo.InvariantCulture))%"></i></div>
+                    <div class="muted small">@(p.OverBefore != p.OverAfter ? $"over capacity {p.OverBefore} → {p.OverAfter} wk" : p.OverAfter > 0 ? $"over capacity {p.OverAfter} wk" : "within capacity") · peak was @((p.PeakBefore * 100).ToString("0"))%</div>
+                </div>
+            }
+            @if (_result.People.Count == 0) { <div class="muted">Drag an engineer onto a task to begin.</div> }
+        </div>
+    }
+</SectionContent>
+
+<SectionContent SectionName="status">
+    @if (_session is not null && _result is not null)
+    {
+        <span><b>@_session.ProjectNo</b> · @(_changes == 0 ? "no changes" : $"{_changes} task(s) changed") · finish @_result.Finish.ToString("dd MMM yyyy")</span>
+    }
+</SectionContent>
+
+<div class="page planner" @onkeydown="PageKey" tabindex="-1">
+    @if (Loading && _session is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_session is null || _result is null) { <div class="empty">No project with a plan. Import a tracker under Imports.</div> }
+    else if (_tab == "plan")
+    {
+        <div class="tools">
+            <span class="seg" role="group" aria-label="Zoom">
+                <button class="@(_zoomDw == 0 ? "on" : "")" @onclick="() => Zoom(0)">Fit</button>
+                <button class="@(_zoomDw == 9 ? "on" : "")" @onclick="() => Zoom(9)">Week</button>
+                <button class="@(_zoomDw == 22 ? "on" : "")" @onclick="() => Zoom(22)">Day</button>
+            </span>
+            <label class="inline"><input type="checkbox" checked="@_allLanes" @onchange="ToggleLanes" /> Show every lane</label>
+            <span class="muted">@(_sel.Count > 0 ? $"{_sel.Count} selected. Drop an engineer on a task, or click + on one." : "Click a task to select it. Ctrl-click selects several.")</span>
+        </div>
+        <div class="gx plgx">
+            <div class="gx-labels" style="width:@(LabelW)px">
+                <div class="gx-corner" style="height:@(HeaderH)px">Task</div>
+                @foreach (var row in _rows)
+                {
+                    var t = row.Task;
+                    if (row.Lane is { } a)
+                    {
+                        var person = _session.People.FirstOrDefault(p => p.Id == a.PersonId);
+                        <div class="gl lane-label" style="height:@(RowH)px">
+                            <span class="avatar sm" style="background:@Color(a.PersonId)">@person?.Initials</span>
+                            <span class="gl-text">@person?.Name</span>
+                            <span class="muted">@((a.Units * 100).ToString("0"))%</span>
+                            <span class="spacer"></span>
+                            <button class="icon" aria-label="Less" @onclick="() => Step(a, -0.25m)">−</button>
+                            <button class="icon" aria-label="More" @onclick="() => Step(a, 0.25m)">+</button>
+                            <button class="icon" aria-label="Remove @person?.Name" @onclick="() => Remove(a)"><Icon Name="x" Size="12" /></button>
+                        </div>
+                    }
+                    else
+                    {
+                        var crew = _draft.Where(x => x.TaskId == t.Id).ToList();
+                        <div class="gl @(t.IsSummary ? "sum" : "") @(_sel.Contains(t.Id) ? "sel" : "") @(_dropTask == t.Id ? "drop" : "") @(_changedTasks.Contains(t.Id) ? "changed" : "")" style="height:@(RowH)px;padding-left:@(8 + t.Level * 14)px" tabindex="0"
+                             @onclick="e => Click(t.Id, e)" @ondragover:preventDefault @ondragenter="() => _dropTask = t.Id" @ondragleave="() => _dropTask = null" @ondrop="() => Drop(t.Id)">
+                            @if (t.IsSummary) { <button class="twisty" aria-label="@(_collapsed.Contains(t.Id) ? "Expand" : "Collapse")" @onclick:stopPropagation @onclick="() => Toggle(t.Id)">@(_collapsed.Contains(t.Id) ? "+" : "−")</button> }
+                            else { <span class="twisty-gap"></span> }
+                            <span class="wbs">@t.Wbs</span>
+                            <span class="gl-text" title="@t.Name">@t.Name</span>
+                            <span class="spacer"></span>
+                            @foreach (var c in crew.Take(3)) { <span class="avatar xs" style="background:@Color(c.PersonId)" title="@_session.People.FirstOrDefault(p => p.Id == c.PersonId)?.Name">@_session.People.FirstOrDefault(p => p.Id == c.PersonId)?.Initials</span> }
+                            @if (crew.Count > 3) { <span class="muted small">+@(crew.Count - 3)</span> }
+                        </div>
+                    }
+                }
+            </div>
+            <div class="gx-time" style="width:@(_width)px">
+                <svg class="gx-head" width="@_width" height="@HeaderH" role="presentation">
+                    <rect x="0" y="0" width="@_width" height="@HeaderH" class="gx-head-bg" />
+                    @foreach (var m in _months)
+                    {
+                        <line class="gridline strong" x1="@m.X" x2="@m.X" y1="0" y2="@HeaderH" />
+                        @((MarkupString)$"<text x=\"{m.X + 4}\" y=\"14\" class=\"dim\">{m.Label}</text>")
+                    }
+                    @if (_session.Today >= _min && _session.Today <= _max)
+                    {
+                        <rect class="today-flag" x="@(X(_session.Today) + _dw / 2 - 22)" y="22" width="44" height="14" rx="7" />
+                        @((MarkupString)$"<text x=\"{X(_session.Today) + _dw / 2 - 15}\" y=\"32\" class=\"flag\">today</text>")
+                    }
+                </svg>
+                <svg class="gx-body" data-dw="@_dw" width="@_width" height="@(_rows.Count * RowH)" role="img" aria-label="Plan timeline">
+                    @foreach (var w in _weekLines) { <line class="gridline" x1="@w" x2="@w" y1="0" y2="@(_rows.Count * RowH)" /> }
+                    @foreach (var m in _months) { <line class="gridline strong" x1="@m.X" x2="@m.X" y1="0" y2="@(_rows.Count * RowH)" /> }
+                    @foreach (var w in _weekends) { <rect class="weekend" x="@w" y="0" width="@_dw" height="@(_rows.Count * RowH)" /> }
+                    @for (var i = 0; i < _rows.Count; i++)
+                    {
+                        var row = _rows[i]; var t = row.Task; var y = i * RowH;
+                        _result!.Spans.TryGetValue(t.Id, out var span);
+                        if (row.Lane is { } a && span is not null)
+                        {
+                            var from = a.From is { } f && f > span.Start ? f : span.Start;
+                            var to = a.To is { } e && e < span.Finish ? e : span.Finish;
+                            var x = X(from); var w = Math.Max(_dw, X(to) - x + _dw);
+                            var person = _session.People.FirstOrDefault(p => p.Id == a.PersonId);
+                            <g class="lane">
+                                <line class="gridline soft" x1="0" x2="@_width" y1="@(y + RowH)" y2="@(y + RowH)" />
+                                <rect data-body class="lane-bar" x="@x" y="@(y + 5)" width="@w" height="@(RowH - 10)" rx="6" style="fill:@Color(a.PersonId)" />
+                                @if (w > 56) { @((MarkupString)$"<text x=\"{x + 22}\" y=\"{y + RowH / 2 + 4}\" class=\"lane-text\">{System.Net.WebUtility.HtmlEncode(person?.Name ?? "")} {a.Units * 100:0}%</text>") }
+                                <rect data-lane="@($"{a.TaskId}:{a.PersonId}")" data-edge="move" class="h-move" x="@(x + 8)" y="@(y + 5)" width="@Math.Max(2, w - 16)" height="@(RowH - 10)" />
+                                <rect data-lane="@($"{a.TaskId}:{a.PersonId}")" data-edge="start" class="h-edge" x="@x" y="@(y + 5)" width="8" height="@(RowH - 10)" />
+                                <rect data-lane="@($"{a.TaskId}:{a.PersonId}")" data-edge="end" class="h-edge" x="@(x + w - 8)" y="@(y + 5)" width="8" height="@(RowH - 10)" />
+                            </g>
+                        }
+                        else if (span is not null)
+                        {
+                            var x = X(span.Start); var w = Math.Max(_dw, X(span.Finish) - x + _dw);
+                            var crit = _result.Critical.Contains(t.Id);
+                            var baseSpan = _result.BaseSpans.GetValueOrDefault(t.Id);
+                            <g class="gx-row @(_sel.Contains(t.Id) ? "sel" : "") @(_dropTask == t.Id ? "drop" : "")" @onclick="e => Click(t.Id, e)" @ondragover:preventDefault @ondragenter="() => _dropTask = t.Id" @ondrop="() => Drop(t.Id)">
+                                <rect class="rowband" x="0" y="@y" width="@_width" height="@RowH" />
+                                <line class="gridline soft" x1="0" x2="@_width" y1="@(y + RowH)" y2="@(y + RowH)" />
+                                @if (baseSpan is not null && (baseSpan.Start != span.Start || baseSpan.Finish != span.Finish))
+                                {
+                                    <rect class="ghost" x="@X(baseSpan.Start)" y="@(y + 6)" width="@Math.Max(_dw, X(baseSpan.Finish) - X(baseSpan.Start) + _dw)" height="@(RowH - 12)" rx="4"><title>Current plan: @baseSpan.Start.ToString("dd MMM") – @baseSpan.Finish.ToString("dd MMM")</title></rect>
+                                }
+                                @if (t.IsMilestone) { <polygon points="@Diamond(x + _dw / 2.0, y + RowH / 2.0, 7)" class="bar-sum" /> }
+                                else if (t.IsSummary)
+                                {
+                                    <rect class="bar-sum" x="@x" y="@(y + 11)" width="@w" height="6" rx="1" />
+                                    <polygon points="@($"{x},{y + 17} {x + 6},{y + 17} {x},{y + 23}")" class="bar-sum" />
+                                    <polygon points="@($"{x + w},{y + 17} {x + w - 6},{y + 17} {x + w},{y + 23}")" class="bar-sum" />
+                                }
+                                else
+                                {
+                                    <rect class="@(crit ? "bar-crit" : "bar-task")" x="@x" y="@(y + 7)" width="@w" height="@(RowH - 14)" rx="5"><title>@t.Name — @span.Start.ToString("dd MMM") to @span.Finish.ToString("dd MMM yyyy") · @t.WorkHours.ToString("0.#") h</title></rect>
+                                    @if (t.Percent > 0 && t.Percent < 1) { <rect class="bar-progress" x="@x" y="@(y + 7)" width="@(w * (double)t.Percent)" height="@(RowH - 14)" rx="5" /> }
+                                }
+                            </g>
+                        }
+                    }
+                    @if (_session.Today >= _min && _session.Today <= _max)
+                    {
+                        <line class="today" x1="@(X(_session.Today) + _dw / 2)" x2="@(X(_session.Today) + _dw / 2)" y1="0" y2="@(_rows.Count * RowH)" />
+                    }
+                </svg>
+            </div>
+        </div>
+    }
+    else if (_tab == "load") { @LoadView() }
+    else { @ChangesView() }
+</div>
+
+@code {
+    private sealed record PRow(PlannerTask Task, PlannerAssignment? Lane);
+    private sealed record Cell(string Cls, string Tip);
+
+    private IReadOnlyList<ProjectSummary> _projects = [];
+    private int _projectId;
+    private PlannerSession? _session;
+    private PlannerResult? _result;
+    private List<PlannerAssignment> _draft = [];
+    private readonly List<List<PlannerAssignment>> _undo = [], _redo = [];
+    private bool _experience, _relay;
+    private string _tab = "plan", _benchSearch = "", _skillFilter = "";
+    private readonly HashSet<int> _collapsed = [], _sel = [];
+    private bool _allLanes;
+    private int? _dragPerson, _dropTask;
+    private int _changes;
+    private HashSet<int> _changedTasks = [];
+    private List<PRow> _rows = [];
+    private List<string> _skillNames = [];
+    private DotNetObjectReference<Planner>? _ref;
+    private int _dw = 8;
+    private DateOnly _min, _max;
+    private int _width;
+    private List<(int X, string Label)> _months = [];
+    private List<int> _weekLines = [], _weekends = [];
+    private const int RowH = 32, HeaderH = 40, LabelW = 360;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _projects = (await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true))).Where(p => p.HasPlan).ToList();
+        if (_projects.Count == 0) { _session = null; return; }
+        if (_projectId == 0 || _projects.All(p => p.Id != _projectId)) _projectId = _projects[0].Id;
+        await Open(_projectId, asOf);
+    }
+
+    private async Task Open(int projectId, DateOnly asOf)
+    {
+        _session = await Q(sp => sp.GetRequiredService<PlannerService>().PrepareAsync(projectId, asOf));
+        _draft = [.. _session.Baseline];
+        _undo.Clear(); _redo.Clear(); _sel.Clear(); _collapsed.Clear();
+        _skillNames = _session.People.SelectMany(p => p.Skills).Select(s => s.Name).Distinct().OrderBy(s => s).ToList();
+        Recalc();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ref = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("eosPlannerInit", _ref);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("eosPlannerDispose"); } catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+
+    private async Task OnProject(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var id)) return;
+        _projectId = id;
+        await Open(id, AsOf);
+    }
+
+    private void OnExperience(ChangeEventArgs e) { _experience = e.Value is true; Recalc(); }
+
+    private void Recalc()
+    {
+        if (_session is null) return;
+        _result = _session.Simulate(_draft, _experience);
+        static string Key(PlannerAssignment a) => $"{a.PersonId}|{a.Units}|{a.From}|{a.To}";
+        _changedTasks = _session.LeafTaskIds.Where(id =>
+            !_draft.Where(a => a.TaskId == id).Select(Key).OrderBy(x => x).SequenceEqual(_session.Baseline.Where(a => a.TaskId == id).Select(Key).OrderBy(x => x))).ToHashSet();
+        _changes = _changedTasks.Count;
+        Layout();
+    }
+
+    private void Layout()
+    {
+        var r = _result!;
+        var all = r.Spans.Values.Concat(r.BaseSpans.Values).ToList();
+        _min = all.Min(s => s.Start).AddDays(-4);
+        _max = all.Max(s => s.Finish).AddDays(14);
+        var span = _max.DayNumber - _min.DayNumber + 1;
+        _dw = _zoomDw > 0 ? _zoomDw : Math.Clamp(980 / Math.Max(span, 1), 2, 26);
+        _width = span * _dw;
+        _months = [];
+        for (var m = new DateOnly(_min.Year, _min.Month, 1); m <= _max; m = m.AddMonths(1)) _months.Add((Math.Max(0, X(m)), m.ToString("MMM yyyy", CultureInfo.InvariantCulture)));
+        _weekLines = []; _weekends = [];
+        for (var d = _min; d <= _max; d = d.AddDays(1))
+        {
+            if (d.DayOfWeek == DayOfWeek.Monday && _dw >= 5) _weekLines.Add(X(d));
+            if (d.DayOfWeek == DayOfWeek.Sunday && _dw >= 5) _weekends.Add(X(d));
+        }
+        BuildRows();
+    }
+
+    private int _zoomDw;
+    private void Zoom(int dw) { _zoomDw = dw; if (_result is not null) Layout(); }
+
+    private int X(DateOnly d) => (d.DayNumber - _min.DayNumber) * _dw;
+    private PlannerTask? Task(int id) => _session?.Tasks.FirstOrDefault(t => t.Id == id);
+    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+    private string Color(int personId) => $"var(--p{personId % 8 + 1})";
+
+    private void BuildRows()
+    {
+        _rows = [];
+        var hideLevel = int.MaxValue;
+        foreach (var t in _session!.Tasks)
+        {
+            if (t.Level > hideLevel) continue;
+            hideLevel = int.MaxValue;
+            _rows.Add(new PRow(t, null));
+            if (t.IsSummary && _collapsed.Contains(t.Id)) hideLevel = t.Level;
+            else if (!t.IsSummary && (_allLanes || _sel.Contains(t.Id) || _changedTasks.Contains(t.Id)))
+                foreach (var a in _draft.Where(a => a.TaskId == t.Id)) _rows.Add(new PRow(t, a));
+        }
+    }
+
+    private IEnumerable<PlannerPerson> Bench()
+    {
+        var q = _session!.People.AsEnumerable();
+        if (_benchSearch.Length > 0) q = q.Where(p => p.Name.Contains(_benchSearch, StringComparison.OrdinalIgnoreCase));
+        if (_skillFilter.Length > 0) q = q.Where(p => p.Skills.Any(s => s.Name == _skillFilter));
+        return _skillFilter.Length > 0 ? q.OrderByDescending(p => p.Skills.First(s => s.Name == _skillFilter).Rating) : q;
+    }
+
+    private IEnumerable<Cell> StripFor(int personId)
+    {
+        var s = _session!;
+        var start = Math.Max(0, (s.Today.DayNumber - s.Weeks[0].DayNumber) / 7);
+        var load = _result!.WeekLoad.TryGetValue(personId, out var l) ? l : s.OtherLoad.GetValueOrDefault(personId) ?? new decimal[s.Weeks.Count];
+        var cap = s.WeekCapacityOf.GetValueOrDefault(personId) ?? new decimal[s.Weeks.Count];
+        for (var i = start; i < Math.Min(s.Weeks.Count, start + 12); i++)
+        {
+            var u = cap[i] <= 0 ? 0m : load[i] / cap[i];
+            var cls = u <= 0.01m ? "" : u > 1.0001m ? "over" : u > 0.85m ? "warn" : u > 0.4m ? "mid" : "low";
+            yield return new Cell(cls, $"{s.Weeks[i]:dd MMM}: {(u * 100):0}%");
+        }
+    }
+
+    private void StartDrag(int personId) { _dragPerson = personId; }
+    private void EndDrag() { _dragPerson = null; _dropTask = null; }
+
+    private void Push() { _undo.Add([.. _draft]); _redo.Clear(); if (_undo.Count > 60) _undo.RemoveAt(0); }
+    private void Undo() { if (_undo.Count == 0) return; _redo.Add([.. _draft]); _draft = _undo[^1]; _undo.RemoveAt(_undo.Count - 1); Recalc(); }
+    private void Redo() { if (_redo.Count == 0) return; _undo.Add([.. _draft]); _draft = _redo[^1]; _redo.RemoveAt(_redo.Count - 1); Recalc(); }
+    private void Reset() { Push(); _draft = [.. _session!.Baseline]; Recalc(); }
+
+    private IEnumerable<int> LeavesOf(int taskId)
+    {
+        var t = Task(taskId);
+        if (t is null) yield break;
+        if (!t.IsSummary) { if (!t.IsMilestone) yield return t.Id; yield break; }
+        foreach (var c in _session!.Tasks.Where(x => x.ParentId == taskId)) foreach (var l in LeavesOf(c.Id)) yield return l;
+    }
+
+    private void AssignTo(int personId, IEnumerable<int> taskIds)
+    {
+        var leaves = taskIds.SelectMany(LeavesOf).Distinct().ToList();
+        if (leaves.Count == 0) return;
+        Push();
+        foreach (var t in leaves)
+        {
+            if (_draft.Any(a => a.TaskId == t && a.PersonId == personId)) continue;
+            var existing = _draft.Where(a => a.TaskId == t).ToList();
+            if (_relay && existing.Count > 0 && _result!.Spans.TryGetValue(t, out var span))
+            {
+                var parts = _session!.Split(span, existing.Count + 1);
+                for (var i = 0; i < existing.Count; i++)
+                {
+                    var idx = _draft.IndexOf(existing[i]);
+                    _draft[idx] = existing[i] with { From = parts[i].Start, To = parts[i].Finish };
+                }
+                _draft.Add(new PlannerAssignment(t, personId, 1m, parts[^1].Start, parts[^1].Finish));
+            }
+            else _draft.Add(new PlannerAssignment(t, personId, 1m, null, null));
+        }
+        Recalc();
+    }
+
+    private void AssignToSelection(int personId)
+    {
+        if (_sel.Count == 0) { State.ShowToast("Select one or more tasks first (click a task).", error: true); return; }
+        AssignTo(personId, _sel.ToList());
+    }
+
+    private void Drop(int taskId)
+    {
+        if (_dragPerson is { } p) AssignTo(p, _sel.Contains(taskId) ? _sel.ToList() : [taskId]);
+        EndDrag();
+    }
+
+    private void Remove(PlannerAssignment a) { Push(); _draft.Remove(a); Recalc(); }
+
+    private void Step(PlannerAssignment a, decimal delta)
+    {
+        var units = Math.Clamp(a.Units + delta, 0.25m, 1m);
+        if (units == a.Units) return;
+        Push();
+        _draft[_draft.IndexOf(a)] = a with { Units = units };
+        Recalc();
+    }
+
+    private void Click(int taskId, MouseEventArgs e)
+    {
+        if (e.CtrlKey || e.MetaKey || e.ShiftKey) { if (!_sel.Remove(taskId)) _sel.Add(taskId); }
+        else if (_sel.Count == 1 && _sel.Contains(taskId)) _sel.Clear();
+        else { _sel.Clear(); _sel.Add(taskId); }
+        BuildRows();
+    }
+
+    private void Toggle(int taskId) { if (!_collapsed.Remove(taskId)) _collapsed.Add(taskId); BuildRows(); }
+    private void ToggleLanes() { _allLanes = !_allLanes; BuildRows(); }
+    private void Focus(int taskId) { _sel.Clear(); _sel.Add(taskId); _tab = "plan"; BuildRows(); }
+
+    private void PageKey(KeyboardEventArgs e)
+    {
+        if (e.CtrlKey && e.Key is "z" or "Z") Undo();
+        else if (e.CtrlKey && e.Key is "y" or "Y") Redo();
+        else if (e.Key == "Escape") { _sel.Clear(); BuildRows(); }
+    }
+
+    [JSInvokable]
+    public void LaneChanged(string key, string edge, int deltaDays)
+    {
+        InvokeAsync(() =>
+        {
+            var parts = key.Split(':');
+            if (parts.Length != 2 || !int.TryParse(parts[0], out var taskId) || !int.TryParse(parts[1], out var personId)) return;
+            var a = _draft.FirstOrDefault(x => x.TaskId == taskId && x.PersonId == personId);
+            if (a is null || !_result!.Spans.TryGetValue(taskId, out var span)) return;
+            var from = a.From is { } f && f > span.Start ? f : span.Start;
+            var to = a.To is { } t && t < span.Finish ? t : span.Finish;
+            if (edge is "start" or "move") from = from.AddDays(deltaDays);
+            if (edge is "end" or "move") to = to.AddDays(deltaDays);
+            if (to < from) return;
+            Push();
+            _draft[_draft.IndexOf(a)] = a with { From = from, To = to };
+            Recalc();
+            StateHasChanged();
+        });
+    }
+
+    private async Task Commit()
+    {
+        if (!await Confirm($"Write {_changes} changed task(s) into the plan of {_session!.ProjectNo}? Assignments are replaced and the schedule is recomputed.")) return;
+        var session = _session; var draft = _draft.ToList();
+        await Act(async (sp, actor) =>
+        {
+            var n = await sp.GetRequiredService<PlannerService>().CommitAsync(session, draft, actor);
+            State.ShowToast($"Committed {n} task(s).");
+        });
+    }
+
+    private static string Diamond(double cx, double cy, double r) =>
+        string.Create(CultureInfo.InvariantCulture, $"{cx},{cy - r} {cx + r},{cy} {cx},{cy + r} {cx - r},{cy}");
+
+    private RenderFragment LoadView() => __b =>
+    {
+        var s = _session!; var r = _result!;
+        var ids = r.People.Select(p => p.PersonId).ToList();
+        __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "plate");
+        __b.OpenElement(2, "h2"); __b.AddContent(3, "Weekly load, draft"); __b.CloseElement();
+        if (ids.Count == 0) { __b.OpenElement(4, "div"); __b.AddAttribute(5, "class", "empty"); __b.AddContent(6, "No engineer is assigned yet."); __b.CloseElement(); __b.CloseElement(); return; }
+        var from = Math.Max(0, (s.Today.DayNumber - s.Weeks[0].DayNumber) / 7);
+        var to = Math.Min(s.Weeks.Count, from + 26);
+        __b.OpenElement(7, "div"); __b.AddAttribute(8, "class", "tablewrap");
+        __b.OpenElement(9, "table"); __b.AddAttribute(10, "class", "grid freeze");
+        __b.OpenElement(11, "thead"); __b.OpenElement(12, "tr"); __b.OpenElement(13, "th"); __b.AddContent(14, "Engineer"); __b.CloseElement();
+        for (var i = from; i < to; i++) { __b.OpenElement(15, "th"); __b.AddAttribute(16, "class", "num"); __b.AddContent(17, s.Weeks[i].ToString("dd MMM")); __b.CloseElement(); }
+        __b.CloseElement(); __b.CloseElement();
+        __b.OpenElement(18, "tbody");
+        foreach (var id in ids)
+        {
+            __b.OpenElement(19, "tr"); __b.OpenElement(20, "td"); __b.AddContent(21, s.People.First(p => p.Id == id).Name); __b.CloseElement();
+            var load = r.WeekLoad[id]; var cap = r.WeekCapacity[id];
+            for (var i = from; i < to; i++)
+            {
+                var u = cap[i] <= 0 ? 0m : load[i] / cap[i];
+                var cls = u <= 0.01m ? "none" : u > 1.0001m ? "OverAllocated" : u > 0.85m ? "Stretched" : u > 0.4m ? "Healthy" : "UnderUsed";
+                __b.OpenElement(22, "td"); __b.AddAttribute(23, "class", "num");
+                __b.OpenElement(24, "span"); __b.AddAttribute(25, "class", "heat " + cls); __b.AddAttribute(26, "title", $"{load[i]:0.#} h of {cap[i]:0.#} h");
+                __b.AddContent(27, u <= 0.01m ? "–" : (u * 100).ToString("0") + "%"); __b.CloseElement(); __b.CloseElement();
+            }
+            __b.CloseElement();
+        }
+        __b.CloseElement(); __b.CloseElement(); __b.CloseElement(); __b.CloseElement();
+    };
+
+    private RenderFragment ChangesView() => __b =>
+    {
+        var s = _session!;
+        __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "plate");
+        __b.OpenElement(2, "h2"); __b.AddContent(3, "Changes against the current plan"); __b.CloseElement();
+        if (_changes == 0) { __b.OpenElement(4, "div"); __b.AddAttribute(5, "class", "empty"); __b.AddContent(6, "No changes yet."); __b.CloseElement(); __b.CloseElement(); return; }
+        __b.OpenElement(7, "table"); __b.AddAttribute(8, "class", "grid");
+        __b.OpenElement(9, "thead"); __b.OpenElement(10, "tr");
+        foreach (var h in new[] { "Task", "Before", "After" }) { __b.OpenElement(11, "th"); __b.AddContent(12, h); __b.CloseElement(); }
+        __b.CloseElement(); __b.CloseElement();
+        __b.OpenElement(13, "tbody");
+        foreach (var id in _changedTasks.OrderBy(id => s.Tasks.ToList().FindIndex(t => t.Id == id)))
+        {
+            string Fmt(IEnumerable<PlannerAssignment> list) => string.Join(", ", list.Select(a => $"{s.People.FirstOrDefault(p => p.Id == a.PersonId)?.Name} {a.Units * 100:0}%")) is { Length: > 0 } x ? x : "unassigned";
+            var t = Task(id)!;
+            __b.OpenElement(14, "tr");
+            __b.OpenElement(15, "td"); __b.AddContent(16, $"{t.Wbs} {t.Name}"); __b.CloseElement();
+            __b.OpenElement(17, "td"); __b.AddAttribute(18, "class", "muted"); __b.AddContent(19, Fmt(s.Baseline.Where(a => a.TaskId == id))); __b.CloseElement();
+            __b.OpenElement(20, "td"); __b.AddContent(21, Fmt(_draft.Where(a => a.TaskId == id))); __b.CloseElement();
+            __b.CloseElement();
+        }
+        __b.CloseElement(); __b.CloseElement(); __b.CloseElement();
+    };
+}

@@ -62,6 +62,49 @@ window.eosGanttScroll = (id, x) => {
   if (el) el.scrollLeft = x;
 };
 
+window.eosPlannerInit = (ref) => {
+  window.__plannerRef = ref;
+  if (window.__plannerBound) return;
+  window.__plannerBound = true;
+  document.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest && e.target.closest("[data-lane]");
+    if (!h || !window.__plannerRef) return;
+    const svg = h.ownerSVGElement;
+    const dw = parseFloat(svg.dataset.dw);
+    const g = h.closest("g.lane");
+    const body = g.querySelector("[data-body]");
+    const edge = h.dataset.edge;
+    const x0 = e.clientX;
+    const bx = parseFloat(body.getAttribute("x"));
+    const bw = parseFloat(body.getAttribute("width"));
+    let delta = 0;
+    g.classList.add("dragging");
+    h.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    const move = (ev) => {
+      delta = Math.round((ev.clientX - x0) / dw);
+      let nx = bx, nw = bw;
+      if (edge === "move") nx = bx + delta * dw;
+      else if (edge === "start") { nx = bx + delta * dw; nw = bw - delta * dw; }
+      else nw = bw + delta * dw;
+      if (nw < dw) return;
+      body.setAttribute("x", nx);
+      body.setAttribute("width", nw);
+    };
+    const up = () => {
+      h.removeEventListener("pointermove", move);
+      h.removeEventListener("pointerup", up);
+      g.classList.remove("dragging");
+      if (delta !== 0 && window.__plannerRef) window.__plannerRef.invokeMethodAsync("LaneChanged", h.dataset.lane, edge, delta);
+      else { body.setAttribute("x", bx); body.setAttribute("width", bw); }
+    };
+    h.addEventListener("pointermove", move);
+    h.addEventListener("pointerup", up);
+  });
+};
+
+window.eosPlannerDispose = () => { window.__plannerRef = null; };
+
 window.eosFocusRow = (id) => {
   requestAnimationFrame(() => {
     const row = document.querySelector('tr[data-row="' + id + '"]');

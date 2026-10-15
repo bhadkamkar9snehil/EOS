@@ -1,48 +1,54 @@
 @inherits LayoutComponentBase
 @inject UiState State
+@inject AuthenticationStateProvider Auth
 @implements IDisposable
 
-<div class="shell">
-    <header class="band">
-        <a class="brand" href="/" aria-label="EOS home">EOS</a>
-        <span class="spacer"></span>
-        <div class="asof @(State.AsOf != DateOnly.FromDateTime(DateTime.Today) ? "stale" : "")">
-            <label for="asof">As of</label>
-            <input id="asof" type="date" value="@State.AsOf.ToString("yyyy-MM-dd")" @onchange="OnAsOf" />
-            @if (State.AsOf != DateOnly.FromDateTime(DateTime.Today)) { <button type="button" class="ghost" @onclick="Today">Back to today</button> }
-        </div>
-        <form class="signout" method="post" action="/auth/logout" onsubmit="eosSignOut(event)"><button type="submit">Sign out</button></form>
-    </header>
-    <nav class="navband" aria-label="Main">
-        <NavLink href="/" Match="NavLinkMatch.All">Command Center</NavLink>
-        <details class="menu"><summary>Delivery</summary>
-            <div class="panel">
-                <NavLink href="/projects">Projects</NavLink>
-                <NavLink href="/gantt">Gantt</NavLink>
-                <NavLink href="/calendar">Calendar</NavLink>
-                <NavLink href="/capacity">Capacity</NavLink>
-                <NavLink href="/whatif">What-if</NavLink>
-                <NavLink href="/demand">Demand</NavLink>
-            </div>
-        </details>
-        <details class="menu"><summary>Team</summary>
-            <div class="panel">
-                <NavLink href="/people">People</NavLink>
-                <NavLink href="/skills">Skills</NavLink>
-                <NavLink href="/training">Training</NavLink>
-            </div>
-        </details>
-        <NavLink href="/infrastructure">Infrastructure</NavLink>
-        <NavLink href="/alerts">Alerts</NavLink>
-        <NavLink href="/reports">Reports</NavLink>
-        <details class="menu"><summary>System</summary>
-            <div class="panel">
-                <NavLink href="/imports">Imports</NavLink>
-                <NavLink href="/settings">Settings</NavLink>
-            </div>
-        </details>
+<div class="app">
+    <nav class="rail" aria-label="Main">
+        <a class="rail-brand" href="/" aria-label="EOS home">E</a>
+        <NavLink class="rail-link" href="/" Match="NavLinkMatch.All" data-label="Command Center" aria-label="Command Center"><Icon Name="home" /></NavLink>
+        <NavLink class="rail-link" href="/planner" data-label="Planner" aria-label="Planner"><Icon Name="planner" /></NavLink>
+        <NavLink class="rail-link" href="/projects" data-label="Projects" aria-label="Projects"><Icon Name="folder" /></NavLink>
+        <NavLink class="rail-link" href="/gantt" data-label="Gantt" aria-label="Gantt"><Icon Name="gantt" /></NavLink>
+        <NavLink class="rail-link" href="/calendar" data-label="Calendar" aria-label="Calendar"><Icon Name="calendar" /></NavLink>
+        <NavLink class="rail-link" href="/capacity" data-label="Capacity" aria-label="Capacity"><Icon Name="gauge" /></NavLink>
+        <NavLink class="rail-link" href="/whatif" data-label="What-if" aria-label="What-if"><Icon Name="shuffle" /></NavLink>
+        <NavLink class="rail-link" href="/demand" data-label="Demand" aria-label="Demand"><Icon Name="search" /></NavLink>
+        <span class="rail-sep"></span>
+        <NavLink class="rail-link" href="/people" data-label="People" aria-label="People"><Icon Name="users" /></NavLink>
+        <NavLink class="rail-link" href="/skills" data-label="Skills" aria-label="Skills"><Icon Name="star" /></NavLink>
+        <NavLink class="rail-link" href="/training" data-label="Training" aria-label="Training"><Icon Name="book" /></NavLink>
+        <span class="rail-sep"></span>
+        <NavLink class="rail-link" href="/infrastructure" data-label="Infrastructure" aria-label="Infrastructure"><Icon Name="server" /></NavLink>
+        <NavLink class="rail-link" href="/alerts" data-label="Alerts" aria-label="Alerts"><Icon Name="bell" /></NavLink>
+        <NavLink class="rail-link" href="/reports" data-label="Reports" aria-label="Reports"><Icon Name="file" /></NavLink>
+        <NavLink class="rail-link" href="/imports" data-label="Imports" aria-label="Imports"><Icon Name="upload" /></NavLink>
+        <span class="rail-spacer"></span>
+        <NavLink class="rail-link" href="/settings" data-label="Settings" aria-label="Settings"><Icon Name="settings" /></NavLink>
+        <form class="rail-user" method="post" action="/auth/logout" onsubmit="eosSignOut(event)">
+            <button type="submit" title="Sign out @_user" aria-label="Sign out"><span>@Initials(_user)</span></button>
+        </form>
     </nav>
-    <main>@Body</main>
+
+    <div class="workspace">
+        <aside class="sidebar"><SectionOutlet SectionName="sidebar" /></aside>
+        <div class="center">
+            <div class="tabsbar"><SectionOutlet SectionName="tabs" /></div>
+            <main>@Body</main>
+        </div>
+        <aside class="rightbar"><SectionOutlet SectionName="rightbar" /></aside>
+    </div>
+
+    <footer class="bottombar">
+        <div class="bb-left"><SectionOutlet SectionName="status" /></div>
+        <div class="bb-right">
+            <label for="asof">As of</label>
+            <input id="asof" type="date" class="@(IsStale ? "stale" : "")" value="@State.AsOf.ToString("yyyy-MM-dd")" @onchange="OnAsOf" />
+            @if (IsStale) { <button type="button" class="link" @onclick="Today">Today</button> }
+            <span class="bb-meta">EOS 2.0</span>
+        </div>
+    </footer>
+
     @if (State.Toast is not null)
     {
         <div class="toast @(State.ToastIsError ? "error" : "")" role="status" @onclick="State.ClearToast">@State.Toast</div>
@@ -50,9 +56,18 @@
 </div>
 
 @code {
-    protected override void OnInitialized() => State.Changed += OnChanged;
+    private string _user = "";
+    private bool IsStale => State.AsOf != DateOnly.FromDateTime(DateTime.Today);
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnChanged;
+        _user = (await Auth.GetAuthenticationStateAsync()).User.Identity?.Name ?? "";
+    }
+
     private void OnChanged() => InvokeAsync(StateHasChanged);
     private void OnAsOf(ChangeEventArgs e) { if (DateOnly.TryParse(e.Value?.ToString(), out var d)) State.SetAsOf(d); }
     private void Today() => State.SetAsOf(DateOnly.FromDateTime(DateTime.Today));
+    private static string Initials(string name) => string.IsNullOrWhiteSpace(name) ? "?" : name.Length == 1 ? name.ToUpperInvariant() : name[..2].ToUpperInvariant();
     public void Dispose() => State.Changed -= OnChanged;
 }
