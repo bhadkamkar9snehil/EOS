@@ -33,6 +33,24 @@
             </div>
         </div>
 
+        <div class="plate">
+            <h2>Move a skill</h2>
+            <p class="muted">Pick a skill and the project that has it; EOS lists the engineers on that project who hold the skill, strongest first.</p>
+            <div class="form-row">
+                <div class="field"><label>Skill</label><select @bind="_mvSkill" @bind:after="FindSkillHolders"><option value="0">–</option>@foreach (var s in _skills) { <option value="@s.Id">@s.Name</option> }</select></div>
+                <div class="field"><label>Min level</label><input type="number" @bind="_mvMin" @bind:after="FindSkillHolders" style="width:70px" /></div>
+                <div class="field"><label>From project</label><select @bind="_mvFrom" @bind:after="FindSkillHolders"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo</option> }</select></div>
+                <div class="field"><label>To project</label><select @bind="_mvTo"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo</option> }</select></div>
+            </div>
+            @if (_holders.Count > 0)
+            {
+                <table class="grid"><thead><tr><th>Engineer</th><th class="num">Rating</th><th></th></tr></thead><tbody>
+                @foreach (var h in _holders) { <tr><td>@h.Name</td><td class="num">@h.Rating</td><td><button class="icon" @onclick="() => AddSkillMove(h.PersonId)">Add move</button></td></tr> }
+                </tbody></table>
+            }
+            else if (_mvSkill != 0 && _mvFrom != 0) { <div class="empty">Nobody on that project holds this skill at that level.</div> }
+        </div>
+
         @if (_result is { } r) { <ScenarioCard S="@r" OnDecide="Decide" OnApply="Apply" /> }
 
         <div class="grid-2">
@@ -101,12 +119,42 @@
         var list = await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }).ToListAsync());
         _people = list.Select(p => (p.Id, p.FullName)).ToList();
         _scenarios = await Q(sp => sp.GetRequiredService<ScenarioService>().ListAsync());
+        _skills = (await Q(sp => sp.GetRequiredService<EosDbContext>().Skills.AsNoTracking().OrderBy(s => s.Name).Select(s => new { s.Id, s.Name }).ToListAsync())).Select(s => (s.Id, s.Name)).ToList();
         _date = AsOf.ToDateTime(TimeOnly.MinValue);
     }
 
     private string Name(int id) => _people.FirstOrDefault(p => p.Id == id).Name ?? "?";
     private string ProjNo(int id) => _projects?.FirstOrDefault(p => p.Id == id)?.ProjectNo ?? "?";
     private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+
+    private List<(int Id, string Name)> _skills = [];
+    private List<(int PersonId, string Name, int Rating)> _holders = [];
+    private int _mvSkill, _mvFrom, _mvTo, _mvMin = 3;
+
+    private async Task FindSkillHolders()
+    {
+        _holders = [];
+        if (_mvSkill == 0 || _mvFrom == 0) return;
+        var skill = _mvSkill; var from = _mvFrom; var min = _mvMin;
+        var rows = await Q(async sp =>
+        {
+            var db = sp.GetRequiredService<EosDbContext>();
+            var onProject = await db.TaskAssignments.AsNoTracking().Where(a => a.PersonId != null)
+                .Join(db.Tasks, a => a.TaskId, t => t.Id, (a, t) => new { a.PersonId, t.ProjectId })
+                .Where(x => x.ProjectId == from).Select(x => x.PersonId!.Value).Distinct().ToListAsync();
+            return await db.PersonSkills.AsNoTracking().Where(r => r.SkillId == skill && r.Rating >= min && onProject.Contains(r.PersonId))
+                .Join(db.People, r => r.PersonId, p => p.Id, (r, p) => new { r.PersonId, p.FullName, r.Rating })
+                .OrderByDescending(x => x.Rating).ToListAsync();
+        });
+        _holders = rows.Select(x => (x.PersonId, x.FullName, x.Rating)).ToList();
+    }
+
+    private void AddSkillMove(int personId)
+    {
+        if (_mvTo == 0 || _mvTo == _mvFrom) { State.ShowToast("Pick a different destination project.", error: true); return; }
+        _moves.Add(new MoveInput(personId, _mvFrom, _mvTo, DateOnly.FromDateTime(_date), 1m));
+        State.ShowToast("Move added. Analyse when ready.");
+    }
 
     private void AddMove()
     {
