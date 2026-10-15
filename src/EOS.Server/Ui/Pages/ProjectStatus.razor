@@ -1,0 +1,51 @@
+@page "/projects/{Id:int}/status"
+@inherits EosPage
+<PageTitle>Status · @_plan?.ProjectNo</PageTitle>
+
+<div class="page">
+    @if (_plan is null) { <p class="muted">Loading…</p> }
+    else
+    {
+        <div class="page-head">
+            <div><h1>@_plan.ProjectNo — status report</h1><p class="muted">@_plan.ProjectName · as of @AsOf.ToString("dd MMM yyyy")</p></div>
+            <div class="actions no-print"><button class="secondary" @onclick='() => JS.InvokeVoidAsync("print")'>Print</button><a class="btn secondary" href="/projects/@Id">Back</a></div>
+        </div>
+        <div class="kpis">
+            <div class="kpi"><div class="v">@(_health is null ? "–" : _health.Health)</div><div class="l">Health</div></div>
+            <div class="kpi"><div class="v">@((_plan.Progress * 100).ToString("0"))%</div><div class="l">Complete</div></div>
+            <div class="kpi"><div class="v">@_plan.Finish?.ToString("dd MMM yy")</div><div class="l">Forecast finish</div></div>
+            <div class="kpi"><div class="v">@(_health?.ScheduleVarianceDays?.ToString("+0;-0;0") ?? "–")</div><div class="l">Variance (d)</div></div>
+            <div class="kpi"><div class="v">@_late.Count</div><div class="l">Late tasks</div></div>
+        </div>
+        @if (_health is { Reasons.Count: > 0 }) { <div class="plate"><h2>Why</h2><ul>@foreach (var r in _health.Reasons) { <li>@r</li> }</ul></div> }
+        <div class="grid-2">
+            <div class="plate"><h2>Late tasks</h2>
+                @if (_late.Count == 0) { <div class="empty">None.</div> }
+                else { <table class="grid"><tbody>@foreach (var t in _late.Take(25)) { <tr><td>@t.Wbs</td><td>@t.Name</td><td>@t.Finish?.ToString("dd MMM")</td><td>@string.Join(", ", t.Assignments.Select(a => a.PersonName))</td></tr> }</tbody></table> }
+            </div>
+            <div class="plate"><h2>Next 30 days</h2>
+                @if (_next.Count == 0) { <div class="empty">Nothing scheduled.</div> }
+                else { <table class="grid"><tbody>@foreach (var t in _next.Take(25)) { <tr><td>@t.Start?.ToString("dd MMM")</td><td>@t.Name</td><td>@string.Join(", ", t.Assignments.Select(a => a.PersonName))</td></tr> }</tbody></table> }
+            </div>
+        </div>
+        <div class="plate"><h2>Gantt</h2><GanttChart Rows="@_rows" Today="@AsOf" LabelWidth="280" /></div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private PlanView? _plan; private ProjectHealthView? _health;
+    private List<PlanTaskView> _late = [], _next = [];
+    private List<GanttChart.Row> _rows = [];
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        _plan = await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(Id));
+        _health = _plan.Tasks.Count == 0 ? null : await Q(sp => sp.GetRequiredService<HealthService>().GetAsync(Id, asOf));
+        var leaves = _plan.Tasks.Where(t => !t.IsSummary).ToList();
+        _late = leaves.Where(t => t.PercentComplete < 1m && t.Finish is { } f && f < asOf).OrderBy(t => t.Finish).ToList();
+        _next = leaves.Where(t => t.PercentComplete < 1m && t.Start is { } s && s >= asOf && s <= asOf.AddDays(30)).OrderBy(t => t.Start).ToList();
+        _rows = _plan.Tasks.Where(t => t.Level <= 1).Select(t => new GanttChart.Row(t.Name, t.Level, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary, t.Kind == "milestone")).ToList();
+    }
+}
