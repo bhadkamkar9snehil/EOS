@@ -2,6 +2,7 @@
 @inherits EosPage
 @using EOS.Domain.Capacity
 @using EOS.Infrastructure.Persistence
+@using EOS.Domain.Projects
 @using EOS.Infrastructure.Projects
 <PageTitle>Demand &amp; Pipeline · EOS</PageTitle>
 
@@ -51,10 +52,22 @@
                 @if (_pipeline.Count == 0) { <div class="empty">No opportunities.</div> }
                 else
                 {
-                    <table class="grid"><thead><tr><th>Opportunity</th><th>Stage</th><th class="num">Win %</th><th class="num">Weighted h</th><th>Booking</th></tr></thead><tbody>
-                    @foreach (var o in _pipeline) { <tr><td><b>@o.Code</b> @o.Name</td><td>@o.Stage</td><td class="num">@((o.WinProbability * 100).ToString("0"))</td><td class="num">@o.WeightedHours.ToString("0")</td><td>@o.LikelyBookingMonth?.ToString("MMM yy")</td></tr> }
+                    <table class="grid"><thead><tr><th>Opportunity</th><th>Stage</th><th class="num">Win %</th><th class="num">Weighted h</th><th>Booking</th><th></th></tr></thead><tbody>
+                    @foreach (var o in _pipeline)
+                    {
+                        <tr><td><b>@o.Code</b> @o.Name</td><td>@o.Stage</td><td class="num">@((o.WinProbability * 100).ToString("0"))</td><td class="num">@o.WeightedHours.ToString("0")</td><td>@o.LikelyBookingMonth?.ToString("MMM yy")</td>
+                            <td>@if (o.ConvertedProjectId is null) { <button class="icon" @onclick="() => Convert(o)">Convert to project</button> } else { <a href="/projects/@o.ConvertedProjectId">project</a> }</td></tr>
+                    }
                     </tbody></table>
                 }
+                <div class="form-row">
+                    <div class="field"><label>Code</label><input @bind="_oCode" style="width:90px" /></div>
+                    <div class="field grow"><label>Name</label><input @bind="_oName" /></div>
+                    <div class="field"><label>Hours</label><input type="number" @bind="_oHours" style="width:80px" /></div>
+                    <div class="field"><label>Win %</label><input type="number" @bind="_oWin" style="width:70px" /></div>
+                    <div class="field"><label>Booking</label><input type="month" @bind="_oMonth" /></div>
+                    <button class="secondary" @onclick="AddOpportunity">Add opportunity</button>
+                </div>
             </div>
             <div class="plate"><h2>Supply vs demand · 6 months</h2>
                 @{ var skillsWithDemand = _sd.Where(r => r.ProjectDemandHours + r.PipelineHours > 0).Select(r => r.SkillId).ToHashSet(); }
@@ -93,6 +106,24 @@
         ProjectId = _project == 0 ? null : _project, SkillId = _skill, MinLevel = _min, HoursPerWeek = _hours,
         StartDate = DateOnly.FromDateTime(_start), EndDate = DateOnly.FromDateTime(_end),
     }, a), "Demand added.");
+    private string _oCode = "", _oName = ""; private decimal _oHours, _oWin = 50; private DateTime? _oMonth;
+
+    private Task AddOpportunity() => Act(async (sp, a) =>
+    {
+        await sp.GetRequiredService<PipelineService>().AddAsync(new Opportunity
+        {
+            Code = _oCode.Trim(), Name = _oName.Trim(), ExpectedHours = _oHours, WinProbability = Math.Clamp(_oWin, 0, 100) / 100m,
+            LikelyBookingMonth = _oMonth is { } m ? new DateOnly(m.Year, m.Month, 1) : null, Status = "Expected",
+        }, a);
+        _oCode = _oName = ""; _oHours = 0;
+    }, "Opportunity added.");
+
+    private async Task Convert(OpportunityView o)
+    {
+        if (!await Confirm($"Create a project from {o.Code}? Project number will be {o.Code}.")) return;
+        await Act(async (sp, a) => await sp.GetRequiredService<PipelineService>().ConvertToProjectAsync(o.Id, o.Code, a), "Converted to a project.");
+    }
+
     private async Task Remove(int id)
     {
         if (await Confirm("Remove this demand line?")) await Act((sp, a) => sp.GetRequiredService<DemandService>().DeleteAsync(id, a));

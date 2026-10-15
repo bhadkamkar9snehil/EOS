@@ -147,6 +147,9 @@ input.cell:hover, input.cell:focus { border-color: var(--line); background: var(
 label { color: var(--ink-2); font-size: 12.5px; display: block; margin-bottom: 3px; }
 label.inline { display: inline-flex; align-items: center; gap: 5px; margin: 0; color: var(--ink); font-size: 13px; }
 .field { display: flex; flex-direction: column; }
+.field.grow { flex: 1; min-width: 220px; }
+.field.grow input { width: 100%; }
+.grid-2 .form-row .field.grow { flex-basis: 100%; }
 .form-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin: 10px 0; }
 
 .tabs, .seg { display: inline-flex; background: #e9ebf0; border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -337,6 +340,9 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .meter i { display: block; height: 100%; background: #8d8de0; border-radius: 3px; }
 .meter i.warn { background: #ffb02e; } .meter i.over { background: var(--red); }
 .small { font-size: 12px; }
+.packrow { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.pack { break-inside: avoid; }
+.movrow.sugg { height: auto; min-height: 36px; padding: 6px 2px; }
 .plgx { max-height: calc(100vh - 210px); }
 .plgx .gl { padding-right: 8px; }
 .plgx .gl.drop, .plgx .gx-row.drop .rowband { background: #dedcff; outline: 2px dashed var(--accent); outline-offset: -2px; }

@@ -1,0 +1,74 @@
+@page "/reports/pack"
+@inherits EosPage
+@using EOS.Infrastructure.Projects
+<PageTitle>Weekly status pack · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <h1>Weekly status pack <span class="muted" style="font-weight:400;font-size:15px">@AsOf.ToString("dd MMM yyyy")</span></h1>
+        <div class="actions no-print"><button class="secondary" @onclick='() => JS.InvokeVoidAsync("print")'>Print or save as PDF</button><a class="btn secondary" href="/reports">Reports</a></div>
+    </div>
+    @if (Loading && _sections is null) { <p class="muted">Loading…</p> }
+    else if (_sections is null || _sections.Count == 0) { <div class="empty">No project has a plan.</div> }
+    else
+    {
+        <div class="plate">
+            <h2>Overview</h2>
+            <table class="grid"><thead><tr><th>Project</th><th>Health</th><th class="num">Progress</th><th>Forecast finish</th><th class="num">Slip (d)</th><th class="num">Late tasks</th><th class="num">Open risks</th></tr></thead><tbody>
+            @foreach (var s in _sections.OrderByDescending(s => s.Health?.ScheduleVarianceDays ?? int.MinValue))
+            {
+                <tr><td><b>@s.Plan.ProjectNo</b> <span class="muted">@Names.Short(s.Plan.ProjectName)</span></td>
+                    <td>@if (s.Health is not null) { <HealthBadge Health="@s.Health.Health" /> }</td>
+                    <td class="num">@((s.Plan.Progress * 100).ToString("0"))%</td><td>@s.Plan.Finish?.ToString("dd MMM yyyy")</td>
+                    <td class="num @(s.Health?.ScheduleVarianceDays > 0 ? "slip-pos" : "")">@(s.Health?.ScheduleVarianceDays?.ToString("+0;-0;0") ?? "–")</td>
+                    <td class="num">@s.Late.Count</td><td class="num">@s.Risks.Count</td></tr>
+            }
+            </tbody></table>
+        </div>
+        @foreach (var s in _sections.OrderByDescending(s => s.Health?.ScheduleVarianceDays ?? int.MinValue))
+        {
+            <div class="plate pack">
+                <h2>@s.Plan.ProjectNo · @Names.Short(s.Plan.ProjectName)</h2>
+                @if (s.Health is { Reasons.Count: > 0 }) { <p class="muted">@string.Join(" · ", s.Health.Reasons)</p> }
+                <div class="grid-3">
+                    <div><div class="label">Late</div>
+                        @if (s.Late.Count == 0) { <div class="muted">None</div> }
+                        @foreach (var t in s.Late.Take(6)) { <div class="packrow"><span>@Short(t.Name, 40)</span><span class="muted">@t.Finish?.ToString("dd MMM")</span></div> }
+                        @if (s.Late.Count > 6) { <div class="muted small">+@(s.Late.Count - 6) more</div> }</div>
+                    <div><div class="label">Next 30 days</div>
+                        @if (s.Next.Count == 0) { <div class="muted">None</div> }
+                        @foreach (var t in s.Next.Take(6)) { <div class="packrow"><span>@Short(t.Name, 40)</span><span class="muted">@t.Start?.ToString("dd MMM")</span></div> }</div>
+                    <div><div class="label">Risks and issues</div>
+                        @if (s.Risks.Count == 0) { <div class="muted">None open</div> }
+                        @foreach (var r in s.Risks.Take(6)) { <div class="packrow"><span>@Short(r.Text, 40)</span><span class="muted">@r.Severity</span></div> }</div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private sealed record Section(PlanView Plan, ProjectHealthView? Health, List<PlanTaskView> Late, List<PlanTaskView> Next, IReadOnlyList<RiskRow> Risks);
+    private List<Section>? _sections;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        var projects = (await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true))).Where(p => p.HasPlan).ToList();
+        var risks = await Q(sp => sp.GetRequiredService<RegisterService>().RisksAsync(openOnly: true));
+        _sections = [];
+        foreach (var p in projects)
+        {
+            var plan = await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(p.Id));
+            if (plan.Tasks.Count == 0) continue;
+            var health = await Q(sp => sp.GetRequiredService<HealthService>().GetAsync(p.Id, asOf));
+            var leaves = plan.Tasks.Where(t => !t.IsSummary).ToList();
+            _sections.Add(new Section(plan, health,
+                leaves.Where(t => t.PercentComplete < 1m && t.Finish is { } f && f < asOf).OrderBy(t => t.Finish).ToList(),
+                leaves.Where(t => t.PercentComplete < 1m && t.Start is { } s && s >= asOf && s <= asOf.AddDays(30)).OrderBy(t => t.Start).ToList(),
+                risks.Where(r => r.ProjectId == p.Id).ToList()));
+        }
+    }
+
+    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+}

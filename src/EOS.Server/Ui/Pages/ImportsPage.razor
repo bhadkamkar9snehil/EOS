@@ -16,6 +16,7 @@
                     <option value="erp">ERP project master</option>
                     <option value="tracker">Project task tracker (WBS)</option>
                     <option value="vms">Server and VM inventory</option>
+                    <option value="leave">Leave (Person, From, To, Kind)</option>
                 </select></div>
             <div class="field"><label>Workbook (.xlsx)</label><InputFile OnChange="Picked" accept=".xlsx" /></div>
             <button @onclick="() => Run(false)" disabled="@(_file is null)">Preview</button>
@@ -69,6 +70,7 @@
                     "training" => await new TrainingWorkbookImporter(db).ImportAsync(temp, commit, actor),
                     "erp" => await new ErpProjectImporter(db).ImportAsync(temp, commit, actor),
                     "tracker" => await new TrackerImporter(db).ImportAsync(temp, commit, actor),
+                    "leave" => await new LeaveImporter(db).ImportAsync(temp, commit, actor),
                     _ => await new InfrastructureImporter(db).ImportAsync(temp, commit, actor),
                 };
             }, commit ? "Import committed." : "Preview ready. Nothing was saved.");

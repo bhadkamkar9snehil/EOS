@@ -1,0 +1,193 @@
+@page "/register"
+@inherits EosPage
+@using EOS.Domain.Capacity
+@using EOS.Domain.Projects
+@using EOS.Infrastructure.Projects
+<PageTitle>Register · EOS</PageTitle>
+
+<SectionContent SectionName="tabs">
+    <div class="tabs" role="tablist">
+        <button class="@(_tab == "risks" ? "on" : "")" @onclick='() => _tab = "risks"'>Risks and issues @Count(_risks.Count(r => r.Status != "Closed"))</button>
+        <button class="@(_tab == "tickets" ? "on" : "")" @onclick='() => _tab = "tickets"'>Tickets @Count(_tickets.Count(t => t.Status is "Open" or "Assigned"))</button>
+        <button class="@(_tab == "changes" ? "on" : "")" @onclick='() => _tab = "changes"'>Changes and gaps @Count(_changes.Count(c => c.Status == "Open"))</button>
+        <button class="@(_tab == "moves" ? "on" : "")" @onclick='() => _tab = "moves"'>Movements</button>
+    </div>
+    <span class="spacer"></span>
+    <label class="inline"><input type="checkbox" @bind="_openOnly" /> Open only</label>
+</SectionContent>
+
+<div class="page">
+    @if (Loading && _projects is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (_tab == "risks")
+    {
+        <div class="plate">
+            <h2>Add</h2>
+            <div class="form-row">
+                <div class="field"><label>Project</label><select @bind="_rProject"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo</option> }</select></div>
+                <div class="field"><label>Kind</label><select @bind="_rKind"><option>Risk</option><option>Issue</option><option>Dependency</option><option>Assumption</option></select></div>
+                <div class="field"><label>Severity</label><select @bind="_rSeverity"><option>Low</option><option>Medium</option><option>High</option></select></div>
+                <div class="field grow"><label>Description</label><input @bind="_rText" /></div>
+                <div class="field"><label>Owner</label><input @bind="_rOwner" style="width:140px" /></div>
+                <div class="field"><label>Due</label><input type="date" @bind="_rDue" /></div>
+                <button @onclick="AddRisk">Add</button>
+            </div>
+        </div>
+        <div class="plate">
+            @if (Visible(_risks).Count == 0) { <div class="empty">Nothing logged.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>Project</th><th>Kind</th><th>Description</th><th>Severity</th><th>Owner</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>
+                @foreach (var r in Visible(_risks))
+                {
+                    <tr class="@(r.Status == "Closed" ? "muted" : "")">
+                        <td><a href="/projects/@r.ProjectId">@r.ProjectNo</a></td><td>@r.Kind</td><td>@r.Text</td>
+                        <td><Badge Kind="@(r.Severity == "High" ? "bad" : r.Severity == "Medium" ? "warn" : "")">@r.Severity</Badge></td>
+                        <td>@r.Owner</td><td class="@(r.DueOn < AsOf && r.Status != "Closed" ? "slip-pos" : "")">@r.DueOn?.ToString("dd MMM yy")</td>
+                        <td><select value="@r.Status" aria-label="Status" @onchange="e => SetRisk(r.Id, e.Value?.ToString())"><option>Open</option><option>Mitigating</option><option>Closed</option></select></td>
+                        <td><button class="icon" @onclick="() => DeleteRisk(r.Id)">Remove</button></td>
+                    </tr>
+                }
+                </tbody></table>
+            }
+        </div>
+    }
+    else if (_tab == "tickets")
+    {
+        <div class="plate">
+            <h2>Add</h2>
+            <div class="form-row">
+                <div class="field"><label>Project no.</label><input @bind="_tProject" list="projnos" style="width:130px" /></div>
+                <div class="field"><label>Product</label><input @bind="_tProduct" style="width:130px" /></div>
+                <label class="inline"><input type="checkbox" @bind="_tAmc" /> Under AMC</label>
+                <div class="field"><label>Raised by</label><input @bind="_tBy" style="width:140px" /></div>
+                <div class="field grow"><label>Issue</label><input @bind="_tIssue" /></div>
+                <button @onclick="AddTicket">Add</button>
+            </div>
+            <datalist id="projnos">@foreach (var p in _projects!) { <option value="@p.ProjectNo" /> }</datalist>
+        </div>
+        <div class="plate">
+            @if (Visible(_tickets).Count == 0) { <div class="empty">No tickets.</div> }
+            else
+            {
+                <div class="tablewrap"><table class="grid"><thead><tr><th>Raised</th><th>Project</th><th>Product</th><th>Issue</th><th>AMC</th><th>Engineers</th><th>Status</th></tr></thead><tbody>
+                @foreach (var t in Visible(_tickets).Take(300))
+                {
+                    <tr><td class="muted">@t.RaisedOn?.ToString("dd MMM yy")</td><td>@t.ProjectNo</td><td>@t.Product</td><td>@t.Issue</td><td>@(t.InAmc ? "yes" : "")</td><td>@t.AssignedEngineers</td>
+                        <td><select value="@t.Status" aria-label="Status" @onchange="e => SetTicket(t.Id, e.Value?.ToString())"><option>Open</option><option>Assigned</option><option>Resolved</option><option>Closed</option></select></td></tr>
+                }
+                </tbody></table></div>
+            }
+        </div>
+    }
+    else if (_tab == "changes")
+    {
+        <div class="plate">
+            <h2>Add</h2>
+            <div class="form-row">
+                <div class="field"><label>Kind</label><select @bind="_cKind"><option>Capacity Gap</option><option>Scope Change</option><option>Decision</option></select></div>
+                <div class="field"><label>Project</label><select @bind="_cProject"><option value="0">–</option>@foreach (var p in _projects!) { <option value="@p.Id">@p.ProjectNo</option> }</select></div>
+                <div class="field grow"><label>Description</label><input @bind="_cText" /></div>
+                <div class="field"><label>Impact h</label><input type="number" @bind="_cHours" style="width:80px" /></div>
+                <div class="field"><label>Impact days</label><input type="number" @bind="_cDays" style="width:80px" /></div>
+                <button @onclick="AddChange">Add</button>
+            </div>
+        </div>
+        <div class="plate">
+            @if (_changes.Count == 0) { <div class="empty">No entries.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>Raised</th><th>Kind</th><th>Description</th><th class="num">Hours</th><th class="num">Days</th><th>Status</th><th>Decision</th></tr></thead><tbody>
+                @foreach (var c in _changes.Where(c => !_openOnly || c.Status == "Open"))
+                {
+                    <tr><td class="muted">@c.RaisedOn.ToString("dd MMM yy")</td><td>@c.Kind</td><td>@c.Description</td><td class="num">@c.ImpactHours.ToString("0.#")</td><td class="num">@c.ImpactDays.ToString("0.#")</td>
+                        <td><Badge Kind="@(c.Status == "Open" ? "warn" : "good")">@c.Status</Badge></td>
+                        <td>@if (c.Status == "Open")
+                        {
+                            <input placeholder="Decision" @bind="_decisions[c.Id]" style="width:180px" />
+                            <button class="icon" @onclick="() => Decide(c.Id)">Close</button>
+                        }
+                        else { <span>@c.Decision <span class="muted">· @c.Approver</span></span> }</td></tr>
+                }
+                </tbody></table>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="plate">
+            @if (_moves.Count == 0) { <div class="empty">No movements yet. Applying a what-if scenario records them here.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>Effective</th><th>Engineer</th><th>From</th><th>To</th><th class="num">Share</th><th>Status</th><th>Reason</th><th>Approved by</th></tr></thead><tbody>
+                @foreach (var m in _moves)
+                {
+                    <tr><td>@m.EffectiveDate.ToString("dd MMM yy")</td><td>@m.Person</td><td>@m.FromProject</td><td>@m.ToProject</td><td class="num">@((m.Percent * 100).ToString("0"))%</td>
+                        <td><Badge Kind="@(m.Status == "Executed" ? "good" : "warn")">@m.Status</Badge></td><td class="muted">@m.Reason</td><td>@m.ApprovedBy</td></tr>
+                }
+                </tbody></table>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string _tab = "risks";
+    private bool _openOnly = true;
+    private IReadOnlyList<ProjectSummary>? _projects;
+    private IReadOnlyList<RiskRow> _risks = [];
+    private IReadOnlyList<AmcTicket> _tickets = [];
+    private IReadOnlyList<ChangeGapEntry> _changes = [];
+    private IReadOnlyList<MovementRow> _moves = [];
+    private readonly Dictionary<int, string> _decisions = [];
+    private int _rProject, _cProject; private string _rKind = "Risk", _rSeverity = "Medium", _rText = "", _rOwner = ""; private DateTime? _rDue;
+    private string _tProject = "", _tProduct = "", _tBy = "", _tIssue = ""; private bool _tAmc;
+    private string _cKind = "Capacity Gap", _cText = ""; private decimal _cHours, _cDays;
+
+    protected override async Task LoadAsync()
+    {
+        _projects = (await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true))).ToList();
+        _risks = await Q(sp => sp.GetRequiredService<RegisterService>().RisksAsync());
+        _tickets = await Q(sp => sp.GetRequiredService<RegisterService>().TicketsAsync());
+        _changes = await Q(sp => sp.GetRequiredService<RegisterService>().ChangesAsync());
+        _moves = await Q(sp => sp.GetRequiredService<RegisterService>().MovementsAsync());
+        foreach (var c in _changes) _decisions.TryAdd(c.Id, "");
+    }
+
+    private static string Count(int n) => n > 0 ? $"· {n}" : "";
+
+    private List<RiskRow> Visible(IReadOnlyList<RiskRow> rows) => rows.Where(r => !_openOnly || r.Status != "Closed").ToList();
+    private List<AmcTicket> Visible(IReadOnlyList<AmcTicket> rows) => rows.Where(t => !_openOnly || t.Status is "Open" or "Assigned").ToList();
+
+    private Task AddRisk() => Act(async (sp, a) =>
+    {
+        await sp.GetRequiredService<RegisterService>().AddRiskAsync(new RiskIssue
+        { ProjectId = _rProject, Kind = _rKind, Severity = _rSeverity, Text = _rText.Trim(), Owner = string.IsNullOrWhiteSpace(_rOwner) ? null : _rOwner.Trim(), DueOn = _rDue is { } d ? DateOnly.FromDateTime(d) : null }, a);
+        _rText = ""; _rOwner = ""; _rDue = null;
+    }, "Added.");
+
+    private Task SetRisk(int id, string? status) => Act((sp, a) => sp.GetRequiredService<RegisterService>().SetRiskStatusAsync(id, status ?? "Open", a));
+
+    private async Task DeleteRisk(int id)
+    {
+        if (await Confirm("Remove this entry?")) await Act((sp, a) => sp.GetRequiredService<RegisterService>().DeleteRiskAsync(id, a));
+    }
+
+    private Task AddTicket() => Act(async (sp, a) =>
+    {
+        await sp.GetRequiredService<RegisterService>().AddTicketAsync(new AmcTicket
+        { ProjectNo = string.IsNullOrWhiteSpace(_tProject) ? null : _tProject.Trim(), Product = string.IsNullOrWhiteSpace(_tProduct) ? null : _tProduct.Trim(), InAmc = _tAmc, RaisedBy = string.IsNullOrWhiteSpace(_tBy) ? null : _tBy.Trim(), Issue = _tIssue.Trim() }, a);
+        _tIssue = "";
+    }, "Ticket added.");
+
+    private Task SetTicket(int id, string? status) => Act((sp, a) => sp.GetRequiredService<RegisterService>().SetTicketAsync(id, status ?? "Open", null, a, AsOf));
+
+    private Task AddChange() => Act(async (sp, a) =>
+    {
+        await sp.GetRequiredService<RegisterService>().AddChangeAsync(new ChangeGapEntry
+        { Kind = _cKind, ProjectId = _cProject == 0 ? null : _cProject, Description = _cText.Trim(), ImpactHours = _cHours, ImpactDays = _cDays }, a);
+        _cText = ""; _cHours = 0; _cDays = 0;
+    }, "Added.");
+
+    private Task Decide(int id) => Act((sp, a) => sp.GetRequiredService<RegisterService>().DecideChangeAsync(id, _decisions.GetValueOrDefault(id, "").Trim(), a), "Closed.");
+}

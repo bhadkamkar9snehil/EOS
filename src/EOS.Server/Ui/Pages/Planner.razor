@@ -106,6 +106,17 @@
                 </div>
             }
             @if (_result.People.Count == 0) { <div class="muted">Drag an engineer onto a task to begin.</div> }
+
+            @if (_suggestions.Count > 0)
+            {
+                <div class="label sect">Ways to relieve overload</div>
+                @foreach (var s in _suggestions)
+                {
+                    <button class="movrow sugg" title="Hand this task to someone with room" @onclick="() => ApplySuggestion(s)">
+                        <span class="movname">@Short(s.TaskName, 26) → <b>@s.To.Name</b></span><span class="muted small">@s.Free.ToString("0") h free</span>
+                    </button>
+                }
+            }
         </div>
     }
 </SectionContent>
@@ -390,6 +401,39 @@
     private static string Cls(int d) => d > 0 ? "slip-pos" : d < 0 ? "slip-neg" : "muted";
     private string SkillName(int id) => _session!.Skills.FirstOrDefault(s => s.Id == id)?.Name ?? "skill";
 
+    private sealed record Suggest(PlannerAssignment From, PlannerPerson To, decimal Free, string TaskName);
+    private List<Suggest> _suggestions = [];
+
+    private bool SkillOk(PlannerPerson p, int taskId) =>
+        !_req.TryGetValue(taskId, out var r) || (p.Skills.FirstOrDefault(s => s.Id == r.SkillId)?.Rating ?? 0) >= r.Level;
+
+    private void BuildSuggestions()
+    {
+        var list = new List<Suggest>();
+        foreach (var imp in _result!.People.Where(p => p.OverAfter > 0))
+        {
+            var mine = _draft.Where(a => a.PersonId == imp.PersonId && _result.Spans.ContainsKey(a.TaskId) && Task(a.TaskId) is { WorkHours: > 0 }).OrderByDescending(a => Task(a.TaskId)!.WorkHours).Take(2);
+            foreach (var a in mine)
+            {
+                var span = _result.Spans[a.TaskId]; var task = Task(a.TaskId)!;
+                var best = _session!.People.Where(p => p.Id != imp.PersonId && !_draft.Any(x => x.TaskId == a.TaskId && x.PersonId == p.Id) && SkillOk(p, a.TaskId))
+                    .Select(p => (Person: p, Free: _session.FreeHours(_result, p.Id, span))).OrderByDescending(x => x.Free).FirstOrDefault();
+                if (best.Person is not null && best.Free >= task.WorkHours * 0.5m) list.Add(new Suggest(a, best.Person, best.Free, task.Name));
+            }
+        }
+        _suggestions = list.Take(5).ToList();
+    }
+
+    private void ApplySuggestion(Suggest s)
+    {
+        Push();
+        var idx = _draft.IndexOf(s.From);
+        if (idx < 0) return;
+        _draft[idx] = s.From with { PersonId = s.To.Id };
+        Recalc();
+        State.ShowToast($"{s.TaskName} handed to {s.To.Name}.");
+    }
+
     private void SetExperience(bool on) { _experience = on; Recalc(); }
 
     private void ToggleUnassigned() { _unassignedOnly = !_unassignedOnly; BuildRows(); }
@@ -454,6 +498,7 @@
         _changes = _changedTasks.Union(reqChanged).Count();
         _unassigned = _session.Tasks.Where(t => !t.IsSummary && !t.IsMilestone && t.WorkHours > 0 && !_draft.Any(a => a.TaskId == t.Id)).Select(t => t.Id).ToList();
         UpdateSel();
+        BuildSuggestions();
         Layout();
         _ = PersistDraft();
     }

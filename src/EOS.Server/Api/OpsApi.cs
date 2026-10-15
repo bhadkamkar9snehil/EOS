@@ -62,6 +62,7 @@ public static class OpsApi
                     "training" => await new TrainingWorkbookImporter(db).ImportAsync(temp, doCommit, actor),
                     "erp" => await new ErpProjectImporter(db).ImportAsync(temp, doCommit, actor),
                     "tracker" => await new TrackerImporter(db).ImportAsync(temp, doCommit, actor),
+                    "leave" => await new LeaveImporter(db).ImportAsync(temp, doCommit, actor),
                     "vms" => await new InfrastructureImporter(db).ImportAsync(temp, doCommit, actor),
                     _ => throw new ArgumentException($"Unknown import kind '{kind}'. Use agility, training, erp, tracker or vms."),
                 };
