@@ -33,6 +33,49 @@ var reason = TakeOption("--reason");
 
 if (argv.Count == 0 || argv[0] is "-h" or "--help" or "help") { PrintHelp(); return 0; }
 
+var serverUrl = TakeOption("--server") ?? Environment.GetEnvironmentVariable("EOS_URL");
+var serverToken = TakeOption("--token") ?? Environment.GetEnvironmentVariable("EOS_TOKEN");
+
+if (argv[0] == "api" && argv.Count >= 3)
+{
+    if (serverUrl is null) { Console.Error.WriteLine("Set EOS_URL (and EOS_TOKEN) or pass --server and --token."); return 1; }
+    var body = TakeOption("--body");
+    using var http = new HttpClient { BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/api/v1/") };
+    if (serverToken is not null) http.DefaultRequestHeaders.Authorization = new("Bearer", serverToken);
+    using var request = new HttpRequestMessage(new HttpMethod(argv[1].ToUpperInvariant()), argv[2].TrimStart('/'));
+    if (body is not null) request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+    using var response = await http.SendAsync(request);
+    var text = await response.Content.ReadAsStringAsync();
+    Console.WriteLine(text);
+    return response.IsSuccessStatusCode ? 0 : 1;
+}
+
+if (serverUrl is not null)
+{
+    var route = (argv[0], argv.Count > 1 ? argv[1] : "") switch
+    {
+        ("dashboard", _) => "dashboard",
+        ("alert", "list") => "alerts",
+        ("capacity", _) => "load/weekly",
+        ("host", "list") => "hosts",
+        ("person", "list") => "people",
+        ("project", "list") => "projects",
+        ("skill", "matrix") => "skill-matrix",
+        ("training", "summary") => "training/summary",
+        ("report", "list") => "reports",
+        ("report", "run") when argv.Count >= 3 => "reports/" + argv[2],
+        _ => null,
+    };
+    if (route is not null)
+    {
+        using var http = new HttpClient { BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/api/v1/") };
+        if (serverToken is not null) http.DefaultRequestHeaders.Authorization = new("Bearer", serverToken);
+        using var response = await http.GetAsync(route);
+        Console.WriteLine(await response.Content.ReadAsStringAsync());
+        return response.IsSuccessStatusCode ? 0 : 1;
+    }
+}
+
 try
 {
     switch (argv[0], argv.Count > 1 ? argv[1] : "")
@@ -413,4 +456,7 @@ void PrintHelp()
     Console.WriteLine("  eos scenario analyse <personCode:fromNo:toNo:yyyy-MM-dd[:pct]>... [--name t]");
     Console.WriteLine("  eos scenario approve|reject|apply <id> [--reason t]");
     Console.WriteLine("  eos backup create [--dir path]");
+    Console.WriteLine("  server mode: set EOS_URL and EOS_TOKEN (or --server/--token); dashboard, alert list, capacity, host list, person list,");
+    Console.WriteLine("               project list, skill matrix, training summary and report list|run call the server, and");
+    Console.WriteLine("               eos api <GET|POST|PUT|DELETE> <path> [--body json] reaches any /api/v1 endpoint");
 }
