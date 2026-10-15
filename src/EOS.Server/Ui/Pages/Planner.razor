@@ -6,7 +6,7 @@
 <PageTitle>Planner · EOS</PageTitle>
 
 <SectionContent SectionName="sidebar">
-    @if (_session is not null)
+    @if (_session is not null && _benchOpen)
     {
         <div class="bench">
             <div class="bench-head">
@@ -26,7 +26,7 @@
                             <div class="strip" aria-label="Load, next weeks">
                                 @foreach (var c in StripFor(p.Id)) { <i class="@c.Cls" title="@c.Tip"></i> }
                             </div>
-                            <div class="chips">@foreach (var s in p.Skills.OrderByDescending(s => s.Rating).Take(3)) { <span class="chip" title="@s.Name @s.Rating">@Short(s.Name, 14) @s.Rating</span> }</div>
+                            <div class="chips">@foreach (var s in p.Skills.OrderByDescending(s => s.Rating).Take(2)) { <span class="chip" title="@s.Name @s.Rating">@Short(s.Name, 14) @s.Rating</span> }</div>
                         </div>
                         <button class="iconbtn add" aria-label="Add @p.Name to selected tasks" title="Add to selected tasks" @onclick="() => AssignToSelection(p.Id)"><Icon Name="plus" Size="16" /></button>
                     </div>
@@ -42,14 +42,10 @@
         <button class="@(_tab == "load" ? "on" : "")" @onclick='() => _tab = "load"'>Load</button>
         <button class="@(_tab == "changes" ? "on" : "")" @onclick='() => _tab = "changes"'>Changes @(_changes > 0 ? $"· {_changes}" : "")</button>
     </div>
-    <select aria-label="Project" value="@_projectId" @onchange="OnProject">
-        @foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo · @Short(Names.Short(p.Name), 40)</option> }
-    </select>
-    <span class="seg" role="group" aria-label="Multiple engineers on a task">
-        <button class="@(!_relay ? "on" : "")" @onclick="() => _relay = false" title="Engineers work the same dates together">Parallel</button>
-        <button class="@(_relay ? "on" : "")" @onclick="() => _relay = true" title="Engineers take turns across the task's dates">Relay</button>
-    </span>
     <span class="spacer"></span>
+    <button class="secondary toggle" aria-pressed="@_benchOpen" @onclick="() => _benchOpen = !_benchOpen"><Icon Name="users" Size="16" />Engineers</button>
+    <button class="secondary toggle" aria-pressed="@_impactOpen" @onclick="() => _impactOpen = !_impactOpen"><Icon Name="gauge" Size="16" />Impact</button>
+    <span class="vsep"></span>
     <button class="secondary iconbtn" aria-label="Undo" title="Undo" disabled="@(_undo.Count == 0)" @onclick="Undo"><Icon Name="undo" Size="16" /></button>
     <button class="secondary iconbtn" aria-label="Redo" title="Redo" disabled="@(_redo.Count == 0)" @onclick="Redo"><Icon Name="redo" Size="16" /></button>
     <button class="secondary" disabled="@(_changes == 0)" @onclick="Reset">Reset</button>
@@ -57,7 +53,7 @@
 </SectionContent>
 
 <SectionContent SectionName="rightbar">
-    @if (_result is not null && _session is not null)
+    @if (_result is not null && _session is not null && _impactOpen)
     {
         <div class="impact">
             <div class="label">Impact</div>
@@ -71,18 +67,18 @@
 
             @if (_result.Warnings.Count > 0)
             {
-                <div class="label" style="margin-top:16px">Warnings</div>
+                <div class="label sect">Warnings</div>
                 @foreach (var w in _result.Warnings) { <div class="warnrow">@w</div> }
             }
 
-            <div class="label" style="margin-top:16px">Tasks that move</div>
+            <div class="label sect">Tasks that move</div>
             @if (_result.Moved.Count == 0) { <div class="muted">Nothing moves.</div> }
             @foreach (var m in _result.Moved.Where(m => Task(m.TaskId) is { IsSummary: false }).Take(8))
             {
                 <button class="movrow" @onclick="() => Focus(m.TaskId)"><span class="movname">@Short(Task(m.TaskId)!.Name, 34)</span><span class="@(m.SlipDays > 0 ? "slip-pos" : "slip-neg")">@m.SlipDays.ToString("+0;-0")</span></button>
             }
 
-            <div class="label" style="margin-top:16px">Engineers</div>
+            <div class="label sect">Engineers</div>
             @foreach (var p in _result.People.OrderByDescending(p => p.PeakAfter))
             {
                 var pct = Math.Min(160m, p.PeakAfter * 100);
@@ -101,6 +97,7 @@
     @if (_session is not null && _result is not null)
     {
         <span><b>@_session.ProjectNo</b> · @(_changes == 0 ? "no changes" : $"{_changes} task(s) changed") · finish @_result.Finish.ToString("dd MMM yyyy")</span>
+        <span class="muted">@(_sel.Count > 0 ? $"{_sel.Count} selected · drop an engineer or click + on a card" : "click a task to select · Ctrl-click for several")</span>
     }
 </SectionContent>
 
@@ -111,13 +108,20 @@
     else if (_tab == "plan")
     {
         <div class="tools">
+            <select aria-label="Project" value="@_projectId" @onchange="OnProject">
+                @foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo · @Short(Names.Short(p.Name), 24)</option> }
+            </select>
+            <span class="seg" role="group" aria-label="Multiple engineers on a task">
+                <button class="@(!_relay ? "on" : "")" @onclick="() => _relay = false" title="Engineers work the same dates together">Parallel</button>
+                <button class="@(_relay ? "on" : "")" @onclick="() => _relay = true" title="Engineers take turns across the task's dates">Relay</button>
+            </span>
+            <span class="sep"></span>
             <span class="seg" role="group" aria-label="Zoom">
                 <button class="@(_zoomDw == 0 ? "on" : "")" @onclick="() => Zoom(0)">Fit</button>
                 <button class="@(_zoomDw == 9 ? "on" : "")" @onclick="() => Zoom(9)">Week</button>
                 <button class="@(_zoomDw == 22 ? "on" : "")" @onclick="() => Zoom(22)">Day</button>
             </span>
             <label class="inline"><input type="checkbox" checked="@_allLanes" @onchange="ToggleLanes" /> Show every lane</label>
-            <span class="muted">@(_sel.Count > 0 ? $"{_sel.Count} selected. Drop an engineer on a task, or click + on one." : "Click a task to select it. Ctrl-click selects several.")</span>
         </div>
         <div class="gx plgx">
             <div class="gx-labels" style="width:@(LabelW)px">
@@ -240,7 +244,7 @@
     private PlannerResult? _result;
     private List<PlannerAssignment> _draft = [];
     private readonly List<List<PlannerAssignment>> _undo = [], _redo = [];
-    private bool _experience, _relay;
+    private bool _experience, _relay, _benchOpen = true, _impactOpen = true;
     private string _tab = "plan", _benchSearch = "", _skillFilter = "";
     private readonly HashSet<int> _collapsed = [], _sel = [];
     private bool _allLanes;
@@ -255,7 +259,7 @@
     private int _width;
     private List<(int X, string Label)> _months = [];
     private List<int> _weekLines = [], _weekends = [];
-    private const int RowH = 32, HeaderH = 40, LabelW = 360;
+    private const int RowH = 32, HeaderH = 40, LabelW = 300;
 
     protected override async Task LoadAsync()
     {
@@ -317,7 +321,7 @@
         _min = all.Min(s => s.Start).AddDays(-4);
         _max = all.Max(s => s.Finish).AddDays(14);
         var span = _max.DayNumber - _min.DayNumber + 1;
-        _dw = _zoomDw > 0 ? _zoomDw : Math.Clamp(980 / Math.Max(span, 1), 2, 26);
+        _dw = _zoomDw > 0 ? _zoomDw : Math.Clamp(760 / Math.Max(span, 1), 2, 26);
         _width = span * _dw;
         _months = [];
         for (var m = new DateOnly(_min.Year, _min.Month, 1); m <= _max; m = m.AddMonths(1)) _months.Add((Math.Max(0, X(m)), m.ToString("MMM yyyy", CultureInfo.InvariantCulture)));

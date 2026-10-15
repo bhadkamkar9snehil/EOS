@@ -1,6 +1,6 @@
 :root {
   --bg: #eef0f3; --panel: #ffffff; --side: #f7f8fa; --line: #e2e5ea; --line-soft: #eceef2; --hover: #f3f4f7;
-  --ink: #14171a; --ink-2: #5a626d; --ink-3: #8a929d;
+  --ink: #14171a; --ink-2: #5a626d; --ink-3: #6a727d;
   --accent: #5b5bd6; --accent-soft: #ecebff; --accent-ink: #3f3fb5;
   --green: #1f8a5b; --green-soft: #e1f4ea; --amber: #9a6200; --amber-soft: #fff1d0; --red: #c9302c; --red-soft: #fde7e5;
   --signal: #c9302c; --yellow: #ffd93d; --focus: #2f6bff;
@@ -44,8 +44,8 @@ p { margin: 4px 0; max-width: 72ch; }
 .rail-user button { width: 36px; height: 36px; padding: 0; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); border: 1px solid #d9d8fb; font-size: 12px; font-weight: 700; justify-content: center; }
 .rail-user button:hover { background: #e0dfff; }
 .workspace { grid-row: 1 / 2; grid-column: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; min-height: 0; }
-.sidebar { width: 300px; background: var(--side); border-right: 1px solid var(--line); overflow-y: auto; min-height: 0; }
-.rightbar { width: 340px; background: var(--side); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; }
+.sidebar { width: 272px; background: var(--side); border-right: 1px solid var(--line); overflow-y: auto; min-height: 0; }
+.rightbar { width: 312px; background: var(--side); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; }
 .sidebar:empty, .rightbar:empty, .tabsbar:empty, .bb-left:empty { display: none; }
 .center { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
 .tabsbar { background: var(--panel); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; align-items: center; gap: 10px; flex: none; }
@@ -270,6 +270,19 @@ label.inline { display: inline-flex; align-items: center; gap: 5px; margin: 0; c
 .mini-day.today { background: var(--ink); color: #fff; font-weight: 700; }
 @media (max-width: 1100px) { .cal-layout { grid-template-columns: 1fr; } .cal-side { position: static; max-height: none; } .cal-year { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+.tabsbar .spacer { flex: 1; }
+.tabsbar button.toggle { height: 32px; padding: 0 12px; font-weight: 550; }
+button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--accent-ink); border-color: #cfcdfa; }
+.vsep { width: 1px; height: 22px; background: var(--line); margin: 0 2px; }
+.tools select { max-width: 220px; }
+.bb-left { gap: 18px; }
+.impact .label { margin-bottom: 8px; }
+.impact .label.sect { margin-top: 22px; }
+.impact .finish { margin-bottom: 16px; }
+.pcard { padding: 9px 10px; gap: 9px; }
+.strip { margin: 6px 0 5px; }
+@media (min-width: 1700px) { .sidebar { width: 300px; } .rightbar { width: 340px; } }
+@media (max-width: 1280px) and (min-width: 901px) { .sidebar { width: 236px; } .rightbar { width: 276px; } .pcard .chips { display: none; } }
 .avatar { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: 12px; font-weight: 700; color: var(--ink); flex: none; }
 .avatar.sm { width: 22px; height: 22px; font-size: 9.5px; }
 .avatar.xs { width: 20px; height: 20px; font-size: 9px; margin-left: -4px; border: 2px solid var(--panel); }
@@ -326,9 +339,16 @@ label.inline { display: inline-flex; align-items: center; gap: 5px; margin: 0; c
 @media (max-width: 900px) {
   .app { grid-template-columns: 52px 1fr; }
   .rail-link { width: 36px; height: 36px; }
-  .workspace { grid-template-columns: minmax(0, 1fr); overflow: auto; }
-  .sidebar, .rightbar { width: auto; border: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
-  main { padding: 16px 14px 32px; }
+  .workspace { display: flex; flex-direction: column; overflow-y: auto; }
+  .center { order: 1; flex: none; height: auto; }
+  .sidebar { order: 2; }
+  .rightbar { order: 3; }
+  .sidebar, .rightbar { width: auto; flex: none; border: 0; border-top: 1px solid var(--line); max-height: 60vh; }
+  main { overflow: visible; padding: 16px 14px 32px; }
+  .tabsbar { padding: 8px 12px; gap: 8px; }
+  .bb-left, .bb-meta { display: none; }
+  .bottombar { justify-content: flex-end; }
+  .plgx { max-height: 70vh; }
   .form-row { flex-direction: column; align-items: stretch; gap: 10px; }
   .form-row .field, .form-row select, .form-row input:not([type=checkbox]) { width: 100%; }
   .form-row button { align-self: flex-start; }
