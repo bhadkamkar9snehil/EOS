@@ -4,7 +4,7 @@
 
 <div class="page">
     <div class="page-head">
-        <div><h1>Capacity &amp; Load</h1><p class="muted">Who is booked where. Load is allocated hours against the calendar capacity of each engineer (hours and calendars are configurable under Settings).</p></div>
+        <div><h1>Capacity &amp; Load</h1></div>
         <div class="actions">
             <label style="margin:0">Weeks <select @bind="_weeks" @bind:after="Reload"><option value="8">8</option><option value="12">12</option><option value="26">26</option></select></label>
         </div>
@@ -19,7 +19,7 @@
             @if (_people.Count == 0) { <div class="empty">No engineers yet. Import the agility workbook under Imports.</div> }
             else
             {
-                <div class="tablewrap"><table class="grid">
+                <div class="tablewrap"><table class="grid freeze">
                     <thead><tr><th>Engineer</th>@foreach (var w in _weekStarts) { <th class="num">@w.ToString("dd MMM")</th> }</tr></thead>
                     <tbody>
                     @foreach (var p in _people)
@@ -33,13 +33,12 @@
                         }</tr>
                     }
                     </tbody></table></div>
-                <p class="muted">Cell = allocated hours that week. Colour band = load against capacity (thresholds are settings <code>load.*</code>). Hover for the project split.</p>
             }
         </div>
 
         <div class="plate">
             <h2>Monthly capacity · free planned hours</h2>
-            <div class="tablewrap"><table class="grid">
+            <div class="tablewrap"><table class="grid freeze">
                 <thead><tr><th>Engineer</th><th>Team</th><th>Month</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Planned</th><th class="num">Allocated</th><th class="num">Free (planned)</th><th class="num">Load</th></tr></thead>
                 <tbody>
                 @foreach (var r in _capacity!)

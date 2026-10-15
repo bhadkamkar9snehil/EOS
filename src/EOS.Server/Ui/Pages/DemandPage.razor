@@ -6,7 +6,7 @@
 <PageTitle>Demand &amp; Pipeline · EOS</PageTitle>
 
 <div class="page">
-    <div class="page-head"><div><h1>Demand &amp; Pipeline</h1><p class="muted">Skill demand per project and expected opportunities against the engineers who could fill it.</p></div></div>
+    <div class="page-head"><div><h1>Demand &amp; Pipeline</h1></div></div>
 
     @if (Loading && _demand is null) { <p class="muted">Loading…</p> }
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
@@ -32,7 +32,7 @@
                 {
                     <tr class="clickable" @onclick="() => Candidates(d.Id)"><td>@(d.ProjectNo ?? "pipeline")</td><td>@d.SkillName</td><td class="num">@d.MinLevel</td><td class="num">@d.HoursPerWeek.ToString("0.#")</td>
                         <td>@d.Start.ToString("dd MMM yy") – @d.End.ToString("dd MMM yy")</td><td><Badge Kind="@(d.Status == "Filled" ? "good" : d.Status.StartsWith("Gap") ? "bad" : "warn")">@d.Status</Badge></td>
-                        <td class="num">@d.EligibleCount</td><td>@d.BestPerson</td><td><button class="icon" @onclick:stopPropagation @onclick="() => Remove(d.Id)">✕</button></td></tr>
+                        <td class="num">@d.EligibleCount</td><td>@d.BestPerson</td><td><button class="icon" @onclick:stopPropagation @onclick="() => Remove(d.Id)">Remove</button></td></tr>
                 }
                 </tbody></table>
             }
@@ -93,6 +93,9 @@
         ProjectId = _project == 0 ? null : _project, SkillId = _skill, MinLevel = _min, HoursPerWeek = _hours,
         StartDate = DateOnly.FromDateTime(_start), EndDate = DateOnly.FromDateTime(_end),
     }, a), "Demand added.");
-    private Task Remove(int id) => Act((sp, a) => sp.GetRequiredService<DemandService>().DeleteAsync(id, a));
+    private async Task Remove(int id)
+    {
+        if (await Confirm("Remove this demand line?")) await Act((sp, a) => sp.GetRequiredService<DemandService>().DeleteAsync(id, a));
+    }
     private Task Candidates(int id) => Act(async (sp, _) => _cands = await sp.GetRequiredService<DemandService>().RankCandidatesAsync(id), reload: false);
 }

@@ -6,7 +6,7 @@
 
 <div class="page">
     <div class="page-head">
-        <div><h1>Infrastructure</h1><p class="muted">Servers and virtual machines, who they serve, disk headroom and backups. No credentials are stored anywhere in EOS.</p></div>
+        <div><h1>Infrastructure</h1></div>
         <div class="actions">
             <select @bind="_filter"><option value="">All</option><option value="server">Servers</option><option value="vm">VMs</option><option value="low">Low disk</option><option value="reclaim">Reclaim candidates</option><option value="nobackup">Needs backup</option></select>
             <input type="search" placeholder="Search…" @bind="_search" @bind:event="oninput" style="width:200px" />

@@ -43,19 +43,32 @@
                     <div class="field"><label>Add task</label><input @bind="_newTask" placeholder="Task name" style="width:320px" /></div>
                     <div class="field"><label>Work (h)</label><input type="number" @bind="_newWork" style="width:90px" /></div>
                     <button @onclick="AddTask">Add</button>
-                    <span class="muted">Added after the selected row@(_selected is null ? "" : " (" + Sel()!.Wbs + ")"), or at the end.</span>
                 </div>
             </div>
             @if (_plan.Tasks.Count == 0) { <div class="empty">No tasks. Add one above, or import this project's plan from the ERP/tracker under Imports.</div> }
             else
             {
-                <div class="plate"><div class="tablewrap" style="max-height:70vh;overflow:auto">
-                    <table class="grid">
-                        <thead><tr><th>WBS</th><th>Task</th><th class="num">Work h</th><th class="num">%</th><th>Start</th><th>Finish</th><th class="num">Float</th><th>Status</th><th>Assigned</th><th></th></tr></thead>
+                <div class="plate">
+                    <div class="rowtools" role="toolbar" aria-label="Selected task actions">
+                        @if (Sel() is { } cur)
+                        {
+                            <span class="rowtools-name"><b>@cur.Wbs</b> @Short(cur.Name, 60)</span>
+                            <button class="secondary" @onclick="() => Move(cur.Id, MoveDirection.Up)">Move up</button>
+                            <button class="secondary" @onclick="() => Move(cur.Id, MoveDirection.Down)">Move down</button>
+                            <button class="secondary" @onclick="() => Move(cur.Id, MoveDirection.Indent)">Indent</button>
+                            <button class="secondary" @onclick="() => Move(cur.Id, MoveDirection.Outdent)">Outdent</button>
+                            <span class="spacer"></span>
+                            <button class="danger" @onclick="() => Delete(cur.Id)">Delete task</button>
+                        }
+                        else { <span class="muted">Select a row (click, or Tab and arrow keys). Alt+arrows move and indent, Enter renames, Delete removes.</span> }
+                    </div>
+                    <div class="tablewrap" style="max-height:70vh;overflow:auto">
+                    <table class="grid freeze">
+                        <thead><tr><th>WBS</th><th>Task</th><th class="num">Work h</th><th class="num">%</th><th>Start</th><th>Finish</th><th class="num">Float</th><th>Status</th><th>Assigned</th></tr></thead>
                         <tbody>
                         @foreach (var t in _plan.Tasks)
                         {
-                            <tr class="@(_selected == t.Id ? "sel" : "") @(t.IsCritical ? "crit" : "")" @onclick="() => _selected = t.Id">
+                            <tr class="@(_selected == t.Id ? "sel" : "") @(t.IsCritical ? "crit" : "")" tabindex="0" data-row="@t.Id" aria-selected="@(_selected == t.Id)" @onclick="() => _selected = t.Id" @onkeydown="e => RowKey(t, e)">
                                 <td class="muted">@t.Wbs</td>
                                 <td style="padding-left:@(6 + t.Level * 14)px;@(t.IsSummary ? "font-weight:650" : "")">
                                     @if (_editing == t.Id)
@@ -66,20 +79,13 @@
                                     else { <span @ondblclick="() => StartEdit(t)">@t.Name</span> }
                                     @if (t.Origin != "eos") { <span class="muted" title="Imported from @t.Origin"> ⟵ @t.Origin</span> }
                                 </td>
-                                <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" value="@t.WorkHours" @onchange="e => SetWork(t.Id, e.Value)" /> } else { @t.WorkHours.ToString("0.#") }</td>
-                                <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" min="0" max="100" value="@((t.PercentComplete * 100).ToString("0"))" @onchange="e => SetPct(t.Id, e.Value)" /> } else { @((t.PercentComplete * 100).ToString("0")) }</td>
+                                <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" aria-label="Work hours, @t.Wbs" value="@t.WorkHours" @onchange="e => SetWork(t.Id, e.Value)" /> } else { @t.WorkHours.ToString("0.#") }</td>
+                                <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" aria-label="Percent complete, @t.Wbs" min="0" max="100" value="@((t.PercentComplete * 100).ToString("0"))" @onchange="e => SetPct(t.Id, e.Value)" /> } else { @((t.PercentComplete * 100).ToString("0")) }</td>
                                 <td>@t.Start?.ToString("dd MMM yy")</td>
                                 <td>@t.Finish?.ToString("dd MMM yy")</td>
                                 <td class="num">@t.TotalFloatDays</td>
                                 <td>@t.Status</td>
                                 <td>@string.Join(", ", t.Assignments.Select(a => (a.PersonName ?? "◌ " + a.PlaceholderSkill) + (a.Units == 1 ? "" : $" {a.Units * 100:0}%")))</td>
-                                <td style="white-space:nowrap">
-                                    <button class="icon" title="Move up" @onclick="() => Move(t.Id, MoveDirection.Up)">↑</button>
-                                    <button class="icon" title="Move down" @onclick="() => Move(t.Id, MoveDirection.Down)">↓</button>
-                                    <button class="icon" title="Indent" @onclick="() => Move(t.Id, MoveDirection.Indent)">→</button>
-                                    <button class="icon" title="Outdent" @onclick="() => Move(t.Id, MoveDirection.Outdent)">←</button>
-                                    <button class="icon" title="Delete" @onclick="() => Delete(t.Id)">✕</button>
-                                </td>
                             </tr>
                         }
                         </tbody>
@@ -99,14 +105,14 @@
                             </div>
                             @foreach (var a in s.Assignments)
                             {
-                                <div>@(a.PersonName ?? "◌ " + a.PlaceholderSkill) @(a.Units * 100)% <button class="icon" @onclick="() => Unassign(a.Id)">✕</button></div>
+                                <div>@(a.PersonName ?? "◌ " + a.PlaceholderSkill) @(a.Units * 100)% <button class="icon" @onclick="() => Unassign(a.Id)">Remove</button></div>
                             }
                         </div>
                         <div class="plate">
                             <h2>Dependencies of “@s.Name”</h2>
                             @foreach (var l in _plan.Links.Where(l => l.SuccessorId == s.Id || l.PredecessorId == s.Id))
                             {
-                                <div>@LinkText(l, s.Id) <button class="icon" @onclick="() => RemoveLink(l.Id)">✕</button></div>
+                                <div>@LinkText(l, s.Id) <button class="icon" @onclick="() => RemoveLink(l.Id)">Remove</button></div>
                             }
                             <div class="form-row">
                                 <div class="field"><label>Predecessor</label>
@@ -122,7 +128,7 @@
         }
         else if (_tab == "gantt")
         {
-            <div class="plate"><GanttChart Rows="@_ganttRows" Today="@AsOf" /></div>
+            <GanttChart Rows="@_ganttRows" Links="@_ganttLinks" Today="@AsOf" ExpandToLevel="3" OnSelect="OnGanttSelect" />
         }
         else if (_tab == "team")
         {
@@ -206,6 +212,12 @@
     private ProjectHealthView? _health;
     private BaselineVariance? _variance;
     private List<GanttChart.Row> _ganttRows = [];
+    private List<GanttChart.Link> _ganttLinks = [];
+
+    private void OnGanttSelect(string? key)
+    {
+        if (key is not null && key.StartsWith('t') && int.TryParse(key[1..], out var id)) _selected = id;
+    }
     private List<(int Id, string Name)> _people = [];
     private List<(string Name, int Tasks, decimal Hours)> _team = [];
     private IReadOnlyList<HostRow> _hosts = [];
@@ -228,7 +240,8 @@
         try { _variance = await Q(sp => sp.GetRequiredService<PlanService>().GetBaselineVarianceAsync(Id)); } catch (PlanException) { _variance = null; }
 
         _ganttRows = _plan.Tasks.Select(t => new GanttChart.Row(t.Name, t.Level, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary,
-            t.Kind == "milestone", t.Wbs + " " + t.Name)).ToList();
+            t.Kind == "milestone", t.Wbs + " " + t.Name, null, t.Status, Key: "t" + t.Id)).ToList();
+        _ganttLinks = _plan.Links.Select(l => new GanttChart.Link("t" + l.PredecessorId, "t" + l.SuccessorId, l.Type)).ToList();
         _team = _plan.Tasks.Where(t => !t.IsSummary).SelectMany(t => t.Assignments.Where(a => a.PersonName is not null).Select(a => (a.PersonName!, t.Id, Hours: t.WorkHours * a.Units)))
             .GroupBy(x => x.Item1).Select(g => (g.Key, g.Count(), g.Sum(x => x.Hours))).OrderByDescending(x => x.Item3).ToList();
     }
@@ -290,13 +303,39 @@
         await plans.RecomputeAsync(Id, AsOf);
     });
 
-    private Task Delete(int id) => Act(async (sp, a) =>
+    private async Task Delete(int id)
     {
-        var plans = sp.GetRequiredService<PlanService>();
-        await plans.DeleteTaskAsync(id, a);
-        if (_selected == id) _selected = null;
-        await plans.RecomputeAsync(Id, AsOf);
-    }, "Task deleted.");
+        var task = _plan?.Tasks.FirstOrDefault(t => t.Id == id);
+        var extra = task is { IsSummary: true } ? " and everything under it" : "";
+        if (!await Confirm($"Delete task {task?.Wbs} “{task?.Name}”{extra}? This cannot be undone.")) return;
+        await Act(async (sp, a) =>
+        {
+            var plans = sp.GetRequiredService<PlanService>();
+            await plans.DeleteTaskAsync(id, a);
+            if (_selected == id) _selected = null;
+            await plans.RecomputeAsync(Id, AsOf);
+        }, "Task deleted.");
+    }
+
+    private async Task RowKey(PlanTaskView t, KeyboardEventArgs e)
+    {
+        var tasks = _plan!.Tasks;
+        var i = tasks.ToList().FindIndex(x => x.Id == t.Id);
+        if (e.AltKey && e.Key is "ArrowUp" or "ArrowDown" or "ArrowRight" or "ArrowLeft")
+        {
+            var dir = e.Key switch { "ArrowUp" => MoveDirection.Up, "ArrowDown" => MoveDirection.Down, "ArrowRight" => MoveDirection.Indent, _ => MoveDirection.Outdent };
+            await Move(t.Id, dir);
+            return;
+        }
+        switch (e.Key)
+        {
+            case "ArrowDown" when i < tasks.Count - 1: _selected = tasks[i + 1].Id; await JS.InvokeVoidAsync("eosFocusRow", tasks[i + 1].Id.ToString()); break;
+            case "ArrowUp" when i > 0: _selected = tasks[i - 1].Id; await JS.InvokeVoidAsync("eosFocusRow", tasks[i - 1].Id.ToString()); break;
+            case "Enter": _selected = t.Id; StartEdit(t); break;
+            case "Escape": _editing = null; break;
+            case "Delete": _selected = t.Id; await Delete(t.Id); break;
+        }
+    }
 
     private Task Assign(int taskId)
     {

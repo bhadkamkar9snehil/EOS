@@ -6,29 +6,41 @@
     <header class="band">
         <a class="brand" href="/" aria-label="EOS home">EOS</a>
         <span class="spacer"></span>
-        <div class="asof">
+        <div class="asof @(State.AsOf != DateOnly.FromDateTime(DateTime.Today) ? "stale" : "")">
             <label for="asof">As of</label>
             <input id="asof" type="date" value="@State.AsOf.ToString("yyyy-MM-dd")" @onchange="OnAsOf" />
+            @if (State.AsOf != DateOnly.FromDateTime(DateTime.Today)) { <button type="button" class="ghost" @onclick="Today">Back to today</button> }
         </div>
         <form class="signout" method="post" action="/auth/logout" onsubmit="eosSignOut(event)"><button type="submit">Sign out</button></form>
     </header>
     <nav class="navband" aria-label="Main">
         <NavLink href="/" Match="NavLinkMatch.All">Command Center</NavLink>
-        <NavLink href="/projects">Projects</NavLink>
-        <NavLink href="/gantt">Gantt</NavLink>
-        <NavLink href="/capacity">Capacity</NavLink>
-        <NavLink href="/whatif">What-if</NavLink>
-        <NavLink href="/demand">Demand</NavLink>
-        <span class="sep"></span>
-        <NavLink href="/people">People</NavLink>
-        <NavLink href="/skills">Skills</NavLink>
-        <NavLink href="/training">Training</NavLink>
-        <span class="sep"></span>
+        <details class="menu"><summary>Delivery</summary>
+            <div class="panel">
+                <NavLink href="/projects">Projects</NavLink>
+                <NavLink href="/gantt">Gantt</NavLink>
+                <NavLink href="/calendar">Calendar</NavLink>
+                <NavLink href="/capacity">Capacity</NavLink>
+                <NavLink href="/whatif">What-if</NavLink>
+                <NavLink href="/demand">Demand</NavLink>
+            </div>
+        </details>
+        <details class="menu"><summary>Team</summary>
+            <div class="panel">
+                <NavLink href="/people">People</NavLink>
+                <NavLink href="/skills">Skills</NavLink>
+                <NavLink href="/training">Training</NavLink>
+            </div>
+        </details>
         <NavLink href="/infrastructure">Infrastructure</NavLink>
         <NavLink href="/alerts">Alerts</NavLink>
         <NavLink href="/reports">Reports</NavLink>
-        <NavLink href="/imports">Imports</NavLink>
-        <NavLink href="/settings">Settings</NavLink>
+        <details class="menu"><summary>System</summary>
+            <div class="panel">
+                <NavLink href="/imports">Imports</NavLink>
+                <NavLink href="/settings">Settings</NavLink>
+            </div>
+        </details>
     </nav>
     <main>@Body</main>
     @if (State.Toast is not null)
@@ -41,5 +53,6 @@
     protected override void OnInitialized() => State.Changed += OnChanged;
     private void OnChanged() => InvokeAsync(StateHasChanged);
     private void OnAsOf(ChangeEventArgs e) { if (DateOnly.TryParse(e.Value?.ToString(), out var d)) State.SetAsOf(d); }
+    private void Today() => State.SetAsOf(DateOnly.FromDateTime(DateTime.Today));
     public void Dispose() => State.Changed -= OnChanged;
 }

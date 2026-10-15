@@ -5,7 +5,7 @@
 <PageTitle>Reports · EOS</PageTitle>
 
 <div class="page">
-    <div class="page-head"><div><h1>Reports</h1><p class="muted">Run a report on screen, or download it as CSV or Excel.</p></div></div>
+    <div class="page-head"><div><h1>Reports</h1></div></div>
 
     <div class="grid-2">
         <div class="plate"><h2>Catalogue</h2>
@@ -36,7 +36,7 @@
 
     @if (_table is not null)
     {
-        <div class="plate" style="margin-top:16px"><h2>@_table.Name <span class="muted" style="text-transform:none;letter-spacing:0">(@_table.Rows.Count rows)</span></h2>
+        <div class="plate" style="margin-top:16px"><h2>@_table.Name</h2>
             <div class="tablewrap" style="max-height:70vh;overflow:auto"><table class="grid">
                 <thead><tr>@foreach (var c in _table.Columns) { <th>@c</th> }</tr></thead>
                 <tbody>@foreach (var row in _table.Rows.Take(500)) { <tr>@foreach (var v in row) { <td>@Fmt(v)</td> }</tr> }</tbody>

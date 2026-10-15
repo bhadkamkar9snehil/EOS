@@ -1,79 +1,153 @@
 @using System.Globalization
+@inject IJSRuntime JS
 
 @if (Rows.Count == 0)
 {
-    <div class="empty">Nothing to draw yet. Schedule a plan to see bars.</div>
+    <div class="empty">Nothing to draw yet.</div>
 }
 else
 {
-    <div class="gantt-wrap" style="display:flex">
-        <div class="gantt-labels" style="width:@(LabelWidth)px;flex:none">
-            <div style="height:@(HeaderHeight)px;border-bottom:1px solid var(--rule-soft)"></div>
-            @foreach (var r in Rows)
+    @if (Toolbar)
+    {
+        <div class="tools" role="toolbar" aria-label="Gantt controls">
+            <button class="secondary" @onclick="ExpandAll">Expand all</button>
+            <button class="secondary" @onclick="CollapseAll">Collapse all</button>
+            <span class="seg" role="group" aria-label="Depth">
+                @foreach (var l in new[] { 0, 1, 2 })
+                {
+                    var lv = l;
+                    <button class="@(_depth == lv ? "on" : "")" @onclick="() => ShowDepth(lv)">@("Level " + (lv + 1))</button>
+                }
+            </span>
+            <span class="sep"></span>
+            <span class="seg" role="group" aria-label="Zoom">
+                @foreach (var z in Zooms)
+                {
+                    var zz = z;
+                    <button class="@(_zoom == zz.Key ? "on" : "")" @onclick="() => SetZoom(zz.Key)">@zz.Key</button>
+                }
+            </span>
+            <button class="secondary" @onclick="ScrollToToday">Today</button>
+            <span class="sep"></span>
+            <label class="inline"><input type="checkbox" @bind="_criticalOnly" /> Critical path</label>
+            <label class="inline"><input type="checkbox" @bind="_showBaseline" /> Baseline</label>
+            <label class="inline"><input type="checkbox" @bind="_showLinks" /> Links</label>
+            <input type="search" placeholder="Find a task" aria-label="Find a task" @bind="_find" @bind:event="oninput" style="width:170px" />
+        </div>
+    }
+    <div class="gx" id="@_id" style="max-height:@MaxHeight">
+        <div class="gx-labels" style="width:@(LabelWidth)px">
+            <div class="gx-corner" style="height:@(HeaderHeight)px">@_visible.Count of @Rows.Count rows</div>
+            @foreach (var v in _visible)
             {
-                <div class="gl @(r.IsSummary ? "sum" : "")" style="height:@(RowHeight)px;line-height:@(RowHeight)px;padding-left:@(6 + r.Level * 14)px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;@(r.IsSummary ? "font-weight:650" : "")" title="@r.Tooltip">
-                    @if (r.Href is not null) { <a href="@r.Href">@r.Label</a> } else { @r.Label }
+                var r = v.Row;
+                var isSel = _selected == v.Id;
+                <div class="gl @(r.IsSummary ? "sum" : "") @(isSel ? "sel" : "") @(Dim(r) ? "dim" : "")" style="height:@(RowHeight)px;padding-left:@(6 + r.Level * 16)px" tabindex="0" title="@r.Tooltip"
+                     @onclick="() => Select(v.Id)" @onkeydown="e => LabelKey(v, e)">
+                    @if (v.HasChildren)
+                    {
+                        <button class="twisty" aria-label="@(_collapsed.Contains(v.Id) ? "Expand" : "Collapse")" aria-expanded="@(!_collapsed.Contains(v.Id))" @onclick:stopPropagation @onclick="() => Toggle(v.Id)">@(_collapsed.Contains(v.Id) ? "+" : "−")</button>
+                    }
+                    else { <span class="twisty-gap"></span> }
+                    @if (r.Href is not null) { <a href="@r.Href" @onclick:stopPropagation>@r.Label</a> } else { <span class="gl-text">@r.Label</span> }
                 </div>
             }
         </div>
-        <div class="gantt" style="flex:1;min-width:0">
-            <svg width="@Width" height="@(HeaderHeight + Rows.Count * RowHeight)" role="img" aria-label="Gantt chart">
-                @foreach (var m in Months)
+        <div class="gx-time" style="width:@(Width)px">
+            <svg class="gx-head" width="@Width" height="@HeaderHeight" role="presentation">
+                <rect x="0" y="0" width="@Width" height="@HeaderHeight" class="gx-head-bg" />
+                @foreach (var m in TopTicks)
                 {
-                    @Txt(m.X + 4, 14, "dim", m.Label)
-                    <line class="gridline" x1="@m.X" x2="@m.X" y1="0" y2="@(HeaderHeight + Rows.Count * RowHeight)" />
+                    <line class="gridline strong" x1="@m.X" x2="@m.X" y1="0" y2="@HeaderHeight" />
+                    @Txt(m.X + 4, 13, "dim", m.Label)
+                }
+                @foreach (var w in SubTicks)
+                {
+                    <line class="gridline" x1="@w.X" x2="@w.X" y1="@(HeaderHeight - 12)" y2="@HeaderHeight" />
+                    @Txt(w.X + 3, HeaderHeight - 3, "dim small", w.Label)
+                }
+                @if (Today is { } th && th >= MinDate && th <= MaxDate)
+                {
+                    <rect class="today-flag" x="@(X(th) + DayWidth / 2 - 22)" y="0" width="44" height="13" />
+                    @Txt(X(th) + DayWidth / 2 - 18, 10, "flag", "today")
+                }
+            </svg>
+            <svg class="gx-body" width="@Width" height="@(_visible.Count * RowHeight)" role="img" aria-label="Gantt chart">
+                <defs><marker id="arr-@_id" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="arrow" /></marker></defs>
+                @foreach (var w in SubTicks)
+                {
+                    <line class="gridline" x1="@w.X" x2="@w.X" y1="0" y2="@(_visible.Count * RowHeight)" />
+                }
+                @foreach (var m in TopTicks)
+                {
+                    <line class="gridline strong" x1="@m.X" x2="@m.X" y1="0" y2="@(_visible.Count * RowHeight)" />
                 }
                 @if (DayWidth >= 5)
                 {
                     @foreach (var w in Weekends)
                     {
-                        <rect class="weekend" x="@w" y="@HeaderHeight" width="@(DayWidth * 1)" height="@(Rows.Count * RowHeight)" />
+                        <rect class="weekend" x="@w" y="0" width="@DayWidth" height="@(_visible.Count * RowHeight)" />
                     }
                 }
-                @for (var i = 0; i < Rows.Count; i++)
+                @for (var i = 0; i < _visible.Count; i++)
                 {
-                    var r = Rows[i];
-                    var y = HeaderHeight + i * RowHeight;
-                    <line class="gridline" x1="0" x2="@Width" y1="@(y + RowHeight)" y2="@(y + RowHeight)" style="opacity:.5" />
-                    @if (r.BaseStart is { } bs && r.BaseFinish is { } bf)
-                    {
-                        <rect x="@X(bs)" y="@(y + RowHeight - 6)" width="@Math.Max(2, X(bf) - X(bs) + DayWidth)" height="3" fill="var(--ink-2)" opacity=".55"><title>Baseline @bs.ToString("dd MMM") – @bf.ToString("dd MMM yyyy")</title></rect>
-                    }
-                    @if (r.Start is { } s && r.Finish is { } f)
-                    {
-                        var x = X(s);
-                        var w = Math.Max(DayWidth, X(f) - x + DayWidth);
-                        if (r.IsMilestone)
+                    var v = _visible[i];
+                    var r = v.Row;
+                    var y = i * RowHeight;
+                    var dim = Dim(r);
+                    <g class="gx-row @(_selected == v.Id ? "sel" : "") @(dim ? "dim" : "")" @onclick="() => Select(v.Id)">
+                        <rect class="rowband" x="0" y="@y" width="@Width" height="@RowHeight" />
+                        <line class="gridline soft" x1="0" x2="@Width" y1="@(y + RowHeight)" y2="@(y + RowHeight)" />
+                        @if (_showBaseline && r.BaseStart is { } bs && r.BaseFinish is { } bf)
                         {
-                            <polygon points="@Diamond(x + DayWidth / 2.0, y + RowHeight / 2.0, 7)" class="bar-sum"><title>@r.Label — @s.ToString("dd MMM yyyy")</title></polygon>
+                            <rect class="baseline" x="@X(bs)" y="@(y + RowHeight - 7)" width="@Math.Max(2, X(bf) - X(bs) + DayWidth)" height="3"><title>Baseline @bs.ToString("dd MMM") – @bf.ToString("dd MMM yyyy")</title></rect>
                         }
-                        else if (r.IsSummary)
+                        @if (r.Start is { } s && r.Finish is { } f)
                         {
-                            <rect class="bar-sum" x="@x" y="@(y + 6)" width="@w" height="6" rx="1"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%)</title></rect>
-                            <polygon points="@($"{x},{y + 12} {x + 6},{y + 12} {x},{y + 18}")" class="bar-sum" />
-                            <polygon points="@($"{x + w},{y + 12} {x + w - 6},{y + 12} {x + w},{y + 18}")" class="bar-sum" />
-                        }
-                        else
-                        {
-                            <rect class="@(r.Critical ? "bar-crit" : r.Progress >= 1 ? "bar-done" : "bar-task")" x="@x" y="@(y + 4)" width="@w" height="@(RowHeight - 11)" rx="3" opacity=".85"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%@(r.Status is null ? "" : ", " + r.Status))</title></rect>
-                            @if (r.Progress > 0 && r.Progress < 1)
+                            var x = X(s);
+                            var w = Math.Max(DayWidth, X(f) - x + DayWidth);
+                            if (r.IsMilestone)
                             {
-                                <rect x="@x" y="@(y + 4)" width="@(w * (double)r.Progress)" height="@(RowHeight - 11)" rx="3" fill="rgba(0,0,0,.28)" />
+                                <polygon points="@Diamond(x + DayWidth / 2.0, y + RowHeight / 2.0, 7)" class="bar-sum"><title>@r.Label — @s.ToString("dd MMM yyyy")</title></polygon>
+                            }
+                            else if (r.IsSummary)
+                            {
+                                <rect class="bar-sum" x="@x" y="@(y + 7)" width="@w" height="6" rx="1"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%)</title></rect>
+                                <polygon points="@($"{x},{y + 13} {x + 6},{y + 13} {x},{y + 19}")" class="bar-sum" />
+                                <polygon points="@($"{x + w},{y + 13} {x + w - 6},{y + 13} {x + w},{y + 19}")" class="bar-sum" />
+                            }
+                            else
+                            {
+                                <rect class="@(r.Critical ? "bar-crit" : r.Progress >= 1 ? "bar-done" : "bar-task")" x="@x" y="@(y + 5)" width="@w" height="@(RowHeight - 13)" rx="2"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%@(r.Status is null ? "" : ", " + r.Status))</title></rect>
+                                @if (r.Progress > 0 && r.Progress < 1)
+                                {
+                                    <rect class="bar-progress" x="@x" y="@(y + 5)" width="@(w * (double)r.Progress)" height="@(RowHeight - 13)" rx="2" />
+                                }
+                            }
+                            @if (DayWidth >= 5 && !r.IsMilestone)
+                            {
+                                @Txt(x + w + 5, y + RowHeight / 2 + 4, "dim small", Clip(r.Label, 38))
                             }
                         }
+                    </g>
+                }
+                @if (_showLinks)
+                {
+                    @foreach (var p in LinkPaths())
+                    {
+                        <path class="link" d="@p" marker-end="url(#arr-@_id)" />
                     }
                 }
                 @if (Today is { } t && t >= MinDate && t <= MaxDate)
                 {
-                    <line class="today" x1="@(X(t) + DayWidth / 2)" x2="@(X(t) + DayWidth / 2)" y1="@HeaderHeight" y2="@(HeaderHeight + Rows.Count * RowHeight)" />
-                    @Txt(X(t) + 3, HeaderHeight - 4, "", "today", "fill:var(--signal);font-weight:700")
+                    <line class="today" x1="@(X(t) + DayWidth / 2)" x2="@(X(t) + DayWidth / 2)" y1="0" y2="@(_visible.Count * RowHeight)" />
                 }
             </svg>
         </div>
     </div>
     <div class="legend">
         <span><i style="background:#3a4550"></i>task</span><span><i style="background:var(--signal)"></i>critical</span>
-        <span><i style="background:var(--done)"></i>complete</span><span><i style="background:var(--ink)"></i>summary / milestone</span>
+        <span><i style="background:var(--done)"></i>complete</span><span><i style="background:var(--ink)"></i>summary and milestone</span>
         <span><i style="background:var(--ink-2);height:3px"></i>baseline</span>
     </div>
 }
@@ -81,40 +155,172 @@ else
 @code {
     public sealed record Row(
         string Label, int Level, DateOnly? Start, DateOnly? Finish, decimal Progress, bool Critical, bool IsSummary, bool IsMilestone = false,
-        string? Tooltip = null, string? Href = null, string? Status = null, DateOnly? BaseStart = null, DateOnly? BaseFinish = null);
+        string? Tooltip = null, string? Href = null, string? Status = null, DateOnly? BaseStart = null, DateOnly? BaseFinish = null, string? Key = null);
+
+    public sealed record Link(string From, string To, int Type = 0);
+
+    private sealed record Vis(int Index, string Id, Row Row, bool HasChildren);
 
     [Parameter, EditorRequired] public IReadOnlyList<Row> Rows { get; set; } = [];
+    [Parameter] public IReadOnlyList<Link> Links { get; set; } = [];
     [Parameter] public DateOnly? Today { get; set; }
-    [Parameter] public int DayWidth { get; set; } = 6;
-    [Parameter] public int RowHeight { get; set; } = 24;
-    [Parameter] public int LabelWidth { get; set; } = 300;
+    [Parameter] public int RowHeight { get; set; } = 26;
+    [Parameter] public int LabelWidth { get; set; } = 320;
+    [Parameter] public bool Toolbar { get; set; } = true;
+    [Parameter] public int ExpandToLevel { get; set; } = int.MaxValue;
+    [Parameter] public string MaxHeight { get; set; } = "72vh";
+    [Parameter] public EventCallback<string?> OnSelect { get; set; }
 
-    private const int HeaderHeight = 28;
+    private static readonly Dictionary<string, int> Zooms = new() { ["Quarter"] = 2, ["Month"] = 4, ["Week"] = 9, ["Day"] = 22, ["Fit"] = 0 };
+
+    private const int HeaderHeight = 40;
+    private readonly string _id = "gx" + Guid.NewGuid().ToString("N")[..8];
+    private IReadOnlyList<Row>? _lastRows;
+    private HashSet<string> _collapsed = [];
+    private List<Vis> _visible = [];
+    private string? _selected;
+    private string _zoom = "Fit";
+    private int _depth = -1;
+    private bool _criticalOnly, _showBaseline = true, _showLinks = true;
+    private string _find = "";
+    private bool _scrolled;
+    private int DayWidth = 6;
     private DateOnly MinDate, MaxDate;
     private int Width;
-    private List<(int X, string Label)> Months = [];
+    private List<(int X, string Label)> TopTicks = [], SubTicks = [];
     private List<int> Weekends = [];
 
     protected override void OnParametersSet()
     {
+        if (!ReferenceEquals(_lastRows, Rows))
+        {
+            _lastRows = Rows;
+            _collapsed = [];
+            for (var i = 0; i < Rows.Count; i++)
+                if (HasChildren(i) && Rows[i].Level >= ExpandToLevel) _collapsed.Add(IdOf(i));
+        }
+        ComputeScale();
+        BuildVisible();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrolled && Rows.Count > 0 && Today is { } t)
+        {
+            _scrolled = true;
+            await JS.InvokeVoidAsync("eosGanttScroll", _id, Math.Max(0, X(t) - 160));
+        }
+    }
+
+    private string IdOf(int i) => Rows[i].Key ?? "r" + i;
+    private bool HasChildren(int i) => i + 1 < Rows.Count && Rows[i + 1].Level > Rows[i].Level;
+    private bool Dim(Row r) => (_criticalOnly && !r.Critical && !r.IsSummary) || (_find.Length > 0 && !r.Label.Contains(_find, StringComparison.OrdinalIgnoreCase));
+
+    private void BuildVisible()
+    {
+        _visible = [];
+        var hideBelow = int.MaxValue;
+        for (var i = 0; i < Rows.Count; i++)
+        {
+            var r = Rows[i];
+            if (r.Level > hideBelow) continue;
+            hideBelow = int.MaxValue;
+            _visible.Add(new Vis(i, IdOf(i), r, HasChildren(i)));
+            if (HasChildren(i) && _collapsed.Contains(IdOf(i))) hideBelow = r.Level;
+        }
+    }
+
+    private void ComputeScale()
+    {
         var dates = Rows.SelectMany(r => new[] { r.Start, r.Finish, r.BaseStart, r.BaseFinish }).Where(d => d is not null).Select(d => d!.Value).ToList();
         if (Today is { } t) dates.Add(t);
-        if (dates.Count == 0) { MinDate = MaxDate = DateOnly.FromDateTime(DateTime.Today); Width = 100; Months = []; Weekends = []; return; }
-        MinDate = dates.Min().AddDays(-3);
-        MaxDate = dates.Max().AddDays(10);
-        Width = (MaxDate.DayNumber - MinDate.DayNumber + 1) * DayWidth;
+        if (dates.Count == 0) { MinDate = MaxDate = DateOnly.FromDateTime(DateTime.Today); Width = 200; TopTicks = []; SubTicks = []; Weekends = []; return; }
+        MinDate = dates.Min().AddDays(-4);
+        MaxDate = dates.Max().AddDays(12);
+        var span = MaxDate.DayNumber - MinDate.DayNumber + 1;
+        DayWidth = Zooms[_zoom] > 0 ? Zooms[_zoom] : Math.Clamp(1000 / Math.Max(span, 1), 2, 22);
+        Width = span * DayWidth;
 
-        Months = [];
-        for (var m = new DateOnly(MinDate.Year, MinDate.Month, 1); m <= MaxDate; m = m.AddMonths(1))
-            Months.Add((Math.Max(0, X(m)), m.ToString("MMM yyyy", CultureInfo.InvariantCulture)));
-
-        Weekends = [];
+        TopTicks = []; SubTicks = []; Weekends = [];
+        var quarter = DayWidth < 3;
+        for (var m = new DateOnly(MinDate.Year, MinDate.Month, 1); m <= MaxDate; m = m.AddMonths(quarter ? 3 : 1))
+        {
+            var label = quarter ? $"Q{(m.Month - 1) / 3 + 1} {m.Year}" : m.ToString("MMM yyyy", CultureInfo.InvariantCulture);
+            TopTicks.Add((Math.Max(0, X(m)), label));
+        }
+        if (DayWidth >= 6)
+        {
+            for (var d = MinDate; d <= MaxDate; d = d.AddDays(1))
+                if (d.DayOfWeek == DayOfWeek.Monday) SubTicks.Add((X(d), DayWidth >= 9 ? d.Day.ToString() : ""));
+        }
+        else
+        {
+            for (var m = new DateOnly(MinDate.Year, MinDate.Month, 1); m <= MaxDate; m = m.AddMonths(1))
+                if (quarter && m.Month % 3 != 1) SubTicks.Add((X(m), ""));
+        }
         if (DayWidth >= 5)
             for (var d = MinDate; d <= MaxDate; d = d.AddDays(1))
                 if (d.DayOfWeek == DayOfWeek.Sunday) Weekends.Add(X(d));
     }
 
     private int X(DateOnly d) => (d.DayNumber - MinDate.DayNumber) * DayWidth;
+
+    private void Toggle(string id) { if (!_collapsed.Remove(id)) _collapsed.Add(id); BuildVisible(); }
+
+    private void ExpandAll() { _collapsed.Clear(); _depth = -1; BuildVisible(); }
+
+    private void CollapseAll()
+    {
+        _collapsed.Clear();
+        for (var i = 0; i < Rows.Count; i++) if (HasChildren(i)) _collapsed.Add(IdOf(i));
+        _depth = -1;
+        BuildVisible();
+    }
+
+    private void ShowDepth(int level)
+    {
+        _depth = level;
+        _collapsed.Clear();
+        for (var i = 0; i < Rows.Count; i++) if (HasChildren(i) && Rows[i].Level >= level) _collapsed.Add(IdOf(i));
+        BuildVisible();
+    }
+
+    private void SetZoom(string z) { _zoom = z; ComputeScale(); }
+
+    private async Task ScrollToToday()
+    {
+        if (Today is { } t) await JS.InvokeVoidAsync("eosGanttScroll", _id, Math.Max(0, X(t) - 160));
+    }
+
+    private async Task Select(string id)
+    {
+        _selected = _selected == id ? null : id;
+        await OnSelect.InvokeAsync(_selected);
+    }
+
+    private void LabelKey(Vis v, KeyboardEventArgs e)
+    {
+        if (e.Key == "ArrowRight" && v.HasChildren && _collapsed.Contains(v.Id)) Toggle(v.Id);
+        else if (e.Key == "ArrowLeft" && v.HasChildren && !_collapsed.Contains(v.Id)) Toggle(v.Id);
+        else if (e.Key is "Enter" or " ") _ = Select(v.Id);
+    }
+
+    private IEnumerable<string> LinkPaths()
+    {
+        var index = _visible.Select((v, i) => (v, i)).Where(x => x.v.Row.Key is not null).ToDictionary(x => x.v.Row.Key!, x => x);
+        foreach (var l in Links)
+        {
+            if (!index.TryGetValue(l.From, out var a) || !index.TryGetValue(l.To, out var b)) continue;
+            var ra = a.v.Row; var rb = b.v.Row;
+            if (ra.Finish is null || rb.Start is null) continue;
+            var x1 = X(ra.Finish.Value) + DayWidth; var y1 = a.i * RowHeight + RowHeight / 2;
+            var x2 = X(rb.Start.Value); var y2 = b.i * RowHeight + RowHeight / 2;
+            var mid = Math.Max(x1 + 6, x2 - 8);
+            yield return string.Create(CultureInfo.InvariantCulture, $"M{x1},{y1} L{mid},{y1} L{mid},{y2} L{x2},{y2}");
+        }
+    }
+
+    private static string Clip(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
 
     private static MarkupString Txt(int x, int y, string cls, string text, string? style = null) =>
         new($"<text x=\"{x}\" y=\"{y}\" class=\"{cls}\"{(style is null ? "" : $" style=\"{style}\"")}>{System.Net.WebUtility.HtmlEncode(text)}</text>");

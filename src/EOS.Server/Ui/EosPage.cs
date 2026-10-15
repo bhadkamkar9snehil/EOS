@@ -65,6 +65,8 @@ public abstract class EosPage : ComponentBase, IDisposable
         }
     }
 
+    protected async Task<bool> Confirm(string message) => await JS.InvokeAsync<bool>("confirm", message);
+
     protected async Task Download(string fileName, string mime, byte[] bytes) =>
         await JS.InvokeVoidAsync("eosDownload", fileName, mime, Convert.ToBase64String(bytes));
 

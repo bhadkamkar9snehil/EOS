@@ -28,7 +28,7 @@
                 else { <table class="grid"><tbody>@foreach (var t in _next.Take(25)) { <tr><td>@t.Start?.ToString("dd MMM")</td><td>@t.Name</td><td>@string.Join(", ", t.Assignments.Select(a => a.PersonName))</td></tr> }</tbody></table> }
             </div>
         </div>
-        <div class="plate"><h2>Gantt</h2><GanttChart Rows="@_rows" Today="@AsOf" LabelWidth="280" /></div>
+        <div class="plate"><h2>Gantt</h2><GanttChart Rows="@_rows" Today="@AsOf" LabelWidth="280" Toolbar="false" ExpandToLevel="1" /></div>
     }
 </div>
 

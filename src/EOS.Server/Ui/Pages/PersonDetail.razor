@@ -20,7 +20,7 @@
 
         <div class="grid-2">
             <div class="plate">
-                <h2>Skills <span class="muted" style="text-transform:none;letter-spacing:0">(ratings change only here, by you)</span></h2>
+                <h2>Skills</h2>
                 <table class="grid"><thead><tr><th>Skill</th><th class="num">Rating</th><th>Assessed</th><th></th></tr></thead><tbody>
                 @foreach (var s in _p.Skills)
                 {
@@ -42,7 +42,7 @@
                 @if (_p.Projects.Count == 0) { <div class="empty">Not assigned to any plan.</div> }
                 @foreach (var pr in _p.Projects) { <div><a href="/projects/@pr.ProjectId"><b>@pr.ProjectNo</b></a> <span class="muted">@pr.Name</span></div> }
                 <h2 style="margin-top:14px">Leave</h2>
-                @foreach (var l in _p.Leave) { <div>@l.FromDate.ToString("dd MMM yy") – @l.ToDate.ToString("dd MMM yy") <span class="muted">@l.Kind</span> <button class="icon" @onclick="() => RemoveLeave(l.Id)">✕</button></div> }
+                @foreach (var l in _p.Leave) { <div>@l.FromDate.ToString("dd MMM yy") – @l.ToDate.ToString("dd MMM yy") <span class="muted">@l.Kind</span> <button class="icon" @onclick="() => RemoveLeave(l.Id)">Remove</button></div> }
                 <div class="form-row" style="margin-top:8px">
                     <div class="field"><label>From</label><input type="date" @bind="_leaveFrom" /></div>
                     <div class="field"><label>To</label><input type="date" @bind="_leaveTo" /></div>
@@ -102,5 +102,8 @@
 
     private Task AddLeave() => Act((sp, a) => sp.GetRequiredService<PeopleService>().AddLeaveAsync(
         new Leave { PersonId = Id, FromDate = DateOnly.FromDateTime(_leaveFrom), ToDate = DateOnly.FromDateTime(_leaveTo) }, a), "Leave added.");
-    private Task RemoveLeave(int id) => Act((sp, a) => sp.GetRequiredService<PeopleService>().RemoveLeaveAsync(id, a));
+    private async Task RemoveLeave(int id)
+    {
+        if (await Confirm("Remove this leave entry?")) await Act((sp, a) => sp.GetRequiredService<PeopleService>().RemoveLeaveAsync(id, a));
+    }
 }

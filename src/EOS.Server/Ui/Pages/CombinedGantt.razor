@@ -1,23 +1,17 @@
 @page "/gantt"
 @inherits EosPage
 @using EOS.Infrastructure.Projects
-<PageTitle>Combined Gantt · EOS</PageTitle>
+<PageTitle>Gantt · EOS</PageTitle>
 
 <div class="page">
     <div class="page-head">
-        <div><h1>Combined Gantt</h1><p class="muted">Every project with a plan, on one timeline. Bars are the scheduled plan; the grey line under a bar is the saved baseline.</p></div>
+        <h1>Gantt</h1>
         <div class="actions">
-            <label style="margin:0">View
-                <select @bind="_view" @bind:after="Build"><option value="project">By project</option><option value="engineer">By engineer</option></select></label>
-            <label style="margin:0">Detail
-                <select @bind="_detail" @bind:after="Build">
-                    <option value="0">Projects only</option>
-                    <option value="1">Projects + top-level phases</option>
-                    <option value="9">Everything</option>
-                </select></label>
-            <label style="margin:0">Zoom
-                <select @bind="_dayWidth"><option value="2">Quarter</option><option value="4">Months</option><option value="7">Weeks</option><option value="14">Days</option></select></label>
-            <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" @bind="_hideDone" @bind:after="Build" /> hide completed</label>
+            <span class="seg" role="group" aria-label="Group by">
+                <button class="@(_view == "project" ? "on" : "")" @onclick='() => SetView("project")'>By project</button>
+                <button class="@(_view == "engineer" ? "on" : "")" @onclick='() => SetView("engineer")'>By engineer</button>
+            </span>
+            <label class="inline"><input type="checkbox" @bind="_hideDone" @bind:after="Build" /> Hide completed</label>
         </div>
     </div>
 
@@ -25,8 +19,7 @@
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
     else
     {
-        <div class="plate"><GanttChart Rows="@_rows" Today="@AsOf" DayWidth="@_dayWidth" LabelWidth="340" /></div>
-        <p class="muted">@_plans!.Count projects with plans.</p>
+        <GanttChart Rows="@_rows" Links="@_links" Today="@AsOf" ExpandToLevel="1" LabelWidth="360" MaxHeight="74vh" />
     }
 </div>
 
@@ -34,9 +27,9 @@
     private List<PlanView>? _plans;
     private Dictionary<int, string> _health = [];
     private List<GanttChart.Row> _rows = [];
-    private int _detail = 1, _dayWidth = 4;
-    private bool _hideDone;
+    private List<GanttChart.Link> _links = [];
     private string _view = "project";
+    private bool _hideDone;
 
     protected override async Task LoadAsync()
     {
@@ -49,33 +42,35 @@
         Build();
     }
 
+    private void SetView(string v) { _view = v; Build(); }
+
+    private void Build()
+    {
+        _rows = []; _links = [];
+        if (_view == "engineer") { BuildByEngineer(); return; }
+        foreach (var p in (_plans ?? []).Where(p => p.Start is not null).OrderBy(p => p.Start))
+        {
+            if (_hideDone && p.Progress >= 1m) continue;
+            var h = _health.GetValueOrDefault(p.ProjectId);
+            _rows.Add(new GanttChart.Row($"{p.ProjectNo}  {Names.Short(p.ProjectName)}", 0, p.Start, p.Finish, p.Progress, h == "At Risk", true,
+                Tooltip: $"{p.ProjectNo} {p.ProjectName} · {h}", Href: "/projects/" + p.ProjectId, Key: "p" + p.ProjectId));
+            foreach (var t in p.Tasks.Where(t => t.Start is not null))
+                _rows.Add(new GanttChart.Row(t.Name, t.Level + 1, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary, t.Kind == "milestone",
+                    t.Wbs + " " + t.Name, null, t.Status, Key: "t" + t.Id));
+            foreach (var l in p.Links) _links.Add(new GanttChart.Link("t" + l.PredecessorId, "t" + l.SuccessorId, l.Type));
+        }
+    }
+
     private void BuildByEngineer()
     {
         var items = (_plans ?? []).SelectMany(p => p.Tasks.Where(t => !t.IsSummary && t.Start is not null && !(_hideDone && t.PercentComplete >= 1m))
             .SelectMany(t => t.Assignments.Where(a => a.PersonName is not null).Select(a => (Person: a.PersonName!, Plan: p, Task: t)))).ToList();
         foreach (var g in items.GroupBy(x => x.Person).OrderBy(g => g.Key))
         {
-            var start = g.Min(x => x.Task.Start); var finish = g.Max(x => x.Task.Finish);
-            _rows.Add(new GanttChart.Row(g.Key, 0, start, finish, 0, false, true, Tooltip: $"{g.Count()} assigned tasks"));
-            if (_detail == 0) continue;
+            _rows.Add(new GanttChart.Row(g.Key, 0, g.Min(x => x.Task.Start), g.Max(x => x.Task.Finish), 0, false, true, Tooltip: $"{g.Count()} assigned tasks", Key: "e" + g.Key));
             foreach (var x in g.OrderBy(x => x.Task.Start))
-                _rows.Add(new GanttChart.Row($"{x.Plan.ProjectNo} · {x.Task.Name}", 1, x.Task.Start, x.Task.Finish, x.Task.PercentComplete, x.Task.IsCritical, false, false, x.Task.Wbs + " " + x.Task.Name, "/projects/" + x.Plan.ProjectId));
-        }
-    }
-
-    private void Build()
-    {
-        _rows = [];
-        if (_view == "engineer") { BuildByEngineer(); return; }
-        foreach (var p in (_plans ?? []).OrderBy(p => p.Start))
-        {
-            if (_hideDone && p.Progress >= 1m) continue;
-            var h = _health.GetValueOrDefault(p.ProjectId);
-            _rows.Add(new GanttChart.Row($"{p.ProjectNo}  {p.ProjectName}", 0, p.Start, p.Finish, p.Progress, h == "At Risk", true,
-                Tooltip: $"{p.ProjectNo} {p.ProjectName} · {h}", Href: "/projects/" + p.ProjectId));
-            if (_detail == 0) continue;
-            foreach (var t in p.Tasks.Where(t => t.Level <= _detail))
-                _rows.Add(new GanttChart.Row(t.Name, t.Level + 1, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary, t.Kind == "milestone", t.Wbs + " " + t.Name));
+                _rows.Add(new GanttChart.Row($"{x.Plan.ProjectNo} · {x.Task.Name}", 1, x.Task.Start, x.Task.Finish, x.Task.PercentComplete, x.Task.IsCritical, false, false,
+                    x.Task.Wbs + " " + x.Task.Name, "/projects/" + x.Plan.ProjectId));
         }
     }
 }

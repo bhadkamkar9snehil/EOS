@@ -6,7 +6,7 @@
 
 <div class="page">
     <div class="page-head">
-        <div><h1>Skills matrix</h1><p class="muted">Rating 0–@_levels per engineer per skill. Ratings change only when you change them here (with a reason); imports never overwrite a manual rating.</p></div>
+        <div><h1>Skills matrix</h1></div>
         <div class="actions"><input type="search" placeholder="Filter engineers…" @bind="_search" @bind:event="oninput" style="width:220px" /></div>
     </div>
 
@@ -24,7 +24,7 @@
                     <button @onclick="Save">Save</button><button class="secondary" @onclick="() => _edit = null">Cancel</button>
                 </div></div>
         }
-        <div class="plate"><div class="tablewrap" style="max-height:72vh;overflow:auto"><table class="grid">
+        <div class="plate"><div class="tablewrap" style="max-height:72vh;overflow:auto"><table class="grid freeze">
             <thead><tr><th style="position:sticky;left:0">Engineer</th>@foreach (var s in _skills) { <th class="num" title="@s.Name">@Short(s.Name, 12)</th> }</tr></thead>
             <tbody>
             @foreach (var p in _people!.Where(p => _search.Length == 0 || p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))

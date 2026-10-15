@@ -1,0 +1,277 @@
+@page "/calendar"
+@inherits EosPage
+@using EOS.Infrastructure.Configuration
+@using EOS.Infrastructure.Persistence
+@using EOS.Infrastructure.Projects
+<PageTitle>Calendar · EOS</PageTitle>
+
+<div class="page" tabindex="-1" @onkeydown="PageKey">
+    <div class="page-head">
+        <h1>Calendar</h1>
+        <div class="actions">
+            <span class="seg" role="group" aria-label="View">
+                <button class="@(_view == "month" ? "on" : "")" @onclick='() => _view = "month"'>Month</button>
+                <button class="@(_view == "team" ? "on" : "")" @onclick='() => _view = "team"'>Team</button>
+                <button class="@(_view == "year" ? "on" : "")" @onclick='() => _view = "year"'>Year</button>
+            </span>
+        </div>
+    </div>
+
+    <div class="tools" role="toolbar" aria-label="Calendar controls">
+        <button class="secondary" @onclick="Prev" aria-label="Previous">‹</button>
+        <button class="secondary" @onclick="GoToday">Today</button>
+        <button class="secondary" @onclick="Next" aria-label="Next">›</button>
+        <strong class="cal-title">@(_view == "year" ? _month.Year.ToString() : _month.ToString("MMMM yyyy"))</strong>
+        <span class="spacer"></span>
+        <select @bind="_project" @bind:after="Refresh" aria-label="Project"><option value="0">All projects</option>@foreach (var p in _projectOptions) { <option value="@p.Id">@p.No</option> }</select>
+        <select @bind="_person" @bind:after="Refresh" aria-label="Engineer"><option value="0">Everyone</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select>
+        <label class="inline"><input type="checkbox" @bind="_showMilestones" /> Milestones</label>
+        <label class="inline"><input type="checkbox" @bind="_showDue" /> Due</label>
+        <label class="inline"><input type="checkbox" @bind="_showStarts" /> Starts</label>
+        <label class="inline"><input type="checkbox" @bind="_showLeave" /> Leave</label>
+    </div>
+
+    @if (Loading && _events is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else
+    {
+        <div class="cal-layout">
+            <div class="cal-main">
+                @if (_view == "month") { @MonthGrid() }
+                else if (_view == "team") { @TeamGrid() }
+                else { @YearGrid() }
+            </div>
+            <aside class="cal-side" aria-live="polite">
+                <h2>@(_picked is { } pd ? pd.ToString("dddd d MMMM") : "Pick a day")</h2>
+                @if (_picked is { } d)
+                {
+                    var list = EventsOn(d).ToList();
+                    @if (!IsWorking(d)) { <p class="muted">@(HolidayNote(d) ?? "Non-working day")</p> }
+                    @if (list.Count == 0 && _person == 0) { <div class="empty">Nothing on this day.</div> }
+                    @foreach (var e in list)
+                    {
+                        <div class="cal-item @e.Kind @(e.Late ? "late" : "")">
+                            <span class="cal-kind">@KindLabel(e.Kind)</span>
+                            @if (e.Href is not null) { <a href="@e.Href">@e.Text</a> } else { @e.Text }
+                            @if (e.Detail is not null) { <div class="muted">@e.Detail</div> }
+                        </div>
+                    }
+                    @if (_view == "team")
+                    {
+                        var load = LoadOn(d).GroupBy(x => x.Person).OrderByDescending(g => g.Sum(x => x.Hours)).ToList();
+                        @if (load.Count > 0)
+                        {
+                            <h2 style="margin-top:14px">Engineers working</h2>
+                            @foreach (var g in load)
+                            {
+                                <div class="cal-item"><a href="/people/@g.Key.Id">@g.Key.Name</a> <b>@g.Sum(x => x.Hours).ToString("0.#") h</b>
+                                    <div class="muted">@string.Join(", ", g.Select(x => x.ProjectNo + " " + x.Task).Take(4))</div></div>
+                            }
+                        }
+                    }
+                }
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private sealed record Ev(DateOnly Date, string Kind, string Text, string? Detail, string? Href, int ProjectId, int PersonId, bool Late);
+    private sealed record Work(DateOnly Date, (int Id, string Name) Person, string ProjectNo, string Task, decimal Hours, int ProjectId);
+
+    private List<Ev>? _events;
+    private List<Work> _work = [];
+    private List<(int Id, string Name)> _people = [];
+    private List<(int Id, string No)> _projectOptions = [];
+    private HashSet<int> _workDays = [1, 2, 3, 4, 5, 6];
+    private Dictionary<DateOnly, string> _holidays = [];
+    private decimal _hoursPerDay = 8m;
+    private DateOnly _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateOnly? _picked = DateOnly.FromDateTime(DateTime.Today);
+    private string _view = "month";
+    private int _project, _person;
+    private bool _showMilestones = true, _showDue = true, _showStarts, _showLeave = true;
+
+    protected override async Task LoadAsync()
+    {
+        var asOf = AsOf;
+        var projects = await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true));
+        _projectOptions = projects.Where(p => p.HasPlan).Select(p => (p.Id, p.ProjectNo)).ToList();
+        var plans = new List<PlanView>();
+        foreach (var p in projects.Where(p => p.HasPlan)) plans.Add(await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(p.Id)));
+
+        var cals = await Q(sp => sp.GetRequiredService<AdminService>().CalendarsAsync());
+        var cal = cals.FirstOrDefault(c => c.Calendar.IsDefault);
+        if (cal.Calendar is not null)
+        {
+            _hoursPerDay = cal.Calendar.HoursPerDay;
+            _workDays = cal.Calendar.WorkDays.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet();
+            _holidays = cal.Exceptions.Where(x => !x.IsWorking).ToDictionary(x => x.Date, x => x.Note ?? "Holiday");
+        }
+
+        var leaves = await Q(sp => sp.GetRequiredService<EosDbContext>().Leaves.AsNoTracking()
+            .Join(sp.GetRequiredService<EosDbContext>().People, l => l.PersonId, p => p.Id, (l, p) => new { l.FromDate, l.ToDate, l.Kind, l.PersonId, p.FullName }).ToListAsync());
+        _people = (await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }).ToListAsync())).Select(p => (p.Id, p.FullName)).ToList();
+
+        var ev = new List<Ev>();
+        var work = new List<Work>();
+        foreach (var p in plans)
+        {
+            foreach (var t in p.Tasks)
+            {
+                if (t.Start is null || t.Finish is null) continue;
+                var late = t.PercentComplete < 1m && t.Finish < asOf;
+                var who = string.Join(", ", t.Assignments.Where(a => a.PersonName is not null).Select(a => a.PersonName));
+                var href = "/projects/" + p.ProjectId;
+                if (t.Kind == "milestone") ev.Add(new Ev(t.Finish.Value, "milestone", $"{p.ProjectNo} · {t.Name}", who.Length > 0 ? who : null, href, p.ProjectId, 0, late));
+                else if (!t.IsSummary)
+                {
+                    ev.Add(new Ev(t.Finish.Value, "due", $"{p.ProjectNo} · {t.Name}", who.Length > 0 ? who : null, href, p.ProjectId, t.Assignments.FirstOrDefault(a => a.PersonId is not null)?.PersonId ?? 0, late));
+                    ev.Add(new Ev(t.Start.Value, "start", $"{p.ProjectNo} · {t.Name}", who.Length > 0 ? who : null, href, p.ProjectId, t.Assignments.FirstOrDefault(a => a.PersonId is not null)?.PersonId ?? 0, false));
+                    foreach (var a in t.Assignments.Where(a => a.PersonId is not null && a.PersonName is not null))
+                    {
+                        var from = a.From is { } f && f > t.Start ? f : t.Start.Value;
+                        var to = a.To is { } e && e < t.Finish ? e : t.Finish.Value;
+                        for (var d = from; d <= to; d = d.AddDays(1))
+                            if (IsWorking(d)) work.Add(new Work(d, (a.PersonId!.Value, a.PersonName!), p.ProjectNo, t.Name, a.Units * _hoursPerDay, p.ProjectId));
+                    }
+                }
+            }
+        }
+        foreach (var l in leaves)
+            for (var d = l.FromDate; d <= l.ToDate; d = d.AddDays(1))
+                ev.Add(new Ev(d, "leave", l.FullName, l.Kind, "/people/" + l.PersonId, 0, l.PersonId, false));
+        _events = ev;
+        _work = work;
+    }
+
+    private void Refresh() { }
+    private void Shift(int months) => _month = _month.AddMonths(months);
+    private void Prev() => Shift(_view == "year" ? -12 : -1);
+    private void Next() => Shift(_view == "year" ? 12 : 1);
+    private void GoToday() { _month = new(AsOf.Year, AsOf.Month, 1); _picked = AsOf; }
+    private void Pick(DateOnly d) => _picked = d;
+
+    private void PageKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "PageUp") Shift(-1);
+        else if (e.Key == "PageDown") Shift(1);
+        else if (e.Key is "t" or "T") GoToday();
+        else if (_picked is { } d && e.Key == "ArrowRight") { _picked = d.AddDays(1); _month = new(_picked.Value.Year, _picked.Value.Month, 1); }
+        else if (_picked is { } d2 && e.Key == "ArrowLeft") { _picked = d2.AddDays(-1); _month = new(_picked.Value.Year, _picked.Value.Month, 1); }
+        else if (_picked is { } d3 && e.Key == "ArrowDown") { _picked = d3.AddDays(7); _month = new(_picked.Value.Year, _picked.Value.Month, 1); }
+        else if (_picked is { } d4 && e.Key == "ArrowUp") { _picked = d4.AddDays(-7); _month = new(_picked.Value.Year, _picked.Value.Month, 1); }
+    }
+
+    private bool IsWorking(DateOnly d) => _workDays.Contains((int)d.DayOfWeek) && !_holidays.ContainsKey(d);
+    private string? HolidayNote(DateOnly d) => _holidays.GetValueOrDefault(d);
+
+    private IEnumerable<Ev> EventsOn(DateOnly d) =>
+        (_events ?? []).Where(e => e.Date == d && Allowed(e)).OrderBy(e => e.Kind switch { "milestone" => 0, "due" => 1, "start" => 2, _ => 3 });
+
+    private bool Allowed(Ev e) =>
+        (e.Kind != "milestone" || _showMilestones) && (e.Kind != "due" || _showDue) && (e.Kind != "start" || _showStarts) && (e.Kind != "leave" || _showLeave)
+        && (_project == 0 || e.ProjectId == _project || e.Kind == "leave") && (_person == 0 || e.PersonId == _person || e.PersonId == 0 && e.Kind != "leave");
+
+    private IEnumerable<Work> LoadOn(DateOnly d) =>
+        _work.Where(w => w.Date == d && (_project == 0 || w.ProjectId == _project) && (_person == 0 || w.Person.Id == _person));
+
+    private static string KindLabel(string k) => k switch { "milestone" => "Milestone", "due" => "Due", "start" => "Starts", "leave" => "Leave", _ => k };
+
+    private RenderFragment MonthGrid() => __b =>
+    {
+        var first = _month;
+        var gridStart = first.AddDays(-(((int)first.DayOfWeek + 6) % 7));
+        var weeks = (int)Math.Ceiling((((first.AddMonths(1).DayNumber - gridStart.DayNumber)) / 7.0));
+        __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "cal-month");
+        foreach (var n in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+        { __b.OpenElement(2, "div"); __b.AddAttribute(3, "class", "cal-dow"); __b.AddContent(4, n); __b.CloseElement(); }
+        for (var i = 0; i < weeks * 7; i++)
+        {
+            var d = gridStart.AddDays(i);
+            var evs = EventsOn(d).ToList();
+            var cls = "cal-day" + (d.Month != first.Month ? " out" : "") + (!IsWorking(d) ? " off" : "") + (d == AsOf ? " today" : "") + (_picked == d ? " picked" : "");
+            __b.OpenElement(5, "div"); __b.AddAttribute(6, "class", cls); __b.AddAttribute(7, "tabindex", "0");
+            __b.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => Pick(d)));
+            __b.AddAttribute(9, "role", "button"); __b.AddAttribute(10, "aria-label", d.ToString("d MMMM") + (evs.Count > 0 ? $", {evs.Count} items" : ""));
+            __b.OpenElement(11, "div"); __b.AddAttribute(12, "class", "cal-num"); __b.AddContent(13, d.Day == 1 ? d.ToString("d MMM") : d.Day.ToString()); __b.CloseElement();
+            if (HolidayNote(d) is { } h) { __b.OpenElement(14, "div"); __b.AddAttribute(15, "class", "cal-hol"); __b.AddContent(16, h); __b.CloseElement(); }
+            foreach (var e in evs.Take(4))
+            {
+                __b.OpenElement(17, "div"); __b.AddAttribute(18, "class", "cal-chip " + e.Kind + (e.Late ? " late" : "")); __b.AddAttribute(19, "title", e.Text);
+                __b.AddContent(20, e.Kind == "leave" ? e.Text : e.Text[(e.Text.IndexOf(" · ") + 3)..]); __b.CloseElement();
+            }
+            if (evs.Count > 4) { __b.OpenElement(21, "div"); __b.AddAttribute(22, "class", "cal-more"); __b.AddContent(23, $"+{evs.Count - 4} more"); __b.CloseElement(); }
+            __b.CloseElement();
+        }
+        __b.CloseElement();
+    };
+
+    private RenderFragment TeamGrid() => __b =>
+    {
+        var days = Enumerable.Range(0, DateTime.DaysInMonth(_month.Year, _month.Month)).Select(i => _month.AddDays(i)).ToList();
+        var inMonth = _work.Where(w => w.Date.Year == _month.Year && w.Date.Month == _month.Month && (_project == 0 || w.ProjectId == _project)).ToList();
+        var leave = (_events ?? []).Where(e => e.Kind == "leave" && e.Date.Year == _month.Year && e.Date.Month == _month.Month).ToList();
+        var ids = inMonth.Select(w => w.Person).Concat(leave.Select(l => (l.PersonId, l.Text))).Distinct().Where(p => _person == 0 || p.Item1 == _person).OrderBy(p => p.Item2).ToList();
+        if (ids.Count == 0) { __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "empty"); __b.AddContent(2, "No engineer is assigned or away this month."); __b.CloseElement(); return; }
+        __b.OpenElement(3, "div"); __b.AddAttribute(4, "class", "tablewrap");
+        __b.OpenElement(5, "table"); __b.AddAttribute(6, "class", "grid freeze cal-team");
+        __b.OpenElement(7, "thead"); __b.OpenElement(8, "tr");
+        __b.OpenElement(9, "th"); __b.AddContent(10, "Engineer"); __b.CloseElement();
+        foreach (var d in days)
+        {
+            __b.OpenElement(11, "th"); __b.AddAttribute(12, "class", "num cal-th" + (!IsWorking(d) ? " off" : "") + (d == AsOf ? " today" : ""));
+            __b.OpenElement(13, "div"); __b.AddContent(14, d.Day); __b.CloseElement();
+            __b.OpenElement(15, "div"); __b.AddAttribute(16, "class", "cal-wd"); __b.AddContent(17, d.ToString("ddd")[..2]); __b.CloseElement();
+            __b.CloseElement();
+        }
+        __b.CloseElement(); __b.CloseElement();
+        __b.OpenElement(18, "tbody");
+        foreach (var p in ids)
+        {
+            __b.OpenElement(19, "tr");
+            __b.OpenElement(20, "td"); __b.OpenElement(21, "a"); __b.AddAttribute(22, "href", "/people/" + p.Item1); __b.AddContent(23, p.Item2); __b.CloseElement(); __b.CloseElement();
+            foreach (var d in days)
+            {
+                var hours = inMonth.Where(w => w.Person.Id == p.Item1 && w.Date == d).Sum(w => w.Hours);
+                var away = leave.Any(l => l.PersonId == p.Item1 && l.Date == d);
+                var projs = string.Join(", ", inMonth.Where(w => w.Person.Id == p.Item1 && w.Date == d).Select(w => w.ProjectNo).Distinct());
+                var level = hours == 0 ? "" : hours > _hoursPerDay + 0.01m ? "over" : hours >= _hoursPerDay * 0.75m ? "c3" : hours >= _hoursPerDay * 0.4m ? "c2" : "c1";
+                var cls = "cal-cell " + (away ? "lv " : "") + level + (!IsWorking(d) ? " off" : "") + (_picked == d ? " picked" : "");
+                __b.OpenElement(24, "td"); __b.AddAttribute(25, "class", cls); __b.AddAttribute(26, "title", away ? $"{p.Item2}: leave" : hours > 0 ? $"{p.Item2}: {hours:0.#} h · {projs}" : "");
+                __b.AddAttribute(27, "onclick", EventCallback.Factory.Create(this, () => Pick(d)));
+                __b.AddContent(28, away ? "L" : hours > 0 ? hours.ToString("0.#") : "");
+                __b.CloseElement();
+            }
+            __b.CloseElement();
+        }
+        __b.CloseElement(); __b.CloseElement(); __b.CloseElement();
+    };
+
+    private RenderFragment YearGrid() => __b =>
+    {
+        __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "cal-year");
+        for (var m = 1; m <= 12; m++)
+        {
+            var first = new DateOnly(_month.Year, m, 1);
+            var gridStart = first.AddDays(-(((int)first.DayOfWeek + 6) % 7));
+            __b.OpenElement(2, "div"); __b.AddAttribute(3, "class", "cal-mini");
+            __b.OpenElement(4, "button"); __b.AddAttribute(5, "class", "mini-title");
+            __b.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => { _month = first; _view = "month"; }));
+            __b.AddContent(7, first.ToString("MMMM")); __b.CloseElement();
+            __b.OpenElement(8, "div"); __b.AddAttribute(9, "class", "mini-grid");
+            for (var i = 0; i < 42; i++)
+            {
+                var d = gridStart.AddDays(i);
+                if (d.Month != m) { __b.OpenElement(10, "span"); __b.CloseElement(); continue; }
+                var count = EventsOn(d).Count();
+                var cls = "mini-day" + (!IsWorking(d) ? " off" : "") + (d == AsOf ? " today" : "") + (count > 0 ? " has" : "") + (EventsOn(d).Any(e => e.Late) ? " late" : "");
+                __b.OpenElement(11, "button"); __b.AddAttribute(12, "class", cls); __b.AddAttribute(13, "title", count > 0 ? $"{d:d MMM}: {count} items" : d.ToString("d MMM"));
+                __b.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, () => { _picked = d; _month = new(d.Year, d.Month, 1); }));
+                __b.AddContent(15, d.Day); __b.CloseElement();
+            }
+            __b.CloseElement(); __b.CloseElement();
+        }
+        __b.CloseElement();
+    };
+}

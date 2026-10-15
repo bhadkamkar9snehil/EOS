@@ -5,7 +5,7 @@
 
 <div class="page">
     <div class="page-head">
-        <div><h1>Projects</h1><p class="muted">The ERP project master plus live delivery plans. Click a project for its plan, Gantt, team and environments.</p></div>
+        <div><h1>Projects</h1></div>
         <div class="actions">
             <input type="search" placeholder="Search number, name, customer…" @bind="_search" @bind:event="oninput" @bind:after="Apply" style="width:260px" />
             <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" @bind="_withPlan" @bind:after="Apply" /> with a plan</label>
@@ -36,13 +36,22 @@
     {
         <div class="plate"><div class="tablewrap">
             <table class="grid">
-                <thead><tr><th>Project</th><th>Name</th><th>Customer</th><th>Product</th><th>ERP</th><th>Tracker status</th><th>Technical manager</th><th class="num">Tasks</th><th>Health</th></tr></thead>
+                <thead><tr>
+                    <th class="sortable" aria-sort="@Dir("no")" @onclick='() => Sort("no")'>Project</th>
+                    <th class="sortable" aria-sort="@Dir("name")" @onclick='() => Sort("name")'>Name</th>
+                    <th class="sortable" aria-sort="@Dir("customer")" @onclick='() => Sort("customer")'>Customer</th>
+                    <th class="sortable" aria-sort="@Dir("product")" @onclick='() => Sort("product")'>Product</th>
+                    <th>ERP</th>
+                    <th class="sortable" aria-sort="@Dir("status")" @onclick='() => Sort("status")'>Tracker status</th>
+                    <th>Technical manager</th>
+                    <th class="num sortable" aria-sort="@Dir("tasks")" @onclick='() => Sort("tasks")'>Tasks</th>
+                    <th>Health</th></tr></thead>
                 <tbody>
                 @foreach (var p in _filtered.Take(400))
                 {
                     <tr class="clickable" @onclick="() => Open(p.Id)">
                         <td><b>@p.ProjectNo</b></td>
-                        <td>@Short(p.Name, 70)</td>
+                        <td title="@p.Name">@Short(Names.Short(p.Name), 70)</td>
                         <td>@p.Customer</td>
                         <td>@p.ProductLine</td>
                         <td>@p.ErpStatus</td>
@@ -77,11 +86,27 @@
         Apply();
     }
 
+    private string _sort = "no"; private bool _desc;
+
+    private string Dir(string key) => _sort != key ? "none" : _desc ? "descending" : "ascending";
+
+    private void Sort(string key)
+    {
+        if (_sort == key) _desc = !_desc; else { _sort = key; _desc = false; }
+        Apply();
+    }
+
     private void Apply()
     {
         var s = _search.Trim().ToLowerInvariant();
-        _filtered = (_rows ?? []).Where(p => (!_withPlan || p.HasPlan) &&
-            (s.Length == 0 || p.ProjectNo.ToLower().Contains(s) || p.Name.ToLower().Contains(s) || (p.Customer ?? "").ToLower().Contains(s))).ToList();
+        var rows = (_rows ?? []).Where(p => (!_withPlan || p.HasPlan) &&
+            (s.Length == 0 || p.ProjectNo.ToLower().Contains(s) || p.Name.ToLower().Contains(s) || (p.Customer ?? "").ToLower().Contains(s)));
+        Func<ProjectSummary, object> key = _sort switch
+        {
+            "name" => p => p.Name, "customer" => p => p.Customer ?? "", "product" => p => p.ProductLine ?? "",
+            "status" => p => p.TrackerStatus ?? "", "tasks" => p => p.TaskCount, _ => p => p.ProjectNo,
+        };
+        _filtered = (_desc ? rows.OrderByDescending(key) : rows.OrderBy(key)).ToList();
     }
 
     private async Task Create() =>

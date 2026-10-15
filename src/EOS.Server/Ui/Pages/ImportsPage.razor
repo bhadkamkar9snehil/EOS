@@ -5,7 +5,7 @@
 <PageTitle>Imports · EOS</PageTitle>
 
 <div class="page">
-    <div class="page-head"><div><h1>Imports</h1><p class="muted">Bring workbooks in. Every import is previewed first (nothing is saved), then committed. Imports are repeatable: running one again updates, it never duplicates, and it never overwrites what you changed by hand.</p></div></div>
+    <div class="page-head"><div><h1>Imports</h1></div></div>
 
     <div class="plate">
         <div class="form-row">
@@ -30,7 +30,7 @@
             <table class="grid"><thead><tr><th>Entity</th><th class="num">Added</th><th class="num">Updated</th><th class="num">Unchanged</th></tr></thead><tbody>
             @foreach (var (k, c) in r.Counts.OrderBy(x => x.Key)) { <tr><td>@k</td><td class="num">@c.Added</td><td class="num">@c.Updated</td><td class="num">@c.Unchanged</td></tr> }
             </tbody></table>
-            @if (r.Unresolved.Count > 0) { <h2 style="margin-top:12px">Unresolved people (@r.Unresolved.Count) <span class="muted" style="text-transform:none;letter-spacing:0">— map them with an alias under Settings → Aliases</span></h2><p>@string.Join(", ", r.Unresolved)</p> }
+            @if (r.Unresolved.Count > 0) { <h2 style="margin-top:12px">Unresolved people (@r.Unresolved.Count)</h2><p>@string.Join(", ", r.Unresolved)</p> }
             @if (r.Warnings.Count > 0) { <h2 style="margin-top:12px">Warnings (@r.Warnings.Count)</h2><ul>@foreach (var w in r.Warnings.Take(60)) { <li>@w</li> }</ul> }
         </div>
     }

@@ -13,7 +13,7 @@
 <PageTitle>Settings · EOS</PageTitle>
 
 <div class="page">
-    <div class="page-head"><div><h1>Settings</h1><p class="muted">Everything is data: thresholds, hours, calendars, vocabularies, custom fields. Changes are effective-dated, need a reason and are audited.</p></div></div>
+    <div class="page-head"><div><h1>Settings</h1></div></div>
 
     <div class="tabs">
         @foreach (var t in new[] { "settings", "calendars", "vocabularies", "fields", "aliases", "tokens", "backups", "audit" })
@@ -41,11 +41,10 @@
                     <td style="white-space:nowrap">@if (_editKey == s.Key)
                     {
                         <input @bind="_editReason" placeholder="Reason (required)" style="width:200px" />
-                        <button class="icon" @onclick="SaveSetting">Save</button><button class="icon" @onclick="() => _editKey = null">✕</button>
+                        <button class="icon" @onclick="SaveSetting">Save</button><button class="icon" @onclick="() => _editKey = null">Remove</button>
                     } else { <button class="icon" @onclick="() => StartEdit(s)">Edit</button> }</td></tr>
                 }
                 </tbody></table></div>
-            <p class="muted">Values are JSON (numbers plain, text in quotes, lists in brackets).</p>
         </div>
     }
     else if (_tab == "calendars")
@@ -60,7 +59,7 @@
                     <button class="secondary" @onclick="() => SaveCalendar(c.Calendar)">Update</button>
                 </div>
                 <h2 style="margin-top:12px">Holidays and working overrides</h2>
-                @foreach (var x in c.Exceptions.OrderBy(x => x.Date)) { <div>@x.Date.ToString("ddd dd MMM yyyy") <span class="muted">@(x.IsWorking ? "working day" : "holiday") @x.Note</span> <button class="icon" @onclick="() => RemoveHoliday(x.Id)">✕</button></div> }
+                @foreach (var x in c.Exceptions.OrderBy(x => x.Date)) { <div>@x.Date.ToString("ddd dd MMM yyyy") <span class="muted">@(x.IsWorking ? "working day" : "holiday") @x.Note</span> <button class="icon" @onclick="() => RemoveHoliday(x.Id)">Remove</button></div> }
                 <div class="form-row" style="margin-top:8px">
                     <div class="field"><label>Date</label><input type="date" @bind="_holiday" /></div>
                     <div class="field"><label>Note</label><input @bind="_holidayNote" /></div>
@@ -99,7 +98,6 @@
     else if (_tab == "aliases")
     {
         <div class="plate"><h2>Name aliases</h2>
-            <p class="muted">Workbooks that write initials (“DT”, “HM”) need a mapping to a person. Unresolved ones are listed first.</p>
             <table class="grid"><thead><tr><th>Alias</th><th>Source</th><th>Person</th></tr></thead><tbody>
             @foreach (var a in _aliases.OrderBy(a => a.PersonId.HasValue).ThenBy(a => a.Alias))
             {
@@ -110,7 +108,6 @@
     else if (_tab == "tokens")
     {
         <div class="plate"><h2>Access tokens</h2>
-            <p class="muted">Each token is a named person or tool: CLI, MCP, browser sign-in. The name is recorded on everything it changes.</p>
             <table class="grid"><thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody>
             @foreach (var t in _tokens) { <tr class="@(t.Revoked ? "muted" : "")"><td>@t.Name</td><td>@t.CreatedUtc.ToString("dd MMM yy")</td><td>@t.LastUsedUtc?.ToString("dd MMM yy HH:mm")</td><td>@if (t.Revoked) { <Badge>revoked</Badge> } else { <button class="icon" @onclick="() => Revoke(t.Id)">Revoke</button> }</td></tr> }
             </tbody></table>
@@ -121,7 +118,7 @@
     else if (_tab == "backups")
     {
         <div class="plate"><h2>Backups</h2>
-            <p class="muted">Stored in <code>@Options.BackupDirectory</code>. A nightly timer also takes one on the server.</p>
+            <p class="muted"><code>@Options.BackupDirectory</code></p>
             <button @onclick="Backup">Back up now</button>
             <table class="grid" style="margin-top:8px"><thead><tr><th>File</th><th class="num">Size</th><th>Created</th></tr></thead><tbody>
             @foreach (var b in _backups) { <tr><td>@b.Name</td><td class="num">@((b.SizeBytes / 1024.0 / 1024.0).ToString("0.0")) MB</td><td>@b.CreatedUtc.ToString("dd MMM yy HH:mm")</td></tr> }
@@ -129,7 +126,7 @@
     }
     else if (_tab == "audit")
     {
-        <div class="plate"><h2>Audit log <span class="muted" style="text-transform:none;letter-spacing:0">(latest 200)</span></h2>
+        <div class="plate"><h2>Audit log</h2>
             <div class="tablewrap" style="max-height:70vh;overflow:auto"><table class="grid"><thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Subject</th><th>Detail</th></tr></thead><tbody>
             @foreach (var a in _audit) { <tr><td class="muted">@a.AtUtc.ToString("dd MMM HH:mm")</td><td>@a.Actor</td><td>@a.Action</td><td>@a.SubjectKind @a.SubjectId</td><td class="muted">@a.Detail</td></tr> }
             </tbody></table></div></div>
@@ -198,7 +195,10 @@
         await db.SaveChangesAsync();
     }, "Alias mapped. Re-run the import to apply it.");
 
-    private Task Revoke(int id) => Act((sp, a) => sp.GetRequiredService<TokenService>().RevokeAsync(id, a), "Token revoked.");
+    private async Task Revoke(int id)
+    {
+        if (await Confirm("Revoke this token? Anything using it stops working immediately.")) await Act((sp, a) => sp.GetRequiredService<TokenService>().RevokeAsync(id, a), "Token revoked.");
+    }
     private Task NewToken() => Act(async (sp, a) => { _newToken = await sp.GetRequiredService<TokenService>().CreateAsync(_tokenName.Trim(), a); _tokenName = ""; });
     private Task Backup() => Act(async (sp, a) => await sp.GetRequiredService<BackupService>().CreateAsync(Options.BackupDirectory, a), "Backup created.");
 }

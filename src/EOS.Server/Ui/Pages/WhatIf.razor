@@ -6,7 +6,7 @@
 
 <div class="page">
     <div class="page-head">
-        <div><h1>What-if workbench</h1><p class="muted">Move an engineer (or part of one) from one project to another from a date, and see every project's new finish before anything changes. Nothing is written until you approve and apply.</p></div>
+        <div><h1>What-if workbench</h1></div>
     </div>
 
     @if (Loading && _projects is null) { <p class="muted">Loading…</p> }
@@ -25,7 +25,7 @@
             </div>
             @foreach (var (m, i) in _moves.Select((m, i) => (m, i)))
             {
-                <div>@Name(m.PersonId) · @ProjNo(m.FromProjectId) → @ProjNo(m.ToProjectId) · from @m.Date.ToString("dd MMM yyyy") · @(m.Percent * 100)% <button class="icon" @onclick="() => _moves.RemoveAt(i)">✕</button></div>
+                <div>@Name(m.PersonId) · @ProjNo(m.FromProjectId) → @ProjNo(m.ToProjectId) · from @m.Date.ToString("dd MMM yyyy") · @(m.Percent * 100)% <button class="icon" @onclick="() => _moves.RemoveAt(i)">Remove</button></div>
             }
             <div class="form-row" style="margin-top:10px">
                 <div class="field"><label>Scenario name</label><input @bind="_name" style="width:300px" /></div>
@@ -35,7 +35,6 @@
 
         <div class="plate">
             <h2>Move a skill</h2>
-            <p class="muted">Pick a skill and the project that has it; EOS lists the engineers on that project who hold the skill, strongest first.</p>
             <div class="form-row">
                 <div class="field"><label>Skill</label><select @bind="_mvSkill" @bind:after="FindSkillHolders"><option value="0">–</option>@foreach (var s in _skills) { <option value="@s.Id">@s.Name</option> }</select></div>
                 <div class="field"><label>Min level</label><input type="number" @bind="_mvMin" @bind:after="FindSkillHolders" style="width:70px" /></div>
@@ -165,7 +164,11 @@
     private Task Analyse() => Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().AnalyseAsync(_moves, _name, a, today: AsOf));
     private Task Open(int id) => Act(async (sp, _) => _result = await sp.GetRequiredService<ScenarioService>().GetAsync(id), reload: false);
     private Task Decide((int Id, bool Approve) d) => Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().DecideAsync(d.Id, d.Approve, a, null), d.Approve ? "Approved." : "Rejected.");
-    private Task Apply(int id) => Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().ApplyAsync(id, a, AsOf), "Applied: assignments rewritten and plans recomputed.");
+    private async Task Apply(int id)
+    {
+        if (!await Confirm("Apply this scenario? Assignments will be rewritten and every affected plan recomputed.")) return;
+        await Act(async (sp, a) => _result = await sp.GetRequiredService<ScenarioService>().ApplyAsync(id, a, AsOf), "Applied: assignments rewritten and plans recomputed.");
+    }
 
     private Task Release() => _target == 0 ? Task.CompletedTask : Act(async (sp, _) => _release = await sp.GetRequiredService<ScenarioService>().ReleaseAnalysisAsync(_target, DateOnly.FromDateTime(_analysisDate), AsOf), reload: false);
     private Task Push() => _target == 0 ? Task.CompletedTask : Act(async (sp, _) => _push = await sp.GetRequiredService<ScenarioService>().PushPlanAsync(_target, DateOnly.FromDateTime(_analysisDate), 10, AsOf), reload: false);

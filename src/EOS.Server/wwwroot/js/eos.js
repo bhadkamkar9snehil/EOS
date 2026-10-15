@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const s = await (await fetch("/auth/state")).json();
     boot.hidden = !s.needsBootstrap;
-  } catch { /* keep hidden */ }
+  } catch { }
 });
 
 window.eosDownload = (name, mime, base64) => {
@@ -56,3 +56,48 @@ window.eosDownload = (name, mime, base64) => {
   a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
 };
+
+window.eosGanttScroll = (id, x) => {
+  const el = document.getElementById(id);
+  if (el) el.scrollLeft = x;
+};
+
+window.eosFocusRow = (id) => {
+  requestAnimationFrame(() => {
+    const row = document.querySelector('tr[data-row="' + id + '"]');
+    if (row) row.focus();
+  });
+};
+
+(function () {
+  const selector = "tr.clickable, td.clickable";
+
+  function arm(root) {
+    root.querySelectorAll(selector).forEach((el) => {
+      if (!el.hasAttribute("tabindex")) {
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("role", el.tagName === "TR" ? "row" : "button");
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const el = e.target.closest && e.target.closest(selector);
+    if (!el || e.target !== el) return;
+    e.preventDefault();
+    el.click();
+  });
+
+  document.addEventListener("click", (e) => {
+    const open = document.querySelectorAll("details.menu[open]");
+    open.forEach((d) => { if (!d.contains(e.target) || e.target.closest("a")) d.removeAttribute("open"); });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") document.querySelectorAll("details.menu[open]").forEach((d) => d.removeAttribute("open"));
+  });
+
+  new MutationObserver(() => arm(document)).observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener("DOMContentLoaded", () => arm(document));
+})();
