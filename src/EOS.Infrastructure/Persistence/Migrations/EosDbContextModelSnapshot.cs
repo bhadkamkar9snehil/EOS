@@ -856,6 +856,12 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("ProjectId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("RequiredLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RequiredSkillId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateOnly?>("ScheduledFinish")
                         .HasColumnType("TEXT");
 

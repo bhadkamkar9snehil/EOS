@@ -44,6 +44,9 @@ public sealed class PlanTask
     public DateOnly? ActualStart { get; set; }
     public DateOnly? ActualFinish { get; set; }
 
+    public int? RequiredSkillId { get; set; }
+    public int? RequiredLevel { get; set; }
+
     public DateOnly? ScheduledStart { get; set; }
     public DateOnly? ScheduledFinish { get; set; }
     public int? TotalFloatDays { get; set; }

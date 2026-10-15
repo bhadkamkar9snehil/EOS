@@ -105,6 +105,14 @@ window.eosPlannerInit = (ref) => {
 
 window.eosPlannerDispose = () => { window.__plannerRef = null; };
 
+window.eosStoreGet = (key) => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
+
+window.eosStoreSet = (key, value) => {
+  try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { }
+};
+
 window.eosFocusRow = (id) => {
   requestAnimationFrame(() => {
     const row = document.querySelector('tr[data-row="' + id + '"]');

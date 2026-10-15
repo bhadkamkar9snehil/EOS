@@ -8,7 +8,13 @@ namespace EOS.Infrastructure.Planning;
 
 public sealed record PlannerTask(int Id, int? ParentId, string Wbs, int Level, string Name, bool IsSummary, bool IsMilestone, decimal WorkHours, decimal Percent);
 
-public sealed record PlannerSkill(string Name, int Rating);
+public sealed record PlannerSkill(int Id, string Name, int Rating);
+
+public sealed record SkillOption(int Id, string Name);
+
+public sealed record SkillMismatch(int TaskId, int PersonId, string Skill, int Have, int Need);
+
+public sealed record Requirement(int SkillId, int Level);
 
 public sealed record PlannerPerson(int Id, string Name, string Initials, decimal Availability, int Experience, IReadOnlyList<PlannerSkill> Skills);
 
@@ -29,7 +35,8 @@ public sealed record PlannerResult(
     IReadOnlyList<PersonImpact> People,
     IReadOnlyDictionary<int, decimal[]> WeekLoad,
     IReadOnlyDictionary<int, decimal[]> WeekCapacity,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<SkillMismatch> Mismatches);
 
 public sealed class PlannerSession
 {
@@ -53,6 +60,32 @@ public sealed class PlannerSession
     public IReadOnlyList<PlannerAssignment> Baseline { get; internal set; } = [];
     public IReadOnlyList<DateOnly> Weeks { get; internal set; } = [];
     public PlannerResult BaselineResult { get; internal set; } = null!;
+    public IReadOnlyList<SkillOption> Skills { get; internal set; } = [];
+    public IReadOnlyDictionary<int, Requirement> BaselineRequirements { get; internal set; } = new Dictionary<int, Requirement>();
+    internal Dictionary<int, string> SkillNames = [];
+
+    public int WorkingDays(PlannerSpan span)
+    {
+        var cal = Built.Calendar;
+        return Math.Max(1, cal.WorkingDaysBetween(cal.OnOrAfter(span.Start), cal.OnOrBefore(span.Finish)) + 1);
+    }
+
+    public decimal FreeHours(PlannerResult result, int personId, PlannerSpan span)
+    {
+        var load = result.WeekLoad.TryGetValue(personId, out var l) ? l : OtherWeeks.GetValueOrDefault(personId);
+        var cap = Capacity.GetValueOrDefault(personId);
+        if (load is null || cap is null) return 0m;
+        var free = 0m;
+        for (var i = 0; i < Weeks.Count; i++)
+        {
+            var from = Weeks[i]; var to = from.AddDays(6);
+            if (to < span.Start || from > span.Finish) continue;
+            var overlap = Math.Min(to.DayNumber, span.Finish.DayNumber) - Math.Max(from.DayNumber, span.Start.DayNumber) + 1;
+            free += Math.Max(0m, cap[i] - load[i]) * overlap / 7m;
+        }
+        return free;
+    }
+
     public IReadOnlyDictionary<int, decimal[]> OtherLoad => OtherWeeks;
     public IReadOnlyDictionary<int, decimal[]> WeekCapacityOf => Capacity;
 
@@ -72,8 +105,9 @@ public sealed class PlannerSession
         return result;
     }
 
-    public PlannerResult Simulate(IReadOnlyList<PlannerAssignment> draft, bool experience)
+    public PlannerResult Simulate(IReadOnlyList<PlannerAssignment> draft, bool experience, IReadOnlyDictionary<int, Requirement>? requirements = null)
     {
+        requirements ??= BaselineRequirements;
         var cal = Built.Calendar;
         var tasks = Built.Plan.Tasks.Select(t =>
         {
@@ -129,14 +163,24 @@ public sealed class PlannerSession
             var name = Names.GetValueOrDefault(pid, "?");
             var overAfter = Over(total);
             impacts.Add(new PersonImpact(pid, name, Peak(before), Peak(total), Over(before), overAfter));
-            if (overAfter > Over(before) || (overAfter > 0 && draft.Any(a => a.PersonId == pid) && !Baseline.Any(a => a.PersonId == pid)))
-                warnings.Add($"{name} is over capacity in {overAfter} week(s).");
+            if (overAfter > 0 && draft.Any(a => a.PersonId == pid))
+                warnings.Add($"{name} is over capacity in {overAfter} week(s){(Over(before) > 0 && overAfter <= Over(before) ? " (already was)" : "")}.");
         }
+        var mismatches = new List<SkillMismatch>();
+        foreach (var a in draft)
+        {
+            if (!requirements.TryGetValue(a.TaskId, out var need)) continue;
+            var have = People.FirstOrDefault(p => p.Id == a.PersonId)?.Skills.FirstOrDefault(s => s.Id == need.SkillId)?.Rating ?? 0;
+            if (have >= need.Level) continue;
+            mismatches.Add(new SkillMismatch(a.TaskId, a.PersonId, SkillNames.GetValueOrDefault(need.SkillId, "skill"), have, need.Level));
+        }
+        foreach (var g in mismatches.GroupBy(m => m.PersonId))
+            warnings.Add($"{Names.GetValueOrDefault(g.Key, "?")} is below the required skill level on {g.Count()} task(s).");
         var unstaffed = tasks.Count(t => t.Crew.Any(c => c.PersonId.StartsWith("unassigned-", StringComparison.Ordinal)));
         if (unstaffed > 0) warnings.Add($"{unstaffed} task(s) have no named engineer; a default crew is assumed.");
 
         return new PlannerResult(spans, baseSpans, critical, schedule.Finish, baseFinish, cal.WorkingDaysBetween(baseFinish, schedule.Finish),
-            moved.OrderByDescending(m => Math.Abs(m.Item2)).ToList(), impacts, load, capacity, warnings);
+            moved.OrderByDescending(m => Math.Abs(m.Item2)).ToList(), impacts, load, capacity, warnings, mismatches);
     }
 
     internal Dictionary<int, decimal[]> BaselineLoad = [];
@@ -215,14 +259,20 @@ public sealed class PlannerService(EosDbContext db)
         session.Baseline = (await db.TaskAssignments.AsNoTracking().Where(a => a.PersonId != null && taskIds.Contains(a.TaskId)).ToListAsync(ct))
             .Select(a => new PlannerAssignment(a.TaskId, a.PersonId!.Value, a.Units, a.FromDate, a.ToDate)).ToList();
 
+        var skillRows = await db.Skills.AsNoTracking().OrderBy(s => s.Name).Select(s => new { s.Id, s.Name }).ToListAsync(ct);
+        session.Skills = skillRows.Select(s => new SkillOption(s.Id, s.Name)).ToList();
+        session.SkillNames = skillRows.ToDictionary(s => s.Id, s => s.Name);
+        session.BaselineRequirements = built.Tasks.Where(t => t.RequiredSkillId is not null && t.RequiredLevel is not null)
+            .ToDictionary(t => t.Id, t => new Requirement(t.RequiredSkillId!.Value, t.RequiredLevel!.Value));
+
         var people = await db.People.AsNoTracking().Where(p => p.IsActive).OrderBy(p => p.FullName).ToListAsync(ct);
-        var ratings = await db.PersonSkills.AsNoTracking().Join(db.Skills, r => r.SkillId, s => s.Id, (r, s) => new { r.PersonId, s.Name, r.Rating }).Where(x => x.Rating > 0).ToListAsync(ct);
+        var ratings = await db.PersonSkills.AsNoTracking().Join(db.Skills, r => r.SkillId, s => s.Id, (r, s) => new { r.PersonId, SkillId = s.Id, s.Name, r.Rating }).Where(x => x.Rating > 0).ToListAsync(ct);
         session.People = people.Select(p =>
         {
             var mine = ratings.Where(r => r.PersonId == p.Id).OrderByDescending(r => r.Rating).ToList();
             var exp = mine.Count == 0 ? 0 : (int)Math.Round(mine.Average(r => r.Rating));
             session.Experience[p.Id] = exp; session.Names[p.Id] = p.FullName;
-            return new PlannerPerson(p.Id, p.FullName, Initials(p.FullName), p.AvailabilityFraction, exp, mine.Select(r => new PlannerSkill(r.Name, r.Rating)).ToList());
+            return new PlannerPerson(p.Id, p.FullName, Initials(p.FullName), p.AvailabilityFraction, exp, mine.Select(r => new PlannerSkill(r.SkillId, r.Name, r.Rating)).ToList());
         }).ToList();
 
         var baseSchedule = Scheduler.Compute(built.Plan.Tasks, cal, built.Plan.Start, built.Options);
@@ -272,14 +322,20 @@ public sealed class PlannerService(EosDbContext db)
     }
 
     public async Task<int> CommitAsync(
-        PlannerSession session, IReadOnlyList<PlannerAssignment> draft, string actor, CancellationToken ct = default)
+        PlannerSession session, IReadOnlyList<PlannerAssignment> draft, IReadOnlyDictionary<int, Requirement> requirements, string actor, CancellationToken ct = default)
     {
         static string Key(PlannerAssignment a) => $"{a.PersonId}|{a.Units}|{a.From}|{a.To}";
         var changed = session.LeafIds.Where(id =>
             !draft.Where(a => a.TaskId == id).Select(Key).OrderBy(x => x).SequenceEqual(session.Baseline.Where(a => a.TaskId == id).Select(Key).OrderBy(x => x))).ToList();
-        if (changed.Count == 0) return 0;
+        var reqChanged = session.LeafIds.Where(id => requirements.GetValueOrDefault(id) != session.BaselineRequirements.GetValueOrDefault(id)).ToList();
+        if (changed.Count == 0 && reqChanged.Count == 0) return 0;
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
+        foreach (var task in await db.Tasks.Where(t => reqChanged.Contains(t.Id)).ToListAsync(ct))
+        {
+            var r = requirements.GetValueOrDefault(task.Id);
+            task.RequiredSkillId = r?.SkillId; task.RequiredLevel = r?.Level;
+        }
         var existing = await db.TaskAssignments.Where(a => changed.Contains(a.TaskId) && a.PersonId != null).ToListAsync(ct);
         db.TaskAssignments.RemoveRange(existing);
         foreach (var a in draft.Where(a => changed.Contains(a.TaskId)))
@@ -291,7 +347,7 @@ public sealed class PlannerService(EosDbContext db)
         await db.SaveChangesAsync(ct);
         await new PlanService(db).RecomputeAsync(session.ProjectId, session.Today, ct);
         await tx.CommitAsync(ct);
-        return changed.Count;
+        return changed.Count + reqChanged.Except(changed).Count();
     }
 
     private static DateOnly Monday(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7));

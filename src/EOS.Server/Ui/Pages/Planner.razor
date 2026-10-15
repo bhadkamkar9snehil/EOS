@@ -10,7 +10,7 @@
     {
         <div class="bench">
             <div class="bench-head">
-                <div class="label">Engineers</div>
+                <div class="label">Engineers@(_selSpan is not null ? " · best fit first" : "")</div>
                 <input type="search" placeholder="Search" aria-label="Search engineers" @bind="_benchSearch" @bind:event="oninput" />
                 <select aria-label="Skill filter" @bind="_skillFilter"><option value="">Any skill</option>@foreach (var s in _skillNames) { <option>@s</option> }</select>
             </div>
@@ -26,7 +26,12 @@
                             <div class="strip" aria-label="Load, next weeks">
                                 @foreach (var c in StripFor(p.Id)) { <i class="@c.Cls" title="@c.Tip"></i> }
                             </div>
-                            <div class="chips">@foreach (var s in p.Skills.OrderByDescending(s => s.Rating).Take(2)) { <span class="chip" title="@s.Name @s.Rating">@Short(s.Name, 14) @s.Rating</span> }</div>
+                            @if (_selSpan is not null)
+                            {
+                                var fit = FitOf(p);
+                                <div class="fit"><b>@fit.Free.ToString("0") h</b> free@(fit.Skill is null ? "" : "") @if (fit.Skill is not null) { <span class="chip @(fit.SkillOk ? "ok" : "bad")">@fit.Skill</span> }</div>
+                            }
+                            else { <div class="chips">@foreach (var s in p.Skills.OrderByDescending(s => s.Rating).Take(2)) { <span class="chip" title="@s.Name @s.Rating">@Short(s.Name, 14) @s.Rating</span> }</div> }
                         </div>
                         <button class="iconbtn add" aria-label="Add @p.Name to selected tasks" title="Add to selected tasks" @onclick="() => AssignToSelection(p.Id)"><Icon Name="plus" Size="16" /></button>
                     </div>
@@ -63,7 +68,19 @@
             </div>
             <div class="finish">@_result.BaseFinish.ToString("dd MMM yyyy") <span class="muted">→</span> <b>@_result.Finish.ToString("dd MMM yyyy")</b></div>
 
-            <label class="switch"><input type="checkbox" checked="@_experience" @onchange="OnExperience" /> <span>Adjust for experience</span></label>
+            <div class="twoway" role="group" aria-label="Schedule basis">
+                <button class="@(!_experience ? "on" : "")" @onclick="() => SetExperience(false)"><span>Plain</span><b class="@Cls(_plain.SlipDays)">@Slip(_plain.SlipDays)</b><small>@_plain.Finish.ToString("dd MMM")</small></button>
+                <button class="@(_experience ? "on" : "")" @onclick="() => SetExperience(true)"><span>Experience-adjusted</span><b class="@Cls(_exp.SlipDays)">@Slip(_exp.SlipDays)</b><small>@_exp.Finish.ToString("dd MMM")</small></button>
+            </div>
+
+            @if (_changes == 0 && !_coachHidden)
+            {
+                <div class="coach">
+                    <div class="label">How it works</div>
+                    <ol><li>Click a task</li><li>Drop an engineer on it, or click + on a card</li><li>Watch the finish date and load</li></ol>
+                    <button class="secondary" @onclick="HideCoach">Got it</button>
+                </div>
+            }
 
             @if (_result.Warnings.Count > 0)
             {
@@ -101,7 +118,7 @@
     }
 </SectionContent>
 
-<div class="page planner" @onkeydown="PageKey" tabindex="-1">
+<div class="page planner">
     @if (Loading && _session is null) { <p class="muted">Loading…</p> }
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
     else if (_session is null || _result is null) { <div class="empty">No project with a plan. Import a tracker under Imports.</div> }
@@ -121,8 +138,24 @@
                 <button class="@(_zoomDw == 9 ? "on" : "")" @onclick="() => Zoom(9)">Week</button>
                 <button class="@(_zoomDw == 22 ? "on" : "")" @onclick="() => Zoom(22)">Day</button>
             </span>
-            <label class="inline"><input type="checkbox" checked="@_allLanes" @onchange="ToggleLanes" /> Show every lane</label>
+            <label class="inline"><input type="checkbox" checked="@_allLanes" @onchange="ToggleLanes" /> Every lane</label>
+            <label class="inline"><input type="checkbox" checked="@_unassignedOnly" @onchange="ToggleUnassigned" /> Unassigned only (@_unassigned.Count)</label>
+            @if (_unassigned.Count > 0) { <button class="secondary" @onclick="SelectUnassigned">Select unassigned</button> }
         </div>
+        @if (_sel.Count > 0)
+        {
+            <div class="tools reqbar">
+                <span class="label">Needs</span>
+                <select aria-label="Required skill" value="@(_reqSkill)" @onchange="e => _reqSkill = int.TryParse(e.Value?.ToString(), out var v) ? v : 0">
+                    <option value="0">No skill requirement</option>
+                    @foreach (var s in _session.Skills) { <option value="@s.Id">@s.Name</option> }
+                </select>
+                <select aria-label="Minimum level" value="@_reqLevel" @onchange="e => _reqLevel = int.TryParse(e.Value?.ToString(), out var v) ? v : 3">
+                    @for (var l = 1; l <= 5; l++) { <option value="@l">level @l+</option> }
+                </select>
+                <button class="secondary" @onclick="ApplyRequirement">Apply to @_sel.Count selected</button>
+            </div>
+        }
         <div class="gx plgx">
             <div class="gx-labels" style="width:@(LabelW)px">
                 <div class="gx-corner" style="height:@(HeaderH)px">Task</div>
@@ -136,6 +169,7 @@
                             <span class="avatar sm" style="background:@Color(a.PersonId)">@person?.Initials</span>
                             <span class="gl-text">@person?.Name</span>
                             <span class="muted">@((a.Units * 100).ToString("0"))%</span>
+                            @if (_result!.Mismatches.FirstOrDefault(m => m.TaskId == a.TaskId && m.PersonId == a.PersonId) is { } mm) { <span class="chip bad" title="Required @mm.Skill level @mm.Need">@Short(mm.Skill, 10) @mm.Have&lt;@mm.Need</span> }
                             <span class="spacer"></span>
                             <button class="icon" aria-label="Less" @onclick="() => Step(a, -0.25m)">−</button>
                             <button class="icon" aria-label="More" @onclick="() => Step(a, 0.25m)">+</button>
@@ -150,8 +184,14 @@
                             @if (t.IsSummary) { <button class="twisty" aria-label="@(_collapsed.Contains(t.Id) ? "Expand" : "Collapse")" @onclick:stopPropagation @onclick="() => Toggle(t.Id)">@(_collapsed.Contains(t.Id) ? "+" : "−")</button> }
                             else { <span class="twisty-gap"></span> }
                             <span class="wbs">@t.Wbs</span>
-                            <span class="gl-text" title="@t.Name">@t.Name</span>
+                            <span class="gl-text" title="@CrewTitle(t, crew)">@t.Name</span>
                             <span class="spacer"></span>
+                            @if (!t.IsSummary && !t.IsMilestone)
+                            {
+                                <span class="meta" title="Work, working days">@t.WorkHours.ToString("0.#")h@(_result!.Spans.TryGetValue(t.Id, out var sp) ? " · " + _session.WorkingDays(sp) + "d" : "")</span>
+                                @if (_req.TryGetValue(t.Id, out var rq)) { <span class="chip" title="Requires level @rq.Level">@Short(SkillName(rq.SkillId), 8) @rq.Level+</span> }
+                                @if (crew.Count == 0 && t.WorkHours > 0) { <span class="chip unassigned">unassigned</span> }
+                            }
                             @foreach (var c in crew.Take(3)) { <span class="avatar xs" style="background:@Color(c.PersonId)" title="@_session.People.FirstOrDefault(p => p.Id == c.PersonId)?.Name">@_session.People.FirstOrDefault(p => p.Id == c.PersonId)?.Initials</span> }
                             @if (crew.Count > 3) { <span class="muted small">+@(crew.Count - 3)</span> }
                         </div>
@@ -270,12 +310,26 @@
         await Open(_projectId, asOf);
     }
 
+    private sealed record DraftBlob(List<PlannerAssignment> Draft, Dictionary<int, int[]> Req, bool Experience);
+
+    private Dictionary<int, Requirement> _req = [];
+    private int _reqSkill, _reqLevel = 3;
+    private bool _unassignedOnly, _coachHidden;
+    private List<int> _unassigned = [];
+    private PlannerResult _plain = null!, _exp = null!;
+    private PlannerSpan? _selSpan;
+    private bool _restored;
+
+    private string DraftKey => $"eos.planner.draft.{_projectId}";
+
     private async Task Open(int projectId, DateOnly asOf)
     {
         _session = await Q(sp => sp.GetRequiredService<PlannerService>().PrepareAsync(projectId, asOf));
         _draft = [.. _session.Baseline];
+        _req = _session.BaselineRequirements.ToDictionary(kv => kv.Key, kv => kv.Value);
         _undo.Clear(); _redo.Clear(); _sel.Clear(); _collapsed.Clear();
         _skillNames = _session.People.SelectMany(p => p.Skills).Select(s => s.Name).Distinct().OrderBy(s => s).ToList();
+        _restored = false;
         Recalc();
     }
 
@@ -285,7 +339,93 @@
         {
             _ref = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("eosPlannerInit", _ref);
+            _coachHidden = await JS.InvokeAsync<string?>("eosStoreGet", "eos.planner.coach") == "1";
         }
+        if (_session is not null && !_restored)
+        {
+            _restored = true;
+            await RestoreDraft();
+        }
+    }
+
+    private async Task RestoreDraft()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string?>("eosStoreGet", DraftKey);
+            if (string.IsNullOrEmpty(json) || System.Text.Json.JsonSerializer.Deserialize<DraftBlob>(json) is not { } blob) return;
+            var valid = _session!.Tasks.Select(t => t.Id).ToHashSet();
+            var people = _session.People.Select(p => p.Id).ToHashSet();
+            _draft = blob.Draft.Where(a => valid.Contains(a.TaskId) && people.Contains(a.PersonId)).ToList();
+            _req = blob.Req.Where(kv => valid.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => new Requirement(kv.Value[0], kv.Value[1]));
+            _experience = blob.Experience;
+            Recalc();
+            if (_changes > 0) State.ShowToast("Restored your unsaved draft.");
+            StateHasChanged();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or JSDisconnectedException or System.Text.Json.JsonException) { }
+    }
+
+    private async Task PersistDraft()
+    {
+        try
+        {
+            if (_changes == 0) { await JS.InvokeVoidAsync("eosStoreSet", DraftKey, null); return; }
+            var blob = new DraftBlob(_draft, _req.ToDictionary(kv => kv.Key, kv => new[] { kv.Value.SkillId, kv.Value.Level }), _experience);
+            await JS.InvokeVoidAsync("eosStoreSet", DraftKey, System.Text.Json.JsonSerializer.Serialize(blob));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or JSDisconnectedException) { }
+    }
+
+    private async Task HideCoach()
+    {
+        _coachHidden = true;
+        await JS.InvokeVoidAsync("eosStoreSet", "eos.planner.coach", "1");
+    }
+
+    private string CrewTitle(PlannerTask t, List<PlannerAssignment> crew) =>
+        crew.Count == 0 ? t.Name : t.Name + " · " + string.Join(", ", crew.Select(c => _session!.People.FirstOrDefault(p => p.Id == c.PersonId)?.Name));
+
+    private static string Slip(int d) => d == 0 ? "no change" : d.ToString("+0;-0") + " d";
+    private static string Cls(int d) => d > 0 ? "slip-pos" : d < 0 ? "slip-neg" : "muted";
+    private string SkillName(int id) => _session!.Skills.FirstOrDefault(s => s.Id == id)?.Name ?? "skill";
+
+    private void SetExperience(bool on) { _experience = on; Recalc(); }
+
+    private void ToggleUnassigned() { _unassignedOnly = !_unassignedOnly; BuildRows(); }
+
+    private void SelectUnassigned()
+    {
+        _sel.Clear();
+        foreach (var id in _unassigned) _sel.Add(id);
+        UpdateSel();
+        BuildRows();
+    }
+
+    private void ApplyRequirement()
+    {
+        Push();
+        foreach (var id in _sel.SelectMany(LeavesOf).Distinct())
+        {
+            if (_reqSkill == 0) _req.Remove(id); else _req[id] = new Requirement(_reqSkill, _reqLevel);
+        }
+        Recalc();
+    }
+
+    private void UpdateSel()
+    {
+        var leaves = _sel.SelectMany(LeavesOf).Distinct().Where(id => _result!.Spans.ContainsKey(id)).ToList();
+        _selSpan = leaves.Count == 0 ? null : new PlannerSpan(leaves.Min(id => _result!.Spans[id].Start), leaves.Max(id => _result!.Spans[id].Finish));
+    }
+
+    private (decimal Free, string? Skill, bool SkillOk) FitOf(PlannerPerson p)
+    {
+        var free = _session!.FreeHours(_result!, p.Id, _selSpan!);
+        var leaf = _sel.SelectMany(LeavesOf).FirstOrDefault(id => _req.ContainsKey(id));
+        if (leaf == 0) return (free, null, true);
+        var r = _req[leaf];
+        var have = p.Skills.FirstOrDefault(s => s.Id == r.SkillId)?.Rating ?? 0;
+        return (free, $"{Short(SkillName(r.SkillId), 10)} {have}/{r.Level}", have >= r.Level);
     }
 
     public async ValueTask DisposeAsync()
@@ -301,17 +441,21 @@
         await Open(id, AsOf);
     }
 
-    private void OnExperience(ChangeEventArgs e) { _experience = e.Value is true; Recalc(); }
-
     private void Recalc()
     {
         if (_session is null) return;
-        _result = _session.Simulate(_draft, _experience);
+        _plain = _session.Simulate(_draft, false, _req);
+        _exp = _session.Simulate(_draft, true, _req);
+        _result = _experience ? _exp : _plain;
         static string Key(PlannerAssignment a) => $"{a.PersonId}|{a.Units}|{a.From}|{a.To}";
         _changedTasks = _session.LeafTaskIds.Where(id =>
             !_draft.Where(a => a.TaskId == id).Select(Key).OrderBy(x => x).SequenceEqual(_session.Baseline.Where(a => a.TaskId == id).Select(Key).OrderBy(x => x))).ToHashSet();
-        _changes = _changedTasks.Count;
+        var reqChanged = _session.LeafTaskIds.Where(id => _req.GetValueOrDefault(id) != _session.BaselineRequirements.GetValueOrDefault(id)).ToHashSet();
+        _changes = _changedTasks.Union(reqChanged).Count();
+        _unassigned = _session.Tasks.Where(t => !t.IsSummary && !t.IsMilestone && t.WorkHours > 0 && !_draft.Any(a => a.TaskId == t.Id)).Select(t => t.Id).ToList();
+        UpdateSel();
         Layout();
+        _ = PersistDraft();
     }
 
     private void Layout()
@@ -346,8 +490,19 @@
     {
         _rows = [];
         var hideLevel = int.MaxValue;
+        HashSet<int>? visible = null;
+        if (_unassignedOnly)
+        {
+            visible = [];
+            foreach (var id in _unassigned)
+            {
+                var cursor = (int?)id;
+                while (cursor is { } c && visible.Add(c)) cursor = _session!.Tasks.FirstOrDefault(t => t.Id == c)?.ParentId;
+            }
+        }
         foreach (var t in _session!.Tasks)
         {
+            if (visible is not null && !visible.Contains(t.Id)) continue;
             if (t.Level > hideLevel) continue;
             hideLevel = int.MaxValue;
             _rows.Add(new PRow(t, null));
@@ -362,6 +517,7 @@
         var q = _session!.People.AsEnumerable();
         if (_benchSearch.Length > 0) q = q.Where(p => p.Name.Contains(_benchSearch, StringComparison.OrdinalIgnoreCase));
         if (_skillFilter.Length > 0) q = q.Where(p => p.Skills.Any(s => s.Name == _skillFilter));
+        if (_selSpan is not null) return q.OrderByDescending(p => FitOf(p).SkillOk).ThenByDescending(p => FitOf(p).Free);
         return _skillFilter.Length > 0 ? q.OrderByDescending(p => p.Skills.First(s => s.Name == _skillFilter).Rating) : q;
     }
 
@@ -385,7 +541,7 @@
     private void Push() { _undo.Add([.. _draft]); _redo.Clear(); if (_undo.Count > 60) _undo.RemoveAt(0); }
     private void Undo() { if (_undo.Count == 0) return; _redo.Add([.. _draft]); _draft = _undo[^1]; _undo.RemoveAt(_undo.Count - 1); Recalc(); }
     private void Redo() { if (_redo.Count == 0) return; _undo.Add([.. _draft]); _draft = _redo[^1]; _redo.RemoveAt(_redo.Count - 1); Recalc(); }
-    private void Reset() { Push(); _draft = [.. _session!.Baseline]; Recalc(); }
+    private void Reset() { Push(); _draft = [.. _session!.Baseline]; _req = _session.BaselineRequirements.ToDictionary(kv => kv.Key, kv => kv.Value); Recalc(); }
 
     private IEnumerable<int> LeavesOf(int taskId)
     {
@@ -417,6 +573,8 @@
             else _draft.Add(new PlannerAssignment(t, personId, 1m, null, null));
         }
         Recalc();
+        var name = _session!.People.First(p => p.Id == personId).Name;
+        State.ShowToast(leaves.Count == 1 ? $"{name} added." : $"{name} added to {leaves.Count} tasks.");
     }
 
     private void AssignToSelection(int personId)
@@ -447,19 +605,14 @@
         if (e.CtrlKey || e.MetaKey || e.ShiftKey) { if (!_sel.Remove(taskId)) _sel.Add(taskId); }
         else if (_sel.Count == 1 && _sel.Contains(taskId)) _sel.Clear();
         else { _sel.Clear(); _sel.Add(taskId); }
+        if (_sel.Count > 0 && _req.TryGetValue(_sel.First(), out var r)) { _reqSkill = r.SkillId; _reqLevel = r.Level; }
+        UpdateSel();
         BuildRows();
     }
 
     private void Toggle(int taskId) { if (!_collapsed.Remove(taskId)) _collapsed.Add(taskId); BuildRows(); }
     private void ToggleLanes() { _allLanes = !_allLanes; BuildRows(); }
     private void Focus(int taskId) { _sel.Clear(); _sel.Add(taskId); _tab = "plan"; BuildRows(); }
-
-    private void PageKey(KeyboardEventArgs e)
-    {
-        if (e.CtrlKey && e.Key is "z" or "Z") Undo();
-        else if (e.CtrlKey && e.Key is "y" or "Y") Redo();
-        else if (e.Key == "Escape") { _sel.Clear(); BuildRows(); }
-    }
 
     [JSInvokable]
     public void LaneChanged(string key, string edge, int deltaDays)
@@ -485,12 +638,13 @@
     private async Task Commit()
     {
         if (!await Confirm($"Write {_changes} changed task(s) into the plan of {_session!.ProjectNo}? Assignments are replaced and the schedule is recomputed.")) return;
-        var session = _session; var draft = _draft.ToList();
+        var session = _session; var draft = _draft.ToList(); var req = _req.ToDictionary(kv => kv.Key, kv => kv.Value);
         await Act(async (sp, actor) =>
         {
-            var n = await sp.GetRequiredService<PlannerService>().CommitAsync(session, draft, actor);
+            var n = await sp.GetRequiredService<PlannerService>().CommitAsync(session, draft, req, actor);
             State.ShowToast($"Committed {n} task(s).");
         });
+        try { await JS.InvokeVoidAsync("eosStoreSet", DraftKey, null); } catch (JSDisconnectedException) { }
     }
 
     private static string Diamond(double cx, double cy, double r) =>
