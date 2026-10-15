@@ -29,14 +29,14 @@
     else
     {
         <div class="plate"><div class="tablewrap"><table class="grid">
-            <thead><tr><th>Code</th><th>Name</th><th>Team</th><th>Role</th><th>Location</th><th class="num">Availability</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Team</th><th>Band</th><th>Location</th><th class="num">Availability</th><th></th></tr></thead>
             <tbody>
             @foreach (var p in Filtered)
             {
                 <tr class="clickable" @onclick="() => Open(p.Id)">
-                    <td class="muted">@p.Code</td><td><b>@p.FullName</b></td><td>@p.Team</td><td>@p.RoleTitle</td><td>@p.BaseLocation</td>
+                    <td class="muted">@p.Code</td><td><b>@p.FullName</b></td><td>@p.Team</td><td>@(p.Band ?? (p.Seniority is { } s ? "L" + s : p.RoleTitle))</td><td>@p.BaseLocation</td>
                     <td class="num">@((p.AvailabilityFraction * 100).ToString("0"))%</td>
-                    <td>@if (!p.IsActive) { <Badge>inactive</Badge> } @if (p.IsUnverified) { <Badge Kind="warn" Title="Created from a workbook and not yet confirmed">unverified</Badge> }</td>
+                    <td>@if (!p.IsActive) { <Badge>inactive</Badge> } @if (p.IsConsultant) { <Badge>consultant</Badge> } @if (p.IsOnProbation) { <Badge Kind="info">probation</Badge> } @if (p.IsUnverified) { <Badge Kind="warn" Title="Created from a workbook and not yet confirmed">unverified</Badge> }</td>
                 </tr>
             }
             </tbody></table></div></div>

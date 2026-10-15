@@ -10,7 +10,7 @@ namespace EOS.Infrastructure.People;
 public sealed class PeopleException(string message) : Exception(message);
 
 public sealed record PersonRow(int Id, string Code, string FullName, string? Team, int? TeamId, string? RoleTitle, string? BaseLocation,
-    decimal AvailabilityFraction, bool IsActive, bool IsUnverified, string? Email);
+    decimal AvailabilityFraction, bool IsActive, bool IsUnverified, string? Email, string? Band = null, int? Seniority = null, bool IsConsultant = false, bool IsOnProbation = false);
 
 public sealed record PersonSkillView(int SkillId, string Skill, int Rating, DateOnly? AssessedOn, string? AssessedBy, decimal? ModuleKnowFraction);
 
@@ -41,7 +41,7 @@ public sealed class PeopleService(EosDbContext db)
                from t in teams.DefaultIfEmpty()
                orderby p.FullName
                select new PersonRow(p.Id, p.Code, p.FullName, t == null ? null : t.Name, p.TeamId, p.RoleTitle, p.BaseLocation,
-                   p.AvailabilityFraction, p.IsActive, p.IsUnverified, p.Email)).ToListAsync(ct);
+                   p.AvailabilityFraction, p.IsActive, p.IsUnverified, p.Email, p.Band, p.Seniority, p.IsConsultant, p.IsOnProbation)).ToListAsync(ct);
 
     public async Task<Person> CreateAsync(Person person, string actor, CancellationToken ct = default)
     {

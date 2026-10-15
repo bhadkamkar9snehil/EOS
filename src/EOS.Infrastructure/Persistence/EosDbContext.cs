@@ -29,6 +29,7 @@ public sealed partial class EosDbContext(DbContextOptions<EosDbContext> options)
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Person> People => Set<Person>();
     public DbSet<PersonAlias> PersonAliases => Set<PersonAlias>();
+    public DbSet<TimesheetEntry> Timesheets => Set<TimesheetEntry>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<PersonSkill> PersonSkills => Set<PersonSkill>();
     public DbSet<SkillTransaction> SkillTransactions => Set<SkillTransaction>();
@@ -85,6 +86,15 @@ public sealed partial class EosDbContext(DbContextOptions<EosDbContext> options)
             e.Property(x => x.FullName).IsRequired();
             e.Property(x => x.AvailabilityFraction).HasPrecision(5, 4);
             e.HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<TimesheetEntry>(e =>
+        {
+            e.HasIndex(x => x.Key).IsUnique();
+            e.HasIndex(x => new { x.PersonId, x.Date });
+            e.HasIndex(x => x.ProjectNo);
+            e.Property(x => x.Hours).HasPrecision(7, 2);
+            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<PersonAlias>(e =>

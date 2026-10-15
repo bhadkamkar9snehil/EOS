@@ -636,6 +636,9 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .HasPrecision(5, 4)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Band")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BaseLocation")
                         .HasColumnType("TEXT");
 
@@ -653,11 +656,23 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsConsultant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsNonBillable")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsOnProbation")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsUnverified")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("RoleTitle")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("Seniority")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("TeamId")
                         .HasColumnType("INTEGER");
@@ -721,6 +736,62 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Teams");
+                });
+
+            modelBuilder.Entity("EOS.Domain.People.TimesheetEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Activity")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Band")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Hours")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Milestone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProjectName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProjectNo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Task")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaskType")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectNo");
+
+                    b.HasIndex("PersonId", "Date");
+
+                    b.ToTable("Timesheets");
                 });
 
             modelBuilder.Entity("EOS.Domain.Planning.Baseline", b =>
@@ -1535,6 +1606,15 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("EOS.Domain.People.TimesheetEntry", b =>
+                {
+                    b.HasOne("EOS.Domain.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EOS.Domain.Planning.Baseline", b =>

@@ -21,6 +21,7 @@ public sealed class SettingsStore(EosDbContext db)
         try { System.Text.Json.JsonDocument.Parse(jsonValue).Dispose(); }
         catch (System.Text.Json.JsonException) { throw new ArgumentException("Value must be valid JSON.", nameof(jsonValue)); }
         if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A reason is required for a settings change.", nameof(reason));
+        if (SettingCatalog.Validate(key, jsonValue) is { } problem) throw new ArgumentException(problem, nameof(jsonValue));
 
         var scopeId = scope.Id ?? "";
         var open = await db.Settings
@@ -41,6 +42,22 @@ public sealed class SettingsStore(EosDbContext db)
         {
             AtUtc = DateTime.UtcNow, Actor = actor, Action = "setting.set", SubjectKind = "setting",
             SubjectId = $"{key}@{scope.Kind}:{scopeId}", Detail = $"{jsonValue} from {effectiveFrom:yyyy-MM-dd}: {reason}",
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task ClearAsync(string key, SettingScope scope, DateOnly from, string actor, string reason, CancellationToken ct = default)
+    {
+        var scopeId = scope.Id ?? "";
+        var open = await db.Settings.Where(r => r.Key == key && r.ScopeKind == (int)scope.Kind && r.ScopeId == scopeId && r.EffectiveTo == null).ToListAsync(ct);
+        foreach (var r in open)
+        {
+            if (r.EffectiveFrom >= from) db.Settings.Remove(r); else r.EffectiveTo = from.AddDays(-1);
+        }
+        db.AuditEvents.Add(new AuditEvent
+        {
+            AtUtc = DateTime.UtcNow, Actor = actor, Action = "setting.clear", SubjectKind = "setting",
+            SubjectId = $"{key}@{scope.Kind}:{scopeId}", Detail = $"back to {(scope.Kind == SettingScopeKind.Global ? "the default" : "the inherited value")} from {from:yyyy-MM-dd}: {reason}",
         });
         await db.SaveChangesAsync(ct);
     }

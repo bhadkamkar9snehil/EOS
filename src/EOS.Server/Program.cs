@@ -29,7 +29,7 @@ builder.Services.AddSingleton(options);
 builder.Services.AddDbContext<EosDbContext>(o => o.UseSqlite($"Data Source={options.DatabasePath}"));
 foreach (var service in new[]
 {
-    typeof(PlanService), typeof(PlannerService), typeof(RegisterService), typeof(ProjectService), typeof(CapacityService), typeof(ScenarioService), typeof(DemandService), typeof(PipelineService),
+    typeof(PlanService), typeof(PlannerService), typeof(RegisterService), typeof(TimesheetService), typeof(ProjectService), typeof(CapacityService), typeof(ScenarioService), typeof(DemandService), typeof(PipelineService),
     typeof(HealthService), typeof(AlertService), typeof(DashboardService), typeof(PeopleService), typeof(TrainingService), typeof(HostService),
     typeof(AdminService), typeof(ReportService), typeof(BackupService), typeof(TokenService), typeof(SkillRatingService), typeof(SettingsStore),
 })

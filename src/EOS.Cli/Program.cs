@@ -294,6 +294,16 @@ try
             return 0;
         }
 
+        case ("import", "legacy"):
+        {
+            using var db = EosDatabase.Open(dbPath);
+            var v1 = TakeOption("--v1") ?? LegacyEosImporter.DefaultDatabasePath;
+            var rep = await new LegacyEosImporter(db).ImportAsync(v1, commit, actor);
+            Console.WriteLine(rep.ToText());
+            if (!commit) Console.WriteLine("Preview only. Add --commit to save.");
+            return 0;
+        }
+
         case ("token", "create") when argv.Count >= 3:
         {
             using var db = EosDatabase.Open(dbPath);
@@ -444,6 +454,7 @@ void PrintHelp()
     Console.WriteLine("  eos alias resolve <alias> <personCode> [--source tracker]   map initials to a person");
     Console.WriteLine("  eos training summary                 Know / don't know / need-to-discuss per person");
     Console.WriteLine("  eos alias list");
+    Console.WriteLine("  eos import legacy [--v1 <engineering-performance.db>] [--commit]   people and timesheets from the old EOS");
     Console.WriteLine("  eos token create <name>|list|revoke <id>       access tokens (the name is the actor on every change)");
     Console.WriteLine("  eos dashboard [--json]                         the Command Center in text");
     Console.WriteLine("  eos alert list [--json]");

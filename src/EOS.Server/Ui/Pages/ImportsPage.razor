@@ -17,10 +17,12 @@
                     <option value="tracker">Project task tracker (WBS)</option>
                     <option value="vms">Server and VM inventory</option>
                     <option value="leave">Leave (Person, From, To, Kind)</option>
+                    <option value="legacy">Old EOS on this machine (people and timesheets)</option>
                 </select></div>
-            <div class="field"><label>Workbook (.xlsx)</label><InputFile OnChange="Picked" accept=".xlsx" /></div>
-            <button @onclick="() => Run(false)" disabled="@(_file is null)">Preview</button>
-            <button class="secondary" @onclick="() => Run(true)" disabled="@(_file is null || _report is null || _report.Committed)">Commit</button>
+            @if (_kind == "legacy") { <div class="field grow"><label>Old EOS database</label><input @bind="_legacyPath" /></div> }
+            else { <div class="field"><label>Workbook (.xlsx)</label><InputFile OnChange="Picked" accept=".xlsx" /></div> }
+            <button @onclick="() => Run(false)" disabled="@(_kind != "legacy" && _file is null)">Preview</button>
+            <button class="secondary" @onclick="() => Run(true)" disabled="@((_kind != "legacy" && _file is null) || _report is null || _report.Committed)">Commit</button>
         </div>
         @if (_file is not null) { <p class="muted">@_file.Name · @(_file.Size / 1024) KB</p> }
     </div>
@@ -53,8 +55,16 @@
 
     private void Picked(InputFileChangeEventArgs e) { _file = e.File; _report = null; }
 
+    private string _legacyPath = LegacyEosImporter.DefaultDatabasePath;
+
     private async Task Run(bool commit)
     {
+        if (_kind == "legacy")
+        {
+            await Act(async (sp, actor) => _report = await new LegacyEosImporter(sp.GetRequiredService<EosDbContext>()).ImportAsync(_legacyPath, commit, actor),
+                commit ? "Import committed." : "Preview ready. Nothing was saved.");
+            return;
+        }
         if (_file is null) return;
         var temp = Path.Combine(Path.GetTempPath(), $"eos-import-{Guid.NewGuid():N}.xlsx");
         try

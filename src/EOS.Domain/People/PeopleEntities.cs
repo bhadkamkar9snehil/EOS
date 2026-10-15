@@ -24,6 +24,29 @@ public sealed class Person
     public bool IsActive { get; set; } = true;
 
     public bool IsUnverified { get; set; }
+
+    public int? Seniority { get; set; }
+    public string? Band { get; set; }
+    public bool IsConsultant { get; set; }
+    public bool IsOnProbation { get; set; }
+    public bool IsNonBillable { get; set; }
+}
+
+public sealed class TimesheetEntry
+{
+    public int Id { get; set; }
+    public string Key { get; set; } = "";
+    public int PersonId { get; set; }
+    public DateOnly Date { get; set; }
+    public string? ProjectNo { get; set; }
+    public int? ProjectId { get; set; }
+    public string? ProjectName { get; set; }
+    public string? Activity { get; set; }
+    public string? Milestone { get; set; }
+    public string? Task { get; set; }
+    public string? TaskType { get; set; }
+    public string? Band { get; set; }
+    public decimal Hours { get; set; }
 }
 
 public enum AliasKind

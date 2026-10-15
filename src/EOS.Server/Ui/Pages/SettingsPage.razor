@@ -1,145 +1,254 @@
 @page "/settings"
 @inherits EosPage
+@using System.Globalization
+@using System.Text.Json
 @using EOS.Domain.Audit
 @using EOS.Domain.Configuration
 @using EOS.Domain.People
 @using EOS.Domain.Settings
 @using EOS.Infrastructure.Configuration
 @using EOS.Infrastructure.Operations
+@using EOS.Infrastructure.People
 @using EOS.Infrastructure.Persistence
+@using EOS.Infrastructure.Projects
 @using EOS.Infrastructure.Security
 @using EOS.Server.Hosting
 @inject EosOptions Options
 <PageTitle>Settings · EOS</PageTitle>
 
-<div class="page">
-    <div class="page-head"><div><h1>Settings</h1></div></div>
-
-    <div class="tabs">
-        @foreach (var t in new[] { "settings", "calendars", "vocabularies", "fields", "aliases", "tokens", "backups", "audit" })
+<SectionContent SectionName="sidebar">
+    <nav class="setnav" aria-label="Settings sections">
+        <div class="label">Rules</div>
+        @foreach (var g in SettingCatalog.Groups)
         {
-            <button class="tab @(_tab == t ? "on" : "")" @onclick="() => _tab = t">@(char.ToUpper(t[0]) + t[1..])</button>
+            var changed = Pending(g.Id);
+            <button class="navitem @(_section == g.Id ? "on" : "")" @onclick="() => Go(g.Id)">@g.Title@if (changed > 0) { <span class="dot" title="@changed unsaved">@changed</span> }</button>
         }
-    </div>
+        <div class="label sect">Reference data</div>
+        <button class="navitem @(_section == "calendars" ? "on" : "")" @onclick='() => Go("calendars")'>Calendars and holidays</button>
+        <button class="navitem @(_section == "vocab" ? "on" : "")" @onclick='() => Go("vocab")'>Lists and vocabularies</button>
+        <button class="navitem @(_section == "fields" ? "on" : "")" @onclick='() => Go("fields")'>Custom fields</button>
+        <button class="navitem @(_section == "aliases" ? "on" : "")" @onclick='() => Go("aliases")'>Name aliases @if (_aliases.Count(a => a.PersonId is null) > 0) { <span class="dot" title="Unresolved">@_aliases.Count(a => a.PersonId is null)</span> }</button>
+        <div class="label sect">System</div>
+        <button class="navitem @(_section == "tokens" ? "on" : "")" @onclick='() => Go("tokens")'>Access tokens</button>
+        <button class="navitem @(_section == "backups" ? "on" : "")" @onclick='() => Go("backups")'>Backups and data</button>
+        <button class="navitem @(_section == "audit" ? "on" : "")" @onclick='() => Go("audit")'>Audit log</button>
+    </nav>
+</SectionContent>
 
-    @if (Loading && _settings is null) { <p class="muted">Loading…</p> }
-    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
-    else if (_tab == "settings")
+<SectionContent SectionName="rightbar">
+    @if (IsRuleSection)
     {
-        <div class="plate">
-            <div class="form-row">
-                <input type="search" placeholder="Filter settings…" @bind="_filter" @bind:event="oninput" style="width:260px" />
-                <span class="muted">Scope: global. Team, person and project overrides are available through the API and CLI.</span>
-            </div>
-            <div class="tablewrap" style="max-height:62vh;overflow:auto"><table class="grid">
-                <thead><tr><th>Key</th><th>Effective value</th><th>Seed default</th><th></th></tr></thead><tbody>
-                @foreach (var s in _settings!.Where(s => _filter.Length == 0 || s.Key.Contains(_filter, StringComparison.OrdinalIgnoreCase)))
-                {
-                    <tr><td><code>@s.Key</code></td>
-                    <td>@if (_editKey == s.Key) { <input @bind="_editValue" style="width:260px" /> } else { <span>@s.Effective</span> }</td>
-                    <td class="muted">@s.Default</td>
-                    <td style="white-space:nowrap">@if (_editKey == s.Key)
-                    {
-                        <input @bind="_editReason" placeholder="Reason (required)" style="width:200px" />
-                        <button class="icon" @onclick="SaveSetting">Save</button><button class="icon" @onclick="() => _editKey = null">Remove</button>
-                    } else { <button class="icon" @onclick="() => StartEdit(s)">Edit</button> }</td></tr>
-                }
-                </tbody></table></div>
+        <div class="impact">
+            <div class="label">Recent changes</div>
+            @if (_history.Count == 0) { <div class="muted">Nothing changed yet. Defaults are in use.</div> }
+            @foreach (var h in _history)
+            {
+                <div class="histrow"><b>@KeyLabel(h.SubjectId)</b><div class="muted small">@h.AtUtc.ToString("dd MMM HH:mm") · @h.Actor</div><div class="small">@h.Detail</div></div>
+            }
         </div>
     }
-    else if (_tab == "calendars")
+</SectionContent>
+
+<div class="page">
+    @if (Loading && _resolver is null) { <p class="muted">Loading…</p> }
+    else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
+    else if (IsRuleSection)
     {
+        var group = SettingCatalog.Groups.First(g => g.Id == _section);
+        <div class="page-head">
+            <div><h1>@group.Title</h1><p class="muted">@group.Summary</p></div>
+            <div class="actions scope">
+                <label for="scope">Applies to</label>
+                <select id="scope" value="@_scope" @onchange="OnScope">
+                    <option value="global">Everything</option>
+                    <option value="project">One project</option>
+                    <option value="team">One team</option>
+                </select>
+                @if (_scope == "project")
+                {
+                    <select aria-label="Project" value="@_scopeId" @onchange="OnScopeId"><option value="">Pick a project</option>@foreach (var p in _projects) { <option value="@p.Id">@p.ProjectNo</option> }</select>
+                }
+                else if (_scope == "team")
+                {
+                    <select aria-label="Team" value="@_scopeId" @onchange="OnScopeId"><option value="">Pick a team</option>@foreach (var t in _teams) { <option value="@t.Id">@t.Name</option> }</select>
+                }
+            </div>
+        </div>
+        @if (_scope != "global" && _scopeId.Length == 0) { <div class="empty">Pick a @_scope to see and change its own values. Anything you leave alone keeps the value from Everything.</div> }
+        else
+        {
+            <div class="plate setlist">
+                @foreach (var m in SettingCatalog.All.Where(m => m.Group == _section))
+                {
+                    var changed = _edit.ContainsKey(m.Key);
+                    var explicitHere = _explicit.Contains(m.Key);
+                    <div class="setrow @(changed ? "changed" : "")">
+                        <div class="setinfo">
+                            <label for="s-@m.Key">@m.Label @if (changed) { <span class="badge info">unsaved</span> } else if (explicitHere) { <span class="badge">changed from default</span> }</label>
+                            <div class="muted small">@m.Help</div>
+                            @if (_errors.TryGetValue(m.Key, out var err)) { <div class="small slip-pos">@err</div> }
+                        </div>
+                        <div class="setctl">@Control(m)</div>
+                        <div class="setmeta muted small">
+                            Default @DisplayDefault(m)
+                            @if (explicitHere || changed) { <button class="link" @onclick="() => Reset(m)">@(_scope == "global" ? "Reset to default" : "Use inherited")</button> }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else if (_section == "calendars")
+    {
+        <div class="page-head"><div><h1>Calendars and holidays</h1><p class="muted">Working days, hours and days off. The default calendar is used everywhere unless a project has its own.</p></div></div>
         @foreach (var c in _calendars)
         {
-            <div class="plate"><h2>@c.Calendar.Name @if (c.Calendar.IsDefault) { <Badge Kind="good">default</Badge> }</h2>
-                <p>@c.Calendar.HoursPerDay h/day · working days (0=Sun…6=Sat): <b>@c.Calendar.WorkDays</b></p>
+            <div class="plate">
+                <h2>@c.Calendar.Name @if (c.Calendar.IsDefault) { <Badge Kind="good">default</Badge> }</h2>
                 <div class="form-row">
-                    <div class="field"><label>Hours / day</label><input type="number" @bind="_calHours" style="width:80px" /></div>
-                    <div class="field"><label>Working days</label><input @bind="_calDays" style="width:140px" /></div>
-                    <button class="secondary" @onclick="() => SaveCalendar(c.Calendar)">Update</button>
+                    <div class="field"><label>Hours in a day</label><input type="number" step="0.25" @bind="_calHours" style="width:100px" /></div>
+                    <div class="field"><label>Working days</label>
+                        <div class="daypick">@foreach (var d in Days) { var dd = d; <button class="@(_calDays.Contains(dd.Value) ? "on" : "")" aria-pressed="@_calDays.Contains(dd.Value)" @onclick="() => ToggleCalDay(dd.Value)">@dd.Label</button> }</div></div>
+                    <button @onclick="() => SaveCalendar(c.Calendar)">Save calendar</button>
                 </div>
-                <h2 style="margin-top:12px">Holidays and working overrides</h2>
-                @foreach (var x in c.Exceptions.OrderBy(x => x.Date)) { <div>@x.Date.ToString("ddd dd MMM yyyy") <span class="muted">@(x.IsWorking ? "working day" : "holiday") @x.Note</span> <button class="icon" @onclick="() => RemoveHoliday(x.Id)">Remove</button></div> }
-                <div class="form-row" style="margin-top:8px">
+                <div class="label" style="margin-top:14px">Holidays and special working days</div>
+                @if (c.Exceptions.Count == 0) { <div class="muted">None.</div> }
+                <div class="holidays">
+                    @foreach (var x in c.Exceptions.OrderBy(x => x.Date))
+                    {
+                        <span class="holiday">@x.Date.ToString("ddd dd MMM yyyy") <span class="muted">@(x.IsWorking ? "working day" : "holiday") @x.Note</span> <button class="icon" aria-label="Remove" @onclick="() => RemoveHoliday(x.Id)">Remove</button></span>
+                    }
+                </div>
+                <div class="form-row">
                     <div class="field"><label>Date</label><input type="date" @bind="_holiday" /></div>
-                    <div class="field"><label>Note</label><input @bind="_holidayNote" /></div>
+                    <div class="field grow"><label>Name</label><input @bind="_holidayNote" placeholder="e.g. Diwali" /></div>
                     <button class="secondary" @onclick="() => AddHoliday(c.Calendar.Id)">Add holiday</button>
                 </div>
             </div>
         }
     }
-    else if (_tab == "vocabularies")
+    else if (_section == "vocab")
     {
+        <div class="page-head"><div><h1>Lists and vocabularies</h1><p class="muted">The choices offered in drop-downs. Hiding a value keeps old records intact.</p></div></div>
         <div class="grid-2">
-        @foreach (var (kind, items) in _vocab!)
-        {
-            <div class="plate"><h2>@kind</h2>
-                @foreach (var v in items) { <div style="@(v.IsActive ? "" : "opacity:.5")">@v.Value <button class="icon" @onclick="() => ToggleVocab(v.Id, !v.IsActive)">@(v.IsActive ? "Hide" : "Show")</button></div> }
-                <div class="form-row" style="margin-top:6px"><input @bind="_newVocab[kind]" placeholder="New value" /><button class="secondary" @onclick="() => AddVocab(kind)">Add</button></div>
-            </div>
-        }
-        </div>
-    }
-    else if (_tab == "fields")
-    {
-        <div class="plate"><h2>Custom fields</h2>
-            <table class="grid"><thead><tr><th>Entity</th><th>Key</th><th>Label</th><th>Type</th><th>Choices</th></tr></thead><tbody>
-            @foreach (var f in _fields) { <tr><td>@f.EntityKind</td><td><code>@f.Key</code></td><td>@f.Label</td><td>@f.Type</td><td class="muted">@f.Options</td></tr> }
-            </tbody></table>
-            <div class="form-row" style="margin-top:8px">
-                <div class="field"><label>Entity</label><select @bind="_fEntity"><option>person</option><option>project</option><option>task</option><option>host</option></select></div>
-                <div class="field"><label>Key</label><input @bind="_fKey" style="width:120px" /></div>
-                <div class="field"><label>Label</label><input @bind="_fLabel" /></div>
-                <div class="field"><label>Type</label><select @bind="_fType">@foreach (var t in Enum.GetValues<CustomFieldType>()) { <option value="@t">@t</option> }</select></div>
-                <div class="field"><label>Choices (a|b|c)</label><input @bind="_fOptions" /></div>
-                <button class="secondary" @onclick="AddField">Add field</button>
-            </div></div>
-    }
-    else if (_tab == "aliases")
-    {
-        <div class="plate"><h2>Name aliases</h2>
-            <table class="grid"><thead><tr><th>Alias</th><th>Source</th><th>Person</th></tr></thead><tbody>
-            @foreach (var a in _aliases.OrderBy(a => a.PersonId.HasValue).ThenBy(a => a.Alias))
+            @foreach (var (kind, items) in _vocab!)
             {
-                <tr><td><b>@a.Alias</b></td><td>@a.Source</td><td><select value="@(a.PersonId ?? 0)" @onchange="e => MapAlias(a.Id, e.Value)"><option value="0">(unresolved)</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select></td></tr>
+                <div class="plate"><h2>@kind</h2>
+                    <div class="chips" style="margin-bottom:10px">
+                        @foreach (var v in items) { <span class="vchip @(v.IsActive ? "" : "off")">@v.Value<button aria-label="@(v.IsActive ? "Hide" : "Show") @v.Value" @onclick="() => ToggleVocab(v.Id, !v.IsActive)">@(v.IsActive ? "Hide" : "Show")</button></span> }
+                    </div>
+                    <div class="form-row"><div class="field grow"><input aria-label="New value for @kind" @bind="_newVocab[kind]" placeholder="New value" /></div><button class="secondary" @onclick="() => AddVocab(kind)">Add</button></div>
+                </div>
             }
-            </tbody></table></div>
-    }
-    else if (_tab == "tokens")
-    {
-        <div class="plate"><h2>Access tokens</h2>
-            <table class="grid"><thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody>
-            @foreach (var t in _tokens) { <tr class="@(t.Revoked ? "muted" : "")"><td>@t.Name</td><td>@t.CreatedUtc.ToString("dd MMM yy")</td><td>@t.LastUsedUtc?.ToString("dd MMM yy HH:mm")</td><td>@if (t.Revoked) { <Badge>revoked</Badge> } else { <button class="icon" @onclick="() => Revoke(t.Id)">Revoke</button> }</td></tr> }
-            </tbody></table>
-            <div class="form-row" style="margin-top:8px"><div class="field"><label>New token for</label><input @bind="_tokenName" placeholder="e.g. snehil-cli" /></div><button @onclick="NewToken">Create token</button></div>
-            @if (_newToken is not null) { <div class="plate warn"><b>Copy this now — it is shown once:</b><br /><code>@_newToken</code></div> }
         </div>
     }
-    else if (_tab == "backups")
+    else if (_section == "fields")
     {
-        <div class="plate"><h2>Backups</h2>
-            <p class="muted"><code>@Options.BackupDirectory</code></p>
-            <button @onclick="Backup">Back up now</button>
-            <table class="grid" style="margin-top:8px"><thead><tr><th>File</th><th class="num">Size</th><th>Created</th></tr></thead><tbody>
-            @foreach (var b in _backups) { <tr><td>@b.Name</td><td class="num">@((b.SizeBytes / 1024.0 / 1024.0).ToString("0.0")) MB</td><td>@b.CreatedUtc.ToString("dd MMM yy HH:mm")</td></tr> }
-            </tbody></table></div>
+        <div class="page-head"><div><h1>Custom fields</h1><p class="muted">Extra columns of your own on people, projects, tasks and hosts.</p></div></div>
+        <div class="plate">
+            @if (_fields.Count == 0) { <div class="empty">No custom fields yet.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>Belongs to</th><th>Label</th><th>Key</th><th>Type</th><th>Choices</th></tr></thead><tbody>
+                @foreach (var f in _fields) { <tr><td>@f.EntityKind</td><td><b>@f.Label</b></td><td><code>@f.Key</code></td><td>@f.Type</td><td class="muted">@f.Options</td></tr> }
+                </tbody></table>
+            }
+        </div>
+        <div class="plate"><h2>Add a field</h2>
+            <div class="form-row">
+                <div class="field"><label>Belongs to</label><select @bind="_fEntity"><option>person</option><option>project</option><option>task</option><option>host</option></select></div>
+                <div class="field"><label>Label</label><input @bind="_fLabel" placeholder="Shown on screens" /></div>
+                <div class="field"><label>Key</label><input @bind="_fKey" style="width:140px" placeholder="short_name" /></div>
+                <div class="field"><label>Type</label><select @bind="_fType">@foreach (var t in Enum.GetValues<CustomFieldType>()) { <option value="@t">@t</option> }</select></div>
+                @if (_fType == CustomFieldType.Choice) { <div class="field grow"><label>Choices, separated by |</label><input @bind="_fOptions" placeholder="Red|Amber|Green" /></div> }
+                <button @onclick="AddField">Add field</button>
+            </div>
+        </div>
     }
-    else if (_tab == "audit")
+    else if (_section == "aliases")
     {
-        <div class="plate"><h2>Audit log</h2>
-            <div class="tablewrap" style="max-height:70vh;overflow:auto"><table class="grid"><thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Subject</th><th>Detail</th></tr></thead><tbody>
-            @foreach (var a in _audit) { <tr><td class="muted">@a.AtUtc.ToString("dd MMM HH:mm")</td><td>@a.Actor</td><td>@a.Action</td><td>@a.SubjectKind @a.SubjectId</td><td class="muted">@a.Detail</td></tr> }
-            </tbody></table></div></div>
+        <div class="page-head"><div><h1>Name aliases</h1><p class="muted">Workbooks that write initials or short names need a mapping to a person. Unresolved ones come first.</p></div></div>
+        <div class="plate">
+            @if (_aliases.Count == 0) { <div class="empty">No aliases recorded. They appear here when an import meets a name it cannot match.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>Alias</th><th>Source</th><th>Person</th></tr></thead><tbody>
+                @foreach (var a in _aliases.OrderBy(a => a.PersonId.HasValue).ThenBy(a => a.Alias))
+                {
+                    <tr><td><b>@a.Alias</b></td><td class="muted">@a.Source</td><td><select aria-label="Person for @a.Alias" value="@(a.PersonId ?? 0)" @onchange="e => MapAlias(a.Id, e.Value)"><option value="0">Unresolved</option>@foreach (var p in _people) { <option value="@p.Id">@p.Name</option> }</select></td></tr>
+                }
+                </tbody></table>
+            }
+        </div>
+    }
+    else if (_section == "tokens")
+    {
+        <div class="page-head"><div><h1>Access tokens</h1><p class="muted">One token per person or tool. The token's name is recorded on everything it changes.</p></div></div>
+        <div class="plate">
+            <table class="grid"><thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody>
+            @foreach (var t in _tokens) { <tr class="@(t.Revoked ? "muted" : "")"><td><b>@t.Name</b></td><td>@t.CreatedUtc.ToString("dd MMM yy")</td><td>@(t.LastUsedUtc?.ToString("dd MMM yy HH:mm") ?? "never")</td><td>@if (t.Revoked) { <Badge>revoked</Badge> } else { <button class="icon" @onclick="() => Revoke(t.Id)">Revoke</button> }</td></tr> }
+            </tbody></table>
+        </div>
+        <div class="plate"><h2>Create a token</h2>
+            <div class="form-row"><div class="field"><label>For</label><input @bind="_tokenName" placeholder="e.g. snehil-cli" /></div><button @onclick="NewToken">Create token</button></div>
+            @if (_newToken is not null) { <div class="plate warn"><b>Copy this now. It is shown once.</b><br /><code>@_newToken</code></div> }
+        </div>
+    }
+    else if (_section == "backups")
+    {
+        <div class="page-head"><div><h1>Backups and data</h1><p class="muted">Where the database lives and the backups taken of it.</p></div><div class="actions"><button @onclick="Backup">Back up now</button></div></div>
+        <div class="plate"><h2>Location</h2>
+            <div class="packrow"><span>Database</span><code>@Options.DatabasePath</code></div>
+            <div class="packrow"><span>Size</span><span>@(File.Exists(Options.DatabasePath) ? (new FileInfo(Options.DatabasePath).Length / 1024.0 / 1024.0).ToString("0.0") + " MB" : "unknown")</span></div>
+            <div class="packrow"><span>Backups</span><code>@Options.BackupDirectory</code></div>
+        </div>
+        <div class="plate"><h2>Backup files</h2>
+            @if (_backups.Count == 0) { <div class="empty">No backups yet.</div> }
+            else
+            {
+                <table class="grid"><thead><tr><th>File</th><th class="num">Size</th><th>Created</th></tr></thead><tbody>
+                @foreach (var b in _backups) { <tr><td>@b.Name</td><td class="num">@((b.SizeBytes / 1024.0 / 1024.0).ToString("0.0")) MB</td><td>@b.CreatedUtc.ToString("dd MMM yy HH:mm")</td></tr> }
+                </tbody></table>
+            }
+        </div>
+    }
+    else if (_section == "audit")
+    {
+        <div class="page-head"><div><h1>Audit log</h1><p class="muted">The latest 300 changes, who made them and when.</p></div>
+            <div class="actions"><input type="search" placeholder="Filter by person or action" aria-label="Filter audit log" @bind="_auditFilter" @bind:event="oninput" style="width:260px" /></div></div>
+        <div class="plate"><div class="tablewrap" style="max-height:72vh;overflow:auto"><table class="grid"><thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Subject</th><th>Detail</th></tr></thead><tbody>
+            @foreach (var a in _audit.Where(a => _auditFilter.Length == 0 || a.Actor.Contains(_auditFilter, StringComparison.OrdinalIgnoreCase) || a.Action.Contains(_auditFilter, StringComparison.OrdinalIgnoreCase) || (a.Detail ?? "").Contains(_auditFilter, StringComparison.OrdinalIgnoreCase)))
+            { <tr><td class="muted">@a.AtUtc.ToString("dd MMM HH:mm")</td><td>@a.Actor</td><td>@a.Action</td><td>@a.SubjectKind @a.SubjectId</td><td class="muted">@a.Detail</td></tr> }
+        </tbody></table></div></div>
+    }
+
+    @if (IsRuleSection && _edit.Count > 0)
+    {
+        <div class="savebar" role="region" aria-label="Unsaved changes">
+            <span><b>@_edit.Count</b> unsaved change@(_edit.Count == 1 ? "" : "s")</span>
+            <div class="field grow"><input aria-label="Reason for the change" placeholder="Why are you changing this? (required)" @bind="_reason" @bind:event="oninput" /></div>
+            <label class="inline">From <input type="date" aria-label="Effective from" @bind="_from" /></label>
+            <button class="secondary" @onclick="Discard">Discard</button>
+            <button disabled="@(_errors.Count > 0 || string.IsNullOrWhiteSpace(_reason))" @onclick="SaveAll">Save changes</button>
+        </div>
     }
 </div>
 
 @code {
-    private record SettingRowView(string Key, string? Effective, string Default);
-    private string _tab = "settings", _filter = "";
-    private List<SettingRowView>? _settings;
-    private string? _editKey; private string _editValue = "", _editReason = "";
+    private static readonly (int Value, string Label)[] Days = [(1, "Mon"), (2, "Tue"), (3, "Wed"), (4, "Thu"), (5, "Fri"), (6, "Sat"), (0, "Sun")];
+
+    private string _section = "time", _scope = "global", _scopeId = "", _reason = "", _auditFilter = "";
+    private DateTime _from = DateTime.Today;
+    private SettingsResolver? _resolver;
+    private readonly Dictionary<string, string> _edit = [];
+    private readonly Dictionary<string, string> _errors = [];
+    private HashSet<string> _explicit = [];
+    private List<SettingRow> _rows = [];
+    private List<ProjectSummary> _projects = [];
+    private List<(int Id, string Name)> _teams = [];
     private IReadOnlyList<(WorkCalendarDef Calendar, IReadOnlyList<CalendarException> Exceptions)> _calendars = [];
-    private decimal _calHours = 8; private string _calDays = "1,2,3,4,5,6"; private DateTime _holiday = DateTime.Today; private string _holidayNote = "";
+    private decimal _calHours = 8; private HashSet<int> _calDays = [1, 2, 3, 4, 5, 6]; private DateTime _holiday = DateTime.Today; private string _holidayNote = "";
     private Dictionary<string, IReadOnlyList<VocabularyItem>>? _vocab; private Dictionary<string, string> _newVocab = [];
     private IReadOnlyList<CustomFieldDefinition> _fields = [];
     private string _fEntity = "person", _fKey = "", _fLabel = "", _fOptions = ""; private CustomFieldType _fType;
@@ -147,15 +256,22 @@
     private List<(int Id, string Name, DateTime CreatedUtc, DateTime? LastUsedUtc, bool Revoked)> _tokens = [];
     private string _tokenName = ""; private string? _newToken;
     private IReadOnlyList<BackupFile> _backups = [];
-    private List<AuditEvent> _audit = [];
+    private List<AuditEvent> _audit = [], _history = [];
+
+    private bool IsRuleSection => SettingCatalog.Groups.Any(g => g.Id == _section);
 
     protected override async Task LoadAsync()
     {
-        var asOf = AsOf;
-        var resolver = await Q(sp => sp.GetRequiredService<SettingsStore>().LoadResolverAsync());
-        _settings = SettingDefaults.All.OrderBy(kv => kv.Key).Select(kv => new SettingRowView(kv.Key, resolver.ResolveJson(kv.Key, SettingsResolver.Chain(), asOf), kv.Value)).ToList();
+        _resolver = await Q(sp => sp.GetRequiredService<SettingsStore>().LoadResolverAsync());
+        _rows = await Q(sp => sp.GetRequiredService<EosDbContext>().Settings.AsNoTracking().ToListAsync());
+        _projects = (await Q(sp => sp.GetRequiredService<ProjectService>().ListAsync(withPlanOnly: true))).Where(p => p.HasPlan).ToList();
+        _teams = (await Q(sp => sp.GetRequiredService<PeopleService>().ListTeamsAsync())).Select(t => (t.Id, t.Name)).ToList();
         _calendars = await Q(sp => sp.GetRequiredService<AdminService>().CalendarsAsync());
-        if (_calendars.Count > 0) { _calHours = _calendars[0].Calendar.HoursPerDay; _calDays = _calendars[0].Calendar.WorkDays; }
+        if (_calendars.Count > 0)
+        {
+            _calHours = _calendars[0].Calendar.HoursPerDay;
+            _calDays = _calendars[0].Calendar.WorkDays.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet();
+        }
         var vocab = await Q(sp => sp.GetRequiredService<AdminService>().VocabulariesAsync());
         _vocab = vocab.ToDictionary(kv => kv.Key, kv => kv.Value);
         foreach (var k in _vocab.Keys) _newVocab.TryAdd(k, "");
@@ -164,19 +280,161 @@
         _people = (await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }).ToListAsync())).Select(p => (p.Id, p.FullName)).ToList();
         _tokens = (await Q(sp => sp.GetRequiredService<TokenService>().ListAsync())).ToList();
         _backups = BackupService.List(Options.BackupDirectory);
-        _audit = await Q(sp => sp.GetRequiredService<EosDbContext>().AuditEvents.AsNoTracking().OrderByDescending(a => a.Id).Take(200).ToListAsync());
+        _audit = await Q(sp => sp.GetRequiredService<EosDbContext>().AuditEvents.AsNoTracking().OrderByDescending(a => a.Id).Take(300).ToListAsync());
+        _history = _audit.Where(a => a.Action.StartsWith("setting.")).Take(12).ToList();
+        RefreshExplicit();
     }
 
-    private void StartEdit(SettingRowView s) { _editKey = s.Key; _editValue = s.Effective ?? s.Default; _editReason = ""; }
-    private async Task SaveSetting()
+    private SettingScope ScopeObj() => _scope switch
     {
-        var key = _editKey!; var value = _editValue; var reason = _editReason;
-        await Act((sp, a) => sp.GetRequiredService<SettingsStore>().SetAsync(key, new SettingScope(SettingScopeKind.Global), value, AsOf, a, reason), "Setting saved.");
-        _editKey = null;
+        "project" when _scopeId.Length > 0 => SettingScope.Project(_scopeId),
+        "team" when _scopeId.Length > 0 => SettingScope.Team(_scopeId),
+        _ => SettingScope.Global,
+    };
+
+    private IReadOnlyList<SettingScope> Chain() => _scope switch
+    {
+        "project" when _scopeId.Length > 0 => SettingsResolver.Chain(projectId: _scopeId),
+        "team" when _scopeId.Length > 0 => SettingsResolver.Chain(teamId: _scopeId),
+        _ => SettingsResolver.Chain(),
+    };
+
+    private void RefreshExplicit()
+    {
+        var s = ScopeObj();
+        _explicit = _rows.Where(r => r.ScopeKind == (int)s.Kind && r.ScopeId == (s.Id ?? "") && r.EffectiveFrom <= AsOf && (r.EffectiveTo is null || r.EffectiveTo >= AsOf)).Select(r => r.Key).ToHashSet();
     }
+
+    private void Go(string section) { _section = section; _newToken = null; }
+    private void OnScope(ChangeEventArgs e) { _scope = e.Value?.ToString() ?? "global"; _scopeId = ""; _edit.Clear(); _errors.Clear(); RefreshExplicit(); }
+    private void OnScopeId(ChangeEventArgs e) { _scopeId = e.Value?.ToString() ?? ""; _edit.Clear(); _errors.Clear(); RefreshExplicit(); }
+    private int Pending(string group) => _edit.Keys.Count(k => SettingCatalog.Find(k)?.Group == group);
+    private string KeyLabel(string? subject) => subject is null ? "" : SettingCatalog.Find(subject.Split('@')[0])?.Label ?? subject;
+
+    private string Json(SettingMeta m) => _edit.TryGetValue(m.Key, out var v) ? v : _resolver!.ResolveJson(m.Key, Chain(), AsOf) ?? SettingDefaults.All[m.Key];
+
+    private static string Inv(decimal d) => d.ToString("0.####", CultureInfo.InvariantCulture);
+
+    private string Display(SettingMeta m, string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        return m.Kind switch
+        {
+            SettingKind.Percent => Inv(root.GetDecimal() * 100),
+            SettingKind.Number or SettingKind.Integer => Inv(root.GetDecimal()),
+            SettingKind.Choice => root.GetString() ?? "",
+            _ => "",
+        };
+    }
+
+    private string DisplayDefault(SettingMeta m)
+    {
+        var json = SettingDefaults.All[m.Key];
+        using var doc = JsonDocument.Parse(json);
+        return m.Kind switch
+        {
+            SettingKind.Toggle => doc.RootElement.GetBoolean() ? "on" : "off",
+            SettingKind.Choice => m.Options!.First(o => o.Value == doc.RootElement.GetString()).Label,
+            SettingKind.Days => string.Join(" ", doc.RootElement.EnumerateArray().Select(e => Days.First(d => d.Value == e.GetInt32()).Label)),
+            _ => Display(m, json) + (m.Unit is null ? "" : " " + m.Unit),
+        };
+    }
+
+    private void Set(SettingMeta m, string json)
+    {
+        var stored = _resolver!.ResolveJson(m.Key, Chain(), AsOf) ?? SettingDefaults.All[m.Key];
+        if (Normal(json) == Normal(stored)) _edit.Remove(m.Key); else _edit[m.Key] = json;
+        if (SettingCatalog.Validate(m.Key, json) is { } problem) _errors[m.Key] = problem; else _errors.Remove(m.Key);
+    }
+
+    private static string Normal(string json) { using var d = JsonDocument.Parse(json); return JsonSerializer.Serialize(d.RootElement); }
+
+    private void SetNumber(SettingMeta m, object? raw)
+    {
+        if (!decimal.TryParse(raw?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) { _errors[m.Key] = "Enter a number."; return; }
+        var value = m.Kind == SettingKind.Percent ? v / 100m : v;
+        Set(m, value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private void ToggleDay(SettingMeta m, int day)
+    {
+        var current = JsonSerializer.Deserialize<List<int>>(Json(m)) ?? [];
+        if (!current.Remove(day)) current.Add(day);
+        Set(m, JsonSerializer.Serialize(current.OrderBy(d => d == 0 ? 7 : d)));
+    }
+
+    private RenderFragment Control(SettingMeta m) => __b =>
+    {
+        var json = Json(m);
+        switch (m.Kind)
+        {
+            case SettingKind.Number or SettingKind.Integer or SettingKind.Percent:
+                __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "numctl");
+                __b.OpenElement(2, "input"); __b.AddAttribute(3, "id", "s-" + m.Key); __b.AddAttribute(4, "type", "number"); __b.AddAttribute(5, "step", m.Kind == SettingKind.Integer ? "1" : "any");
+                __b.AddAttribute(6, "value", Display(m, json));
+                __b.AddAttribute(7, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => SetNumber(m, e.Value)));
+                __b.CloseElement();
+                if (m.Unit is not null) { __b.OpenElement(8, "span"); __b.AddAttribute(9, "class", "unit"); __b.AddContent(10, m.Unit); __b.CloseElement(); }
+                __b.CloseElement();
+                break;
+            case SettingKind.Toggle:
+                var on = JsonDocument.Parse(json).RootElement.GetBoolean();
+                __b.OpenElement(0, "button"); __b.AddAttribute(1, "id", "s-" + m.Key); __b.AddAttribute(2, "class", "toggle-sw " + (on ? "on" : "")); __b.AddAttribute(3, "role", "switch"); __b.AddAttribute(4, "aria-checked", on ? "true" : "false");
+                __b.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => Set(m, on ? "false" : "true")));
+                __b.OpenElement(6, "i"); __b.CloseElement();
+                __b.OpenElement(7, "span"); __b.AddContent(8, on ? "On" : "Off"); __b.CloseElement();
+                __b.CloseElement();
+                break;
+            case SettingKind.Choice:
+                var picked = JsonDocument.Parse(json).RootElement.GetString();
+                __b.OpenElement(0, "select"); __b.AddAttribute(1, "id", "s-" + m.Key);
+                __b.AddAttribute(2, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => Set(m, JsonSerializer.Serialize(e.Value?.ToString() ?? ""))));
+                foreach (var o in m.Options!)
+                {
+                    __b.OpenElement(3, "option"); __b.AddAttribute(4, "value", o.Value); __b.AddAttribute(5, "selected", o.Value == picked); __b.AddContent(6, o.Label); __b.CloseElement();
+                }
+                __b.CloseElement();
+                break;
+            case SettingKind.Days:
+                var set = JsonSerializer.Deserialize<List<int>>(json) ?? [];
+                __b.OpenElement(0, "div"); __b.AddAttribute(1, "class", "daypick"); __b.AddAttribute(2, "id", "s-" + m.Key);
+                foreach (var d in Days)
+                {
+                    var day = d.Value;
+                    __b.OpenElement(3, "button"); __b.AddAttribute(4, "class", set.Contains(day) ? "on" : ""); __b.AddAttribute(5, "aria-pressed", set.Contains(day) ? "true" : "false");
+                    __b.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleDay(m, day))); __b.AddContent(7, d.Label); __b.CloseElement();
+                }
+                __b.CloseElement();
+                break;
+        }
+    };
+
+    private void Discard() { _edit.Clear(); _errors.Clear(); _reason = ""; }
+
+    private async Task SaveAll()
+    {
+        var edits = _edit.ToList(); var scope = ScopeObj(); var reason = _reason.Trim(); var from = DateOnly.FromDateTime(_from);
+        await Act(async (sp, actor) =>
+        {
+            var store = sp.GetRequiredService<SettingsStore>();
+            foreach (var (key, json) in edits) await store.SetAsync(key, scope, json, from, actor, reason);
+        }, $"Saved {edits.Count} setting(s).");
+        _edit.Clear(); _errors.Clear(); _reason = "";
+    }
+
+    private async Task Reset(SettingMeta m)
+    {
+        if (!await Confirm($"Go back to {(_scope == "global" ? "the default" : "the inherited value")} for “{m.Label}”?")) return;
+        _edit.Remove(m.Key); _errors.Remove(m.Key);
+        var scope = ScopeObj(); var from = DateOnly.FromDateTime(_from);
+        await Act((sp, a) => sp.GetRequiredService<SettingsStore>().ClearAsync(m.Key, scope, from, a, "reset from the settings screen"), "Reset.");
+    }
+
+    private void ToggleCalDay(int day) { if (!_calDays.Remove(day)) _calDays.Add(day); }
 
     private Task SaveCalendar(WorkCalendarDef c) => Act((sp, a) => sp.GetRequiredService<AdminService>().SaveCalendarAsync(
-        new WorkCalendarDef { Id = c.Id, Name = c.Name, HoursPerDay = _calHours, WorkDays = _calDays, IsDefault = c.IsDefault }, a), "Calendar saved.");
+        new WorkCalendarDef { Id = c.Id, Name = c.Name, HoursPerDay = _calHours, WorkDays = string.Join(',', _calDays.OrderBy(d => d == 0 ? 7 : d)), IsDefault = c.IsDefault }, a), "Calendar saved.");
     private Task AddHoliday(int id) => Act((sp, a) => sp.GetRequiredService<AdminService>().SetHolidayAsync(id, DateOnly.FromDateTime(_holiday), false, _holidayNote, a), "Holiday added.");
     private Task RemoveHoliday(int id) => Act((sp, a) => sp.GetRequiredService<AdminService>().RemoveHolidayAsync(id, a));
 

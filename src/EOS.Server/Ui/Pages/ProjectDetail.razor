@@ -30,7 +30,7 @@
         @foreach (var w in _plan.Warnings) { <div class="plate warn">@w</div> }
 
         <div class="tabs">
-            @foreach (var t in new[] { "plan", "gantt", "team", "environments", "baseline", "details" })
+            @foreach (var t in new[] { "plan", "gantt", "team", "actuals", "environments", "baseline", "details" })
             {
                 <button class="tab @(_tab == t ? "on" : "")" @onclick="() => _tab = t">@(char.ToUpper(t[0]) + t[1..])</button>
             }
@@ -143,6 +143,24 @@
                 }
             </div>
         }
+        else if (_tab == "actuals")
+        {
+            @if (_actuals is null || _actuals.TotalHours == 0) { <div class="empty">No timesheet hours are recorded against @_plan.ProjectNo.</div> }
+            else
+            {
+                var planned = _plan.Tasks.Where(t => !t.IsSummary).Sum(t => t.WorkHours);
+                <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+                    <div class="kpi"><div class="v">@_actuals.TotalHours.ToString("N0")</div><div class="l">Hours booked</div></div>
+                    <div class="kpi"><div class="v">@planned.ToString("N0")</div><div class="l">Hours in the plan</div></div>
+                    <div class="kpi @(_actuals.TotalHours > planned && planned > 0 ? "bad" : "")"><div class="v">@(planned == 0 ? "–" : ((_actuals.TotalHours / planned) * 100).ToString("0") + "%")</div><div class="l">Booked against plan</div></div>
+                </div>
+                <div class="grid-3">
+                    <div class="plate"><h2>By engineer</h2>@foreach (var b in _actuals.ByPerson.Take(12)) { <div class="packrow"><span>@b.Label</span><span class="muted">@b.Hours.ToString("N0") h</span></div> }</div>
+                    <div class="plate"><h2>By phase</h2>@foreach (var b in _actuals.ByPhase.Take(12)) { <div class="packrow"><span>@b.Label</span><span class="muted">@b.Hours.ToString("N0") h</span></div> }</div>
+                    <div class="plate"><h2>By month</h2>@foreach (var m in _actuals.ByMonth.TakeLast(12)) { <div class="packrow"><span>@m.Month.ToString("MMM yyyy")</span><span class="muted">@m.Hours.ToString("N0") h</span></div> }</div>
+                </div>
+            }
+        }
         else if (_tab == "environments")
         {
             <div class="plate">
@@ -208,6 +226,7 @@
     [Parameter] public int Id { get; set; }
 
     private EOS.Domain.Projects.Project? _proj;
+    private EOS.Infrastructure.People.ProjectActuals? _actuals;
     private PlanView? _plan;
     private ProjectHealthView? _health;
     private BaselineVariance? _variance;
@@ -235,6 +254,7 @@
         _health = await Q(async sp => _plan.Tasks.Count == 0 ? null : await sp.GetRequiredService<HealthService>().GetAsync(Id, asOf));
         _hosts = await Q(sp => sp.GetRequiredService<HostService>().ListAsync(Id));
         _proj = await Q(sp => sp.GetRequiredService<EosDbContext>().Projects.AsNoTracking().SingleAsync(p => p.Id == Id));
+        _actuals = await Q(sp => sp.GetRequiredService<EOS.Infrastructure.People.TimesheetService>().ProjectAsync(_plan!.ProjectNo));
         _people = await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().OrderBy(p => p.FullName).Select(p => new { p.Id, Name = p.FullName }).ToListAsync())
             is { } list ? list.Select(p => (p.Id, p.Name)).ToList() : [];
         try { _variance = await Q(sp => sp.GetRequiredService<PlanService>().GetBaselineVarianceAsync(Id)); } catch (PlanException) { _variance = null; }

@@ -51,6 +51,38 @@
             </div>
         </div>
 
+        @if (_ts is not null && _ts.TotalHours > 0)
+        {
+            <div class="plate" style="margin-top:16px">
+                <h2>Timesheets, last 6 months</h2>
+                <div class="tsgrid">
+                    <div><div class="label">Recorded</div><div class="tsv">@_ts.TotalHours.ToString("N0") h</div><div class="muted small">@_ts.DaysWorked days with entries</div></div>
+                    <div><div class="label">On projects</div><div class="tsv">@_ts.ProjectHours.ToString("N0") h</div><div class="muted small">@_ts.InternalHours.ToString("N0") h internal, support or training</div></div>
+                    <div><div class="label">Project hours per day</div><div class="tsv">@_ts.ProductiveHoursPerDay.ToString("0.0")</div>
+                        @if (_ts.SuggestedAvailability is { } sug)
+                        {
+                            <div class="muted small">Availability now @((person.AvailabilityFraction * 100).ToString("0"))%, timesheets suggest @((sug * 100).ToString("0"))%</div>
+                            @if (Math.Abs(sug - person.AvailabilityFraction) >= 0.05m) { <button class="icon" @onclick="ApplyAvailability">Use @((sug * 100).ToString("0"))%</button> }
+                        }
+                        else { <div class="muted small">Entries on @_ts.DaysWorked days; too few to suggest an availability.</div> }</div>
+                </div>
+                <div class="months" aria-label="Hours per month, last 12 months">
+                    @{ var peak = Math.Max(1m, _ts.Months.Max(m => m.Hours)); }
+                    @foreach (var m in _ts.Months)
+                    {
+                        <div class="mcol" title="@m.Month.ToString("MMM yyyy"): @m.Hours.ToString("0") h"><i style="height:@((m.Hours / peak * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%"></i><span>@m.Month.ToString("MMM")</span></div>
+                    }
+                </div>
+                <div class="grid-3" style="margin-top:14px">
+                    <div><div class="label">Top projects</div>@foreach (var b in _ts.Projects) { <div class="packrow"><span>@b.Label</span><span class="muted">@b.Hours.ToString("0") h</span></div> }</div>
+                    <div><div class="label">Top activities</div>@foreach (var b in _ts.Activities) { <div class="packrow"><span>@b.Label</span><span class="muted">@b.Hours.ToString("0") h</span></div> }</div>
+                    <div><div class="label">Skill evidence, all time</div>
+                        @if (_ts.Skills.Count == 0) { <div class="muted">No skill names appear in this person's timesheets.</div> }
+                        @foreach (var s in _ts.Skills) { <div class="packrow"><span>@s.Skill</span><span class="muted">@s.Hours.ToString("0") h · rated @s.CurrentRating</span></div> }</div>
+                </div>
+            </div>
+        }
+
         <div class="plate" style="margin-top:16px">
             <h2>Capacity · next months</h2>
             <table class="grid"><thead><tr><th>Month</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Allocated</th><th class="num">Load</th><th>By project</th></tr></thead><tbody>
@@ -75,6 +107,9 @@
 @code {
     [Parameter] public int Id { get; set; }
     private PersonProfile? _p;
+    private PersonTimesheetStats? _ts;
+
+    private Task ApplyAvailability() => Act((sp, a) => sp.GetRequiredService<PeopleService>().UpdateAsync(Id, new PersonPatch { AvailabilityFraction = _ts!.SuggestedAvailability ?? _p!.Person.AvailabilityFraction }, a), "Availability updated.");
     private List<(DateTime AtUtc, string Skill, int? OldRating, int? NewRating, string ChangedBy, string? Reason)> _history = [];
     private int _rateSkill, _rating, _levels = 5; private string _reason = "";
     private DateTime _leaveFrom = DateTime.Today, _leaveTo = DateTime.Today;
@@ -83,6 +118,7 @@
     {
         var asOf = AsOf;
         _p = await Q(sp => sp.GetRequiredService<PeopleService>().GetProfileAsync(Id, asOf));
+        _ts = await Q(sp => sp.GetRequiredService<TimesheetService>().PersonAsync(Id, asOf));
         var rows = await Q(sp => sp.GetRequiredService<EosDbContext>().SkillTransactions.AsNoTracking().Where(t => t.PersonId == Id)
             .Join(sp.GetRequiredService<EosDbContext>().Skills, t => t.SkillId, s => s.Id, (t, s) => new { t.AtUtc, s.Name, t.OldRating, t.NewRating, t.ChangedBy, t.Reason })
             .OrderByDescending(x => x.AtUtc).Take(50).ToListAsync());
