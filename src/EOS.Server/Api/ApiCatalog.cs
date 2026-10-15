@@ -3,11 +3,6 @@ using Microsoft.AspNetCore.Routing.Patterns;
 
 namespace EOS.Server.Api;
 
-/// <summary>
-/// A small OpenAPI 3.0 document generated from the endpoint table (paths, methods, route/query parameters, tags). It is enough for
-/// agents and generated clients to discover every endpoint; request-body schemas are documented by the typed bodies in the source.
-/// (The stock OpenAPI packages currently carry advisories, so none is used.)
-/// </summary>
 public static class ApiCatalog
 {
     public static object Build(EndpointDataSource source, string version)

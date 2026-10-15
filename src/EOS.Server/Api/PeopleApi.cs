@@ -24,7 +24,6 @@ public sealed record AssignDoubtBody(int MentorPersonId, DateOnly? On);
 public sealed record ResolveDoubtBody(DoubtResult Result, string? Remarks, DateOnly? On);
 public sealed record FieldValueBody(string? Value);
 
-/// <summary>People, teams, leave, manual allocations, skills (manual ratings only), training and doubts.</summary>
 public static class PeopleApi
 {
     public static void Map(RouteGroupBuilder api)
@@ -56,7 +55,6 @@ public static class PeopleApi
             await svc.SetAllocationAsync(new Allocation { PersonId = b.PersonId, ProjectId = b.ProjectId, Month = b.Month, Hours = b.Hours, Status = b.Status ?? "Confirmed", Role = b.Role ?? "Engineer", DemandId = b.DemandId }, http.Actor()));
         api.MapDelete("/allocations/{id:int}", async (HttpContext http, PeopleService svc, int id) => { await svc.RemoveAllocationAsync(id, http.Actor()); return Results.NoContent(); });
 
-        // ---- skills: ratings change only through these explicit, audited human actions (spec §9.5) ----
         api.MapGet("/skills", async (EosDbContext db) => await db.Skills.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync());
         api.MapGet("/skill-matrix", async (EosDbContext db) =>
         {
@@ -86,7 +84,6 @@ public static class PeopleApi
         api.MapGet("/people/{personId:int}/skills/{skillId:int}/history", async (EosDbContext db, int personId, int skillId) =>
             await db.SkillTransactions.AsNoTracking().Where(t => t.PersonId == personId && t.SkillId == skillId).OrderByDescending(t => t.AtUtc).ToListAsync());
 
-        // ---- training ----
         api.MapGet("/training/summary", async (TrainingService svc, DateOnly? asOf) => await svc.SummaryAsync(asOf ?? PlanningApi.Today));
         api.MapGet("/training/coverage", async (TrainingService svc, int? take) => await svc.CoverageAsync(take ?? 40));
         api.MapGet("/modules", async (EosDbContext db) => await db.Modules.AsNoTracking().OrderBy(m => m.SortOrder).ToListAsync());
@@ -104,7 +101,6 @@ public static class PeopleApi
         api.MapPost("/doubts/{id:int}/assign", async (HttpContext http, TrainingService svc, int id, AssignDoubtBody b) => { await svc.AssignAsync(id, b.MentorPersonId, b.On ?? PlanningApi.Today, http.Actor()); return Results.NoContent(); });
         api.MapPost("/doubts/{id:int}/resolve", async (HttpContext http, TrainingService svc, int id, ResolveDoubtBody b) => { await svc.ResolveAsync(id, b.Result, b.On ?? PlanningApi.Today, b.Remarks, http.Actor()); return Results.NoContent(); });
 
-        // ---- custom fields ----
         api.MapGet("/custom-fields", async (AdminService svc, string? entityKind) => await svc.FieldsAsync(entityKind));
         api.MapPost("/custom-fields", async (HttpContext http, AdminService svc, EOS.Domain.Configuration.CustomFieldDefinition f) => await svc.AddFieldAsync(f, http.Actor()));
         api.MapGet("/custom-fields/{kind}/{id:int}", async (AdminService svc, string kind, int id) => await svc.FieldValuesAsync(kind, id));

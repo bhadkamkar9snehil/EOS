@@ -22,7 +22,6 @@ public sealed record HolidayBody(DateOnly Date, bool IsWorking, string? Note);
 public sealed record HostLinkBody(int ProjectId, int HostId, string Role);
 public sealed record TokenBody(string Name);
 
-/// <summary>Dashboard, alerts, hosts, reports, imports, settings, vocabularies, calendars, backups, audit and tokens.</summary>
 public static class OpsApi
 {
     public static void Map(RouteGroupBuilder api)
@@ -30,7 +29,6 @@ public static class OpsApi
         api.MapGet("/dashboard", async (DashboardService svc, DateOnly? asOf) => await svc.GetAsync(asOf ?? PlanningApi.Today));
         api.MapGet("/alerts", async (AlertService svc, DateOnly? asOf) => await svc.EvaluateAsync(asOf ?? PlanningApi.Today));
 
-        // ---- infrastructure ----
         api.MapGet("/hosts", async (HostService svc, int? projectId, bool? includeRemoved) => await svc.ListAsync(projectId, includeRemoved ?? false));
         api.MapGet("/hosts/reclaim", async (HostService svc) => await svc.ReclaimListAsync());
         api.MapGet("/hosted-systems", async (HostService svc, int? projectId) => await svc.SystemsAsync(projectId));
@@ -38,7 +36,6 @@ public static class OpsApi
         api.MapPost("/host-links", async (HttpContext http, HostService svc, HostLinkBody b) => { await svc.LinkAsync(b.ProjectId, b.HostId, b.Role, http.Actor()); return Results.NoContent(); });
         api.MapDelete("/host-links", async (HttpContext http, HostService svc, int projectId, int hostId, string role) => { await svc.UnlinkAsync(projectId, hostId, role, http.Actor()); return Results.NoContent(); });
 
-        // ---- reports ----
         api.MapGet("/reports", () => ReportService.Catalogue);
         api.MapGet("/reports/{id}", async (ReportService svc, string id, string? format, DateOnly? asOf, DateOnly? from, DateOnly? to, int? projectId, int? teamId, int? months) =>
         {
@@ -51,7 +48,6 @@ public static class OpsApi
             };
         });
 
-        // ---- imports: upload a workbook; preview unless commit=true (spec §24) ----
         api.MapPost("/imports/{kind}", async (HttpContext http, EosDbContext db, string kind, IFormFile file, bool? commit) =>
         {
             var temp = Path.Combine(Path.GetTempPath(), $"eos-import-{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}");
@@ -74,7 +70,6 @@ public static class OpsApi
             finally { if (File.Exists(temp)) File.Delete(temp); }
         }).DisableAntiforgery();
 
-        // ---- settings, vocabularies, calendars ----
         api.MapGet("/settings", async (SettingsStore store, EosDbContext db) =>
         {
             var overrides = await db.Settings.AsNoTracking().OrderBy(s => s.Key).ThenBy(s => s.EffectiveFrom).ToListAsync();
@@ -100,7 +95,6 @@ public static class OpsApi
         api.MapPut("/calendars/{id:int}/exceptions", async (HttpContext http, AdminService svc, int id, HolidayBody b) => { await svc.SetHolidayAsync(id, b.Date, b.IsWorking, b.Note, http.Actor()); return Results.NoContent(); });
         api.MapDelete("/calendar-exceptions/{id:int}", async (HttpContext http, AdminService svc, int id) => { await svc.RemoveHolidayAsync(id, http.Actor()); return Results.NoContent(); });
 
-        // ---- operations ----
         api.MapPost("/backups", async (HttpContext http, BackupService svc, EosOptions o) => await svc.CreateAsync(o.BackupDirectory, http.Actor()));
         api.MapGet("/backups", (EosOptions o) => BackupService.List(o.BackupDirectory));
         api.MapGet("/audit", async (EosDbContext db, int? take, string? actor, string? action) =>

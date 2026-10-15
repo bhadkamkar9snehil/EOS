@@ -1,10 +1,5 @@
 namespace EOS.Scheduling;
 
-/// <summary>
-/// A configurable working calendar: hours per working day, which weekdays work, and holidays.
-/// Nothing here is hard-coded; the factory helpers are conveniences for seed data and tests.
-/// Day-granular (spec §14.3 whole-day rule).
-/// </summary>
 public sealed class WorkCalendar
 {
     private const int SearchLimitDays = 3660;
@@ -31,7 +26,6 @@ public sealed class WorkCalendar
     public static WorkCalendar MondayToFriday(decimal hoursPerDay = 8m) => new(hoursPerDay,
         [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday]);
 
-    /// <summary>A holiday wins over a working override; an override makes a normally non-working day work.</summary>
     public bool IsWorkingDay(DateOnly date) =>
         !_holidays.Contains(date) && (_works[(int)date.DayOfWeek] || _workingOverrides.Contains(date));
 
@@ -53,7 +47,6 @@ public sealed class WorkCalendar
 
     public DateOnly Before(DateOnly date) => OnOrBefore(date.AddDays(-1));
 
-    /// <summary>Moves <paramref name="count"/> working days from a working day (negative = backwards).</summary>
     public DateOnly AddWorkingDays(DateOnly workingDay, int count)
     {
         var d = workingDay;
@@ -62,7 +55,6 @@ public sealed class WorkCalendar
         return d;
     }
 
-    /// <summary>Signed count of working days in (from, to]: positive when <paramref name="to"/> is later.</summary>
     public int WorkingDaysBetween(DateOnly from, DateOnly to)
     {
         if (to == from) return 0;

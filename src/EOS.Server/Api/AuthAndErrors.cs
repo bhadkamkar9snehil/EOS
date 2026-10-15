@@ -29,10 +29,6 @@ public static class AuthExtensions
     public static string Actor(this HttpContext c) => c.User.Identity?.Name ?? "unknown";
 }
 
-/// <summary>
-/// Authenticates a personal access token from "Authorization: Bearer eos_..." or the sign-in cookie. The token's name is the
-/// actor on every change (spec §23.2). Dev mode (EOS_DEV_NOAUTH=1) accepts loopback requests only.
-/// </summary>
 public sealed class TokenAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, EosOptions eos, TokenService tokens)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
@@ -67,7 +63,6 @@ public sealed class TokenAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions
     }
 }
 
-/// <summary>Sign-in, sign-out and first-run bootstrap (anonymous; bootstrap only works while no token exists and only from this machine).</summary>
 public static class AuthApi
 {
     public static void Map(WebApplication app)
@@ -105,7 +100,6 @@ public static class AuthApi
 public sealed record LoginRequest(string Token);
 public sealed record BootstrapRequest(string? Name);
 
-/// <summary>Maps domain exceptions to problem+json: unknown things are 404, everything else a person can fix is 400.</summary>
 public static class ErrorMapping
 {
     public static async Task HandleAsync(HttpContext http)

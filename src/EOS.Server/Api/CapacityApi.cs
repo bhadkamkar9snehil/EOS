@@ -15,7 +15,6 @@ public sealed record ApplyBody(DateOnly? Today);
 public sealed record LogBody(string Kind, int? ProjectId, int? DemandId, string Description, string? GapType, decimal ImpactHours, decimal ImpactDays, string? Decision, string? Approver, string? Status);
 public sealed record MovementBody(int PersonId, int FromProjectId, int ToProjectId, DateOnly EffectiveDate, decimal? Percent, string? Reason);
 
-/// <summary>Capacity, load, demand, pipeline, what-if scenarios, movements and the change log (spec §8, §12, §15, §17).</summary>
 public static class CapacityApi
 {
     public static void Map(RouteGroupBuilder api)
@@ -54,7 +53,6 @@ public static class CapacityApi
             return Results.Ok(new { p.Id, p.ProjectNo });
         });
 
-        // ---- what-if (spec §15) ----
         api.MapGet("/scenarios", async (ScenarioService svc) => await svc.ListAsync());
         api.MapGet("/scenarios/{id:int}", async (ScenarioService svc, int id) => await svc.GetAsync(id));
         api.MapPost("/scenarios", async (HttpContext http, ScenarioService svc, ScenarioBody b) => await svc.AnalyseAsync(b.Moves, b.Name, http.Actor(), b.Notes, b.Today, b.ScenarioId));
@@ -63,7 +61,6 @@ public static class CapacityApi
         api.MapGet("/release-analysis", async (ScenarioService svc, int targetProjectId, DateOnly? date) => await svc.ReleaseAnalysisAsync(targetProjectId, date ?? PlanningApi.Today));
         api.MapGet("/push-plan", async (ScenarioService svc, int targetProjectId, DateOnly? date, int? maxMoves) => await svc.PushPlanAsync(targetProjectId, date ?? PlanningApi.Today, maxMoves ?? 10));
 
-        // ---- movements and the change log ----
         api.MapGet("/movements", async (EosDbContext db, int? personId, int? projectId) =>
             await db.Movements.AsNoTracking().Where(m => (personId == null || m.PersonId == personId) && (projectId == null || m.FromProjectId == projectId || m.ToProjectId == projectId))
                 .OrderByDescending(m => m.EffectiveDate).ToListAsync());

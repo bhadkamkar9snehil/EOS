@@ -1,6 +1,5 @@
 namespace EOS.Domain.Training;
 
-/// <summary>A fine-grained X-Force topic (spec §10.1), e.g. product "X-Force Framework", module "LV", sub-module "Pass Parameter".</summary>
 public sealed class Module
 {
     public int Id { get; set; }
@@ -24,7 +23,6 @@ public sealed class PersonModule
     public int ModuleId { get; set; }
     public KnowledgeState State { get; set; }
 
-    /// <summary>Named proficiency (Beginner…Expert); null = not yet set (the source sheet was only default-filled).</summary>
     public string? Proficiency { get; set; }
 }
 
@@ -36,7 +34,6 @@ public enum DoubtResult
     Solved = 3,
 }
 
-/// <summary>A learner's recorded question on a module, assigned to a mentor and tracked to resolution (spec §10.6).</summary>
 public sealed class Doubt
 {
     public int Id { get; set; }

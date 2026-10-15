@@ -6,10 +6,6 @@ namespace EOS.Infrastructure.Operations;
 
 public sealed record BackupFile(string Name, string Path, long SizeBytes, DateTime CreatedUtc);
 
-/// <summary>
-/// Consistent online backups of the SQLite database (VACUUM INTO writes a complete, defragmented copy without stopping the server)
-/// and retention (spec §25.9 item 6). Restore is deliberately an offline, documented step: stop the service, replace the file, start.
-/// </summary>
 public sealed class BackupService(EosDbContext db)
 {
     public async Task<BackupFile> CreateAsync(string directory, string actor, CancellationToken ct = default)
@@ -17,7 +13,7 @@ public sealed class BackupService(EosDbContext db)
         Directory.CreateDirectory(directory);
         var path = System.IO.Path.Combine(directory, $"eos-{DateTime.UtcNow:yyyyMMdd-HHmmss}.db");
         if (File.Exists(path)) throw new IOException($"Backup file {path} already exists.");
-        await db.Database.ExecuteSqlAsync($"VACUUM INTO {path}", ct);          // the path is bound as a parameter, never concatenated
+        await db.Database.ExecuteSqlAsync($"VACUUM INTO {path}", ct);
         db.AuditEvents.Add(new AuditEvent { AtUtc = DateTime.UtcNow, Actor = actor, Action = "backup.create", SubjectKind = "backup", SubjectId = System.IO.Path.GetFileName(path) });
         await db.SaveChangesAsync(ct);
         var info = new FileInfo(path);
@@ -28,7 +24,6 @@ public sealed class BackupService(EosDbContext db)
         !Directory.Exists(directory) ? [] :
         new DirectoryInfo(directory).GetFiles("eos-*.db").OrderByDescending(f => f.Name).Select(f => new BackupFile(f.Name, f.FullName, f.Length, f.CreationTimeUtc)).ToList();
 
-    /// <summary>Keeps the newest <paramref name="keepDaily"/> backups plus the newest per month for <paramref name="keepMonthly"/> months.</summary>
     public static IReadOnlyList<string> ApplyRetention(string directory, int keepDaily = 14, int keepMonthly = 12)
     {
         var files = List(directory).ToList();

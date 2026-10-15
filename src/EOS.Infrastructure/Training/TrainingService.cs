@@ -12,7 +12,6 @@ public sealed record KnowledgeRow(int PersonId, string Name, int Known, int Dont
 
 public sealed record ModuleCoverage(int ModuleId, string Product, string Module, string SubModule, int KnownBy, int People);
 
-/// <summary>Knowledge summary with configurable bands, module coverage, doubts lifecycle (spec §10).</summary>
 public sealed class TrainingService(EosDbContext db)
 {
     public async Task<IReadOnlyList<KnowledgeRow>> SummaryAsync(DateOnly asOf, CancellationToken ct = default)
@@ -36,7 +35,6 @@ public sealed class TrainingService(EosDbContext db)
         }).OrderByDescending(r => r.KnowFraction).ToList();
     }
 
-    /// <summary>Modules known by the fewest people first: where a single absence creates a training or delivery gap.</summary>
     public async Task<IReadOnlyList<ModuleCoverage>> CoverageAsync(int take = 40, CancellationToken ct = default)
     {
         var people = await db.PersonModules.Select(m => m.PersonId).Distinct().CountAsync(ct);
@@ -56,8 +54,6 @@ public sealed class TrainingService(EosDbContext db)
         db.AuditEvents.Add(new AuditEvent { AtUtc = DateTime.UtcNow, Actor = actor, Action = "training.state", SubjectKind = "person", SubjectId = personId.ToString(), Detail = $"module {moduleId}: {old?.ToString() ?? "-"} -> {state}" });
         await db.SaveChangesAsync(ct);
     }
-
-    // ---- doubts -------------------------------------------------------------------------------------------------
 
     public async Task<IReadOnlyList<Doubt>> DoubtsAsync(bool openOnly = false, CancellationToken ct = default) =>
         await db.Doubts.AsNoTracking().Where(d => !openOnly || d.Result != DoubtResult.Solved).OrderByDescending(d => d.RaisedOn).ThenBy(d => d.Id).ToListAsync(ct);

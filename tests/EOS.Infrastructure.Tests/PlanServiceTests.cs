@@ -33,8 +33,6 @@ public sealed class PlanServiceTests : IDisposable
         return p;
     }
 
-    // ---- structure ---------------------------------------------------------------------------------
-
     [Fact]
     public async Task Wbs_Codes_Follow_The_Hierarchy_And_Order()
     {
@@ -59,13 +57,13 @@ public sealed class PlanServiceTests : IDisposable
         var b = await _plans.AddTaskAsync(_project.Id, "B", "t");
         var c = await _plans.AddTaskAsync(_project.Id, "C", "t");
 
-        await _plans.MoveTaskAsync(b.Id, MoveDirection.Indent, "t");                 // B under A
+        await _plans.MoveTaskAsync(b.Id, MoveDirection.Indent, "t");
         Assert.Equal(["1", "1.1", "2"], (await _plans.GetPlanAsync(_project.Id)).Tasks.Select(t => t.Wbs));
 
-        await _plans.MoveTaskAsync(c.Id, MoveDirection.Up, "t");                    // C above A
+        await _plans.MoveTaskAsync(c.Id, MoveDirection.Up, "t");
         Assert.Equal(["C", "A", "B"], (await _plans.GetPlanAsync(_project.Id)).Tasks.Select(t => t.Name));
 
-        await _plans.MoveTaskAsync(b.Id, MoveDirection.Outdent, "t");               // B back to top level
+        await _plans.MoveTaskAsync(b.Id, MoveDirection.Outdent, "t");
         var plan = await _plans.GetPlanAsync(_project.Id);
         Assert.Equal(["1", "2", "3"], plan.Tasks.Select(t => t.Wbs));
         Assert.Equal(["C", "A", "B"], plan.Tasks.Select(t => t.Name));
@@ -100,8 +98,6 @@ public sealed class PlanServiceTests : IDisposable
         Assert.Empty(await _db.TaskAssignments.ToListAsync());
     }
 
-    // ---- links and validation ----------------------------------------------------------------------
-
     [Fact]
     public async Task Links_Reject_Cycles_Self_Summaries_And_Duplicates()
     {
@@ -111,12 +107,12 @@ public sealed class PlanServiceTests : IDisposable
         await _plans.AddLinkAsync(a.Id, b.Id, 0, 0, "t");
         await _plans.AddLinkAsync(b.Id, c.Id, 0, 0, "t");
 
-        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(c.Id, a.Id, 0, 0, "t"));      // cycle
-        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, a.Id, 0, 0, "t"));      // self
-        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, b.Id, 0, 0, "t"));      // duplicate
-        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, b.Id, 9, 0, "t"));      // bad type
+        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(c.Id, a.Id, 0, 0, "t"));
+        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, a.Id, 0, 0, "t"));
+        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, b.Id, 0, 0, "t"));
+        await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, b.Id, 9, 0, "t"));
 
-        await _plans.AddTaskAsync(_project.Id, "A1", "t", parentId: a.Id, workHours: 8);                // a is now a summary
+        await _plans.AddTaskAsync(_project.Id, "A1", "t", parentId: a.Id, workHours: 8);
         await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, c.Id, 0, 0, "t"));
     }
 
@@ -130,8 +126,6 @@ public sealed class PlanServiceTests : IDisposable
         var x = await _plans.AddTaskAsync(other.Id, "X", "t", workHours: 8);
         await Assert.ThrowsAsync<PlanException>(() => _plans.AddLinkAsync(a.Id, x.Id, 0, 0, "t"));
     }
-
-    // ---- scheduling through the database -----------------------------------------------------------
 
     [Fact]
     public async Task A_Plan_Authored_In_EOS_Reproduces_The_Golden_Project1_Dates()
@@ -194,7 +188,7 @@ public sealed class PlanServiceTests : IDisposable
     {
         await _plans.AddTaskAsync(_project.Id, "Lonely", "t", workHours: 16);
         var plan = await _plans.RecomputeAsync(_project.Id, D(10, 5));
-        Assert.Equal(D(10, 6), plan.Tasks[0].Finish);                  // 16 h = 2 days with one assumed person
+        Assert.Equal(D(10, 6), plan.Tasks[0].Finish);
         Assert.Contains(plan.Warnings, w => w.Contains("no assigned engineer"));
     }
 
@@ -216,7 +210,7 @@ public sealed class PlanServiceTests : IDisposable
         Assert.Equal(12, WorkingDays(await _plans.RecomputeAsync(_project.Id, D(10, 5))));
 
         var cal = await _db.Calendars.SingleAsync(c => c.IsDefault);
-        cal.HoursPerDay = 12m;                                              // a lead changes the calendar: no code change
+        cal.HoursPerDay = 12m;
         await _db.SaveChangesAsync();
         Assert.Equal(8, WorkingDays(await _plans.RecomputeAsync(_project.Id, D(10, 5))));
     }
@@ -236,8 +230,6 @@ public sealed class PlanServiceTests : IDisposable
         var plan = await _plans.RecomputeAsync(_project.Id, D(10, 5));
         Assert.Equal((D(10, 14), D(10, 16)), (plan.Tasks[0].Start!.Value, plan.Tasks[0].Finish!.Value));
     }
-
-    // ---- progress, baselines, imported-task protection -----------------------------------------------
 
     [Fact]
     public async Task Progress_Sets_Status_And_Validates_Range()
@@ -261,11 +253,11 @@ public sealed class PlanServiceTests : IDisposable
         var baseline = await _plans.CreateBaselineAsync(_project.Id, "Plan v1", "t");
         Assert.Equal(0, baseline.Number);
 
-        await _plans.UpdateTaskAsync(t.Id, new TaskPatch { WorkHours = 80 }, "t");     // scope grows
+        await _plans.UpdateTaskAsync(t.Id, new TaskPatch { WorkHours = 80 }, "t");
         await _plans.RecomputeAsync(_project.Id, D(10, 5));
 
         var variance = await _plans.GetBaselineVarianceAsync(_project.Id);
-        Assert.Equal(5, variance.FinishVarianceDays);                                  // 5 more working days
+        Assert.Equal(5, variance.FinishVarianceDays);
         Assert.Equal(40m, variance.Rows.Single().WorkVarianceHours);
     }
 

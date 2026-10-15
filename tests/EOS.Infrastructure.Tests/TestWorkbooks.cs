@@ -2,12 +2,10 @@ using ClosedXML.Excel;
 
 namespace EOS.Infrastructure.Tests;
 
-/// <summary>Builds small synthetic workbooks shaped like the real source files (no real data in tests).</summary>
 internal static class TestWorkbooks
 {
     public static string TempPath() => Path.Combine(Path.GetTempPath(), $"eos-test-{Guid.NewGuid():N}.xlsx");
 
-    /// <summary>Engineers E001-E003 + skills SK01-SK02. Kartik is E003 on the Engineers sheet and E099 on the matrix (spec DQ1).</summary>
     public static string Agility(int sqlRatingForAnna = 3, string annaRole = "Engineer")
     {
         using var wb = new XLWorkbook();
@@ -25,7 +23,7 @@ internal static class TestWorkbooks
         for (var r = 0; r < people.Length; r++)
             for (var c = 0; c < people[r].Length; c++)
                 eng.Cell(4 + r, c + 1).Value = XLCellValue.FromObject(people[r][c]);
-        eng.Cell(7, 2).Value = "TOTAL";                       // the totals line has no Emp ID and must be skipped
+        eng.Cell(7, 2).Value = "TOTAL";
 
         var skills = wb.AddWorksheet("Skills");
         string[] sh = ["Skill ID", "Skill Name", "Category", "Description"];
@@ -51,7 +49,6 @@ internal static class TestWorkbooks
         return path;
     }
 
-    /// <summary>Training workbook: 3 modules; columns Anna Lead (full name), Ayush-like "Bel" typo, and an unknown engineer "Zed".</summary>
     public static string Training(string state = "Know")
     {
         using var wb = new XLWorkbook();

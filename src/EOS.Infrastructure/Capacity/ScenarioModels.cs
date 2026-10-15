@@ -10,7 +10,6 @@ public sealed record MoveView(
 
 public sealed record TaskSlip(string Name, DateOnly? BaselineFinish, DateOnly? ScenarioFinish, int SlipDays);
 
-/// <param name="SlipDays">Working days: positive = later than baseline, negative = earlier (spec §15.6).</param>
 public sealed record ProjectImpactView(
     int ProjectId, string ProjectNo, string Name, DateOnly BaselineFinish, DateOnly ScenarioFinish, int SlipDays,
     IReadOnlyList<TaskSlip> Tasks);

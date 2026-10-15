@@ -7,10 +7,8 @@ namespace EOS.Infrastructure.Configuration;
 
 public sealed class AdminException(string message) : Exception(message);
 
-/// <summary>Editable vocabularies, calendars (with holidays) and custom fields: the data behind "everything is configurable" (spec §8.7).</summary>
 public sealed class AdminService(EosDbContext db)
 {
-    // ---- vocabularies ------------------------------------------------------------------------------------------
 
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<VocabularyItem>>> VocabulariesAsync(CancellationToken ct = default) =>
         (await db.Vocabulary.AsNoTracking().OrderBy(v => v.Kind).ThenBy(v => v.SortOrder).ToListAsync(ct))
@@ -37,8 +35,6 @@ public sealed class AdminService(EosDbContext db)
         Audit(active ? "vocabulary.enable" : "vocabulary.disable", actor, $"{v.Kind}={v.Value}");
         await db.SaveChangesAsync(ct);
     }
-
-    // ---- calendars -----------------------------------------------------------------------------------------------
 
     public async Task<IReadOnlyList<(WorkCalendarDef Calendar, IReadOnlyList<CalendarException> Exceptions)>> CalendarsAsync(CancellationToken ct = default)
     {
@@ -81,8 +77,6 @@ public sealed class AdminService(EosDbContext db)
         Audit("calendar.exception.remove", actor, exceptionId.ToString());
         await db.SaveChangesAsync(ct);
     }
-
-    // ---- custom fields ---------------------------------------------------------------------------------------------
 
     public async Task<IReadOnlyList<CustomFieldDefinition>> FieldsAsync(string? entityKind = null, CancellationToken ct = default) =>
         await db.CustomFieldDefinitions.AsNoTracking().Where(f => entityKind == null || f.EntityKind == entityKind).OrderBy(f => f.EntityKind).ThenBy(f => f.SortOrder).ToListAsync(ct);

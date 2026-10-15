@@ -24,19 +24,17 @@ public sealed class ImporterTests : IDisposable
 
     private string Track(string path) { _files.Add(path); return path; }
 
-    // ---- Agility workbook ---------------------------------------------------------------------------
-
     [Fact]
     public async Task Agility_Import_Creates_People_Skills_And_Ratings()
     {
         var report = await new AgilityWorkbookImporter(_db).ImportAsync(Track(TestWorkbooks.Agility()), commit: true, "tester");
 
-        Assert.Equal(3, report.Of("Person").Added);                      // TOTAL line skipped
+        Assert.Equal(3, report.Of("Person").Added);
         Assert.Equal(2, report.Of("Skill").Added);
         Assert.Equal(6, report.Of("SkillRating").Added);
         Assert.Equal(2, report.Of("Team").Added);
         Assert.Equal(3, await _db.People.CountAsync());
-        Assert.All(await _db.People.ToListAsync(), p => Assert.True(p.IsUnverified));   // sample role/location/availability
+        Assert.All(await _db.People.ToListAsync(), p => Assert.True(p.IsUnverified));
         Assert.Equal(6, await _db.SkillTransactions.CountAsync(t => t.Kind == SkillTransactionKind.Assessment));
     }
 
@@ -50,7 +48,7 @@ public sealed class ImporterTests : IDisposable
         Assert.Equal(0, second.Of("Person").Added);
         Assert.Equal(3, second.Of("Person").Unchanged);
         Assert.Equal(6, second.Of("SkillRating").Unchanged);
-        Assert.Equal(6, await _db.SkillTransactions.CountAsync());       // no duplicate transactions
+        Assert.Equal(6, await _db.SkillTransactions.CountAsync());
     }
 
     [Fact]
@@ -105,7 +103,7 @@ public sealed class ImporterTests : IDisposable
     {
         await new AgilityWorkbookImporter(_db).ImportAsync(Track(TestWorkbooks.Agility(annaRole: "Engineer")), true, "tester");
         var anna = await _db.People.SingleAsync(p => p.Code == "E001");
-        anna.RoleTitle = "Principal Engineer";                            // a person confirmed the real value
+        anna.RoleTitle = "Principal Engineer";
         anna.IsUnverified = false;
         await _db.SaveChangesAsync();
 
@@ -114,8 +112,6 @@ public sealed class ImporterTests : IDisposable
         Assert.Equal("Principal Engineer", (await _db.People.SingleAsync(p => p.Code == "E001")).RoleTitle);
     }
 
-    // ---- Training workbook --------------------------------------------------------------------------
-
     [Fact]
     public async Task Training_Import_Reads_Modules_States_And_Doubts()
     {
@@ -123,12 +119,12 @@ public sealed class ImporterTests : IDisposable
         var report = await new TrainingWorkbookImporter(_db).ImportAsync(Track(TestWorkbooks.Training()), true, "tester");
 
         Assert.Equal(3, report.Of("Module").Added);
-        Assert.Equal(9, report.Of("KnowledgeState").Added);               // 3 modules x 3 engineers
+        Assert.Equal(9, report.Of("KnowledgeState").Added);
         Assert.Equal(2, report.Of("Doubt").Added);
 
         var states = await _db.PersonModules.GroupBy(x => x.State).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.N);
         Assert.Equal(6, states[KnowledgeState.Know]);
-        Assert.Equal(2, states[KnowledgeState.DontKnow]);                // includes the curly-apostrophe spelling
+        Assert.Equal(2, states[KnowledgeState.DontKnow]);
         Assert.Equal(1, states[KnowledgeState.NeedToDiscuss]);
     }
 
@@ -144,7 +140,6 @@ public sealed class ImporterTests : IDisposable
         Assert.True(zed.IsUnverified);
         Assert.Null(zed.TeamId);
 
-        // "Bela" (first name) resolved to the existing Bela Dev, not a new person.
         Assert.Equal(1, await _db.People.CountAsync(p => p.FullName.StartsWith("Bela")));
         var doubt = await _db.Doubts.SingleAsync(d => d.SourceRow == 1);
         Assert.Equal(DoubtResult.Solved, doubt.Result);

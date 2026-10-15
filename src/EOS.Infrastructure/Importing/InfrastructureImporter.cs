@@ -5,14 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Imports the server / VM inventory workbook (spec §18, §24.2 I17).
-///
-/// SECURITY: the source workbook holds plaintext administrator, SQL and application passwords. This importer reads a fixed
-/// WHITELIST of columns by header name (IP, name, state, purpose, owner, drive sizes, RAM, cores, URLs, flags). It never opens
-/// any column whose header looks like a credential (user, username, login, password, secret, pwd, sa), never logs cell text
-/// it did not whitelist, and the domain model has no field that could hold one (spec §2.4, §24.9).
-/// </summary>
 public sealed partial class InfrastructureImporter(EosDbContext db)
 {
     private static readonly string[] CredentialHints = ["user", "login", "password", "pwd", "secret", "credential", "token", "passwd", " sa"];
@@ -35,8 +27,6 @@ public sealed partial class InfrastructureImporter(EosDbContext db)
         ImportSystems(wb.Sheet("ALL Demos"), hosts, report);
         await db.SaveChangesAsync(ct);
     }
-
-    // ---- physical hosts and their disks ---------------------------------------------------------------
 
     private void ImportPhysical(ClosedXML.Excel.IXLWorksheet? ws, List<Host> hosts, ImportReport report)
     {
@@ -78,7 +68,6 @@ public sealed partial class InfrastructureImporter(EosDbContext db)
         }
         db.SaveChanges();
 
-        // Disks (second pass, after hosts have ids).
         for (var r = 2; r <= ws.LastRowUsed()!.RowNumber(); r++)
         {
             var ip = Cell(ws, r, cols, "ip address");
@@ -97,8 +86,6 @@ public sealed partial class InfrastructureImporter(EosDbContext db)
             }
         }
     }
-
-    // ---- VM list (state, purpose, owner, backup) ---------------------------------------------------------
 
     private void ImportVmList(ClosedXML.Excel.IXLWorksheet? ws, List<Host> hosts, ImportReport report)
     {
@@ -155,7 +142,6 @@ public sealed partial class InfrastructureImporter(EosDbContext db)
         }
     }
 
-    /// <summary>A VM whose name contains a project number belongs to that project (role from the name).</summary>
     private async Task LinkProjectsAsync(List<Host> hosts, ImportReport report, CancellationToken ct)
     {
         var projects = await db.Projects.AsNoTracking().Where(p => p.ProjectNo != "").ToListAsync(ct);
@@ -174,8 +160,6 @@ public sealed partial class InfrastructureImporter(EosDbContext db)
             }
         }
     }
-
-    // ---- demo / published systems (URLs only) -------------------------------------------------------------
 
     private void ImportSystems(ClosedXML.Excel.IXLWorksheet? ws, List<Host> hosts, ImportReport report)
     {
@@ -205,9 +189,6 @@ public sealed partial class InfrastructureImporter(EosDbContext db)
         }
     }
 
-    // ---- helpers ----------------------------------------------------------------------------------------------
-
-    /// <summary>Maps only the requested headers; any header that looks like a credential can never be requested.</summary>
     private static Dictionary<string, int> Whitelist(ClosedXML.Excel.IXLWorksheet ws, int headerRow, params string[] wanted)
     {
         foreach (var w in wanted)

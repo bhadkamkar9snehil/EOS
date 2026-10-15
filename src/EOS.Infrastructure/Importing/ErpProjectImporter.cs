@@ -5,12 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Imports the ERP project master (XForce_Project_Review.xlsx: sheet 'ProjectList' and the PM/Technical-Manager sheet 'Sheet2').
-/// Project-level data only: identity and commercials, no WBS or tasks (spec §11.2, Q21). Columns are read by header name,
-/// the HTML fragments in the margin column are stripped, and warranty/variant projects (W_/V_ prefix) are linked to their parent.
-/// ERP-owned fields are refreshed on re-import; fields people maintain (tracker status, health override, notes, site) are not touched.
-/// </summary>
 public sealed partial class ErpProjectImporter(EosDbContext db)
 {
     public Task<ImportReport> ImportAsync(string path, bool commit, string actor, CancellationToken ct = default) =>
@@ -25,7 +19,7 @@ public sealed partial class ErpProjectImporter(EosDbContext db)
         if (!columns.ContainsKey("project no")) { report.Warnings.Add("ProjectList: column 'Project No' not found."); return; }
 
         var projects = await db.Projects.ToDictionaryAsync(p => p.ProjectNo, StringComparer.OrdinalIgnoreCase, ct);
-        var assignments = ReadAssignments(wb);                    // applied inside the loop so one run has one consistent result
+        var assignments = ReadAssignments(wb);
         string Get(int row, string header) => columns.TryGetValue(header, out var c) ? ws.Text(row, c) : "";
         decimal? Num(int row, string header) => columns.TryGetValue(header, out var c) ? ws.Number(row, c) : null;
         DateOnly? Dt(int row, string header) => columns.TryGetValue(header, out var c) ? ws.Date(row, c) : null;
@@ -57,7 +51,7 @@ public sealed partial class ErpProjectImporter(EosDbContext db)
             p.ProjectManager = Nullable(Get(r, "project manager")) ?? p.ProjectManager;
             p.TechnicalManager = Nullable(Get(r, "technical manager")) ?? p.TechnicalManager;
             p.ProductLine ??= Nullable(Get(r, "business categories"));
-            if (assignments.TryGetValue(no, out var a))                 // the assignment sheet is the authority for product / PM / TM
+            if (assignments.TryGetValue(no, out var a))
             {
                 if (a.Product is not null) p.ProductLine = a.Product;
                 if (a.Pm is not null) p.ProjectManager = a.Pm;
@@ -72,7 +66,6 @@ public sealed partial class ErpProjectImporter(EosDbContext db)
         }
         await db.SaveChangesAsync(ct);
 
-        // Warranty/variant projects point at their parent project when it exists.
         foreach (var p in projects.Values)
         {
             var m = VariantPrefix().Match(p.ProjectNo);
@@ -86,7 +79,6 @@ public sealed partial class ErpProjectImporter(EosDbContext db)
 
     private sealed record Assignment(string? Product, string? Pm, string? Tm);
 
-    /// <summary>Sheet2: Project No / Name / Product / Project Manager / Technical Manager (two header rows).</summary>
     private static Dictionary<string, Assignment> ReadAssignments(ClosedXML.Excel.XLWorkbook wb)
     {
         var result = new Dictionary<string, Assignment>(StringComparer.OrdinalIgnoreCase);

@@ -53,11 +53,10 @@ public sealed class CapacityServiceTests : IDisposable
     public async Task Monthly_Capacity_Uses_The_Calendar_Availability_And_Target_Utilisation()
     {
         var half = await Person("Half", 0.5m);
-        // October 2026, Mon-Sat calendar, 8 h: 27 working days (31 days - 4 Sundays).
         var row = (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: half.Id)).Single();
 
-        Assert.Equal(27 * 8 * 0.5m, row.AvailableHours);                 // 108
-        Assert.Equal(108 * 0.85m, row.PlannedHours);                      // seed target utilisation 85%
+        Assert.Equal(27 * 8 * 0.5m, row.AvailableHours);
+        Assert.Equal(108 * 0.85m, row.PlannedHours);
         Assert.Equal(0m, row.AllocatedHours);
         Assert.Equal(LoadBand.UnderUsed, row.Band);
     }
@@ -86,7 +85,7 @@ public sealed class CapacityServiceTests : IDisposable
     public async Task Leave_Reduces_Available_Hours()
     {
         var p = await Person("Away");
-        _db.Leaves.Add(new Leave { PersonId = p.Id, FromDate = D(10, 12), ToDate = D(10, 17), Kind = "Leave" });   // Mon-Sat = 6 working days
+        _db.Leaves.Add(new Leave { PersonId = p.Id, FromDate = D(10, 12), ToDate = D(10, 17), Kind = "Leave" });
         await _db.SaveChangesAsync();
         var row = (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: p.Id)).Single();
         Assert.Equal(6 * 8m, row.LeaveHours);
@@ -98,7 +97,7 @@ public sealed class CapacityServiceTests : IDisposable
     {
         var anna = await Person("Anna");
         var p = await Project("PRJ");
-        await PlanTask(p, anna, 80);                                       // 10 working days from Mon 5 Oct: 5-10, 12-15 Oct
+        await PlanTask(p, anna, 80);
         var row = (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: anna.Id)).Single();
 
         Assert.Equal(80m, row.AllocatedHours);
@@ -110,10 +109,10 @@ public sealed class CapacityServiceTests : IDisposable
     [Fact]
     public async Task Overlapping_Parallel_Tasks_Show_As_Over_Allocated()
     {
-        var anna = await Person("Anna", 0.5m);                              // half-time: 108 h available in October
+        var anna = await Person("Anna", 0.5m);
         var p1 = await Project("P1"); var p2 = await Project("P2");
-        await PlanTask(p1, anna, 96);                                       // 12 days x 8 h
-        await PlanTask(p2, anna, 96);                                       // in parallel: 192 h in 12 days
+        await PlanTask(p1, anna, 96);
+        await PlanTask(p2, anna, 96);
         var row = (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: anna.Id)).Single();
 
         Assert.Equal(192m, row.AllocatedHours);
@@ -127,7 +126,7 @@ public sealed class CapacityServiceTests : IDisposable
     {
         var anna = await Person("Anna");
         var p = await Project("PRJ");
-        await PlanTask(p, anna, 80);                                        // 80 of 216 available (37%): under-used at 60%
+        await PlanTask(p, anna, 80);
         Assert.Equal(LoadBand.UnderUsed, (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: anna.Id)).Single().Band);
 
         await new SettingsStore(_db).SetAsync(SettingKeys.LoadUnderUsedBelow, SettingScope.Global, "0.3", D(1, 1), "t", "Lower the under-used line");
@@ -144,8 +143,8 @@ public sealed class CapacityServiceTests : IDisposable
         await _db.SaveChangesAsync();
 
         var row = (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: anna.Id)).Single();
-        Assert.Equal(100m, row.AllocatedHours);                             // Confirmed counts
-        Assert.Equal(50m, row.ProposedHours);                               // Proposed is reported separately
+        Assert.Equal(100m, row.AllocatedHours);
+        Assert.Equal(50m, row.ProposedHours);
         Assert.Equal("manual", row.ByProject.Single().Source);
 
         await new SettingsStore(_db).SetAsync(SettingKeys.ProposedCountsTowardLoad, SettingScope.Global, "true", D(1, 1), "t", "Include proposals");
@@ -163,7 +162,7 @@ public sealed class CapacityServiceTests : IDisposable
         await _db.SaveChangesAsync();
 
         var row = (await _capacity.GetCapacityAsync(D(10, 1), D(10, 31), personId: anna.Id)).Single();
-        Assert.Equal(80m, row.AllocatedHours);                              // not 180: no double counting
+        Assert.Equal(80m, row.AllocatedHours);
     }
 
     [Fact]
@@ -171,13 +170,13 @@ public sealed class CapacityServiceTests : IDisposable
     {
         var anna = await Person("Anna");
         var p1 = await Project("P1"); var p2 = await Project("P2");
-        await PlanTask(p1, anna, 48);                                       // 6 days: Mon 5 - Sat 10 Oct = 48 h in week 1
-        await PlanTask(p2, anna, 48);                                       // in parallel: 96 h in a 48 h week
+        await PlanTask(p1, anna, 48);
+        await PlanTask(p2, anna, 48);
         var weeks = await _capacity.GetWeeklyLoadAsync(D(10, 5), D(10, 18), personId: anna.Id);
 
         Assert.Equal(2, weeks.Count);
         Assert.Equal(D(10, 5), weeks[0].WeekStart);
-        Assert.Equal(48m, weeks[0].CapacityHours);                          // 6 working days x 8 h
+        Assert.Equal(48m, weeks[0].CapacityHours);
         Assert.Equal(96m, weeks[0].AllocatedHours);
         Assert.Equal(LoadBand.OverAllocated, weeks[0].Band);
         Assert.Equal(0m, weeks[1].AllocatedHours);

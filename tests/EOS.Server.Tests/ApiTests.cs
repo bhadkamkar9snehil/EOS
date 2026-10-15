@@ -10,7 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EOS.Server.Tests;
 
-/// <summary>A server on a throwaway database file, with one personal token minted through the token service.</summary>
 public sealed class EosFactory : WebApplicationFactory<Program>
 {
     public string DatabasePath { get; } = Path.Combine(Path.GetTempPath(), $"eos-api-{Guid.NewGuid():N}.db");
@@ -49,8 +48,6 @@ public sealed class ApiTests : IClassFixture<EosFactory>
 
     private static async Task<JsonElement> Body(HttpResponseMessage r) => JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement.Clone();
 
-    // ---- auth ---------------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Health_Is_Anonymous_And_The_Api_Needs_A_Token()
     {
@@ -74,7 +71,7 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         await _factory.ClientAsync();
         var anon = _factory.CreateClient();
         var r = await anon.PostAsJsonAsync("/auth/bootstrap", new { name = "x" });
-        Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);                              // a token already exists
+        Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
         Assert.False((await Body(await anon.GetAsync("/auth/state"))).GetProperty("needsBootstrap").GetBoolean());
     }
 
@@ -90,8 +87,6 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         _ = client;
     }
 
-    // ---- error mapping -------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Validation_Problems_Are_400_And_Unknown_Things_Are_404_With_Problem_Json()
     {
@@ -104,8 +99,6 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
         Assert.Contains("not found", (await Body(missing)).GetProperty("title").GetString(), StringComparison.OrdinalIgnoreCase);
     }
-
-    // ---- a plan authored over the API ----------------------------------------------------------------------------------
 
     [Fact]
     public async Task A_Project_Plan_Can_Be_Built_Scheduled_And_Baselined_Over_Http()
@@ -120,15 +113,15 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         var t1 = (await Body(await c.PostAsJsonAsync($"/api/v1/projects/{projectId}/tasks", new { name = "Design", workHours = 40, kind = "task" }))).GetProperty("id").GetInt32();
         var t2 = (await Body(await c.PostAsJsonAsync($"/api/v1/projects/{projectId}/tasks", new { name = "Build", workHours = 80 }))).GetProperty("id").GetInt32();
         Assert.Equal(HttpStatusCode.Created, (await c.PostAsJsonAsync("/api/v1/links", new { predecessorId = t1, successorId = t2, type = 0, lagDays = 0 })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await c.PostAsJsonAsync("/api/v1/links", new { predecessorId = t2, successorId = t1, type = 0, lagDays = 0 })).StatusCode);   // cycle
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.PostAsJsonAsync("/api/v1/links", new { predecessorId = t2, successorId = t1, type = 0, lagDays = 0 })).StatusCode);
         foreach (var t in new[] { t1, t2 })
             Assert.Equal(HttpStatusCode.Created, (await c.PostAsJsonAsync($"/api/v1/tasks/{t}/assignments", new { personId, units = 1 })).StatusCode);
 
         var plan = await Body(await c.PostAsync($"/api/v1/projects/{projectId}/plan/recompute?statusDate=2026-10-05", null));
         var tasks = plan.GetProperty("tasks").EnumerateArray().ToList();
         Assert.Equal(2, tasks.Count);
-        Assert.Equal("2026-10-09", tasks[0].GetProperty("finish").GetString());       // 40 h = 5 working days from Mon 5 Oct
-        Assert.Equal("2026-10-21", tasks[1].GetProperty("finish").GetString());       // then 80 h = 10 days from Sat 10 Oct (Mon-Sat calendar)
+        Assert.Equal("2026-10-09", tasks[0].GetProperty("finish").GetString());
+        Assert.Equal("2026-10-21", tasks[1].GetProperty("finish").GetString());
         Assert.Equal("2026-10-21", plan.GetProperty("finish").GetString());
 
         Assert.Equal(HttpStatusCode.Created, (await c.PostAsJsonAsync($"/api/v1/projects/{projectId}/baselines", new { name = "v1" })).StatusCode);
@@ -141,8 +134,6 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         Assert.True(capacity[0].GetProperty("allocatedHours").GetDecimal() > 100m);
         Assert.Equal("PRO-API", (await Body(await c.GetAsync("/api/v1/projects?search=api")))[0].GetProperty("projectNo").GetString());
     }
-
-    // ---- skills are rated only by explicit calls ------------------------------------------------------------------------
 
     [Fact]
     public async Task Skill_Ratings_Need_A_Reason_And_Are_Recorded_With_The_Token_Name()
@@ -166,8 +157,6 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         Assert.Equal("tester", history[0].GetProperty("changedBy").GetString());
         Assert.Equal(4, history[0].GetProperty("newRating").GetInt32());
     }
-
-    // ---- settings, reports, imports, openapi ------------------------------------------------------------------------------
 
     [Fact]
     public async Task Settings_Can_Be_Changed_With_A_Reason_And_Show_As_Effective()
@@ -214,7 +203,7 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         var preview = await Body(await c.PostAsync("/api/v1/imports/agility", Form()));
         Assert.False(preview.GetProperty("committed").GetBoolean());
         Assert.Equal(1, preview.GetProperty("counts").GetProperty("Person").GetProperty("added").GetInt32());
-        Assert.DoesNotContain("E900", await (await c.GetAsync("/api/v1/people")).Content.ReadAsStringAsync());      // nothing saved
+        Assert.DoesNotContain("E900", await (await c.GetAsync("/api/v1/people")).Content.ReadAsStringAsync());
 
         var commit = await Body(await c.PostAsync("/api/v1/imports/agility?commit=true", Form()));
         Assert.True(commit.GetProperty("committed").GetBoolean());
@@ -238,7 +227,7 @@ public sealed class ApiTests : IClassFixture<EosFactory>
         var c = await _factory.ClientAsync();
         var dashboard = await Body(await c.GetAsync("/api/v1/dashboard"));
         Assert.True(dashboard.GetProperty("kpis").TryGetProperty("activeProjects", out _));
-        Assert.Equal(JsonValueKind.Array, dashboard.GetProperty("loadNext8Weeks").ValueKind);        // eight weeks per active engineer
+        Assert.Equal(JsonValueKind.Array, dashboard.GetProperty("loadNext8Weeks").ValueKind);
         Assert.Equal(0, dashboard.GetProperty("loadNext8Weeks").GetArrayLength() % 8);
         Assert.Equal(JsonValueKind.Array, (await Body(await c.GetAsync("/api/v1/alerts"))).ValueKind);
         Assert.True((await Body(await c.GetAsync("/api/v1/diagnostics"))).GetProperty("counts").GetProperty("people").GetInt32() >= 0);

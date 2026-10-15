@@ -28,7 +28,6 @@ public sealed record HostPatch
     public string? Notes { get; init; }
 }
 
-/// <summary>Servers and VMs per project (spec §18). No credentials exist anywhere in this model.</summary>
 public sealed class HostService(EosDbContext db)
 {
     public async Task<IReadOnlyList<HostRow>> ListAsync(int? projectId = null, bool includeRemoved = false, CancellationToken ct = default)
@@ -48,7 +47,6 @@ public sealed class HostService(EosDbContext db)
         return projectId is { } id ? rows.Where(r => r.Projects.Any(p => p.ProjectId == id)).ToList() : rows;
     }
 
-    /// <summary>Off, unknown purpose and/or marked for deletion: candidates to reclaim (spec §18.4).</summary>
     public async Task<IReadOnlyList<HostRow>> ReclaimListAsync(CancellationToken ct = default) =>
         (await ListAsync(ct: ct)).Where(h => h.Kind == "vm" && h.State == "Off" && (h.MarkedForDeletion == true || string.Equals(h.Purpose, "Unknown", StringComparison.OrdinalIgnoreCase)) && h.Projects.Count == 0).ToList();
 

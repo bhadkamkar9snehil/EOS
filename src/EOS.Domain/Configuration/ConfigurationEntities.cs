@@ -1,11 +1,9 @@
 namespace EOS.Domain.Configuration;
 
-/// <summary>One editable value of a vocabulary (status lists, stages, states…). Every enumeration is data (spec §8.7, App. A).</summary>
 public sealed class VocabularyItem
 {
     public int Id { get; set; }
 
-    /// <summary>Vocabulary name, e.g. "project.trackerStatus". See <see cref="Vocabularies"/>.</summary>
     public string Kind { get; set; } = "";
     public string Value { get; set; } = "";
     public int SortOrder { get; set; }
@@ -13,7 +11,6 @@ public sealed class VocabularyItem
     public bool IsActive { get; set; } = true;
 }
 
-/// <summary>Names of the built-in vocabularies and their seed values (spec Appendix A). All are editable.</summary>
 public static class Vocabularies
 {
     public const string TrackerStatus = "project.trackerStatus";
@@ -60,14 +57,12 @@ public static class Vocabularies
     };
 }
 
-/// <summary>A working calendar: hours per day and which weekdays work (spec §8.7, §14.9). Defaults are seed data only.</summary>
 public sealed class WorkCalendarDef
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public decimal HoursPerDay { get; set; } = 8m;
 
-    /// <summary>Comma-separated <see cref="DayOfWeek"/> numbers that work, e.g. "1,2,3,4,5,6".</summary>
     public string WorkDays { get; set; } = "1,2,3,4,5,6";
     public bool IsDefault { get; set; }
 }
@@ -78,7 +73,6 @@ public sealed class CalendarException
     public int CalendarId { get; set; }
     public DateOnly Date { get; set; }
 
-    /// <summary>False = holiday; true = a working override on a normally non-working day.</summary>
     public bool IsWorking { get; set; }
     public string? Note { get; set; }
 }
@@ -91,18 +85,15 @@ public enum CustomFieldType
     Choice = 3,
 }
 
-/// <summary>A user-defined field on an entity (the V1 "custom employee columns" idea, generalised; spec §8.7).</summary>
 public sealed class CustomFieldDefinition
 {
     public int Id { get; set; }
 
-    /// <summary>Entity kind: person, project, task, host, demand…</summary>
     public string EntityKind { get; set; } = "";
     public string Key { get; set; } = "";
     public string Label { get; set; } = "";
     public CustomFieldType Type { get; set; }
 
-    /// <summary>For Choice fields: options separated by "|".</summary>
     public string? Options { get; set; }
     public int SortOrder { get; set; }
 }

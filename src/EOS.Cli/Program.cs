@@ -8,8 +8,6 @@ using EOS.Infrastructure.Projects;
 using EOS.Infrastructure.Skills;
 using Microsoft.EntityFrameworkCore;
 
-// `eos` — command line for EOS V2. Grammar: eos <noun> <verb> [args] [--json] (spec §25.7).
-// Phase 1: local mode against a database file (--db or EOS_DB). The REST client replaces this when the API lands.
 var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
 var argv = args.ToList();
 
@@ -161,7 +159,6 @@ try
             return 0;
         }
 
-        // The ONLY command that changes a rating after the initial import: an explicit human decision (spec §9.5).
         case ("skill", "rate") when argv.Count >= 5:
         {
             using var db = EosDatabase.Open(dbPath);
@@ -375,7 +372,6 @@ try
 
         case ("scenario", "analyse") when argv.Count >= 3:
         {
-            // eos scenario analyse <personCode>:<fromProjectNo>:<toProjectNo>:<yyyy-MM-dd>[:percent] [...] [--name text]
             using var db = EosDatabase.Open(dbPath);
             var moves = new List<EOS.Infrastructure.Capacity.MoveInput>();
             foreach (var spec in argv.Skip(2))

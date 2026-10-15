@@ -17,7 +17,6 @@ public enum LoadBand
 
 public sealed record ProjectHours(int ProjectId, string ProjectNo, decimal Hours, string Source);
 
-/// <summary>One person-month of capacity (spec §8). All thresholds come from settings.</summary>
 public sealed record CapacityRow(
     int PersonId, string PersonName, string? Team, DateOnly Month,
     decimal AvailableHours, decimal PlannedHours, decimal LeaveHours,
@@ -33,11 +32,6 @@ public sealed record WeeklyLoadRow(
     int PersonId, string PersonName, DateOnly WeekStart, decimal CapacityHours, decimal AllocatedHours,
     decimal LoadVsCapacity, LoadBand Band, IReadOnlyList<ProjectHours> ByProject);
 
-/// <summary>
-/// Capacity, allocation and load. Hours-in-a-day come from ONE model: plan task assignments over their scheduled dates
-/// (hours/day x units), falling back to manual monthly allocations (spread evenly over working days) for projects where a
-/// person has no plan assignments (spec §13.2). Nothing is hard-coded: hours, calendar, availability and bands are settings/data.
-/// </summary>
 public sealed class CapacityService(EosDbContext db)
 {
     private sealed record Daily(int PersonId, int ProjectId, DateOnly Day, decimal Hours, string Source);
@@ -93,7 +87,6 @@ public sealed class CapacityService(EosDbContext db)
         return rows;
     }
 
-    /// <summary>Hours per person per week (Monday start) against weekly capacity, red when over capacity (spec §8.5, §20.2).</summary>
     public async Task<IReadOnlyList<WeeklyLoadRow>> GetWeeklyLoadAsync(
         DateOnly from, DateOnly to, int? teamId = null, int? personId = null, CancellationToken ct = default)
     {
@@ -124,11 +117,8 @@ public sealed class CapacityService(EosDbContext db)
         return rows;
     }
 
-    /// <summary>Free planned hours of one person in a month (used by candidate ranking and supply analysis).</summary>
     public async Task<decimal> FreePlannedHoursAsync(int personId, DateOnly month, CancellationToken ct = default) =>
         (await GetCapacityAsync(month, month, personId: personId, ct: ct)).SingleOrDefault()?.FreePlannedHours ?? 0m;
-
-    // ---- internals ------------------------------------------------------------------------------------------
 
     private sealed record PersonInfo(int Id, string FullName, int? TeamId, string? TeamName, decimal AvailabilityFraction);
 
@@ -156,7 +146,6 @@ public sealed class CapacityService(EosDbContext db)
         var leaves = await db.Leaves.AsNoTracking().Where(l => l.ToDate >= from && l.FromDate <= to).ToListAsync(ct);
         var projectNos = await db.Projects.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.ProjectNo, ct);
 
-        // 1) plan-derived daily hours
         var tasks = await db.Tasks.AsNoTracking().Where(t => t.ScheduledStart != null && t.ScheduledFinish != null && t.Kind == TaskKinds.Task).ToListAsync(ct);
         var parentIds = tasks.Where(t => t.ParentId != null).Select(t => t.ParentId!.Value).ToHashSet();
         var allParents = await db.Tasks.AsNoTracking().Where(t => t.ParentId != null).Select(t => t.ParentId!.Value).Distinct().ToListAsync(ct);
@@ -178,7 +167,6 @@ public sealed class CapacityService(EosDbContext db)
                     daily.Add(new Daily(a.PersonId!.Value, t.ProjectId, d, cal.HoursPerDay * a.Units, "plan"));
         }
 
-        // 2) manual monthly allocations for pairs with no plan assignments (Confirmed counts; Proposed is reported separately)
         var manual = await db.Allocations.AsNoTracking().Where(a => a.Month >= new DateOnly(from.Year, from.Month, 1) && a.Month <= to).ToListAsync(ct);
         foreach (var a in manual.Where(a => a.Status == "Confirmed" && !planPairs.Contains((a.PersonId, a.ProjectId))))
         {

@@ -10,10 +10,6 @@ public sealed class Skill
     public int SortOrder { get; set; }
 }
 
-/// <summary>
-/// The CURRENT rating of a person on a skill. Ratings change only by explicit human action
-/// (spec §9.5); every change is recorded as a <see cref="SkillTransaction"/>.
-/// </summary>
 public sealed class PersonSkill
 {
     public int Id { get; set; }
@@ -26,11 +22,8 @@ public sealed class PersonSkill
 
 public enum SkillTransactionKind
 {
-    /// <summary>A person set an initial or periodic rating (includes importing a human-made assessment sheet).</summary>
     Assessment = 0,
-    /// <summary>A person changed a rating; a reason is mandatory.</summary>
     ManualAdjustment = 1,
-    /// <summary>Evidence attached without changing the rating.</summary>
     EvidenceNote = 2,
 }
 

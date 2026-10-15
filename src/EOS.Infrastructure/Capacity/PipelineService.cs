@@ -14,7 +14,6 @@ public sealed record SupplyDemandRow(
     int SkillId, string SkillName, DateOnly Month, decimal ProjectDemandHours, decimal PipelineHours, decimal SupplyHours,
     decimal GapHours, int DeployableCount);
 
-/// <summary>Pipeline (opportunities) and the forward supply-vs-demand view per skill and month (spec §12.4-12.5).</summary>
 public sealed class PipelineService(EosDbContext db)
 {
     public async Task<Opportunity> AddAsync(Opportunity o, string actor, CancellationToken ct = default)
@@ -33,7 +32,6 @@ public sealed class PipelineService(EosDbContext db)
         .Select(o => new OpportunityView(o.Id, o.Code, o.Name, o.LeadName, o.ExpectedHours, o.WinProbability, Math.Round((o.ExpectedHours ?? 0m) * o.WinProbability, 1),
             o.LikelyBookingMonth, o.DurationMonths, o.Stage, o.Status, o.RequiredSkills, o.ConvertedProjectId)).ToList();
 
-    /// <summary>A won opportunity becomes a project carrying its demand lines (spec §19.1-19.2).</summary>
     public async Task<Project> ConvertToProjectAsync(int opportunityId, string projectNo, string actor, CancellationToken ct = default)
     {
         var o = await db.Opportunities.SingleOrDefaultAsync(x => x.Id == opportunityId, ct) ?? throw new DemandException($"Opportunity {opportunityId} not found.");
@@ -49,10 +47,6 @@ public sealed class PipelineService(EosDbContext db)
         return project;
     }
 
-    /// <summary>
-    /// Per skill and month: demand (project demand lines + weighted pipeline) against pooled free planned hours of deployable
-    /// engineers. "Pooled" means an engineer's free hours are counted for every skill they are deployable in (spec §12.5).
-    /// </summary>
     public async Task<IReadOnlyList<SupplyDemandRow>> SupplyDemandAsync(DateOnly fromMonth, int months, CancellationToken ct = default)
     {
         var first = new DateOnly(fromMonth.Year, fromMonth.Month, 1);

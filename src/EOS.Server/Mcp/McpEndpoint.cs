@@ -13,11 +13,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Server.Mcp;
 
-/// <summary>
-/// Model Context Protocol server (JSON-RPC 2.0 over HTTP POST at /mcp), same bearer-token auth as the API.
-/// Read tools answer questions; the two write tools (scenario analyse, scenario apply) leave the plan untouched unless confirm=true.
-/// Skill ratings are deliberately not exposed: they change only by the owner in the UI or CLI.
-/// </summary>
 public static class McpEndpoint
 {
     private const string ProtocolVersion = "2025-03-26";
@@ -120,7 +115,7 @@ public static class McpEndpoint
         if (req is null) return Error(null, -32600, "Invalid request");
         var id = req["id"];
         var method = req["method"]?.GetValue<string>();
-        if (id is null) return null;                                      // notification (e.g. notifications/initialized): no reply
+        if (id is null) return null;
 
         switch (method)
         {

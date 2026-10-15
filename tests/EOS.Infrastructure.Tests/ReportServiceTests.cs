@@ -28,7 +28,7 @@ public sealed class ReportServiceTests : IDisposable
 
     private async Task Seed()
     {
-        var anna = new Person { Code = "E1", FullName = "Anna, \"Lead\"" };      // a name that needs CSV escaping
+        var anna = new Person { Code = "E1", FullName = "Anna, \"Lead\"" };
         var sql = new Skill { Code = "SQL", Name = "SQL" };
         var project = new Project { ProjectNo = "PRO1", Name = "Project One", PoStart = D(10, 5), PlannedEnd = D(11, 30), TrackerStatus = "Under Development", Customer = "Alpha" };
         _db.AddRange(anna, sql, project);
@@ -71,7 +71,7 @@ public sealed class ReportServiceTests : IDisposable
         Assert.Equal(("SQL", 1, 1, 1), ((string)summary[0]!, (int)summary[1]!, (int)summary[2]!, (int)summary[3]!));
         Assert.Single((await svc.RunAsync("demand-register", P)).Rows);
         Assert.Equal("VM1", (await svc.RunAsync("reclaim", P)).Rows.Single()[2]);
-        Assert.Equal(3, (await svc.RunAsync("supply-demand", P with { AsOf = D(10, 1), Months = 3 })).Rows.Count);   // one skill x 3 months
+        Assert.Equal(3, (await svc.RunAsync("supply-demand", P with { AsOf = D(10, 1), Months = 3 })).Rows.Count);
         Assert.Single((await svc.RunAsync("tickets", P)).Rows);
         Assert.Single((await svc.RunAsync("pipeline", P)).Rows);
     }
@@ -81,7 +81,7 @@ public sealed class ReportServiceTests : IDisposable
     {
         var table = await new ReportService(_db).RunAsync("capacity", P);
         var csv = ReportService.ToCsv(table);
-        Assert.Contains("\"Anna, \"\"Lead\"\"\"", csv);                          // RFC 4180 escaping
+        Assert.Contains("\"Anna, \"\"Lead\"\"\"", csv);
         Assert.StartsWith("Engineer,Team,Month", csv);
 
         var bytes = ReportService.ToXlsx(table);

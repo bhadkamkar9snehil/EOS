@@ -1,10 +1,7 @@
 namespace EOS.Scheduling;
 
-/// <summary>A project's schedulable plan: tasks with crews. Each project owns its own plan (spec §16.1).</summary>
 public sealed record ProjectPlan(string Id, string Name, DateOnly Start, IReadOnlyList<ScheduleTask> Tasks);
 
-/// <summary>Move <paramref name="PersonId"/> from one project to another on <paramref name="Date"/> (spec §15.3).</summary>
-/// <param name="Percent">1 = full move; 0.5 = half of the person's time moves.</param>
 public sealed record MoveRequest(string PersonId, string FromProjectId, string ToProjectId, DateOnly Date, decimal Percent = 1m);
 
 public sealed record TaskImpact(
@@ -13,7 +10,6 @@ public sealed record TaskImpact(
     DateOnly ScenarioStart, DateOnly ScenarioFinish,
     int SlipWorkingDays);
 
-/// <param name="SlipWorkingDays">Positive = finishes later than baseline, negative = earlier (spec §15.6).</param>
 public sealed record ProjectImpact(
     string ProjectId, DateOnly BaselineFinish, DateOnly ScenarioFinish, int SlipWorkingDays,
     IReadOnlyList<TaskImpact> Tasks);
@@ -22,7 +18,6 @@ public sealed record ScenarioOutcome(
     IReadOnlyList<ProjectPlan> ScenarioPlans,
     IReadOnlyList<ProjectImpact> Projects);
 
-/// <summary>One row of the "major push" release table (spec §15.6.1).</summary>
 public sealed record ReleaseRow(
     string PersonId,
     string ProjectId,
@@ -31,11 +26,6 @@ public sealed record ReleaseRow(
     int CostIfMovedOnAnalysisDate,
     int GainToTargetIfMovedOnAnalysisDate);
 
-/// <summary>
-/// The what-if engine. A scenario never mutates the baseline plans; it builds modified copies and compares
-/// recomputed schedules (spec §4 #6, §15.4). Placement rule on the receiving project: the mover joins every task
-/// that is not yet complete on the move date, from that date (spec §15.4 step 4).
-/// </summary>
 public static class WhatIf
 {
     public static ScenarioOutcome Run(
@@ -52,7 +42,6 @@ public static class WhatIf
 
             plans[source.Id] = source with { Tasks = Leave(source.Tasks, move.PersonId, move.Date, move.Percent) };
 
-            // Placement uses the target's schedule as it stands after earlier moves.
             var targetNow = Scheduler.Compute(dest.Tasks, cal, dest.Start, options);
             plans[dest.Id] = dest with { Tasks = Join(dest.Tasks, move.PersonId, move.Date, move.Percent, targetNow) };
         }
@@ -74,11 +63,6 @@ public static class WhatIf
         return new ScenarioOutcome(scenarioPlans, impacts);
     }
 
-    /// <summary>
-    /// For a major push on <paramref name="targetProjectId"/>: for every person working on another project, the last day
-    /// of their current work, the earliest day they can move with no delay to their project, the cost of moving on
-    /// <paramref name="analysisDate"/>, and the gain to the target if they join on that date. (spec §15.6.1)
-    /// </summary>
     public static IReadOnlyList<ReleaseRow> ReleaseAnalysis(
         IReadOnlyList<ProjectPlan> plans, string targetProjectId, DateOnly analysisDate, WorkCalendar cal, SchedulingOptions? options = null)
     {
@@ -118,7 +102,6 @@ public static class WhatIf
         return rows;
     }
 
-    /// <summary>The person leaves on <paramref name="date"/>: their assignments end the day before (partial move keeps the remainder).</summary>
     public static IReadOnlyList<ScheduleTask> Leave(IReadOnlyList<ScheduleTask> tasks, string person, DateOnly date, decimal percent)
     {
         var result = new List<ScheduleTask>(tasks.Count);
@@ -138,7 +121,6 @@ public static class WhatIf
         return result;
     }
 
-    /// <summary>The person joins every not-yet-complete task from <paramref name="date"/> at <paramref name="percent"/> units.</summary>
     public static IReadOnlyList<ScheduleTask> Join(
         IReadOnlyList<ScheduleTask> tasks, string person, DateOnly date, decimal percent, ScheduleResult currentSchedule)
     {

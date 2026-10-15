@@ -19,7 +19,6 @@ public sealed record AssignBody(int? PersonId, decimal Units, DateOnly? From, Da
 public sealed record BaselineBody(string? Name);
 public sealed record RecomputeQuery(DateOnly? StatusDate);
 
-/// <summary>Projects, plans (WBS), tasks, links, assignments, baselines and health (spec §11, §16).</summary>
 public static class PlanningApi
 {
     public static void Map(RouteGroupBuilder api)

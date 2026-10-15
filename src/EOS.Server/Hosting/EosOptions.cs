@@ -1,9 +1,5 @@
 namespace EOS.Server.Hosting;
 
-/// <summary>
-/// Server settings. Environment variables (EOS__DatabasePath ...) or appsettings override the defaults. Production paths live under
-/// /var/lib/eos (spec §25.9). Nothing secret is stored here.
-/// </summary>
 public sealed record EosOptions(string DataDirectory, string DatabasePath, string BackupDirectory, bool DevNoAuth)
 {
     public static EosOptions From(IConfiguration c)

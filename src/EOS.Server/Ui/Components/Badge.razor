@@ -1,7 +1,6 @@
 <span class="badge @Kind" title="@Title">@ChildContent</span>
 
 @code {
-    /// <summary>good | warn | bad | info | (empty)</summary>
     [Parameter] public string Kind { get; set; } = "";
     [Parameter] public string? Title { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }

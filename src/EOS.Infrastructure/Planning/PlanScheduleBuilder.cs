@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Planning;
 
-/// <summary>Everything needed to run (and write back) a project schedule: entities plus the engine input.</summary>
 internal sealed record BuiltPlan(
     Project Project,
     List<PlanTask> Tasks,
@@ -19,10 +18,6 @@ internal sealed record BuiltPlan(
     SchedulingOptions Options,
     List<string> Warnings);
 
-/// <summary>
-/// The single place that turns a stored project plan into engine input. Plan recompute, scenarios and release analysis all
-/// use it, so they can never disagree about how a task is scheduled (spec §14, §15).
-/// </summary>
 internal static class PlanScheduleBuilder
 {
     public static async Task<BuiltPlan> BuildAsync(EosDbContext db, int projectId, DateOnly today, CancellationToken ct)
@@ -66,7 +61,6 @@ internal static class PlanScheduleBuilder
 
             if (t.PercentComplete >= 1m && t.Kind == TaskKinds.Task)
             {
-                // Finished work keeps its real dates as fixed facts.
                 var s = t.ActualStart ?? t.PlannedStart ?? t.StartNoEarlierThan;
                 var f = t.ActualFinish ?? t.PlannedFinish ?? s;
                 if (s is { } sd && f is { } fd && fd >= sd)

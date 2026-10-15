@@ -10,16 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Capacity;
 
-/// <summary>
-/// What-if analysis on real plans (spec §15): moves of engineers between projects, release analysis for a major push,
-/// a greedy push plan, and the approve / apply workflow that updates assignments, the movement ledger, the change log and
-/// baselines. Analysis never mutates plans; only <see cref="ApplyAsync"/> does, and only for an approved scenario.
-/// </summary>
 public sealed class ScenarioService(EosDbContext db)
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = false };
-
-    // ---- analyse -------------------------------------------------------------------------------------------
 
     public async Task<ScenarioView> AnalyseAsync(
         IReadOnlyList<MoveInput> moves, string name, string actor, string? notes = null, DateOnly? today = null,
@@ -63,8 +56,6 @@ public sealed class ScenarioService(EosDbContext db)
         return views;
     }
 
-    // ---- decide and apply ----------------------------------------------------------------------------------
-
     public async Task<ScenarioView> DecideAsync(int id, bool approve, string by, string? note, CancellationToken ct = default)
     {
         var s = await db.Scenarios.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new ScenarioException($"Scenario {id} not found.");
@@ -77,10 +68,6 @@ public sealed class ScenarioService(EosDbContext db)
         return await ToViewAsync(s, ct);
     }
 
-    /// <summary>
-    /// Applies an APPROVED scenario: rewrites the movers' assignments, records the movement ledger and a change-log decision,
-    /// recomputes the affected plans and promotes each to a new baseline (spec §15.9).
-    /// </summary>
     public async Task<ScenarioView> ApplyAsync(int id, string by, DateOnly? today = null, CancellationToken ct = default)
     {
         var s = await db.Scenarios.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new ScenarioException($"Scenario {id} not found.");
@@ -140,8 +127,6 @@ public sealed class ScenarioService(EosDbContext db)
         return await ToViewAsync(s, ct);
     }
 
-    // ---- major push -------------------------------------------------------------------------------------------
-
     public async Task<IReadOnlyList<ReleaseRowView>> ReleaseAnalysisAsync(
         int targetProjectId, DateOnly analysisDate, DateOnly? today = null, CancellationToken ct = default)
     {
@@ -169,10 +154,6 @@ public sealed class ScenarioService(EosDbContext db)
         return result.OrderBy(r => r.EarliestNoDelayMove ?? DateOnly.MaxValue).ThenBy(r => r.PersonName).ToList();
     }
 
-    /// <summary>
-    /// Greedy push plan: take the cheapest eligible engineers first (earliest no-delay move), recompute after each (gains are not
-    /// additive) and stop when the target stops improving or another project would slip. Also yields the finish-vs-engineers curve.
-    /// </summary>
     public async Task<PushPlanView> PushPlanAsync(
         int targetProjectId, DateOnly analysisDate, int maxMoves = 10, DateOnly? today = null, CancellationToken ct = default)
     {
@@ -202,7 +183,7 @@ public sealed class ScenarioService(EosDbContext db)
             var outcome = WhatIf.Run(plans, trial.Select(Map).ToList(), cal, options);
             var target = outcome.Projects.Single(p => p.ProjectId == targetProjectId.ToString());
             var othersSlip = outcome.Projects.Where(p => p.ProjectId != targetProjectId.ToString()).Any(p => p.SlipWorkingDays > 0);
-            if (target.SlipWorkingDays >= bestSlip || othersSlip) continue;          // no improvement, or it hurts someone else
+            if (target.SlipWorkingDays >= bestSlip || othersSlip) continue;
 
             accepted = trial;
             bestSlip = target.SlipWorkingDays;
@@ -210,8 +191,6 @@ public sealed class ScenarioService(EosDbContext db)
         }
         return new PushPlanView(targetProjectId, built[targetProjectId].Project.ProjectNo, baselineFinish, steps, accepted);
     }
-
-    // ---- internals --------------------------------------------------------------------------------------------
 
     private static MoveRequest Map(MoveInput m) => new(m.PersonId.ToString(), m.FromProjectId.ToString(), m.ToProjectId.ToString(), m.Date, m.Percent);
 

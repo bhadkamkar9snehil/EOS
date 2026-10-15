@@ -3,24 +3,26 @@
 @attribute [AllowAnonymous]
 
 <div class="login">
-    <div class="login-card">
-        <div class="brand big"><span class="mark">E</span><span class="word">EOS</span></div>
-        <p class="muted">Engineering Operating System</p>
+    <header class="band"><span class="brand">EOS</span></header>
+    <div class="login-body">
+        <div class="login-card">
+            <h1>Sign in</h1>
+            <p class="muted">Engineering Operating System</p>
 
-        <form id="login-form" onsubmit="eosLogin(event)">
-            <label for="token">Access token</label>
-            <input id="token" name="token" type="password" autocomplete="current-password" placeholder="eos_…" required />
-            <button type="submit">Sign in</button>
-            <p id="login-error" class="error" role="alert" hidden></p>
-        </form>
+            <form id="login-form" onsubmit="eosLogin(event)" style="margin-top:18px">
+                <label for="token">Access token</label>
+                <input id="token" name="token" type="password" autocomplete="current-password" placeholder="eos_…" required />
+                <button type="submit">Sign in</button>
+                <p id="login-error" class="error" role="alert" hidden></p>
+            </form>
 
-        <form id="bootstrap-form" onsubmit="eosBootstrap(event)" hidden>
-            <hr />
-            <p class="muted">No token exists yet. You can create the first one from this machine.</p>
-            <label for="owner">Your name</label>
-            <input id="owner" name="owner" type="text" value="owner" />
-            <button type="submit" class="secondary">Create first token</button>
-            <p id="bootstrap-result" class="ok" hidden></p>
-        </form>
+            <form id="bootstrap-form" onsubmit="eosBootstrap(event)" hidden style="margin-top:22px;border-top:1px solid var(--rule);padding-top:14px">
+                <p class="muted">No token exists yet. You can create the first one from this machine.</p>
+                <label for="owner">Your name</label>
+                <input id="owner" name="owner" type="text" value="owner" />
+                <button type="submit" class="secondary">Create first token</button>
+                <p id="bootstrap-result" class="ok" hidden></p>
+            </form>
+        </div>
     </div>
 </div>

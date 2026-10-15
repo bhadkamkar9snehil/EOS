@@ -3,7 +3,6 @@ using static EOS.Scheduling.Tests.GoldenSampleProjects;
 
 namespace EOS.Scheduling.Tests;
 
-/// <summary>Link types, lag, fixed duration and start constraints (spec §14.4). Calendar: Mon-Sat, 8 h. Start Mon 5 Oct 2026.</summary>
 public class LinkTypeTests
 {
     private static CrewMember A => new("A");
@@ -11,7 +10,6 @@ public class LinkTypeTests
 
     private static ScheduleResult Run(params ScheduleTask[] tasks) => Scheduler.Compute(tasks, Calendar, Start);
 
-    // Task X: 5 working days (40 h, one person): Mon 5 Oct - Fri 9 Oct.
     private static ScheduleTask X => new("X", "X", 40, [], [A]);
 
     [Fact]
@@ -20,7 +18,6 @@ public class LinkTypeTests
         var y = new ScheduleTask("Y", "Y", 16, [], [B]) { Dependencies = [new TaskDependency("X", LinkType.FinishToStart, 2)] };
         var r = Run(X, y);
         Assert.Equal(D(10, 9), r.Tasks["X"].Finish);
-        // Mon-Sat calendar: X ends Fri 9, natural FS start is Sat 10, plus 2 working days (Mon 12, Tue 13) = Tue 13.
         Assert.Equal(D(10, 13), r.Tasks["Y"].Start);
     }
 
@@ -39,14 +36,13 @@ public class LinkTypeTests
         var y = new ScheduleTask("Y", "Y", 16, [], [B]) { Dependencies = [new TaskDependency("X", LinkType.StartToStart, 2)] };
         var r = Run(X, y);
         Assert.Equal(D(10, 5), r.Tasks["X"].Start);
-        Assert.Equal(D(10, 7), r.Tasks["Y"].Start);           // X start Mon 5 + 2 working days
+        Assert.Equal(D(10, 7), r.Tasks["Y"].Start);
         Assert.Equal(D(10, 8), r.Tasks["Y"].Finish);
     }
 
     [Fact]
     public void FinishToFinish_Prevents_The_Successor_Finishing_Before_The_Predecessor()
     {
-        // Y needs only 1 day but may not finish before X (Fri 9 Oct): it is pushed to finish on that day.
         var y = new ScheduleTask("Y", "Y", 8, [], [B]) { Dependencies = [new TaskDependency("X", LinkType.FinishToFinish)] };
         var r = Run(X, y);
         Assert.Equal(D(10, 9), r.Tasks["Y"].Finish);
@@ -90,7 +86,6 @@ public class LinkTypeTests
     [Fact]
     public void Backward_Pass_Honours_Lag_And_Float()
     {
-        // X(5d) ->FS+0-> Y(2d); Z(1d) is independent: Z has float, X and Y are critical.
         var y = new ScheduleTask("Y", "Y", 16, ["X"], [A]);
         var z = new ScheduleTask("Z", "Z", 8, [], [B]);
         var r = Run(X, y, z);

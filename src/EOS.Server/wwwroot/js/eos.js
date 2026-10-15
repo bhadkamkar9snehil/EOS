@@ -1,4 +1,3 @@
-// Sign-in helpers for the static login page and the sign-out button. No framework needed.
 async function eosPost(url, body) {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
@@ -51,7 +50,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch { /* keep hidden */ }
 });
 
-// Download helper for exports invoked from Blazor.
 window.eosDownload = (name, mime, base64) => {
   const a = document.createElement("a");
   a.href = "data:" + mime + ";base64," + base64;

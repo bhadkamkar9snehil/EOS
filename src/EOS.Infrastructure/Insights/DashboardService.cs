@@ -14,7 +14,6 @@ public sealed record CommandCenter(
     DateOnly AsOf, Kpis Kpis, IReadOnlyList<ProjectHealthView> Projects, IReadOnlyList<Alert> Alerts,
     IReadOnlyList<WeeklyLoadRow> LoadNext8Weeks, IReadOnlyList<SupplyDemandRow> SupplyDemand, IReadOnlyList<MilestoneView> Milestones);
 
-/// <summary>Everything the Command Center home needs in one call (spec §21.1): KPIs, health, alerts, load, supply vs demand.</summary>
 public sealed class DashboardService(EosDbContext db)
 {
     public async Task<CommandCenter> GetAsync(DateOnly asOf, CancellationToken ct = default)

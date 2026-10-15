@@ -1,13 +1,9 @@
 namespace EOS.Domain.Hosting;
 
-/// <summary>
-/// A physical server or VM. There are deliberately NO credential fields anywhere in this model (spec §2.4, §24.9).
-/// </summary>
 public sealed class Host
 {
     public int Id { get; set; }
 
-    /// <summary>"physical" or "vm".</summary>
     public string Kind { get; set; } = "vm";
     public int? ParentHostId { get; set; }
     public string? Ip { get; set; }
@@ -41,12 +37,10 @@ public sealed class ProjectHost
     public int ProjectId { get; set; }
     public int HostId { get; set; }
 
-    /// <summary>application, database, publish, test, demo…</summary>
     public string Role { get; set; } = "application";
     public string? Notes { get; set; }
 }
 
-/// <summary>A published or demo system (URLs only, never credentials).</summary>
 public sealed class HostedSystem
 {
     public int Id { get; set; }

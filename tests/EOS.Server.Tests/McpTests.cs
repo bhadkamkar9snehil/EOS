@@ -19,7 +19,7 @@ public sealed class McpTests : IClassFixture<EosFactory>
     [Fact]
     public async Task Mcp_Needs_A_Token()
     {
-        await _factory.ClientAsync();                      // once a token exists, anonymous calls are refused
+        await _factory.ClientAsync();
         var r = await _factory.CreateClient().PostAsJsonAsync("/mcp", new { jsonrpc = "2.0", id = 1, method = "ping" });
         Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
     }

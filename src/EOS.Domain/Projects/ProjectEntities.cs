@@ -1,11 +1,9 @@
 namespace EOS.Domain.Projects;
 
-/// <summary>A unit of customer delivery. The ERP project master supplies identity and commercials; plans add delivery detail (spec §11).</summary>
 public sealed class Project
 {
     public int Id { get; set; }
 
-    /// <summary>ERP project number, e.g. "PRO2503040". Natural key for imports.</summary>
     public string ProjectNo { get; set; } = "";
     public string Name { get; set; } = "";
     public string? Customer { get; set; }
@@ -14,7 +12,6 @@ public sealed class Project
     public string? ErpStatus { get; set; }
     public string? TrackerStatus { get; set; }
 
-    /// <summary>Project manager (commercial/delivery). Text, because most PMs are not engineers in the roster.</summary>
     public string? ProjectManager { get; set; }
     public string? TechnicalManager { get; set; }
     public int? TechnicalManagerPersonId { get; set; }
@@ -28,7 +25,6 @@ public sealed class Project
     public int? ParentProjectId { get; set; }
     public int? CalendarId { get; set; }
 
-    /// <summary>Optional manual health, with reason; otherwise health is computed (spec §11.6).</summary>
     public string? HealthOverride { get; set; }
     public string? HealthOverrideReason { get; set; }
     public decimal? ProgressOverride { get; set; }
@@ -36,7 +32,6 @@ public sealed class Project
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
 
-    /// <summary>True for placeholder rows from sample sheets (spec §24.1 sample space).</summary>
     public bool IsSample { get; set; }
 }
 
@@ -54,7 +49,6 @@ public sealed class Opportunity
     public decimal WinProbability { get; set; }
     public string Status { get; set; } = "Expected";
 
-    /// <summary>Required skill codes, comma separated.</summary>
     public string? RequiredSkills { get; set; }
     public int? ConvertedProjectId { get; set; }
     public bool IsSample { get; set; }

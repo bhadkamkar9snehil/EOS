@@ -25,8 +25,6 @@ public sealed class SkillAndSettingsTests : IDisposable
 
     public void Dispose() { _db.Dispose(); _connection.Dispose(); }
 
-    // ---- Manual-only skill ratings (spec §9.5) ---------------------------------------------------------
-
     [Fact]
     public async Task Rating_Change_Records_Who_Old_New_And_Reason()
     {
@@ -83,8 +81,6 @@ public sealed class SkillAndSettingsTests : IDisposable
         Assert.Equal(SkillTransactionKind.EvidenceNote, (await _db.SkillTransactions.OrderByDescending(t => t.Id).FirstAsync()).Kind);
     }
 
-    // ---- Settings store (spec §8.7) --------------------------------------------------------------------
-
     [Fact]
     public async Task Changing_A_Setting_Closes_The_Previous_Entry_And_Keeps_History()
     {
@@ -123,8 +119,6 @@ public sealed class SkillAndSettingsTests : IDisposable
         await Assert.ThrowsAsync<ArgumentException>(() => store.SetAsync(SettingKeys.HoursPerDay, SettingScope.Global, "8", from, "s", ""));
     }
 
-    // ---- Person matching (spec §6.4) -------------------------------------------------------------------
-
     private static PersonMatcher Matcher(params string[] names) =>
         new(names.Select((n, i) => new Person { Id = i + 1, Code = $"E{i:000}", FullName = n }).ToList(), []);
 
@@ -133,8 +127,8 @@ public sealed class SkillAndSettingsTests : IDisposable
     {
         var m = Matcher("Aayush Patel", "Ziaul Haque", "Chirag Dhimmar", "Deep Thakor", "Deepak Upadhaya");
         Assert.Equal("Chirag Dhimmar", m.Resolve("chirag")?.FullName);
-        Assert.Equal("Aayush Patel", m.Resolve("Ayush")?.FullName);          // one deletion
-        Assert.Equal("Ziaul Haque", m.Resolve("Ziual")?.FullName);           // one transposition
+        Assert.Equal("Aayush Patel", m.Resolve("Ayush")?.FullName);
+        Assert.Equal("Ziaul Haque", m.Resolve("Ziual")?.FullName);
         Assert.Equal("Deep Thakor", m.Resolve("Deep")?.FullName);            // exact first token beats near-match "Deepak"
     }
 
@@ -142,9 +136,9 @@ public sealed class SkillAndSettingsTests : IDisposable
     public void Matcher_Never_Guesses_When_Ambiguous_Or_Unknown()
     {
         var m = Matcher("Tejas Kale", "Tejas Khadke", "Dev Patel", "Dharati Patel");
-        Assert.Null(m.Resolve("Tejas"));                                     // two Tejas
-        Assert.Null(m.Resolve("Safwan"));                                    // unknown
-        Assert.Null(m.Resolve("Tejas Shah"));                                // multi-word that matches nothing exactly
+        Assert.Null(m.Resolve("Tejas"));
+        Assert.Null(m.Resolve("Safwan"));
+        Assert.Null(m.Resolve("Tejas Shah"));
         Assert.Null(m.Resolve(""));
         Assert.Equal("Tejas Kale", m.Resolve("Tejas Kale")?.FullName);
     }

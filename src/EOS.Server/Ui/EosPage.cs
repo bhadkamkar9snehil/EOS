@@ -11,10 +11,6 @@ using Microsoft.JSInterop;
 
 namespace EOS.Server.Ui;
 
-/// <summary>
-/// Base class for pages. Every data call runs in its own DI scope (so a long-lived Blazor circuit never shares a database context
-/// across concurrent operations); user errors become toasts; the signed-in token name is the actor on every change.
-/// </summary>
 public abstract class EosPage : ComponentBase, IDisposable
 {
     [Inject] protected IServiceScopeFactory Scopes { get; set; } = null!;
@@ -28,7 +24,6 @@ public abstract class EosPage : ComponentBase, IDisposable
     protected bool Loading { get; set; } = true;
     protected string? LoadError { get; set; }
 
-    /// <summary>Pages override to (re)load their data. Called on first render and whenever the as-of date changes.</summary>
     protected virtual Task LoadAsync() => Task.CompletedTask;
 
     protected override async Task OnInitializedAsync()
@@ -55,7 +50,6 @@ public abstract class EosPage : ComponentBase, IDisposable
         return await query(scope.ServiceProvider);
     }
 
-    /// <summary>Runs a change; shows <paramref name="success"/> or the error as a toast; reloads the page on success.</summary>
     protected async Task Act(Func<IServiceProvider, string, Task> action, string? success = null, bool reload = true)
     {
         try

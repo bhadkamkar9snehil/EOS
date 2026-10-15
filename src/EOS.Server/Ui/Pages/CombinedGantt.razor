@@ -49,7 +49,6 @@
         Build();
     }
 
-    /// <summary>One lane per engineer: a summary bar over everything they are assigned to, then each task tagged with its project.</summary>
     private void BuildByEngineer()
     {
         var items = (_plans ?? []).SelectMany(p => p.Tasks.Where(t => !t.IsSummary && t.Start is not null && !(_hideDone && t.PercentComplete >= 1m))

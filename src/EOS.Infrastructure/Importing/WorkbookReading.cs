@@ -2,13 +2,8 @@ using ClosedXML.Excel;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>Small helpers shared by the workbook importers. Reads only; never writes a source file.</summary>
 internal static class WorkbookReading
 {
-    /// <summary>
-    /// Opens a workbook even when Excel has it open (shared read). The file is copied into memory and closed at once,
-    /// so a source file is never left locked by an import (important for a long-running server).
-    /// </summary>
     public static XLWorkbook Open(string path)
     {
         var buffer = new MemoryStream();
@@ -48,7 +43,6 @@ internal static class WorkbookReading
         "dd MMM yyyy", "d MMM yyyy", "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "yyyy-MM-dd", "dd.MM.yyyy",
     ];
 
-    /// <summary>Tolerant text date reader: "05-Sept-26", "17-July-26", "14-09-2026", "2026-09-14". Returns null for 0, "-" and junk.</summary>
     public static DateOnly? ParseDateText(string? text)
     {
         var s = (text ?? "").Trim();
@@ -58,7 +52,6 @@ internal static class WorkbookReading
             System.Globalization.DateTimeStyles.None, out var d) ? d : null;
     }
 
-    /// <summary>First row (within the first <paramref name="scan"/> rows) whose column A equals <paramref name="header"/>.</summary>
     public static int? FindHeaderRow(this IXLWorksheet ws, string header, int scan = 15)
     {
         for (var r = 1; r <= scan; r++)

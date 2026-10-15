@@ -2,7 +2,6 @@ using System.Text.Json;
 
 namespace EOS.Domain.Settings;
 
-/// <summary>Scope levels of the settings cascade, least to most specific (spec §8.7).</summary>
 public enum SettingScopeKind
 {
     Global = 0,
@@ -21,7 +20,6 @@ public readonly record struct SettingScope(SettingScopeKind Kind, string? Id = n
     public static SettingScope Scenario(string id) => new(SettingScopeKind.Scenario, id);
 }
 
-/// <summary>One effective-dated value of a setting at a scope. History is never rewritten; a new entry supersedes.</summary>
 public sealed record SettingEntry(
     string Key,
     SettingScope Scope,
@@ -34,23 +32,19 @@ public sealed record SettingEntry(
     public bool IsEffectiveOn(DateOnly date) => date >= EffectiveFrom && (EffectiveTo is null || date <= EffectiveTo);
 }
 
-/// <summary>Setting keys. Values are seed defaults only (see <see cref="SettingDefaults"/>); nothing is hard-coded elsewhere.</summary>
 public static class SettingKeys
 {
-    // Time and hours
     public const string StandardHoursPerMonth = "time.standardHoursPerMonth";
     public const string HoursPerDay = "time.hoursPerDay";
-    public const string WorkDays = "time.workDays";                   // JSON array of DayOfWeek numbers (0 = Sunday)
+    public const string WorkDays = "time.workDays";
     public const string CapacityMode = "time.capacityMode";           // "calendar" | "fixedMonthly"
 
-    // Utilisation and load bands
     public const string TargetUtilisation = "utilisation.target";
     public const string ProposedCountsTowardLoad = "utilisation.proposedCounts";
     public const string ContextSwitchPenaltyPerExtraProject = "utilisation.contextSwitchPenalty";
     public const string LoadUnderUsedBelow = "load.underUsedBelow";
     public const string LoadOverAllocatedAbove = "load.overAllocatedAbove";
 
-    // Skills
     public const string SkillLevelCount = "skills.levelCount";
     public const string SkillResourceMinLevel = "skills.resourceMinLevel";
     public const string SkillDeployableMinLevel = "skills.deployableMinLevel";
@@ -58,20 +52,17 @@ public static class SettingKeys
     public const string SkillDisagreementLevels = "skills.disagreementLevels";
     public const string SkillUseBlendedRating = "skills.useBlendedRating";
 
-    // Training bands (percent known)
     public const string KnowledgeGoodAtLeast = "training.goodAtLeast";
     public const string KnowledgeMediumAtLeast = "training.mediumAtLeast";
     public const string KnowledgeWeakAtLeast = "training.weakAtLeast";
 
-    // Scheduling and what-if
     public const string FactorProfile = "scheduling.factorProfile";   // "compat" | "realistic" | custom name
     public const string WholeDayRule = "scheduling.wholeDayRule";
     public const string LostAllEngineersRule = "scheduling.lostAllEngineersRule";   // "afterOwnTasks" | "none" (spec §14.2 rule 4)
-    public const string EstimatedWorkDrivesSchedule = "scheduling.estimatedWorkDrivesSchedule";   // imported tasks: dates (false) or derived work (true)
-    public const string DefaultTaskDurationDays = "scheduling.defaultTaskDurationDays";           // a task with no work and no duration
-    public const string UnassignedCrewSize = "scheduling.unassignedCrewSize";                     // people assumed on a task with no assignment
+    public const string EstimatedWorkDrivesSchedule = "scheduling.estimatedWorkDrivesSchedule";
+    public const string DefaultTaskDurationDays = "scheduling.defaultTaskDurationDays";
+    public const string UnassignedCrewSize = "scheduling.unassignedCrewSize";
 
-    // Alerts (spec §22)
     public const string AlertTrackerStaleDays = "alerts.trackerStaleDays";
     public const string AlertDemandStartWarnDays = "alerts.demandStartWarnDays";
     public const string AlertMaxConcurrentProjects = "alerts.maxConcurrentProjects";
@@ -81,7 +72,6 @@ public static class SettingKeys
     public const string AlertDoubtOpenDays = "alerts.doubtOpenDays";
     public const string AlertBusFactorMax = "alerts.busFactorMax";
 
-    // Project health
     public const string HealthAtRiskDelayRatio = "health.atRiskDelayRatio";
     public const string HealthModerateDelayRatio = "health.moderateDelayRatio";
     public const string HealthAtRiskVarianceDays = "health.atRiskVarianceDays";
@@ -89,12 +79,10 @@ public static class SettingKeys
     public const string HealthAtRiskProgressGapPoints = "health.atRiskProgressGapPoints";
     public const string HealthModerateProgressGapPoints = "health.moderateProgressGapPoints";
 
-    // Infrastructure
     public const string HostDiskFreeWarnFraction = "infra.diskFreeWarnFraction";
     public const string VmStaleDays = "infra.vmStaleDays";
 }
 
-/// <summary>Seed defaults for every setting (spec §8.7 "Seed default" column). Values are JSON.</summary>
 public static class SettingDefaults
 {
     public static IReadOnlyDictionary<string, string> All { get; } = new Dictionary<string, string>
@@ -149,15 +137,10 @@ public static class SettingDefaults
     };
 }
 
-/// <summary>
-/// Resolves a setting by walking the scope chain from most specific to least specific and, within a scope,
-/// choosing the latest entry effective on the requested date; falls back to <see cref="SettingDefaults"/>.
-/// </summary>
 public sealed class SettingsResolver(IEnumerable<SettingEntry> entries)
 {
     private readonly ILookup<string, SettingEntry> _byKey = entries.ToLookup(e => e.Key);
 
-    /// <param name="chainMostSpecificFirst">e.g. [Scenario, Project, Person, Team, Global]. Use <see cref="Chain"/>.</param>
     public string? ResolveJson(string key, IReadOnlyList<SettingScope> chainMostSpecificFirst, DateOnly asOf)
     {
         foreach (var scope in chainMostSpecificFirst)
@@ -179,7 +162,6 @@ public sealed class SettingsResolver(IEnumerable<SettingEntry> entries)
                ?? throw new InvalidDataException($"Setting '{key}' has a null value.");
     }
 
-    /// <summary>Builds the cascade chain, most specific first. Omit levels that do not apply.</summary>
     public static IReadOnlyList<SettingScope> Chain(
         string? scenarioId = null, string? projectId = null, string? personId = null, string? teamId = null)
     {

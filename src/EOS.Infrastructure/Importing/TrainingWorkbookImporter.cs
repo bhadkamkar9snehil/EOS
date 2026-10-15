@@ -6,13 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Imports "X-Force Training": the module catalogue and every engineer's Know / don't Know / Need to discuss state
-/// (sheet 'Module'), and the doubts log (sheet 'Need to Discuss') (spec §24.2 I9, I11).
-/// The 'Module Proficiency Level' sheet is deliberately NOT imported: it is default-filled "Beginner" (spec DQ5).
-/// Engineer columns are matched to people without guessing; unknown engineers are created as unassigned,
-/// unverified persons so their data is kept, and reported (spec DQ4).
-/// </summary>
 public sealed class TrainingWorkbookImporter(EosDbContext db)
 {
     public async Task<ImportReport> ImportAsync(string path, bool commit, string actor, CancellationToken ct = default)
@@ -46,7 +39,6 @@ public sealed class TrainingWorkbookImporter(EosDbContext db)
         var header = ws.FindHeaderRow("Sr No", 5);
         if (header is null) { report.Warnings.Add("Module: header row 'Sr No' not found."); return matcher; }
 
-        // Engineer columns start after Sr No / Product / Module / Sub Module.
         var engineerColumns = new Dictionary<int, Person>();
         for (var c = 5; c <= ws.LastColumn(header.Value); c++)
         {
@@ -72,7 +64,7 @@ public sealed class TrainingWorkbookImporter(EosDbContext db)
             }
             engineerColumns[c] = person;
         }
-        await db.SaveChangesAsync(ct);                  // give new persons ids
+        await db.SaveChangesAsync(ct);
 
         foreach (var (col, person) in engineerColumns)
         {
@@ -174,7 +166,6 @@ public sealed class TrainingWorkbookImporter(EosDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Know / don't Know / Need to discuss, tolerant of case and the curly apostrophe.</summary>
     public static KnowledgeState? ParseState(string text)
     {
         var s = text.Trim().ToLowerInvariant().Replace('’', '\'');

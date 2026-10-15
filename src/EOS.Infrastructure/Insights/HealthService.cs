@@ -12,11 +12,6 @@ public sealed record ProjectHealthView(
     decimal ProgressActual, decimal ProgressExpected, decimal ProgressGapPoints,
     DateOnly? PlannedEnd, DateOnly? ForecastEnd, IReadOnlyList<string> Reasons);
 
-/// <summary>
-/// Computed project health (spec §11.6): schedule variance of the forecast finish against the planned end, the share of open
-/// tasks that are late, and the gap between expected and actual progress. A person may override with a recorded reason.
-/// All thresholds are settings.
-/// </summary>
 public sealed class HealthService(EosDbContext db)
 {
     public async Task<IReadOnlyList<ProjectHealthView>> GetAllAsync(DateOnly asOf, CancellationToken ct = default)
@@ -42,7 +37,6 @@ public sealed class HealthService(EosDbContext db)
         var delayed = open.Where(t => t.Status == "Delayed" || (t.PlannedFinish is { } pf && pf < asOf)).ToList();
         var delayRatio = open.Count == 0 ? 0m : (decimal)delayed.Count / open.Count;
 
-        // progress: expected from planned dates, actual from percent complete, both weighted by work (min 1 h)
         var dated = leaves.Where(t => t.PlannedStart is not null && t.PlannedFinish is not null).ToList();
         decimal Weight(PlanTask t) => Math.Max(t.WorkHours, 1m);
         var weightSum = dated.Sum(Weight);

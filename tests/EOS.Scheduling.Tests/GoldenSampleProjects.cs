@@ -2,10 +2,6 @@ using EOS.Scheduling;
 
 namespace EOS.Scheduling.Tests;
 
-/// <summary>
-/// The three sample projects of "Timeline Impact Analysis v1" (spec §15.8), expressed as engine input.
-/// Calendar: Monday–Saturday, 8 h/day. Start: Monday 5 Oct 2026.
-/// </summary>
 internal static class GoldenSampleProjects
 {
     public static readonly DateOnly Start = new(2026, 10, 5);
@@ -15,7 +11,6 @@ internal static class GoldenSampleProjects
 
     private static CrewMember C(string who, DateOnly? from = null, DateOnly? to = null) => new(who, From: from, To: to);
 
-    /// <param name="maheshLeavesOn">If set, Mahesh's P1 assignments end the day before this date (a move on that date).</param>
     public static List<ScheduleTask> Project1(DateOnly? maheshLeavesOn = null)
     {
         DateOnly? to = maheshLeavesOn?.AddDays(-1);
@@ -29,8 +24,6 @@ internal static class GoldenSampleProjects
         ];
     }
 
-    /// <param name="joiners">People who join every task of Project 2 from a date (spec §15.4 step 4 placement rule).
-    /// The default crew of 2.1 is unaffected because the work is already underway.</param>
     public static List<ScheduleTask> Project2(params (string Who, DateOnly From)[] joiners)
     {
         CrewMember[] Join() => joiners.Select(j => C(j.Who, from: j.From)).ToArray();

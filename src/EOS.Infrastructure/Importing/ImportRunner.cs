@@ -3,10 +3,6 @@ using EOS.Infrastructure.Persistence;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Shared shell for importers: one transaction, an audit record, commit or rollback (preview), and a clean change tracker
-/// after a preview. Spec §24.1: preview first, idempotent, provenance recorded.
-/// </summary>
 internal static class ImportRunner
 {
     public static async Task<ImportReport> RunAsync(
@@ -24,7 +20,6 @@ internal static class ImportRunner
         await db.SaveChangesAsync(ct);
         if (commit && kind == "task tracker workbook")
         {
-            // Imported plans have no dates until scheduled; schedule every project that has tasks so Gantt, load and health work at once.
             await new Planning.PlanService(db).RecomputeAllAsync(null, ct);
         }
         if (commit) await tx.CommitAsync(ct);

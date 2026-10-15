@@ -1,6 +1,5 @@
 namespace EOS.Domain.Audit;
 
-/// <summary>Append-only record of every write: who, when, what (spec §23.2).</summary>
 public sealed class AuditEvent
 {
     public int Id { get; set; }

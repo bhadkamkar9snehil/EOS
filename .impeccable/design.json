@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T09:00:00Z",
+  "title": "Design System: EOS V2",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Ink Black", "canonical": "#15181c", "tonalRamp": ["#15181c", "#2b3138", "#3a4550", "#4b535c", "#6f7780", "#98a1ab", "#c5cad0", "#e2e5e8"] },
+      "signal-red": { "role": "secondary", "displayName": "Signal Red", "canonical": "#d4001f", "tonalRamp": ["#5c000d", "#8a0014", "#b00019", "#d4001f", "#e8404f", "#f27a85", "#f9b3b9", "#fde3e5"] },
+      "timetable-yellow": { "role": "secondary", "displayName": "Timetable Yellow", "canonical": "#ffd400", "tonalRamp": ["#5c4c00", "#8a7000", "#b89400", "#e6bd00", "#ffd400", "#ffe14d", "#ffee99", "#fff7cc"] },
+      "ground": { "role": "neutral", "displayName": "Cool Ground", "canonical": "#f2f3f4", "tonalRamp": ["#15181c", "#4b535c", "#6f7780", "#98a1ab", "#c5cad0", "#e2e5e8", "#f2f3f4", "#ffffff"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Page title", "purpose": "One per page." },
+      "headline": { "displayName": "Section heading", "purpose": "Sentence-case headings above ruled sections." },
+      "body": { "displayName": "Body and tables", "purpose": "Tables, prose, form text." },
+      "label": { "displayName": "Label", "purpose": "Column headers, form labels, badges, legends." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "state-fade", "value": "background-color .12s ease-out, border-color .12s ease-out", "purpose": "Hover feedback on buttons, navigation and key figures." }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "700px" },
+      { "name": "stack", "value": "1100px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action in a group.",
+      "html": "<button class=\"ds-btn\">Add</button>",
+      "css": ".ds-btn { font: 600 14px 'Segoe UI', sans-serif; height: 32px; padding: 0 14px; border: 1px solid #15181c; border-radius: 2px; background: #15181c; color: #fff; cursor: pointer; } .ds-btn:hover { background: #2d343b; } .ds-btn:focus-visible { outline: 2px solid #0a6cff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Supporting actions beside a primary.",
+      "html": "<button class=\"ds-btn-2\">Recompute schedule</button>",
+      "css": ".ds-btn-2 { font: 600 14px 'Segoe UI', sans-serif; height: 32px; padding: 0 14px; border: 1px solid #15181c; border-radius: 2px; background: #fff; color: #15181c; cursor: pointer; } .ds-btn-2:hover { background: #eceef0; } .ds-btn-2:focus-visible { outline: 2px solid #0a6cff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Single-line field.",
+      "html": "<input class=\"ds-input\" placeholder=\"Task name\" />",
+      "css": ".ds-input { font: 14px 'Segoe UI', sans-serif; height: 32px; padding: 0 8px; border: 1px solid #8a929c; border-radius: 2px; background: #fff; color: #15181c; } .ds-input:focus-visible { outline: 2px solid #0a6cff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Risk Badge",
+      "kind": "chip",
+      "refersTo": "badge-risk",
+      "description": "Project health At Risk.",
+      "html": "<span class=\"ds-badge\">At Risk</span>",
+      "css": ".ds-badge { display: inline-block; padding: 0 7px; line-height: 20px; font: 600 12.5px 'Segoe UI', sans-serif; border-radius: 2px; background: #d4001f; color: #fff; }"
+    },
+    {
+      "name": "Navigation Band",
+      "kind": "nav",
+      "description": "Graphite band of text links with a yellow active underline.",
+      "html": "<nav class=\"ds-nav\"><a>Projects</a><a class=\"on\">Gantt</a><a>Capacity</a></nav>",
+      "css": ".ds-nav { display: flex; background: #23282e; } .ds-nav a { color: #d7dce1; padding: 0 12px; height: 38px; display: flex; align-items: center; font: 13.5px 'Segoe UI', sans-serif; border-bottom: 3px solid transparent; } .ds-nav a:hover { color: #fff; background: #2d343b; } .ds-nav a.on { color: #fff; font-weight: 650; border-bottom-color: #ffd400; }"
+    },
+    {
+      "name": "Key Figure",
+      "kind": "custom",
+      "description": "A cell of the ruled key-figure strip.",
+      "html": "<div class=\"ds-kpi\"><div class=\"v\">5</div><div class=\"l\">At-risk projects</div></div>",
+      "css": ".ds-kpi { padding: 12px 16px; border-top: 2px solid #15181c; background: #fff; font-family: 'Segoe UI', sans-serif; } .ds-kpi .v { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; color: #d4001f; font-variant-numeric: tabular-nums; } .ds-kpi .l { font-size: 12.5px; color: #4b535c; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Departure Board",
+    "overview": "EOS reads like a station timetable. Everything hangs on a strict grid of ink-black rules and hairlines over a pale, cool ground, set in a humanist sans with tabular numerals. Colour is information: ordinary state is plain ink, and only deviation earns red or yellow.",
+    "keyCharacteristics": [
+      "Ink on cool pale ground; one signal red and one timetable yellow, nothing else saturated.",
+      "Tabular numerals throughout; numbers right-aligned in their columns.",
+      "Sections ruled, not boxed; no shadows, no nested containers.",
+      "Black station band for identity and the as-of date plate; graphite band for navigation.",
+      "Rectangular controls with a 2px corner."
+    ],
+    "rules": [
+      { "name": "The Deviation-Only Rule", "body": "Colour appears only where something deviates from plan.", "section": "colors" },
+      { "name": "The Tabular Rule", "body": "Numerals are always tabular and numeric columns right-aligned.", "section": "typography" },
+      { "name": "The No-Shadow Rule", "body": "No box shadows, blurs or gradients anywhere.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep ordinary state plain ink and let red (#d4001f) and yellow (#ffd400) mark deviation only.",
+      "Do align every numeric column right with tabular figures.",
+      "Do separate sections with a 2px ink rule and rows with a 1px hairline.",
+      "Do keep controls rectangular with a 2px corner and a visible 2px focus ring."
+    ],
+    "donts": [
+      "Don't use cards, nested containers, shadows, gradients or glass.",
+      "Don't use coloured side-stripes on rows or callouts, icon glyphs as decoration, or a second typeface.",
+      "Don't colour healthy states green; healthy is ink.",
+      "Don't put a kicker or eyebrow label above a heading."
+    ]
+  }
+}

@@ -56,8 +56,6 @@ public sealed class InsightsTests : IDisposable
         return p;
     }
 
-    // ---- demand ------------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Demand_Status_Is_Computed_From_Confirmed_Allocations_And_Can_Be_Overridden()
     {
@@ -68,7 +66,7 @@ public sealed class InsightsTests : IDisposable
 
         Assert.Equal("Open", (await svc.ListAsync(p.Id)).Single().Status);
 
-        _db.Allocations.Add(new Allocation { PersonId = anna.Id, ProjectId = p.Id, DemandId = d.Id, Month = D(10, 1), Hours = 45, Status = "Confirmed" });   // ~10 h/week
+        _db.Allocations.Add(new Allocation { PersonId = anna.Id, ProjectId = p.Id, DemandId = d.Id, Month = D(10, 1), Hours = 45, Status = "Confirmed" });
         await _db.SaveChangesAsync();
         var partial = (await svc.ListAsync(p.Id)).Single();
         Assert.Equal("Partially Filled", partial.Status);
@@ -104,12 +102,12 @@ public sealed class InsightsTests : IDisposable
         var sql = await Skill("SQL");
         var expert = await Person("Expert"); await Rate(expert, sql, 5);
         var fit = await Person("Fit"); await Rate(fit, sql, 3);
-        var low = await Person("Low"); await Rate(low, sql, 2);                // below the gate: never a candidate
+        var low = await Person("Low"); await Rate(low, sql, 2);
         var p = await Project("PRJ");
         var d = await new DemandService(_db).AddAsync(new Demand { ProjectId = p.Id, SkillId = sql.Id, MinLevel = 3, HoursPerWeek = 20, StartDate = D(11, 2), EndDate = D(11, 30) }, "t");
 
         var ranked = await new DemandService(_db).RankCandidatesAsync(d.Id);
-        Assert.Equal(["Fit", "Expert"], ranked.Select(c => c.Name));              // protect the level-5 expert for harder work
+        Assert.Equal(["Fit", "Expert"], ranked.Select(c => c.Name));
         Assert.Contains(ranked[1].Reasons, r => r.Contains("above the required 3"));
         Assert.DoesNotContain(ranked, c => c.Name == "Low");
     }
@@ -136,21 +134,19 @@ public sealed class InsightsTests : IDisposable
         Assert.True(ranked[^1].LeaveFraction > 0.5m);
     }
 
-    // ---- pipeline and supply vs demand -----------------------------------------------------------------------------
-
     [Fact]
     public async Task Pipeline_Weighted_Hours_And_Conversion_To_A_Project()
     {
         var sql = await Skill("SQL");
         var pipeline = new PipelineService(_db);
         var o = await pipeline.AddAsync(new Opportunity { Code = "UP1", Name = "Project A", ExpectedHours = 704, WinProbability = 0.7m, Stage = "Proposal Sent", RequiredSkills = "SQL", LikelyBookingMonth = D(11, 1), DurationMonths = 2 }, "t");
-        Assert.Equal(492.8m, (await pipeline.ListAsync()).Single().WeightedHours);        // 704 x 0.7
+        Assert.Equal(492.8m, (await pipeline.ListAsync()).Single().WeightedHours);
 
         await new DemandService(_db).AddAsync(new Demand { OpportunityId = o.Id, SkillId = sql.Id, MinLevel = 3, HoursPerWeek = 40, StartDate = D(11, 1), EndDate = D(12, 31) }, "t");
         var project = await pipeline.ConvertToProjectAsync(o.Id, "PRO-NEW", "t");
 
         Assert.Equal("Entered", project.TrackerStatus);
-        Assert.Equal(project.Id, (await _db.Demands.SingleAsync()).ProjectId);            // demand lines move to the project
+        Assert.Equal(project.Id, (await _db.Demands.SingleAsync()).ProjectId);
         Assert.Equal("Won", (await _db.Opportunities.SingleAsync()).Status);
         await Assert.ThrowsAsync<DemandException>(() => pipeline.ConvertToProjectAsync(o.Id, "PRO-NEW2", "t"));
         await Assert.ThrowsAsync<DemandException>(() => pipeline.AddAsync(new Opportunity { Code = "UP1", Name = "dup" }, "t"));
@@ -161,12 +157,12 @@ public sealed class InsightsTests : IDisposable
     public async Task Supply_Demand_Shows_The_Gap_When_Demand_Exceeds_Pooled_Free_Hours()
     {
         var sql = await Skill("SQL");
-        var anna = await Person("Anna", 0.5m); await Rate(anna, sql, 4);              // ~92 planned h free in November
+        var anna = await Person("Anna", 0.5m); await Rate(anna, sql, 4);
         var p = await Project("PRJ");
         await new DemandService(_db).AddAsync(new Demand { ProjectId = p.Id, SkillId = sql.Id, MinLevel = 3, HoursPerWeek = 40, StartDate = D(11, 1), EndDate = D(11, 30) }, "t");
 
         var row = (await new PipelineService(_db).SupplyDemandAsync(D(11, 1), 1)).Single(r => r.SkillId == sql.Id);
-        Assert.Equal(Math.Round(40m * 30 / 7, 1), row.ProjectDemandHours);               // 40 h/week over 30 days
+        Assert.Equal(Math.Round(40m * 30 / 7, 1), row.ProjectDemandHours);
         Assert.Equal(1, row.DeployableCount);
         Assert.True(row.SupplyHours < row.ProjectDemandHours);
         Assert.Equal(Math.Round(row.ProjectDemandHours + row.PipelineHours - row.SupplyHours, 1), row.GapHours);
@@ -180,11 +176,9 @@ public sealed class InsightsTests : IDisposable
         await new PipelineService(_db).AddAsync(new Opportunity { Code = "UP2", Name = "B", ExpectedHours = 1200, WinProbability = 0.5m, RequiredSkills = "SQL,HIST", LikelyBookingMonth = D(11, 1), DurationMonths = 3 }, "t");
 
         var rows = await new PipelineService(_db).SupplyDemandAsync(D(11, 1), 3);
-        Assert.Equal(100m, rows.Single(r => r.SkillId == sql.Id && r.Month == D(11, 1)).PipelineHours);      // 1200 x 0.5 / 3 months / 2 skills
+        Assert.Equal(100m, rows.Single(r => r.SkillId == sql.Id && r.Month == D(11, 1)).PipelineHours);
         Assert.Equal(100m, rows.Single(r => r.SkillId == sql.Id && r.Month == D(1 + 12 - 0 > 12 ? 1 : 1, 1) || r.SkillId == sql.Id && r.Month == D(12, 1)).PipelineHours);
     }
-
-    // ---- health --------------------------------------------------------------------------------------------------
 
     private async Task<Project> ProjectWithDatedTasks(string no, DateOnly plannedEnd, int lateTasks, int doneTasks, int okOpenTasks = 0)
     {
@@ -214,7 +208,7 @@ public sealed class InsightsTests : IDisposable
         Assert.True(b.ScheduleVarianceDays > 20);
         Assert.Contains(b.Reasons, r => r.Contains("late"));
         Assert.Equal("On Track", (await health.GetAsync(good.Id, Today)).Health);
-        Assert.Equal("BAD", (await health.GetAllAsync(Today)).First().ProjectNo);      // worst first
+        Assert.Equal("BAD", (await health.GetAllAsync(Today)).First().ProjectNo);
     }
 
     [Fact]
@@ -222,7 +216,7 @@ public sealed class InsightsTests : IDisposable
     {
         var p = await ProjectWithDatedTasks("MID", D(11, 20), lateTasks: 2, doneTasks: 20, okOpenTasks: 8);
         var health = new HealthService(_db);
-        Assert.Equal("Moderate Risk", (await health.GetAsync(p.Id, Today)).Health);        // 2 of 10 open tasks late (20%)
+        Assert.Equal("Moderate Risk", (await health.GetAsync(p.Id, Today)).Health);
 
         await new SettingsStore(_db).SetAsync(SettingKeys.HealthAtRiskDelayRatio, SettingScope.Global, "0.9", D(1, 1), "t", "tolerate more");
         await new SettingsStore(_db).SetAsync(SettingKeys.HealthModerateDelayRatio, SettingScope.Global, "0.95", D(1, 1), "t", "tolerate more");
@@ -237,15 +231,13 @@ public sealed class InsightsTests : IDisposable
         Assert.Equal(("At Risk", true, "Customer escalation"), (overridden.Health, overridden.IsOverride, overridden.OverrideReason));
     }
 
-    // ---- alerts -----------------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Alerts_Cover_Capacity_Demand_Infrastructure_And_Data_Quality()
     {
         var sql = await Skill("SQL");
-        var anna = await Person("Anna", 0.5m); await Rate(anna, sql, 2);               // nobody reaches level 3 -> skill gap
+        var anna = await Person("Anna", 0.5m); await Rate(anna, sql, 2);
         var p1 = await Project("P1"); var p2 = await Project("P2");
-        p1.PoStart = p2.PoStart = D(10, 5);                                           // both run in October
+        p1.PoStart = p2.PoStart = D(10, 5);
         await _db.SaveChangesAsync();
         foreach (var p in new[] { p1, p2 })
         {
@@ -266,15 +258,15 @@ public sealed class InsightsTests : IDisposable
         var alerts = await new AlertService(_db).EvaluateAsync(Today);
         string[] rules = [.. alerts.Select(a => a.Rule).Distinct().OrderBy(x => x)];
 
-        Assert.Contains("A01", rules);      // Anna: 192 h in October against 108 available
-        Assert.Contains("A04", rules);      // no engineer is eligible for SQL >= 3
-        Assert.Contains("A05", rules);      // bus factor
-        Assert.DoesNotContain("A12", rules);   // two concurrent projects is within the default limit of 2
-        Assert.Contains("A17", rules);      // 1% free disk
-        Assert.Contains("A19", rules);      // reclaim
-        Assert.Contains("A20", rules);      // needs backup, none recorded
-        Assert.Contains("A21", rules);      // unresolved alias
-        Assert.Equal(AlertSeverity.Critical, alerts.First().Severity);                   // sorted worst first
+        Assert.Contains("A01", rules);
+        Assert.Contains("A04", rules);
+        Assert.Contains("A05", rules);
+        Assert.DoesNotContain("A12", rules);
+        Assert.Contains("A17", rules);
+        Assert.Contains("A19", rules);
+        Assert.Contains("A20", rules);
+        Assert.Contains("A21", rules);
+        Assert.Equal(AlertSeverity.Critical, alerts.First().Severity);
         Assert.Equal("A04", alerts.First().Rule);
     }
 
@@ -299,12 +291,10 @@ public sealed class InsightsTests : IDisposable
         var proj = await Project("PRJ");
         await new DemandService(_db).AddAsync(new Demand { ProjectId = proj.Id, SkillId = sql.Id, MinLevel = 3, HoursPerWeek = 10, StartDate = D(10, 20), EndDate = D(12, 31) }, "t");
 
-        Assert.DoesNotContain(await new AlertService(_db).EvaluateAsync(Today), a => a.Rule == "A05");     // 4 deployable > default limit 3
+        Assert.DoesNotContain(await new AlertService(_db).EvaluateAsync(Today), a => a.Rule == "A05");
         await new SettingsStore(_db).SetAsync(SettingKeys.AlertBusFactorMax, SettingScope.Global, "5", D(1, 1), "t", "stricter");
         Assert.Contains(await new AlertService(_db).EvaluateAsync(Today), a => a.Rule == "A05");
     }
-
-    // ---- dashboard ---------------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task Command_Center_Aggregates_Kpis_Health_Alerts_Load_And_Supply_Demand()
@@ -324,7 +314,7 @@ public sealed class InsightsTests : IDisposable
         Assert.Equal((1, 1, 1), (cc.Kpis.VmsRunning, cc.Kpis.VmsOff, cc.Kpis.OpenGaps));
         Assert.Equal("DASH", cc.Projects.Single().ProjectNo);
         Assert.Equal(8, cc.LoadNext8Weeks.Count);
-        Assert.Equal(3, cc.SupplyDemand.Count(r => r.SkillId == sql.Id));                 // 3 months
+        Assert.Equal(3, cc.SupplyDemand.Count(r => r.SkillId == sql.Id));
         Assert.Contains(cc.Alerts, a => a.Rule == "A06");
         _ = p;
     }

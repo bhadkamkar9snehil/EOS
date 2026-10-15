@@ -2,11 +2,6 @@ using EOS.Domain.People;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Resolves a name written in a source (full name, first name, near-spelling, alias) to a person, never guessing:
-/// an ambiguous or unknown name resolves to null and is reported (spec §6.4, risk R11).
-/// Order: alias table, exact full name, unique first name, unique first name within one edit (typo/transposition).
-/// </summary>
 public sealed class PersonMatcher(IReadOnlyList<Person> people, IReadOnlyList<PersonAlias> aliases)
 {
     public static string Normalise(string? s) =>
@@ -25,7 +20,7 @@ public sealed class PersonMatcher(IReadOnlyList<Person> people, IReadOnlyList<Pe
         if (exact.Count == 1) return exact[0];
         if (exact.Count > 1) return null;
 
-        if (name.Contains(' ')) return null;           // a multi-word name that matched nothing exactly is not guessed
+        if (name.Contains(' ')) return null;
 
         var sameFirst = people.Where(p => FirstToken(p) == name).ToList();
         if (sameFirst.Count == 1) return sameFirst[0];
@@ -37,7 +32,6 @@ public sealed class PersonMatcher(IReadOnlyList<Person> people, IReadOnlyList<Pe
 
     private static string FirstToken(Person p) => Normalise(p.FullName).Split(' ')[0];
 
-    /// <summary>Optimal string alignment distance (insert, delete, substitute, adjacent transposition).</summary>
     public static int OsaDistance(string a, string b)
     {
         var d = new int[a.Length + 1, b.Length + 1];

@@ -8,10 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Tests;
 
-/// <summary>
-/// The three sample projects of "Timeline Impact Analysis v1" authored in the database through the plan service, then analysed,
-/// approved and applied through the scenario service: the spec's golden what-if examples end to end (spec §15.8, §28.1).
-/// </summary>
 public sealed class ScenarioServiceTests : IDisposable
 {
     private readonly EosDbContext _db;
@@ -82,7 +78,6 @@ public sealed class ScenarioServiceTests : IDisposable
         await _plans.AddLinkAsync(c31, c32, 0, 0, "t"); await _plans.AddLinkAsync(c31, c33, 0, 0, "t");
         await _plans.AddLinkAsync(c32, c34, 0, 0, "t"); await _plans.AddLinkAsync(c33, c34, 0, 0, "t");
 
-        // Project 2 needs SQL level 3 or above (the sample's gate).
         var sql = await _db.Skills.SingleAsync(s => s.Code == "SQL");
         _db.Demands.Add(new EOS.Domain.Capacity.Demand { ProjectId = _p2.Id, SkillId = sql.Id, MinLevel = 3, HoursPerWeek = 40, StartDate = Start, EndDate = D(12, 31) });
         await _db.SaveChangesAsync();
@@ -94,8 +89,6 @@ public sealed class ScenarioServiceTests : IDisposable
 
     private static ProjectImpactView Impact(ScenarioView v, string no) => v.Projects.Single(p => p.ProjectNo == no);
 
-    // ---- G2 / G3 ------------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Scenario1_Move_Mahesh_26_Oct_Without_Replacement()
     {
@@ -104,8 +97,8 @@ public sealed class ScenarioServiceTests : IDisposable
         Assert.Equal("Analysed", v.Status);
         Assert.Equal((D(11, 18), D(11, 28), 9), (Impact(v, "P1").BaselineFinish, Impact(v, "P1").ScenarioFinish, Impact(v, "P1").SlipDays));
         Assert.Equal((D(12, 16), D(11, 25), -18), (Impact(v, "P2").BaselineFinish, Impact(v, "P2").ScenarioFinish, Impact(v, "P2").SlipDays));
-        Assert.DoesNotContain(v.Projects, p => p.ProjectNo == "P3");                      // an untouched project is not part of the scenario
-        Assert.True(v.RequiresLeadershipApproval);                                        // a finish date moves (spec §15.7)
+        Assert.DoesNotContain(v.Projects, p => p.ProjectNo == "P3");
+        Assert.True(v.RequiresLeadershipApproval);
         Assert.Contains(v.Verdict, l => l.Contains("P1 finishes 9 working day(s) later"));
         Assert.Contains(v.Verdict, l => l.Contains("P2 finishes 18 working day(s) earlier"));
         Assert.Contains(Impact(v, "P1").Tasks, t => t.Name == "1.2" && t.SlipDays == 6);
@@ -147,8 +140,6 @@ public sealed class ScenarioServiceTests : IDisposable
         await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.AnalyseAsync([Move("Mahesh", _p1, empty, D(10, 26))], "no plan", "t", today: Start));
     }
 
-    // ---- G4: release analysis ---------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Release_Analysis_Matches_The_Source_Table()
     {
@@ -167,10 +158,8 @@ public sealed class ScenarioServiceTests : IDisposable
             Assert.True(Row(n).Eligible);
             Assert.Equal(-18, Row(n).GainToTargetIfMovedOnAnalysisDate);
         });
-        Assert.DoesNotContain(rows, r => r.PersonName is "Chirag" or "Deep");           // already on the target project
+        Assert.DoesNotContain(rows, r => r.PersonName is "Chirag" or "Deep");
     }
-
-    // ---- G5: push plan -----------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task Push_Plan_Picks_Twinkle_Dharati_Sagar_And_Finishes_P2_On_18_Nov()
@@ -182,23 +171,20 @@ public sealed class ScenarioServiceTests : IDisposable
         Assert.Equal([D(10, 26), D(11, 6), D(11, 9)], plan.Steps.Select(s => s.Date));
         Assert.Equal(D(11, 18), plan.Steps[^1].TargetFinish);
         Assert.Equal(-24, plan.Steps[^1].TargetSlipDays);
-        Assert.DoesNotContain(plan.Steps, s => s.PersonName is "Mahesh" or "Lalji" or "Priyanka");   // too late / not eligible
+        Assert.DoesNotContain(plan.Steps, s => s.PersonName is "Mahesh" or "Lalji" or "Priyanka");
 
-        // The plan is directly usable as a scenario: no other project slips.
         var v = await _scenarios.AnalyseAsync(plan.Moves, "Push P2", "t", today: Start);
         Assert.Equal((D(11, 18), -24), (Impact(v, "P2").ScenarioFinish, Impact(v, "P2").SlipDays));
         Assert.Equal(0, Impact(v, "P1").SlipDays);
         Assert.Equal(0, Impact(v, "P3").SlipDays);
     }
 
-    // ---- approve and apply -------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Apply_Requires_An_Approved_Scenario()
     {
         var v = await _scenarios.AnalyseAsync([Move("Mahesh", _p1, _p2, D(10, 26))], "Move Mahesh", "t", today: Start);
-        await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.ApplyAsync(v.Id, "snehil", D(10, 26)));       // not decided yet
-        await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.DecideAsync(v.Id, true, "", null));             // approver required
+        await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.ApplyAsync(v.Id, "snehil", D(10, 26)));
+        await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.DecideAsync(v.Id, true, "", null));
 
         var rejected = await _scenarios.DecideAsync(v.Id, false, "snehil", "Not now");
         Assert.Equal("Rejected", rejected.Status);
@@ -213,18 +199,15 @@ public sealed class ScenarioServiceTests : IDisposable
         var applied = await _scenarios.ApplyAsync(v.Id, "snehil", D(10, 26));
         Assert.Equal("Applied", applied.Status);
 
-        // assignments were rewritten
         var mahesh = _people["Mahesh"].Id;
         var p1Tasks = await _db.Tasks.Where(t => t.ProjectId == _p1.Id).Select(t => t.Id).ToListAsync();
         Assert.All(await _db.TaskAssignments.Where(a => a.PersonId == mahesh && p1Tasks.Contains(a.TaskId)).ToListAsync(), a => Assert.Equal(D(10, 25), a.ToDate));
         var p2Tasks = await _db.Tasks.Where(t => t.ProjectId == _p2.Id && t.Name != "2.1").Select(t => t.Id).ToListAsync();
         Assert.Equal(3, await _db.TaskAssignments.CountAsync(a => a.PersonId == mahesh && p2Tasks.Contains(a.TaskId) && a.FromDate == D(10, 26)));
 
-        // the real schedules now show the scenario outcome
         Assert.Equal(D(11, 28), (await _plans.GetPlanAsync(_p1.Id)).Finish);
         Assert.Equal(D(11, 25), (await _plans.GetPlanAsync(_p2.Id)).Finish);
 
-        // ledger, change log, baselines
         var move = await _db.Movements.SingleAsync();
         Assert.Equal(("Executed", mahesh, v.Id), (move.Status, move.PersonId, move.ScenarioId));
         var log = await _db.ChangeGapLog.SingleAsync();
@@ -232,7 +215,7 @@ public sealed class ScenarioServiceTests : IDisposable
         Assert.Equal(2, await _db.Baselines.CountAsync(b => b.Name.StartsWith("After scenario")));
         Assert.Equal("Applied", (await _scenarios.GetAsync(v.Id)).Status);
 
-        await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.ApplyAsync(v.Id, "snehil", D(10, 26)));       // only once
+        await Assert.ThrowsAsync<ScenarioException>(() => _scenarios.ApplyAsync(v.Id, "snehil", D(10, 26)));
     }
 
     [Fact]
@@ -250,7 +233,7 @@ public sealed class ScenarioServiceTests : IDisposable
         var v = await _scenarios.AnalyseAsync([Move("Mahesh", _p1, _p2, D(10, 26))], "A", "t", today: Start);
         await _scenarios.DecideAsync(v.Id, true, "snehil", null);
         var again = await _scenarios.AnalyseAsync([Move("Mahesh", _p1, _p2, D(11, 19))], "A v2", "t", today: Start, scenarioId: v.Id);
-        Assert.Equal("Analysed", again.Status);                                           // a changed scenario needs a fresh decision
+        Assert.Equal("Analysed", again.Status);
         Assert.Null(again.DecisionBy);
         Assert.Single(await _scenarios.ListAsync());
     }

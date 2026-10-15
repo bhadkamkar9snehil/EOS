@@ -6,12 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Imports the "SSM Operational Agility Framework" workbook: Engineers, Skills and Skill_Matrix (spec §24.2 I1–I3).
-/// Idempotent by natural keys. Reads whitelisted columns only. Skill ratings in the matrix are human assessments:
-/// importing them is an explicit user action recorded as an Assessment transaction, and a rating that a person
-/// has since changed manually is never overwritten (spec §9.5).
-/// </summary>
 public sealed class AgilityWorkbookImporter(EosDbContext db)
 {
     private const string ImportSource = "import:agility";
@@ -51,7 +45,7 @@ public sealed class AgilityWorkbookImporter(EosDbContext db)
         {
             var code = ws.Text(r, 1);
             var name = ws.Text(r, 2);
-            if (code.Length == 0 || name.Length == 0) continue;             // blank row or the TOTAL line (no Emp ID)
+            if (code.Length == 0 || name.Length == 0) continue;
 
             var teamName = ws.Text(r, 3);
             Team? team = null;
@@ -75,7 +69,7 @@ public sealed class AgilityWorkbookImporter(EosDbContext db)
                 {
                     Code = code, FullName = name, Team = team, RoleTitle = Nullable(role), BaseLocation = Nullable(location),
                     AvailabilityFraction = Clamp01(availability ?? 1m),
-                    IsUnverified = true,            // role/location/availability in the source are sample filler (spec §6.1)
+                    IsUnverified = true,
                 };
                 db.People.Add(person);
                 people.Add(person);
@@ -87,7 +81,7 @@ public sealed class AgilityWorkbookImporter(EosDbContext db)
             if (person.Code != code && person.Code.StartsWith("TR-", StringComparison.Ordinal)) { person.Code = code; changed = true; }
             if (person.FullName != name) { person.FullName = name; changed = true; }
             if (team is not null && person.Team != team) { person.Team = team; changed = true; }
-            if (person.IsUnverified)                                          // never overwrite values a person has verified
+            if (person.IsUnverified)
             {
                 if (person.RoleTitle != Nullable(role)) { person.RoleTitle = Nullable(role); changed = true; }
                 if (person.BaseLocation != Nullable(location)) { person.BaseLocation = Nullable(location); changed = true; }
@@ -165,7 +159,6 @@ public sealed class AgilityWorkbookImporter(EosDbContext db)
             var name = ws.Text(r, 2);
             if (name.Length == 0) continue;
 
-            // Match by NAME first: the matrix and the Engineers sheet disagree on some IDs (spec DQ1).
             var person = people.FirstOrDefault(p => PersonMatcher.Normalise(p.FullName) == PersonMatcher.Normalise(name))
                          ?? people.FirstOrDefault(p => p.Code == code);
             if (person is null) { report.Unresolved.Add(name); continue; }
@@ -185,7 +178,7 @@ public sealed class AgilityWorkbookImporter(EosDbContext db)
                     if (lastSource.TryGetValue((person.Id, skill.Id), out var src) && src is not null && !src.StartsWith("import:", StringComparison.Ordinal))
                     {
                         report.Warnings.Add($"Kept manual rating for {person.FullName} / {skill.Name} ({existing.Rating}); file says {rating}.");
-                        continue;                           // a person changed it after the import: never overwrite
+                        continue;
                     }
                     var old = existing.Rating;
                     existing.Rating = rating;

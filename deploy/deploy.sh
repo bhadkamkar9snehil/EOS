@@ -1,7 +1,4 @@
 #!/bin/sh
-# Build and deploy EOS V2 on the Ubuntu VM from a checkout of this repository.
-# Run as a user that may use sudo for: systemctl restart eos, and writing /opt/eos (see deploy/README.md).
-# Safe to re-run: publishes to a fresh folder, swaps it in, restarts the service, checks /health, and rolls back if the check fails.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)

@@ -1,10 +1,5 @@
 namespace EOS.Scheduling;
 
-/// <summary>
-/// A crew member's assignment to a task. Active on every working day in [From, To] (inclusive; null = open).
-/// A "move on date D" is expressed as To = D-1 on the source task and From = D on the target task (spec §15.4).
-/// <see cref="Factor"/> is the productivity factor (skill × experience, spec §9.6); 1 = full speed (Compat profile).
-/// </summary>
 public sealed record CrewMember(string PersonId, decimal Units = 1m, decimal Factor = 1m, DateOnly? From = null, DateOnly? To = null)
 {
     public bool ActiveOn(DateOnly day) => (From is null || day >= From) && (To is null || day <= To);
@@ -18,14 +13,8 @@ public enum LinkType
     StartToFinish = 3,
 }
 
-/// <summary>A precedence relationship with a signed lag in working days (spec §14.4).</summary>
 public sealed record TaskDependency(string PredecessorId, LinkType Type = LinkType.FinishToStart, int LagDays = 0);
 
-/// <summary>
-/// A schedulable task. Default behaviour is effort-driven (fixed work done by a crew). A fixed-duration task occupies
-/// exactly <see cref="FixedDurationDays"/> working days whatever the crew (e.g. a customer-booked FAT).
-/// A task with no work and no fixed duration is a milestone.
-/// </summary>
 public sealed record ScheduleTask(
     string Id,
     string Name,
@@ -33,7 +22,6 @@ public sealed record ScheduleTask(
     IReadOnlyList<string> Predecessors,
     IReadOnlyList<CrewMember> Crew)
 {
-    /// <summary>Further dependencies (any link type, with lag). <see cref="Predecessors"/> are finish-to-start, lag 0.</summary>
     public IReadOnlyList<TaskDependency> Dependencies { get; init; } = [];
     public int? FixedDurationDays { get; init; }
     public DateOnly? StartNoEarlierThan { get; init; }
@@ -60,16 +48,10 @@ public sealed record ScheduleResult(IReadOnlyDictionary<string, TaskSchedule> Ta
 
 public sealed class SchedulingException(string message) : Exception(message);
 
-/// <summary>What happens on a day when a task has remaining work but no active crew (spec §14.2 rule 4).</summary>
 public enum PickupRule
 {
-    /// <summary>No pickup: the task simply waits for a crew (and fails if none ever arrives).</summary>
     None = 0,
 
-    /// <summary>
-    /// The rest of the project's team (everyone with an active assignment that day) picks the task up
-    /// after finishing their own tasks, i.e. all tasks they are crew on that do not depend on this one.
-    /// </summary>
     AfterOwnTasks = 1,
 }
 
@@ -78,11 +60,6 @@ public sealed record SchedulingOptions(PickupRule Pickup = PickupRule.AfterOwnTa
     public static SchedulingOptions Default { get; } = new();
 }
 
-/// <summary>
-/// Deterministic CPM scheduler with effort-driven durations, the whole-day rule, four link types with lag,
-/// fixed-duration tasks and start constraints (spec §14.2–14.6). A task occupies whole working days.
-/// Pure: no clock, no I/O, no randomness.
-/// </summary>
 public static class Scheduler
 {
     private const int HorizonDays = 3660;
@@ -104,8 +81,8 @@ public static class Scheduler
         private readonly DateOnly _projectStart;
         private readonly SchedulingOptions _options;
         private readonly Dictionary<string, ScheduleTask> _byId = new();
-        private readonly Dictionary<string, List<Link>> _incoming = new();     // Other = predecessor
-        private readonly Dictionary<string, List<Link>> _outgoing = new();     // Other = successor
+        private readonly Dictionary<string, List<Link>> _incoming = new();
+        private readonly Dictionary<string, List<Link>> _outgoing = new();
         private readonly Dictionary<string, DateOnly> _start = new();
         private readonly Dictionary<string, DateOnly> _finish = new();
         private readonly HashSet<string> _computing = new();
@@ -145,8 +122,6 @@ public static class Scheduler
             var projectFinish = _tasks.Count == 0 ? _floor : _finish.Values.Max();
             return Backward(order, projectFinish);
         }
-
-        // ---- forward pass ---------------------------------------------------------------------------
 
         private DateOnly Shift(DateOnly day, int lag)
         {
@@ -220,7 +195,6 @@ public static class Scheduler
             _computing.Remove(t.Id);
         }
 
-        /// <summary>Day-by-day simulation of fixed work against the crew active each day (plus pickup).</summary>
         private (DateOnly Start, DateOnly Finish) Simulate(ScheduleTask task, DateOnly earliest)
         {
             var remaining = task.WorkHours;
@@ -249,14 +223,13 @@ public static class Scheduler
                 $"Task '{task.Id}' cannot be completed within {HorizonDays} days: its crew has no capacity (check assignments and dates).");
         }
 
-        /// <summary>Hours the rest of the team contributes on <paramref name="day"/> to a task that has lost all its crew.</summary>
         private decimal PickupRate(ScheduleTask task, DateOnly day, Dictionary<string, DateOnly> freeFrom)
         {
             var rate = 0m;
             foreach (var (person, taskIds) in _tasksOfPerson)
             {
                 var active = ActiveMemberOn(person, day);
-                if (active is null) continue;                       // not on the project that day (e.g. has left)
+                if (active is null) continue;
                 if (!freeFrom.TryGetValue(person, out var from)) freeFrom[person] = from = FreeFrom(task, taskIds);
                 if (day >= from) rate += _cal.HoursPerDay * active.Units * active.Factor;
             }
@@ -271,7 +244,6 @@ public static class Scheduler
             return null;
         }
 
-        /// <summary>First day a person is free: the working day after they finish all their tasks that do not depend on <paramref name="orphan"/>.</summary>
         private DateOnly FreeFrom(ScheduleTask orphan, List<string> ownTaskIds)
         {
             var descendants = Descendants(orphan.Id);
@@ -298,8 +270,6 @@ public static class Scheduler
             }
             return _descendants[id] = seen;
         }
-
-        // ---- backward pass --------------------------------------------------------------------------
 
         private ScheduleResult Backward(List<ScheduleTask> order, DateOnly projectFinish)
         {

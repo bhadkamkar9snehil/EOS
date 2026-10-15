@@ -6,12 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Configuration;
 
-/// <summary>Seeds default vocabularies and calendars (all editable afterwards) and builds engine calendars from the database.</summary>
 public static class ConfigurationService
 {
     public const string DefaultCalendarName = "Standard Mon-Sat 8h";
 
-    /// <summary>Idempotent: adds only what is missing, never touches values a person has edited.</summary>
     public static void SeedDefaults(EosDbContext db)
     {
         foreach (var (kind, values) in Vocabularies.Seed)
@@ -31,7 +29,6 @@ public static class ConfigurationService
         db.SaveChanges();
     }
 
-    /// <summary>The engine calendar for a project: its own calendar, else the default, else one built from settings.</summary>
     public static async Task<WorkCalendar> LoadCalendarAsync(EosDbContext db, int? calendarId, CancellationToken ct = default)
     {
         var def = calendarId is { } id
@@ -56,7 +53,6 @@ public static class ConfigurationService
             exceptions.Where(e => e.IsWorking).Select(e => e.Date));
     }
 
-    /// <summary>True when <paramref name="value"/> is an active member of the vocabulary (an empty vocabulary accepts anything).</summary>
     public static async Task<bool> IsValidAsync(EosDbContext db, string kind, string value, CancellationToken ct = default)
     {
         if (!await db.Vocabulary.AnyAsync(v => v.Kind == kind, ct)) return true;

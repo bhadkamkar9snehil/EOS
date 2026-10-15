@@ -20,7 +20,6 @@ public sealed record PlanView(
     int ProjectId, string ProjectNo, string ProjectName, DateOnly? Start, DateOnly? Finish, decimal Progress,
     IReadOnlyList<PlanTaskView> Tasks, IReadOnlyList<LinkView> Links, IReadOnlyList<string> Warnings);
 
-/// <summary>A partial update of a task. Null leaves a field unchanged; the Clear flags remove an optional value.</summary>
 public sealed record TaskPatch
 {
     public string? Name { get; init; }

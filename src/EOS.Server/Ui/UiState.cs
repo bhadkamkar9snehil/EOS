@@ -1,6 +1,5 @@
 namespace EOS.Server.Ui;
 
-/// <summary>Per-circuit UI state shared by pages: the "as of" date (so every view can be looked at for another day) and a toast.</summary>
 public sealed class UiState
 {
     public DateOnly AsOf { get; private set; } = DateOnly.FromDateTime(DateTime.Today);

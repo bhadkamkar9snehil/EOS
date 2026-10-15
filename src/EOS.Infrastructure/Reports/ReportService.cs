@@ -15,10 +15,6 @@ public sealed record ReportTable(string Id, string Name, DateTime GeneratedUtc, 
 
 public sealed record ReportParameters(DateOnly AsOf, DateOnly? From = null, DateOnly? To = null, int? ProjectId = null, int? TeamId = null, int Months = 3);
 
-/// <summary>
-/// The report catalogue (spec §20). Each report is a named, parameterised table built from the same services the UI, API, CLI and
-/// MCP use, so numbers can never differ between them. Missing data renders as an empty cell, never as a number.
-/// </summary>
 public sealed class ReportService(EosDbContext db)
 {
     public static IReadOnlyList<ReportDefinition> Catalogue { get; } =
@@ -184,8 +180,6 @@ public sealed class ReportService(EosDbContext db)
     }
 
     private static IReadOnlyList<object?> Row(params object?[] values) => values;
-
-    // ---- rendering ---------------------------------------------------------------------------------------------------
 
     public static string ToCsv(ReportTable t)
     {

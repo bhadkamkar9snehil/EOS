@@ -4,10 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Persistence;
 
-/// <summary>
-/// Persists effective-dated settings. A change never edits history: it closes the previous open entry for the same
-/// key and scope the day before and adds a new one (spec §8.7). Every change is audited with its reason.
-/// </summary>
 public sealed class SettingsStore(EosDbContext db)
 {
     public async Task<SettingsResolver> LoadResolverAsync(CancellationToken ct = default)
@@ -32,7 +28,7 @@ public sealed class SettingsStore(EosDbContext db)
             .ToListAsync(ct);
         foreach (var r in open)
         {
-            if (r.EffectiveFrom >= effectiveFrom) db.Settings.Remove(r);          // superseded before it ever applied
+            if (r.EffectiveFrom >= effectiveFrom) db.Settings.Remove(r);
             else r.EffectiveTo = effectiveFrom.AddDays(-1);
         }
 

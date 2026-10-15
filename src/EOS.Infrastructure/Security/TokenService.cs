@@ -7,12 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Security;
 
-/// <summary>Creates and validates personal access tokens. Tokens are random 256-bit values; only their SHA-256 hash is stored.</summary>
 public sealed class TokenService(EosDbContext db)
 {
     public const string Prefix = "eos_";
 
-    /// <summary>Creates a token and returns it ONCE. The caller must show it to the user immediately.</summary>
     public async Task<string> CreateAsync(string name, string actor, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("A token needs a name (it is recorded as the actor on every change).", nameof(name));
@@ -26,7 +24,6 @@ public sealed class TokenService(EosDbContext db)
         return token;
     }
 
-    /// <summary>Returns the token's name when valid and not revoked; otherwise null.</summary>
     public async Task<string?> ValidateAsync(string? token, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(token) || !token.StartsWith(Prefix, StringComparison.Ordinal)) return null;

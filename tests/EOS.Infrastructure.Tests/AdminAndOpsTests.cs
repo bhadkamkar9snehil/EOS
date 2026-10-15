@@ -23,8 +23,6 @@ public sealed class AdminAndOpsTests : IDisposable
 
     public void Dispose() { _db.Dispose(); _connection.Dispose(); }
 
-    // ---- tokens ----------------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Tokens_Are_Stored_Hashed_Validated_And_Revocable()
     {
@@ -32,7 +30,7 @@ public sealed class AdminAndOpsTests : IDisposable
         var token = await svc.CreateAsync("snehil", "bootstrap");
 
         Assert.StartsWith("eos_", token);
-        Assert.DoesNotContain(token, await _db.ApiTokens.Select(t => t.Hash).SingleAsync());      // only the hash is stored
+        Assert.DoesNotContain(token, await _db.ApiTokens.Select(t => t.Hash).SingleAsync());
         Assert.Equal("snehil", await svc.ValidateAsync(token));
         Assert.Null(await svc.ValidateAsync("eos_not-a-real-token"));
         Assert.Null(await svc.ValidateAsync(null));
@@ -50,11 +48,9 @@ public sealed class AdminAndOpsTests : IDisposable
         await svc.CreateAsync("lead1", "x");
         await Assert.ThrowsAsync<ArgumentException>(() => svc.CreateAsync("lead1", "x"));
         await svc.RevokeAsync((await _db.ApiTokens.SingleAsync()).Id, "x");
-        await svc.CreateAsync("lead1", "x");                                                     // a revoked name can be reused
+        await svc.CreateAsync("lead1", "x");
         Assert.True(await svc.AnyActiveAsync());
     }
-
-    // ---- people and teams ----------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task People_Can_Be_Created_Updated_Assigned_To_Teams_And_Led()
@@ -90,7 +86,7 @@ public sealed class AdminAndOpsTests : IDisposable
         await Assert.ThrowsAsync<PeopleException>(() => svc.AddLeaveAsync(new EOS.Domain.Capacity.Leave { PersonId = anna.Id, FromDate = D(10, 14), ToDate = D(10, 12) }, "t"));
 
         await svc.SetAllocationAsync(new EOS.Domain.Capacity.Allocation { PersonId = anna.Id, ProjectId = project.Id, Month = D(10, 17), Hours = 80 }, "t");
-        await svc.SetAllocationAsync(new EOS.Domain.Capacity.Allocation { PersonId = anna.Id, ProjectId = project.Id, Month = D(10, 3), Hours = 100 }, "t");   // same month: updated
+        await svc.SetAllocationAsync(new EOS.Domain.Capacity.Allocation { PersonId = anna.Id, ProjectId = project.Id, Month = D(10, 3), Hours = 100 }, "t");
         var a = await _db.Allocations.SingleAsync();
         Assert.Equal((D(10, 1), 100m), (a.Month, a.Hours));
         await Assert.ThrowsAsync<PeopleException>(() => svc.SetAllocationAsync(new EOS.Domain.Capacity.Allocation { PersonId = anna.Id, ProjectId = project.Id, Month = D(10, 1), Hours = 5, Status = "Bogus" }, "t"));
@@ -115,12 +111,10 @@ public sealed class AdminAndOpsTests : IDisposable
         var profile = await svc.GetProfileAsync(anna.Id, D(10, 14));
         Assert.Equal(("SQL", 4), (profile.Skills.Single().Skill, profile.Skills.Single().Rating));
         Assert.Equal((1, 2, 0.5m), (profile.ModulesKnown, profile.ModulesTotal, profile.KnowFraction));
-        Assert.Equal(4, profile.Capacity.Count);                                                  // this month + 3
+        Assert.Equal(4, profile.Capacity.Count);
         Assert.Single(profile.Leave);
         await Assert.ThrowsAsync<PeopleException>(() => svc.GetProfileAsync(9999, D(10, 14)));
     }
-
-    // ---- training ----------------------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task Training_Summary_Uses_Configurable_Bands_And_Coverage_Lists_Thin_Modules_First()
@@ -137,7 +131,7 @@ public sealed class AdminAndOpsTests : IDisposable
         var svc = new TrainingService(_db);
         var summary = await svc.SummaryAsync(D(10, 14));
         Assert.Equal(("Anna", "Good", 1m), (summary[0].Name, summary[0].Level, summary[0].KnowFraction));
-        Assert.Equal(("Bela", "Weak"), (summary[1].Name, summary[1].Level));                   // 50% is Weak with the default bands
+        Assert.Equal(("Bela", "Weak"), (summary[1].Name, summary[1].Level));
         var coverage = await svc.CoverageAsync();
         Assert.Equal(("b", 1), (coverage[0].SubModule, coverage[0].KnownBy));
 
@@ -164,8 +158,6 @@ public sealed class AdminAndOpsTests : IDisposable
         await Assert.ThrowsAsync<TrainingException>(() => svc.ResolveAsync(d.Id, DoubtResult.Open, D(10, 3), null, "t"));
     }
 
-    // ---- hosts ------------------------------------------------------------------------------------------------------------
-
     [Fact]
     public async Task Hosts_Are_Updated_Linked_To_Projects_And_The_Reclaim_List_Excludes_Linked_Vms()
     {
@@ -181,7 +173,7 @@ public sealed class AdminAndOpsTests : IDisposable
 
         var svc = new HostService(_db);
         await svc.LinkAsync(project.Id, used.Id, "application", "t");
-        await svc.LinkAsync(project.Id, used.Id, "application", "t");                         // idempotent
+        await svc.LinkAsync(project.Id, used.Id, "application", "t");
         Assert.Equal(["OLD"], (await svc.ReclaimListAsync()).Select(h => h.Name));
         Assert.Equal(["USED"], (await svc.ListAsync(projectId: project.Id)).Select(h => h.Name));
 
@@ -191,10 +183,8 @@ public sealed class AdminAndOpsTests : IDisposable
         Assert.Equal(0.02m, (await svc.ListAsync()).Single(h => h.Kind == "physical").Disks.Single().FreeFraction);
         Assert.Equal(2, (await svc.ListAsync()).Single(h => h.Kind == "physical").VmCount);
         await svc.UnlinkAsync(project.Id, used.Id, "application", "t");
-        Assert.Equal(["USED"], (await svc.ReclaimListAsync()).Select(h => h.Name));            // OLD is running now; USED lost its project link
+        Assert.Equal(["USED"], (await svc.ReclaimListAsync()).Select(h => h.Name));
     }
-
-    // ---- admin config -------------------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task Vocabularies_Can_Be_Extended_And_Disabled_And_Validation_Follows()
@@ -219,13 +209,13 @@ public sealed class AdminAndOpsTests : IDisposable
 
         var five = await svc.SaveCalendarAsync(new WorkCalendarDef { Name = "Site 5-day 7.5h", HoursPerDay = 7.5m, WorkDays = "5,1,2,3,4", IsDefault = true }, "t");
         Assert.Equal("1,2,3,4,5", five.WorkDays);
-        Assert.Single(await _db.Calendars.Where(c => c.IsDefault).ToListAsync());               // the previous default was unset
+        Assert.Single(await _db.Calendars.Where(c => c.IsDefault).ToListAsync());
 
         await svc.SetHolidayAsync(five.Id, D(10, 20), false, "Festival", "t");
         var engine = await ConfigurationService.LoadCalendarAsync(_db, null);
         Assert.Equal(7.5m, engine.HoursPerDay);
-        Assert.False(engine.IsWorkingDay(D(10, 20)));                                           // holiday
-        Assert.False(engine.IsWorkingDay(D(10, 17)));                                           // Saturday: not a work day on this calendar
+        Assert.False(engine.IsWorkingDay(D(10, 20)));
+        Assert.False(engine.IsWorkingDay(D(10, 17)));
 
         await svc.SetHolidayAsync(five.Id, D(10, 17), true, "Make-up day", "t");
         Assert.True((await ConfigurationService.LoadCalendarAsync(_db, null)).IsWorkingDay(D(10, 17)));
@@ -247,11 +237,9 @@ public sealed class AdminAndOpsTests : IDisposable
         await Assert.ThrowsAsync<AdminException>(() => svc.SetFieldValueAsync("person", 7, "joined", "yesterday", "t"));
         await Assert.ThrowsAsync<AdminException>(() => svc.SetFieldValueAsync("person", 7, "nope", "x", "t"));
         await Assert.ThrowsAsync<AdminException>(() => svc.AddFieldAsync(new CustomFieldDefinition { EntityKind = "person", Key = "grade", Label = "dup" }, "t"));
-        await svc.SetFieldValueAsync("person", 7, "grade", "", "t");                           // clearing removes the value
+        await svc.SetFieldValueAsync("person", 7, "grade", "", "t");
         Assert.DoesNotContain("grade", (await svc.FieldValuesAsync("person", 7)).Keys);
     }
-
-    // ---- backup --------------------------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task Backup_Creates_A_Restorable_Copy_And_Retention_Keeps_Recent_And_Monthly()
@@ -268,13 +256,11 @@ public sealed class AdminAndOpsTests : IDisposable
             using (var copy = new EosDbContext(options))
                 Assert.Equal("Backed up", (await copy.People.SingleAsync()).FullName);
 
-            // retention: keep the 3 newest files + the newest file of each of the 3 most recent months
-            // (today's real backup is October; then September, then August)
             foreach (var name in new[] { "eos-20260801-000000.db", "eos-20260802-000000.db", "eos-20260901-000000.db", "eos-20260902-000000.db", "eos-20260903-000000.db", "eos-20260904-000000.db" })
                 File.WriteAllText(Path.Combine(dir, name), "x");
             var removed = BackupService.ApplyRetention(dir, keepDaily: 3, keepMonthly: 3);
-            Assert.Equal(["eos-20260902-000000.db", "eos-20260901-000000.db", "eos-20260801-000000.db"], removed);   // older duplicates within a month
-            Assert.DoesNotContain("eos-20260802-000000.db", removed);                                                 // newest of August survives as its monthly
+            Assert.Equal(["eos-20260902-000000.db", "eos-20260901-000000.db", "eos-20260801-000000.db"], removed);
+            Assert.DoesNotContain("eos-20260802-000000.db", removed);
             Assert.NotEmpty(BackupService.List(dir));
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }

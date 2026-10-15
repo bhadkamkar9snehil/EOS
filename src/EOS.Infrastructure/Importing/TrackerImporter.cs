@@ -11,15 +11,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Importing;
 
-/// <summary>
-/// Imports "Project Task Tracking Status": the LPP project list, each project's task tracker sheet, and the AMC ticket log
-/// (spec §16.6, §24.2 I14-I16). Plans arrive as a WBS (Module = level 1, task = level 2) whose dates are kept as
-/// fixed-duration tasks with a start constraint, so the schedule reproduces the tracker and can later be switched to
-/// effort-driven by entering real work. Work is only an ESTIMATE (duration x hours/day x crew) and is flagged as such.
-/// Owners written as initials are resolved without guessing; ambiguous or unknown initials are reported for the alias screen.
-/// Sheets that are not task trackers (observation logs, template copies without tasks) are skipped with a warning.
-/// Re-import refreshes tracker fields but never overwrites a field a person has edited (LockedFields), never deletes tasks.
-/// </summary>
 public sealed partial class TrackerImporter(EosDbContext db)
 {
     private static readonly HashSet<string> NonProjectSheets = new(StringComparer.OrdinalIgnoreCase) { "Master", "LPP", "AMC" };
@@ -41,7 +32,7 @@ public sealed partial class TrackerImporter(EosDbContext db)
         ImportProjectList(wb, ctx);
         await db.SaveChangesAsync(ct);
 
-        var imported = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);     // project no -> sheet
+        var imported = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var plans = new PlanService(db);
         foreach (var ws in wb.Worksheets.Where(s => !NonProjectSheets.Contains(s.Name)))
         {
@@ -56,8 +47,6 @@ public sealed partial class TrackerImporter(EosDbContext db)
 
     private sealed record Context(List<Person> People, List<PersonAlias> Aliases, PersonMatcher Matcher,
         Dictionary<string, Project> Projects, WorkCalendar Calendar, ImportReport Report);
-
-    // ---- LPP project list -----------------------------------------------------------------------------
 
     private void ImportProjectList(ClosedXML.Excel.XLWorkbook wb, Context ctx)
     {
@@ -100,8 +89,6 @@ public sealed partial class TrackerImporter(EosDbContext db)
             }
         }
     }
-
-    // ---- per-project plan sheets ----------------------------------------------------------------------
 
     private async Task<int?> ImportPlanSheetAsync(ClosedXML.Excel.IXLWorksheet ws, Context ctx, Dictionary<string, string> imported, CancellationToken ct)
     {
@@ -174,7 +161,7 @@ public sealed partial class TrackerImporter(EosDbContext db)
             }
 
             var key = $"{ws.Name}:{sr}";
-            if (!usedKeys.Add(key))                       // a repeated Sr must not overwrite the earlier row
+            if (!usedKeys.Add(key))
             {
                 ctx.Report.Warnings.Add($"{ws.Name} row {r}: Sr {sr} is repeated; imported as a separate task.");
                 key = $"{ws.Name}:{sr}#r{r}";
@@ -279,7 +266,6 @@ public sealed partial class TrackerImporter(EosDbContext db)
         else if (existing.PersonId is null && personId is not null) existing.PersonId = personId;
     }
 
-    /// <summary>First letter of the first name + first letter of the last name ("Mahesh Udar" -> "MU").</summary>
     internal static string InitialsOf(string fullName)
     {
         var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -298,8 +284,6 @@ public sealed partial class TrackerImporter(EosDbContext db)
         if (progress >= 1m) return "Completed";
         return progress > 0m ? "In Progress" : "Pending";
     }
-
-    // ---- AMC ticket log ---------------------------------------------------------------------------------
 
     private async Task ImportAmcAsync(ClosedXML.Excel.IXLWorksheet ws, Context ctx, CancellationToken ct)
     {
@@ -343,8 +327,6 @@ public sealed partial class TrackerImporter(EosDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
-    // ---- sheet helpers ------------------------------------------------------------------------------------
-
     private static int? FindTaskHeaderRow(ClosedXML.Excel.IXLWorksheet ws)
     {
         for (var r = 1; r <= 20; r++)
@@ -355,7 +337,6 @@ public sealed partial class TrackerImporter(EosDbContext db)
         return null;
     }
 
-    /// <summary>The first non-empty cell to the right of a label in column A (header block rows 1-12).</summary>
     private static string? ReadLabel(ClosedXML.Excel.IXLWorksheet ws, string label)
     {
         for (var r = 1; r <= 12; r++)

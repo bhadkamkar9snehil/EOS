@@ -3,7 +3,6 @@ using static EOS.Scheduling.Tests.GoldenSampleProjects;
 
 namespace EOS.Scheduling.Tests;
 
-/// <summary>Golden tests G2–G5 through the what-if engine (spec §15.8, §28.1).</summary>
 public class WhatIfGoldenTests
 {
     private static List<ProjectPlan> Plans() =>
@@ -31,7 +30,7 @@ public class WhatIfGoldenTests
         Assert.Equal(D(11, 25), p2.ScenarioFinish);
         Assert.Equal(-18, p2.SlipWorkingDays);
 
-        Assert.Equal(0, Impact(o, "P3").SlipWorkingDays);       // untouched project is unchanged
+        Assert.Equal(0, Impact(o, "P3").SlipWorkingDays);
     }
 
     [Fact]
@@ -66,7 +65,7 @@ public class WhatIfGoldenTests
         Assert.Equal(D(11, 18), Impact(o, "P2").ScenarioFinish);
         Assert.Equal(-24, Impact(o, "P2").SlipWorkingDays);
         Assert.Equal(0, Impact(o, "P1").SlipWorkingDays);        // Twinkle's task is picked up by the P1 team in time
-        Assert.Equal(0, Impact(o, "P3").SlipWorkingDays);        // Dharati and Sagar leave after their P3 work
+        Assert.Equal(0, Impact(o, "P3").SlipWorkingDays);
     }
 
     [Fact]
@@ -84,14 +83,11 @@ public class WhatIfGoldenTests
     [Fact]
     public void Partial_Move_Splits_The_Persons_Time()
     {
-        // Half of Mahesh moves: P1 loses half a person from 26 Oct, P2 gains half a person.
         var o = WhatIf.Run(Plans(), [new MoveRequest("Mahesh", "P1", "P2", D(10, 26), 0.5m)], Calendar);
         var full = WhatIf.Run(Plans(), [new MoveRequest("Mahesh", "P1", "P2", D(10, 26))], Calendar);
         Assert.InRange(Impact(o, "P1").SlipWorkingDays, 1, Impact(full, "P1").SlipWorkingDays - 1);
         Assert.InRange(Impact(o, "P2").SlipWorkingDays, Impact(full, "P2").SlipWorkingDays + 1, -1);
     }
-
-    // ---- G4: the release table of Scenario 2 --------------------------------------------------------------
 
     [Fact]
     public void G4_Release_Analysis_Matches_The_Source_Table()
@@ -99,22 +95,18 @@ public class WhatIfGoldenTests
         var rows = WhatIf.ReleaseAnalysis(Plans(), "P2", D(10, 26), Calendar);
         ReleaseRow Row(string who) => rows.Single(r => r.PersonId == who);
 
-        // Twinkle: free now, no cost.
         Assert.Equal(D(11, 7), Row("Twinkle").LastDayOnCurrentWork);
         Assert.Equal(D(10, 26), Row("Twinkle").EarliestNoDelayMove);
         Assert.Equal(0, Row("Twinkle").CostIfMovedOnAnalysisDate);
 
-        // Dharati: last day 5 Nov, earliest 6 Nov, +10 if moved on 26 Oct.
         Assert.Equal(D(11, 5), Row("Dharati").LastDayOnCurrentWork);
         Assert.Equal(D(11, 6), Row("Dharati").EarliestNoDelayMove);
         Assert.Equal(10, Row("Dharati").CostIfMovedOnAnalysisDate);
 
-        // Sagar: last day 7 Nov, earliest Mon 9 Nov, +7 if moved on 26 Oct.
         Assert.Equal(D(11, 7), Row("Sagar").LastDayOnCurrentWork);
         Assert.Equal(D(11, 9), Row("Sagar").EarliestNoDelayMove);
         Assert.Equal(7, Row("Sagar").CostIfMovedOnAnalysisDate);
 
-        // Mahesh and Lalji: last day 18 Nov, earliest 19 Nov, +9.
         foreach (var who in new[] { "Mahesh", "Lalji" })
         {
             Assert.Equal(D(11, 18), Row(who).LastDayOnCurrentWork);
@@ -122,7 +114,6 @@ public class WhatIfGoldenTests
             Assert.Equal(9, Row(who).CostIfMovedOnAnalysisDate);
         }
 
-        // Each single move gains 18 working days on the target (every engineer adds 8 h/day).
         foreach (var who in new[] { "Twinkle", "Dharati", "Sagar", "Mahesh", "Lalji" })
             Assert.Equal(-18, Row(who).GainToTargetIfMovedOnAnalysisDate);
     }
@@ -130,7 +121,6 @@ public class WhatIfGoldenTests
     [Fact]
     public void Pickup_Rule_Can_Be_Switched_Off()
     {
-        // Without the pickup rule Twinkle's orphaned task has no crew and cannot complete: reported, not faked.
         var plans = Plans();
         var tasks = WhatIf.Leave(plans[0].Tasks, "Twinkle", D(10, 26), 1m);
         Assert.Throws<SchedulingException>(() =>

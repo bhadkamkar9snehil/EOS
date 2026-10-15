@@ -13,7 +13,6 @@ public enum AlertSeverity
     Critical = 3,
 }
 
-/// <summary>A rule-driven finding with the numbers that triggered it (spec §22). Every threshold is a setting.</summary>
 public sealed record Alert(string Rule, AlertSeverity Severity, string SubjectKind, string? SubjectId, string Subject, string Message);
 
 public sealed class AlertService(EosDbContext db)

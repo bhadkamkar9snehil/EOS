@@ -37,8 +37,6 @@ public sealed class ProjectImportTests : IDisposable
         await _db.SaveChangesAsync();
     }
 
-    // ---- ERP project master ----------------------------------------------------------------------------
-
     private string ErpWorkbook(string status = "RLS")
     {
         var wb = new XLWorkbook();
@@ -71,10 +69,10 @@ public sealed class ProjectImportTests : IDisposable
         Assert.Equal(5_000_000m, p.OrderValue);
         Assert.Equal(new DateOnly(2026, 12, 31), p.PoEnd);
         Assert.Equal("Alpha Ltd", p.Customer);
-        Assert.Equal("Mahesh Udar", p.TechnicalManager);             // Sheet2 assignment wins
+        Assert.Equal("Mahesh Udar", p.TechnicalManager);
         Assert.Equal("Chirag K", p.ProjectManager);
         var warranty = await _db.Projects.SingleAsync(x => x.ProjectNo == "W_PRO100_1");
-        Assert.Equal(p.Id, warranty.ParentProjectId);                // W_ prefix links to the parent project
+        Assert.Equal(p.Id, warranty.ParentProjectId);
     }
 
     [Fact]
@@ -102,8 +100,6 @@ public sealed class ProjectImportTests : IDisposable
         var after = await _db.Projects.SingleAsync(x => x.ProjectNo == "PRO100");
         Assert.Equal(("Under Development", "Customer visit in Nov", "At Risk"), (after.TrackerStatus, after.Notes, after.HealthOverride));
     }
-
-    // ---- Task tracker --------------------------------------------------------------------------------------
 
     private string TrackerWorkbook(string progress = "1", string sheetOwner = "MU,SR")
     {
@@ -137,11 +133,11 @@ public sealed class ProjectImportTests : IDisposable
             for (var c = 0; c < tasks[r].Length; c++)
                 ws.Cell(10 + r, c + 1).Value = XLCellValue.FromObject(tasks[r][c]);
 
-        var template = wb.AddWorksheet("Copied template");                  // same header, no tasks: must be skipped
+        var template = wb.AddWorksheet("Copied template");
         template.Cell(3, 1).Value = "Project Number"; template.Cell(3, 2).Value = "PRO200";
         template.Cell(9, 1).Value = "Sr"; template.Cell(9, 4).Value = "Task Name";
 
-        var log = wb.AddWorksheet("Observation log");                       // not a task tracker
+        var log = wb.AddWorksheet("Observation log");
         log.Cell(1, 1).Value = "Sr. No."; log.Cell(1, 2).Value = "Raised Date";
 
         var amc = wb.AddWorksheet("AMC");
@@ -166,7 +162,7 @@ public sealed class ProjectImportTests : IDisposable
         Assert.Equal(new DateOnly(2026, 10, 12), project.LastStatusUpdate);
 
         var plan = await new PlanService(_db).GetPlanAsync(project.Id);
-        Assert.Equal(2, plan.Tasks.Count(t => t.IsSummary));                  // Reheating, Mill
+        Assert.Equal(2, plan.Tasks.Count(t => t.IsSummary));
         Assert.Equal(["Reheating", "Furnace screen", "Billet tracking", "Mill", "Tag printing", "Repeated serial number"], plan.Tasks.Select(t => t.Name));
         Assert.Equal(["1", "1.1", "1.2", "2", "2.1", "2.2"], plan.Tasks.Select(t => t.Wbs));
         Assert.Equal(2, report.Of("Module group").Added);
@@ -181,10 +177,10 @@ public sealed class ProjectImportTests : IDisposable
         var t = await _db.Tasks.SingleAsync(x => x.Name == "Furnace screen");
 
         Assert.Equal(new DateOnly(2026, 7, 6), t.PlannedStart);
-        Assert.Equal(5, t.FixedDurationDays);                                 // Mon 6 - Fri 10 Jul = 5 working days
+        Assert.Equal(5, t.FixedDurationDays);
         Assert.Equal(new DateOnly(2026, 7, 6), t.StartNoEarlierThan);
         Assert.True(t.WorkIsEstimated);
-        Assert.Equal(5 * 8m * 2, t.WorkHours);                                // 5 days x 8 h x 2 resolved engineers (MU, SR)
+        Assert.Equal(5 * 8m * 2, t.WorkHours);
         Assert.Equal(TaskOrigins.Tracker, t.Origin);
     }
 
@@ -210,8 +206,8 @@ public sealed class ProjectImportTests : IDisposable
         var report = await new TrackerImporter(_db).ImportAsync(TrackerWorkbook(), true, "t");
 
         var assigned = await _db.TaskAssignments.Join(_db.People, a => a.PersonId, p => p.Id, (a, p) => p.FullName).Distinct().ToListAsync();
-        Assert.Contains("Mahesh Udar", assigned);                              // MU
-        Assert.Contains("Sagar Rana", assigned);                               // SR
+        Assert.Contains("Mahesh Udar", assigned);
+        Assert.Contains("Sagar Rana", assigned);
         Assert.DoesNotContain("Dev Patel", assigned);                          // "DP" is ambiguous: Dev Patel / Dharati Patel
         Assert.DoesNotContain("Dharati Patel", assigned);
         Assert.Contains(report.Unresolved, u => u.StartsWith("DP (ambiguous", StringComparison.Ordinal));
@@ -226,7 +222,7 @@ public sealed class ProjectImportTests : IDisposable
         var dharati = await _db.People.SingleAsync(p => p.Code == "E18");
         var alias = await _db.PersonAliases.SingleAsync(a => a.Alias == "DP");
         Assert.Null(alias.PersonId);
-        alias.PersonId = dharati.Id;                                           // the owner resolves it once
+        alias.PersonId = dharati.Id;
         await _db.SaveChangesAsync();
 
         var report = await new TrackerImporter(_db).ImportAsync(TrackerWorkbook(), true, "t");
@@ -267,8 +263,8 @@ public sealed class ProjectImportTests : IDisposable
         Assert.Equal("Billet tracking (re-estimated)", after.Name);          // locked by the lead's edit
         Assert.Equal(200m, after.WorkHours);
         Assert.False(after.WorkIsEstimated);
-        Assert.Equal(0.6m, after.PercentComplete);                           // not locked: refreshed from the tracker
-        Assert.True(await _db.Tasks.AnyAsync(x => x.Id == extra.Id));        // EOS-authored task survives
+        Assert.Equal(0.6m, after.PercentComplete);
+        Assert.True(await _db.Tasks.AnyAsync(x => x.Id == extra.Id));
     }
 
     [Fact]
@@ -296,8 +292,6 @@ public sealed class ProjectImportTests : IDisposable
     [InlineData("")]
     [InlineData("not a date")]
     public void Junk_Date_Text_Is_Null(string text) => Assert.Null(WorkbookReading.ParseDateText(text));
-
-    // ---- Infrastructure inventory: credentials must never be read ---------------------------------------------
 
     private string VmWorkbook(string secret)
     {
@@ -338,8 +332,8 @@ public sealed class ProjectImportTests : IDisposable
 
         var report = await new InfrastructureImporter(_db).ImportAsync(VmWorkbook(secret), true, "t");
 
-        Assert.Equal(0, await CountOccurrencesInAllTablesAsync(secret));              // not in any column of any table
-        Assert.DoesNotContain(secret, report.ToText());                               // nor in the report
+        Assert.Equal(0, await CountOccurrencesInAllTablesAsync(secret));
+        Assert.DoesNotContain(secret, report.ToText());
         Assert.DoesNotContain(secret, string.Join('|', await _db.AuditEvents.Select(a => a.Detail ?? "").ToListAsync()));
         Assert.Equal(1, await _db.Hosts.CountAsync(h => h.Kind == "physical"));
         Assert.Equal(3, await _db.Hosts.CountAsync(h => h.Kind == "vm"));
@@ -353,7 +347,7 @@ public sealed class ProjectImportTests : IDisposable
         await new InfrastructureImporter(_db).ImportAsync(VmWorkbook("x-secret-123"), true, "t");
 
         var disk = await _db.HostDisks.SingleAsync();
-        Assert.Equal((5.5m, 100m, "C"), (disk.FreeGb, disk.TotalGb, disk.Drive));         // a 5.5% free disk (alert later)
+        Assert.Equal((5.5m, 100m, "C"), (disk.FreeGb, disk.TotalGb, disk.Drive));
         var host = await _db.Hosts.SingleAsync(h => h.Kind == "physical");
         Assert.Equal((32m, 16, 24), (host.RamGb, host.CpuCores, host.LogicalProcessors));
 
@@ -376,7 +370,6 @@ public sealed class ProjectImportTests : IDisposable
         Assert.Equal(1, await _db.HostDisks.CountAsync());
     }
 
-    /// <summary>Scans every text column of every table for a value (proves it is stored nowhere).</summary>
     private async Task<int> CountOccurrencesInAllTablesAsync(string needle)
     {
         var tables = new List<string>();

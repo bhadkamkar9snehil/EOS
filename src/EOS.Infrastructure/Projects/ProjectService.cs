@@ -12,7 +12,6 @@ public sealed record ProjectSummary(
     int Id, string ProjectNo, string Name, string? Customer, string? ProductLine, string? ErpStatus, string? TrackerStatus,
     string? ProjectManager, string? TechnicalManager, DateOnly? PlannedEnd, int TaskCount, bool HasPlan);
 
-/// <summary>Project master maintenance. Statuses and types are validated against the editable vocabularies (spec §8.7).</summary>
 public sealed class ProjectService(EosDbContext db)
 {
     public async Task<Project> CreateAsync(Project project, string actor, CancellationToken ct = default)

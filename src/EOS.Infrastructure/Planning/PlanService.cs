@@ -9,14 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Planning;
 
-/// <summary>
-/// Authors and schedules project plans (spec §16.7): a WBS built in EOS or imported then extended, dependencies,
-/// assignments, progress, baselines. Scheduling uses the pure engine; results are cached on the tasks and
-/// summaries are rolled up from their children.
-/// </summary>
 public sealed class PlanService(EosDbContext db)
 {
-    // ---- structure ---------------------------------------------------------------------------------
 
     public async Task<PlanTask> AddTaskAsync(
         int projectId, string name, string actor, int? parentId = null, int? afterTaskId = null,
@@ -40,7 +34,6 @@ public sealed class PlanService(EosDbContext db)
             ProjectId = projectId, ParentId = parentId, Name = name.Trim(), Kind = kind,
             WorkHours = kind == TaskKinds.Milestone ? 0m : workHours, Origin = TaskOrigins.Eos,
         };
-        // Place after the sibling (or at the end of the parent's children): use a fractional SortOrder, then normalise.
         var siblings = tasks.Where(t => t.ParentId == parentId).OrderBy(t => t.SortOrder).ToList();
         task.SortOrder = afterTaskId is { } a2
             ? tasks.Single(t => t.Id == a2).SortOrder + 1
@@ -109,7 +102,7 @@ public sealed class PlanService(EosDbContext db)
         var ids = doomed.Select(t => t.Id).ToHashSet();
         db.TaskLinks.RemoveRange(db.TaskLinks.Where(l => ids.Contains(l.PredecessorId) || ids.Contains(l.SuccessorId)));
         db.TaskAssignments.RemoveRange(db.TaskAssignments.Where(a => ids.Contains(a.TaskId)));
-        foreach (var t in doomed.OrderByDescending(t => t.SortOrder)) db.Tasks.Remove(t);   // children before parents
+        foreach (var t in doomed.OrderByDescending(t => t.SortOrder)) db.Tasks.Remove(t);
         Audit("plan.task.delete", actor, task.ProjectId, $"#{taskId} ({doomed.Count} task(s))");
         await db.SaveChangesAsync(ct);
         await NormaliseAsync(task.ProjectId, ct);
@@ -126,20 +119,19 @@ public sealed class PlanService(EosDbContext db)
         {
             case MoveDirection.Up when index > 0:
                 (siblings[index].SortOrder, siblings[index - 1].SortOrder) = (siblings[index - 1].SortOrder, siblings[index].SortOrder);
-                // Swap whole subtrees: shift by subtree sizes.
                 SwapSubtrees(all, siblings[index - 1], siblings[index]);
                 break;
             case MoveDirection.Down when index >= 0 && index < siblings.Count - 1:
                 SwapSubtrees(all, siblings[index], siblings[index + 1]);
                 break;
             case MoveDirection.Indent when index > 0:
-                task.ParentId = siblings[index - 1].Id;                                   // becomes the last child of the previous sibling
+                task.ParentId = siblings[index - 1].Id;
                 task.SortOrder = Subtree(all, siblings[index - 1].Id).Max(t => t.SortOrder) + 1;
                 foreach (var t in all.Where(t => t.Id != task.Id && !Subtree(all, task.Id).Contains(t) && t.SortOrder >= task.SortOrder)) t.SortOrder += 10_000;
                 break;
             case MoveDirection.Outdent when task.ParentId is { } parentId:
                 var parent = all.Single(t => t.Id == parentId);
-                task.ParentId = parent.ParentId;                                          // becomes the next sibling of its parent
+                task.ParentId = parent.ParentId;
                 task.SortOrder = Subtree(all, parent.Id).Max(t => t.SortOrder) + 1;
                 break;
             default:
@@ -149,8 +141,6 @@ public sealed class PlanService(EosDbContext db)
         await db.SaveChangesAsync(ct);
         await NormaliseAsync(task.ProjectId, ct);
     }
-
-    // ---- links and assignments -----------------------------------------------------------------------
 
     public async Task<TaskLink> AddLinkAsync(int predecessorId, int successorId, int type, int lagDays, string actor, CancellationToken ct = default)
     {
@@ -212,12 +202,6 @@ public sealed class PlanService(EosDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
-    // ---- scheduling ------------------------------------------------------------------------------------
-
-    /// <summary>
-    /// Runs the engine over the project's detailed tasks, caches dates/float/critical on every task, rolls up summaries,
-    /// and returns the full plan. <paramref name="statusDate"/> is "today" for in-progress work (injectable for tests).
-    /// </summary>
     public async Task<PlanView> RecomputeAsync(int projectId, DateOnly? statusDate = null, CancellationToken ct = default)
     {
         var today = statusDate ?? DateOnly.FromDateTime(DateTime.Today);
@@ -238,7 +222,6 @@ public sealed class PlanService(EosDbContext db)
         return await BuildViewAsync(built.Project, built.Warnings, ct);
     }
 
-    /// <summary>Schedules every project that has tasks. A project whose plan cannot be scheduled is reported, not fatal.</summary>
     public async Task<IReadOnlyList<string>> RecomputeAllAsync(DateOnly? statusDate = null, CancellationToken ct = default)
     {
         var problems = new List<string>();
@@ -255,8 +238,6 @@ public sealed class PlanService(EosDbContext db)
         var project = await db.Projects.AsNoTracking().SingleOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new PlanException($"Project {projectId} not found.");
         return await BuildViewAsync(project, [], ct);
     }
-
-    // ---- baselines -------------------------------------------------------------------------------------
 
     public async Task<Baseline> CreateBaselineAsync(int projectId, string name, string actor, CancellationToken ct = default)
     {
@@ -299,8 +280,6 @@ public sealed class PlanService(EosDbContext db)
             bFinish is { } x && plan.Finish is { } y ? cal.WorkingDaysBetween(x, y) : null, rows);
     }
 
-    // ---- internals --------------------------------------------------------------------------------------
-
     private async Task<PlanView> BuildViewAsync(Project project, IReadOnlyList<string> warnings, CancellationToken ct)
     {
         var tasks = await db.Tasks.AsNoTracking().Where(t => t.ProjectId == project.Id).OrderBy(t => t.SortOrder).ToListAsync(ct);
@@ -331,7 +310,6 @@ public sealed class PlanService(EosDbContext db)
             views, links.Select(l => new LinkView(l.Id, l.PredecessorId, l.SuccessorId, l.Type, l.LagDays)).ToList(), warnings);
     }
 
-    /// <summary>Rolls start/finish/work/progress/float/critical up from children to summaries, bottom-up.</summary>
     private static void RollUp(List<PlanTask> tasks, HashSet<int> hasChildren)
     {
         var byParent = tasks.Where(t => t.ParentId is not null).GroupBy(t => t.ParentId!.Value).ToDictionary(g => g.Key, g => g.ToList());
@@ -343,7 +321,6 @@ public sealed class PlanService(EosDbContext db)
             t.ScheduledStart = starts.Count > 0 ? starts.Min() : null;
             t.ScheduledFinish = finishes.Count > 0 ? finishes.Max() : null;
             t.WorkHours = kids.Sum(k => k.WorkHours);
-            // Weight by work; a child with no work still counts (as 1 h) so it cannot be ignored in the roll-up.
             var weight = kids.Sum(k => Math.Max(k.WorkHours, 1m));
             t.PercentComplete = kids.Sum(k => Math.Max(k.WorkHours, 1m) * k.PercentComplete) / weight;
             var floats = kids.Where(k => k.TotalFloatDays is not null).Select(k => k.TotalFloatDays!.Value).ToList();
@@ -376,7 +353,6 @@ public sealed class PlanService(EosDbContext db)
         return wbs;
     }
 
-    /// <summary>Renumbers SortOrder 1..n depth-first from the parent/order structure.</summary>
     public async Task NormaliseAsync(int projectId, CancellationToken ct)
     {
         var tasks = await db.Tasks.Where(t => t.ProjectId == projectId).ToListAsync(ct);
@@ -408,7 +384,7 @@ public sealed class PlanService(EosDbContext db)
         var a = Subtree(all, first.Id).OrderBy(t => t.SortOrder).ToList();
         var b = Subtree(all, second.Id).OrderBy(t => t.SortOrder).ToList();
         var start = a.Min(t => t.SortOrder);
-        var order = b.Concat(a).ToList();                      // second subtree now comes first
+        var order = b.Concat(a).ToList();
         for (var i = 0; i < order.Count; i++) order[i].SortOrder = start + i;
     }
 

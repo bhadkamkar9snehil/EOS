@@ -32,7 +32,6 @@ public sealed record PersonPatch
     public bool? IsUnverified { get; init; }
 }
 
-/// <summary>People, teams, leave and manual allocations. Every change is audited.</summary>
 public sealed class PeopleService(EosDbContext db)
 {
     public async Task<IReadOnlyList<PersonRow>> ListAsync(bool includeInactive = false, int? teamId = null, CancellationToken ct = default) =>
@@ -102,8 +101,6 @@ public sealed class PeopleService(EosDbContext db)
         return new PersonProfile(row, views, known, total, total == 0 ? 0m : (decimal)known / total, capacity, projects, leave, doubts);
     }
 
-    // ---- teams ---------------------------------------------------------------------------------------------
-
     public async Task<IReadOnlyList<(int Id, string Name, int? LeaderPersonId, string? LeaderName, int Members)>> ListTeamsAsync(CancellationToken ct = default)
     {
         var teams = await db.Teams.AsNoTracking().OrderBy(t => t.Name).ToListAsync(ct);
@@ -130,8 +127,6 @@ public sealed class PeopleService(EosDbContext db)
         Audit("team.leader", actor, team.Name, personId?.ToString());
         await db.SaveChangesAsync(ct);
     }
-
-    // ---- leave and manual allocations ------------------------------------------------------------------------
 
     public async Task<Leave> AddLeaveAsync(Leave leave, string actor, CancellationToken ct = default)
     {

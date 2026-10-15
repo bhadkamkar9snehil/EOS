@@ -11,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Persistence;
 
-/// <summary>Flat persistence form of <see cref="EOS.Domain.Settings.SettingEntry"/> (spec §8.7).</summary>
 public sealed class SettingRow
 {
     public int Id { get; set; }

@@ -4,7 +4,6 @@ namespace EOS.Infrastructure.Importing;
 
 public sealed record EntityCounts(int Added, int Updated, int Unchanged);
 
-/// <summary>Outcome of an import (or of a preview, when <see cref="Committed"/> is false). Spec §24.1: preview first.</summary>
 public sealed class ImportReport(string kind, string file, bool committed)
 {
     private readonly Dictionary<string, int[]> _counts = new(StringComparer.Ordinal);
@@ -14,7 +13,6 @@ public sealed class ImportReport(string kind, string file, bool committed)
     public bool Committed { get; set; } = committed;
     public List<string> Warnings { get; } = [];
 
-    /// <summary>People or columns that could not be matched to an existing person (spec §6.4).</summary>
     public List<string> Unresolved { get; } = [];
 
     public IReadOnlyDictionary<string, EntityCounts> Counts =>

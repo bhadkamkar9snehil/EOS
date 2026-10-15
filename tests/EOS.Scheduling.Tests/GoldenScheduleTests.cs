@@ -3,7 +3,6 @@ using static EOS.Scheduling.Tests.GoldenSampleProjects;
 
 namespace EOS.Scheduling.Tests;
 
-/// <summary>Golden tests G1, G2, G3, G5 (assignment-window part) and G6 from spec §28.1 / §15.8.</summary>
 public class GoldenScheduleTests
 {
     private static ScheduleResult Run(List<ScheduleTask> tasks) => Scheduler.Compute(tasks, Calendar, Start);
@@ -13,8 +12,6 @@ public class GoldenScheduleTests
         Assert.Equal(start, r.Tasks[id].Start);
         Assert.Equal(finish, r.Tasks[id].Finish);
     }
-
-    // ---- G1: baseline -------------------------------------------------------------------------------
 
     [Fact]
     public void G1_Project1_Baseline()
@@ -32,7 +29,7 @@ public class GoldenScheduleTests
     public void G1_Project1_CriticalPathAndSlack()
     {
         var r = Run(Project1());
-        Assert.Equal(6, r.Tasks["1.2"].TotalFloatDays);      // 6 working days of slack (spec §14.5)
+        Assert.Equal(6, r.Tasks["1.2"].TotalFloatDays);
         Assert.False(r.Tasks["1.2"].IsCritical);
         foreach (var id in new[] { "1.1", "1.3", "1.4", "1.5" })
             Assert.True(r.Tasks[id].IsCritical, $"{id} should be critical");
@@ -60,15 +57,13 @@ public class GoldenScheduleTests
         Assert.Equal(D(11, 7), r.Finish);
     }
 
-    // ---- G2: Mahesh moves P1 -> P2 on 26 Oct, no replacement ----------------------------------------
-
     [Fact]
     public void G2_Scenario1_Project1_Slips_Nine_Days()
     {
         var r = Run(Project1(maheshLeavesOn: D(10, 26)));
-        AssertDates(r, "1.2", D(10, 19), D(11, 7));      // +6 days
-        AssertDates(r, "1.4", D(11, 9), D(11, 14));      // +3 days
-        AssertDates(r, "1.5", D(11, 16), D(11, 28));     // +9 days
+        AssertDates(r, "1.2", D(10, 19), D(11, 7));
+        AssertDates(r, "1.4", D(11, 9), D(11, 14));
+        AssertDates(r, "1.5", D(11, 16), D(11, 28));
         Assert.Equal(D(11, 28), r.Finish);
         Assert.Equal(9, Calendar.WorkingDaysBetween(D(11, 18), r.Finish));
     }
@@ -84,20 +79,16 @@ public class GoldenScheduleTests
         Assert.Equal(-18, Calendar.WorkingDaysBetween(D(12, 16), r.Finish));
     }
 
-    // ---- G3: the alternative, Mahesh moves on 19 Nov -------------------------------------------------
-
     [Fact]
     public void G3_Alternative_Move_After_Project1_Work_Is_Done()
     {
         var p1 = Run(Project1(maheshLeavesOn: D(11, 19)));
-        Assert.Equal(D(11, 18), p1.Finish);              // Project 1 unaffected
+        Assert.Equal(D(11, 18), p1.Finish);
 
         var p2 = Run(Project2(("Mahesh", D(11, 19))));
         Assert.Equal(D(12, 3), p2.Finish);
         Assert.Equal(-11, Calendar.WorkingDaysBetween(D(12, 16), p2.Finish));
     }
-
-    // ---- G5/G6: pushing Project 2 --------------------------------------------------------------------
 
     [Fact]
     public void G6_Single_Move_Cuts_Eighteen_Days_From_Project2()
@@ -118,21 +109,17 @@ public class GoldenScheduleTests
         Assert.Equal(-24, Calendar.WorkingDaysBetween(D(12, 16), r.Finish));
     }
 
-    // ---- Engine behaviour that must be configurable ---------------------------------------------------
-
     [Fact]
     public void Hours_Per_Day_And_Working_Days_Are_Configurable()
     {
-        // 96 h, one engineer: 12 days at 8 h/day, 8 days at 12 h/day.
         var tasks = new List<ScheduleTask> { new("T", "Task", 96, [], [new CrewMember("A")]) };
         var eightHours = Scheduler.Compute(tasks, WorkCalendar.MondayToSaturday(8m), D(10, 5));
         var twelveHours = Scheduler.Compute(tasks, WorkCalendar.MondayToSaturday(12m), D(10, 5));
         Assert.Equal(12, eightHours.Tasks["T"].DurationDays);
         Assert.Equal(8, twelveHours.Tasks["T"].DurationDays);
 
-        // Five-day week pushes the same task past the weekend sooner.
         var fiveDay = Scheduler.Compute(tasks, WorkCalendar.MondayToFriday(8m), D(10, 5));
-        Assert.Equal(D(10, 20), fiveDay.Tasks["T"].Finish);   // 12 weekdays from Mon 5 Oct
+        Assert.Equal(D(10, 20), fiveDay.Tasks["T"].Finish);
     }
 
     [Fact]
@@ -142,7 +129,7 @@ public class GoldenScheduleTests
             holidays: [D(10, 7)]);
         var tasks = new List<ScheduleTask> { new("T", "Task", 24, [], [new CrewMember("A")]) };
         var r = Scheduler.Compute(tasks, cal, D(10, 5));
-        Assert.Equal(D(10, 8), r.Tasks["T"].Finish);          // Mon, Tue, (Wed holiday), Thu
+        Assert.Equal(D(10, 8), r.Tasks["T"].Finish);
     }
 
     [Fact]

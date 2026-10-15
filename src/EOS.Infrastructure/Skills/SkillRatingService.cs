@@ -8,10 +8,6 @@ namespace EOS.Infrastructure.Skills;
 
 public sealed class SkillRatingException(string message) : Exception(message);
 
-/// <summary>
-/// The ONLY path by which a skill rating changes (spec §9.5): an explicit human action, recorded as a transaction
-/// with who, when, old value, new value and reason. No formula, training event or task completion calls this.
-/// </summary>
 public sealed class SkillRatingService(EosDbContext db)
 {
     public async Task SetRatingAsync(
@@ -58,7 +54,6 @@ public sealed class SkillRatingService(EosDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Attaches evidence to a person's skill without changing the rating.</summary>
     public async Task AddEvidenceNoteAsync(int personId, int skillId, string note, string actor, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(note)) throw new SkillRatingException("An evidence note cannot be empty.");

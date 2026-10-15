@@ -17,7 +17,6 @@ public sealed record Candidate(
     int PersonId, string Name, int Rating, decimal FreePlannedHoursPerWeek, bool AlreadyOnProject, decimal LeaveFraction,
     decimal Score, IReadOnlyList<string> Reasons);
 
-/// <summary>Skill demand lines, their fill status and ranked candidates (spec §12, §9.7).</summary>
 public sealed class DemandService(EosDbContext db)
 {
     public async Task<Demand> AddAsync(Demand demand, string actor, CancellationToken ct = default)
@@ -71,10 +70,6 @@ public sealed class DemandService(EosDbContext db)
         return views;
     }
 
-    /// <summary>
-    /// Eligible engineers for a demand, ranked (spec §9.7): least-sufficient skill first (protect scarce experts), then free capacity,
-    /// continuity on the project, and leave in the window. A human decides; the reasons are always shown.
-    /// </summary>
     public async Task<IReadOnlyList<Candidate>> RankCandidatesAsync(int demandId, CancellationToken ct = default)
     {
         var d = await db.Demands.AsNoTracking().SingleOrDefaultAsync(x => x.Id == demandId, ct) ?? throw new DemandException($"Demand {demandId} not found.");

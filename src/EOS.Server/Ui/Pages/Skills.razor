@@ -29,7 +29,7 @@
             <tbody>
             @foreach (var p in _people!.Where(p => _search.Length == 0 || p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))
             {
-                <tr><td style="position:sticky;left:0;background:var(--plate)"><a href="/people/@p.Id">@p.Name</a></td>
+                <tr><td style="position:sticky;left:0;background:var(--ground)"><a href="/people/@p.Id">@p.Name</a></td>
                 @foreach (var s in _skills)
                 {
                     var r = _ratings.GetValueOrDefault((p.Id, s.Id), -1);
