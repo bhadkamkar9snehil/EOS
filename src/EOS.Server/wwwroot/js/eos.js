@@ -162,3 +162,21 @@ window.eosToggleTheme = () => {
   document.documentElement.dataset.theme = next;
   try { localStorage.setItem("eos.theme", next); } catch { }
 };
+
+// Accessibility: tie each ".field" caption label to its control (pages write <div class="field"><label>Name</label><input/>),
+// and give label-less file pickers a name. Runs on every Blazor render via a MutationObserver.
+(function () {
+  let n = 0;
+  function link(root) {
+    for (const lab of root.querySelectorAll(".field > label:not([for])")) {
+      const ctl = lab.parentElement.querySelector("input, select, textarea");
+      if (!ctl || ctl.closest("label")) continue;
+      if (!ctl.id) ctl.id = "eosf" + (++n);
+      lab.htmlFor = ctl.id;
+    }
+    for (const f of root.querySelectorAll("input[type=file]:not([aria-label])")) f.setAttribute("aria-label", "Choose file");
+  }
+  const run = () => link(document);
+  new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener("DOMContentLoaded", run);
+})();
