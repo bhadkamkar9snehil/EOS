@@ -328,8 +328,6 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .impact .label { margin-bottom: 8px; }
 .impact .label.sect { margin-top: 22px; }
 .impact .finish { margin-bottom: 16px; }
-.pcard { padding: 9px 10px; gap: 9px; }
-.strip { margin: 6px 0 5px; }
 @media (min-width: 1700px) { .sidebar { width: 300px; } .rightbar { width: 340px; } }
 @media (max-width: 1280px) and (min-width: 901px) { .sidebar { width: 236px; } .rightbar { width: 276px; } .pcard .chips { display: none; } }
 .avatar { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: 12px; font-weight: 700; color: var(--ink); flex: none; }
@@ -338,10 +336,11 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .bench { padding: 14px 12px; }
 .bench-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding: 0 4px; }
 .bench-list { display: flex; flex-direction: column; }
-.pcard { display: flex; gap: 10px; align-items: center; background: transparent; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 8px 4px; cursor: grab; }
+.pcard { display: flex; gap: 10px; align-items: flex-start; background: transparent; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 8px 4px; cursor: grab; }
 .pcard:hover { background: var(--hover); }
 .pcard .avatar { width: 28px; height: 28px; font-size: 11px; }
-.pcard .strip { margin: 4px 0 3px; }
+.pcard .strip { margin: 5px 0 4px; }
+.pcard .avatar, .pcard .add { margin-top: 2px; }
 .pcard .add { opacity: .55; }
 .pcard:hover .add, .pcard .add:focus-visible { opacity: 1; }
 .pcard:active { cursor: grabbing; }

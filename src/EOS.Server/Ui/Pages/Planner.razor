@@ -528,11 +528,9 @@
         _max = all.Max(s => s.Finish).AddDays(14);
         var span = _max.DayNumber - _min.DayNumber + 1;
         _dw = _zoomDw > 0 ? _zoomDw : Math.Clamp(_avail / Math.Max(span, 1), 2, 26);
-        if (_zoomDw == 0)
-        {
-            span = Math.Max(span, (_avail + _dw - 1) / _dw);
-            _max = _min.AddDays(span - 1);
-        }
+        // Every zoom fills the visible width, so the chart never stops short of its frame.
+        span = Math.Max(span, (_avail + _dw - 1) / _dw);
+        _max = _min.AddDays(span - 1);
         _width = span * _dw;
         _months = [];
         for (var m = new DateOnly(_min.Year, _min.Month, 1); m <= _max; m = m.AddMonths(1))
