@@ -23,7 +23,7 @@ const browser = process.env.EOS_E2E_BROWSER ?? installedChromium();
 export default defineConfig({
   testDir: './specs',
   globalSetup: './global-setup.ts',
-  timeout: 45_000,
+  timeout: process.env.CI ? 90_000 : 45_000,
   expect: { timeout: 8_000 },
   fullyParallel: true,
   workers: 4,
@@ -32,6 +32,7 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     headless: true,
+    navigationTimeout: process.env.CI ? 60_000 : 30_000,
     viewport: { width: 1500, height: 900 },
     permissions: ['clipboard-read', 'clipboard-write'],
     trace: 'retain-on-failure',
