@@ -18,14 +18,16 @@
             <div class="actions"><a class="btn secondary" href="/people">All people</a></div>
         </div>
 
-        <div class="grid-2">
+        <div class="person-top">
             <div class="plate">
                 <h2>Skills</h2>
-                <table class="grid"><thead><tr><th>Skill</th><th class="num">Rating</th><th>Assessed</th><th></th></tr></thead><tbody>
+                <table class="grid skilltab"><thead><tr><th>Skill</th><th>Rating</th><th>Assessed</th><th></th></tr></thead><tbody>
                 @foreach (var s in _p.Skills)
                 {
-                    <tr><td>@s.Skill</td><td class="num"><b>@s.Rating</b></td><td class="muted">@s.AssessedOn?.ToString("dd MMM yy") @s.AssessedBy</td>
-                        <td><button class="icon" @onclick="() => StartRate(s.SkillId, s.Rating)">Change</button></td></tr>
+                    <tr><td>@s.Skill</td>
+                        <td><span class="pips" role="img" aria-label="@s.Rating of @_levels">@for (var i = 1; i <= _levels; i++) { <i class="@(i <= s.Rating ? "on" : "")"></i> }</span><b>@s.Rating</b></td>
+                        <td class="muted">@s.AssessedOn?.ToString("dd MMM yy") @s.AssessedBy</td>
+                        <td class="act"><button class="icon" aria-label="Change @s.Skill rating" @onclick="() => StartRate(s.SkillId, s.Rating)">Change</button></td></tr>
                 }
                 </tbody></table>
                 @if (_rateSkill != 0)
@@ -40,8 +42,9 @@
             <div class="plate">
                 <h2>Projects</h2>
                 @if (_p.Projects.Count == 0) { <div class="empty">Not assigned to any plan.</div> }
-                @foreach (var pr in _p.Projects) { <div><a href="/projects/@pr.ProjectId"><b>@pr.ProjectNo</b></a> <span class="muted">@pr.Name</span></div> }
-                <h2 style="margin-top:14px">Leave</h2>
+                @foreach (var pr in _p.Projects) { <a class="projlink" href="/projects/@pr.ProjectId"><b>@pr.ProjectNo</b><span class="muted">@pr.Name</span></a> }
+                <h2 style="margin-top:22px">Leave</h2>
+                @if (_p.Leave.Count == 0) { <div class="muted small">No leave booked.</div> }
                 @foreach (var l in _p.Leave) { <div>@l.FromDate.ToString("dd MMM yy") – @l.ToDate.ToString("dd MMM yy") <span class="muted">@l.Kind</span> <button class="icon" @onclick="() => RemoveLeave(l.Id)">Remove</button></div> }
                 <div class="form-row" style="margin-top:8px">
                     <div class="field"><label>From</label><input type="date" @bind="_leaveFrom" /></div>
@@ -85,7 +88,7 @@
 
         <div class="plate" style="margin-top:16px">
             <h2>Capacity · next months</h2>
-            <table class="grid"><thead><tr><th>Month</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Allocated</th><th class="num">Load</th><th>By project</th></tr></thead><tbody>
+            <table class="grid captab"><thead><tr><th>Month</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Allocated</th><th class="num">Load</th><th>By project</th></tr></thead><tbody>
             @foreach (var c in _p.Capacity)
             {
                 <tr><td>@c.Month.ToString("MMM yyyy")</td><td class="num">@c.AvailableHours.ToString("0")</td><td class="num">@c.LeaveHours.ToString("0")</td><td class="num">@c.AllocatedHours.ToString("0")</td>

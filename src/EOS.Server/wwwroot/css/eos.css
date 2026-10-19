@@ -462,3 +462,17 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 /* Planner: summary brackets recede behind real task bars; project name has room. */
 .plgx .bar-sum { fill: var(--ink-2); }
 .planner .tools select[aria-label=Project] { max-width: 340px; }
+/* Person detail: skills lead, projects + leave sit in a fixed side column. */
+.person-top { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+.person-top > .plate { margin-bottom: 0; }
+@media (max-width: 1100px) { .person-top { grid-template-columns: 1fr; } }
+.skilltab td.act { width: 1%; text-align: right; }
+.skilltab td.act button { opacity: .6; }
+.skilltab tr:hover td.act button, .skilltab td.act button:focus-visible { opacity: 1; }
+.pips { display: inline-flex; gap: 3px; margin-right: 10px; vertical-align: middle; }
+.pips i { width: 14px; height: 6px; border-radius: 2px; background: var(--track); }
+.pips i.on { background: var(--accent); }
+.projlink { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+.projlink .muted { font-size: 12.5px; }
+.captab { max-width: 880px; }
+.captab th.num, .captab td.num { width: 110px; }
