@@ -3,186 +3,180 @@
 <PageTitle>Command Center · EOS</PageTitle>
 
 <style>
-    .cc-attn { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
-    .cc-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 3px solid var(--line); }
-    .cc-card.bad { border-top-color: var(--red); }
-    .cc-card.warn { border-top-color: var(--amber); }
-    .cc-card.ok { border-top-color: var(--green); }
-    .cc-card .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-    .cc-card .t { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
-    .cc-card .n { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
-    .cc-card.bad .n { color: var(--red); } .cc-card.warn .n { color: var(--amber); } .cc-card.ok .n { color: var(--green); }
-    .cc-card .sub { color: var(--ink-2); font-size: 12.5px; }
-    .cc-card ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-    .cc-card li { font-size: 13px; line-height: 1.3; }
-    .cc-card li b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cc-card li span { color: var(--ink-2); font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .cc-card .more { margin-top: auto; font-size: 12.5px; }
-    .cc-calm { color: var(--green); font-size: 13px; }
-    .cc-chart svg { width: 100%; height: auto; display: block; }
-    .cc-chart text { font: 11.5px var(--font); fill: var(--ink-2); }
-    .cc-chart .lbl { fill: var(--ink); font-weight: 600; }
-    .cc-chart .axis { stroke: var(--line); }
-    .cc-chart .track { fill: var(--track); }
-    .cc-chart .exp { stroke: var(--ink); stroke-width: 2; }
-    .cc-chart .Red { fill: var(--red); } .cc-chart .Amber { fill: var(--amber); } .cc-chart .Green { fill: var(--green); } .cc-chart .Grey, .cc-chart .None { fill: var(--task-prog); }
-    .cc-chart .cap { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
-    .cc-chart .alloc { fill: var(--accent); }
-    .cc-chart .over { fill: var(--red); }
-    .cc-chart .gpos { fill: var(--red); } .cc-chart .gneg { fill: var(--green); }
-    .cc-chart a:hover .lbl { fill: var(--accent-ink); }
-    .cc-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 8px; }
-    .cc-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-    .cc-people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-    .cc-people a { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--red-soft); color: var(--red); }
-    .cc-people a.st { background: var(--amber-soft); color: var(--amber); }
-    .cc-strip { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 16px; padding: 0 2px; }
-    .cc-strip b { color: var(--ink); font-size: 14px; margin-right: 4px; }
-    .cc-ms { display: flex; flex-direction: column; gap: 6px; }
-    @@media (max-width: 1100px) { .cc-attn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .cc { max-width: 1480px; }
+    .cc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 20px; }
+    .cc-head h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+    .cc-head p { color: var(--ink-2); margin-top: 6px; max-width: 80ch; }
+    .cc-sec { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
+    .cc-sec > header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+    .cc-sec h2 { font-size: 15px; font-weight: 650; color: var(--ink); }
+    .cc-sec header span, .cc-sec header a { font-size: 12.5px; color: var(--ink-2); }
+    .cc-sec header a { color: var(--accent-ink); }
+    .cc-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .cc-cols > .cc-sec { margin-bottom: 0; }
+
+    .cc-list { display: grid; grid-template-columns: 92px minmax(180px, 280px) minmax(0, 1fr); column-gap: 16px; }
+    .cc-list > a { display: contents; color: var(--ink); }
+    .cc-list > a > * { padding: 8px 0; border-top: 1px solid var(--line-soft); }
+    .cc-list > a:first-child > * { border-top: 0; }
+    .cc-list > a:hover > * { background: var(--hover); }
+    .cc-list > a:focus-visible > * { background: var(--accent-soft); }
+    .cc-area { font-size: 12.5px; color: var(--ink-2); padding-left: 8px !important; }
+    .cc-subj { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cc-msg { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sev { display: inline-flex; align-items: center; gap: 6px; }
+    .sev::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+    .sev.hi::before { background: var(--red); }
+
+    .cc-proj { display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr) 64px 72px; column-gap: 16px; align-items: center; }
+    .cc-proj > a { display: contents; color: var(--ink); }
+    .cc-proj > a > * { padding: 7px 0; border-top: 1px solid var(--line-soft); }
+    .cc-proj > a:first-of-type > * { border-top: 0; }
+    .cc-proj > a:hover > * { background: var(--hover); }
+    .cc-proj .hd { font-size: 12px; color: var(--ink-3); padding-bottom: 6px; }
+    .cc-pn b { display: block; font-weight: 600; }
+    .cc-pn small { display: block; color: var(--ink-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar { position: relative; height: 10px; border-radius: 6px; background: var(--track); }
+    .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: var(--task-prog); }
+    .bar i.r { background: var(--red); } .bar i.a { background: var(--amber); } .bar i.g { background: var(--green); }
+    .bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ink); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bad { color: var(--red); font-weight: 600; }
+    .cc-key { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
+    .cc-key i { display: inline-block; width: 10px; height: 10px; border-radius: 6px; margin-right: 6px; vertical-align: -1px; }
+
+    .cc-weeks { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; align-items: end; height: 132px; }
+    .cc-week { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; gap: 4px; text-align: center; font-size: 12px; color: var(--ink-2); }
+    .cc-week .col { position: relative; flex: 1; background: var(--track); border-radius: 6px; overflow: hidden; }
+    .cc-week .col i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); }
+    .cc-week .col i.over { background: var(--red); }
+    .cc-week b { color: var(--ink); font-weight: 600; }
+    .cc-note { color: var(--ink-2); max-width: 60ch; }
+    .cc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .cc-chips a { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); }
+    .cc-chips a.over { background: var(--red-soft); color: var(--red); }
+
+    .cc-gap { display: grid; grid-template-columns: minmax(120px, 200px) minmax(0, 1fr) 80px; column-gap: 12px; align-items: center; row-gap: 8px; }
+    .cc-gap .bar i { background: var(--red); } .cc-gap .bar i.spare { background: var(--green); }
+    .cc-ms { display: grid; grid-template-columns: 64px 1fr; row-gap: 6px; column-gap: 12px; }
+    .cc-ms span { color: var(--ink-2); }
+    .cc-calm { color: var(--ink-2); }
+
+    @@media (max-width: 1100px) { .cc-cols { grid-template-columns: 1fr; } .cc-cols > .cc-sec { margin-bottom: 16px; } }
+    @@media (max-width: 720px) {
+        .cc-head { flex-direction: column; }
+        .cc-list { grid-template-columns: 1fr; } .cc-area { display: none; } .cc-msg { white-space: normal; padding-top: 0 !important; border-top: 0 !important; }
+        .cc-proj { grid-template-columns: minmax(0, 1fr) 56px 64px; } .cc-proj .bar, .cc-proj .hd.b { display: none; }
+        .cc-weeks { grid-template-columns: repeat(4, minmax(0, 1fr)); height: auto; } .cc-week .col { height: 64px; flex: none; }
+    }
 </style>
 
-<div class="page">
-    <div class="page-head">
-        <div><h1>@(_headline ?? "Command Center")</h1>@if (_subline is not null) { <p class="muted" style="margin-top:4px">@_subline</p> }</div>
-        <div class="actions">
-            <a class="btn secondary" href="/whatif">What-if</a>
-            <a class="btn secondary" href="/gantt">Gantt</a>
-            <a class="btn secondary" href="/calendar">Calendar</a>
-        </div>
-    </div>
-
+<div class="page cc">
     @if (Loading && _cc is null) { <p class="muted">Loading…</p> }
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
     else if (_cc is not null)
     {
-        var k = _cc.Kpis;
+        <div class="cc-head">
+            <div><h1>@_headline</h1>@if (_subline is not null) { <p>@_subline</p> }</div>
+            <div class="actions">
+                <a class="btn secondary" href="/whatif">What-if</a>
+                <a class="btn secondary" href="/gantt">Gantt</a>
+            </div>
+        </div>
 
-        @* 1. What needs attention, one card per area, worst first *@
-        <div class="cc-attn">
-            @foreach (var c in _cards)
+        <section class="cc-sec" aria-labelledby="cc-needs">
+            <header><h2 id="cc-needs">Needs you</h2><a href="/alerts">@(_minor > 0 ? $"{_minor} minor notes not shown · " : "")All alerts</a></header>
+            @if (_needs.Count == 0) { <p class="cc-calm">Nothing serious. Minor notes are on the alerts page.</p> }
+            else
             {
-                <div class="cc-card @c.Tone">
-                    <div class="hd"><span class="t">@c.Title</span><a href="@c.Href" class="n">@c.Count</a></div>
-                    <div class="sub">@c.Summary</div>
-                    @if (c.Items.Count == 0) { <div class="cc-calm">Nothing needs you here.</div> }
-                    else
+                <div class="cc-list">
+                    @foreach (var n in _needs)
                     {
-                        <ul>@foreach (var i in c.Items.Take(3)) { <li><b title="@i.Subject">@Names.Short(i.Subject)</b><span>@i.Message</span></li> }</ul>
-                        @if (c.Items.Count > 3) { <a class="more" href="@c.Href">+@(c.Items.Count - 3) more</a> }
+                        <a href="@n.Href">
+                            <span class="cc-area"><span class="sev @(n.High ? "hi" : "")">@n.Area</span></span>
+                            <span class="cc-subj" title="@n.Subject">@n.Subject</span>
+                            <span class="cc-msg" title="@n.Message">@n.Message</span>
+                        </a>
                     }
                 </div>
             }
-        </div>
+        </section>
 
-        <div class="cc-strip">
-            <span><b>@k.ActiveProjects</b>active projects</span>
-            <span><b>@k.DelayedTasks</b>delayed tasks</span>
-            <span><b>@k.FreePlannedHoursNext4Weeks.ToString("N0")</b>free hours, next 4 weeks</span>
-            <span><b>@k.VmsRunning / @(k.VmsRunning + k.VmsOff)</b>VMs running</span>
-            <span><b>@k.OpenGaps</b>skill gaps</span>
-        </div>
-
-        <div class="grid-2" style="margin-bottom:16px">
-            @* 2. Projects: progress actual vs where the plan says it should be *@
-            <div class="plate cc-chart">
-                <h2>Projects: progress vs plan</h2>
-                @if (_projects.Count == 0) { <div class="empty">No project has a plan yet.</div> }
+        <div class="cc-cols">
+            <section class="cc-sec" aria-labelledby="cc-proj">
+                <header><h2 id="cc-proj">Projects against plan</h2><a href="/projects">@_cc.Kpis.ActiveProjects active</a></header>
+                @if (_projects.Count == 0) { <p class="cc-calm">No project has a plan yet.</p> }
                 else
                 {
-                    const int rowH = 30, labelW = 210, barW = 300, slipW = 70;
-                    var w = labelW + barW + slipW;
-                    <svg viewBox="0 0 @w @(_projects.Count * rowH + 20)" role="img" aria-label="Project progress against plan">
-                        @for (var i = 0; i < _projects.Count; i++)
+                    <div class="cc-proj">
+                        <span class="hd">Project</span><span class="hd b">Done, and where the plan says it should be</span><span class="hd num">Behind</span><span class="hd num">Finish slip</span>
+                        @foreach (var p in _projects)
                         {
-                            var p = _projects[i];
-                            var y = i * rowH + 6;
-                            var act = (double)Math.Clamp(p.ProgressActual, 0, 1) * barW;
-                            var exp = (double)Math.Clamp(p.ProgressExpected, 0, 1) * barW;
-                            <a href="/projects/@p.ProjectId">
-                                <title>@p.ProjectNo @p.Name: @((p.ProgressActual * 100).ToString("0"))% done, plan says @((p.ProgressExpected * 100).ToString("0"))%. @string.Join("; ", p.Reasons)</title>
-                                <text class="lbl" x="0" y="@(y + 13)">@p.ProjectNo</text>
-                                <text x="0" y="@(y + 25)" style="font-size:10.5px">@Trim(Names.Short(p.Name), 30)</text>
-                                <rect class="track" x="@labelW" y="@(y + 6)" width="@barW" height="12" rx="3" />
-                                <rect class="@HClass(p.Health)" x="@labelW" y="@(y + 6)" width="@F(act)" height="12" rx="3" />
-                                <line class="exp" x1="@F(labelW + exp)" x2="@F(labelW + exp)" y1="@(y + 2)" y2="@(y + 22)" />
-                                <text x="@(w - 4)" y="@(y + 16)" text-anchor="end" style="@(p.ScheduleVarianceDays > 0 ? "fill:var(--red);font-weight:600" : "")">@(p.ScheduleVarianceDays is { } s ? (s > 0 ? $"+{s} d" : s == 0 ? "on time" : $"{s} d") : "–")</text>
+                            var gap = p.ProgressGapPoints;
+                            <a href="/projects/@p.ProjectId" title="@string.Join("; ", p.Reasons)">
+                                <span class="cc-pn"><b>@p.ProjectNo</b><small>@Names.Short(p.Name)</small></span>
+                                <span class="bar" role="img" aria-label="@Pct(p.ProgressActual) done, plan says @Pct(p.ProgressExpected)"><i class="@HClass(p.Health)" style="width:@Pct(p.ProgressActual)"></i><b style="left:@Pct(p.ProgressExpected)"></b></span>
+                                <span class="num @(gap >= 10 ? "bad" : "")">@(gap > 0.5m ? $"{gap:0} pts" : "–")</span>
+                                <span class="num @(p.ScheduleVarianceDays > 0 ? "bad" : "")">@Slip(p.ScheduleVarianceDays)</span>
                             </a>
                         }
-                    </svg>
-                    <div class="cc-legend"><span><i style="background:var(--red)"></i>at risk</span><span><i style="background:var(--amber)"></i>watch</span><span><i style="background:var(--green)"></i>on track</span><span><i style="background:var(--ink);width:2px"></i>where the plan says it should be</span><span>right: forecast slip, working days</span></div>
+                    </div>
+                    <div class="cc-key"><span><i style="background:var(--red)"></i>At risk</span><span><i style="background:var(--amber)"></i>Moderate risk</span><span><i style="background:var(--green)"></i>On track</span><span><i style="background:var(--ink);width:2px"></i>Plan</span><span>Slip in working days</span></div>
                 }
-            </div>
+            </section>
 
-            @* 3. Team load: one chart for the whole team, then only the names that matter *@
-            <div class="plate cc-chart">
-                <h2>Team load, next 8 weeks</h2>
-                @if (_weekTotals.Count == 0) { <div class="empty">No engineers yet.</div> }
+            <section class="cc-sec" aria-labelledby="cc-load">
+                <header><h2 id="cc-load">Team load, next 8 weeks</h2><a href="/capacity">Capacity</a></header>
+                @if (_weekTotals.Count == 0) { <p class="cc-calm">No engineers yet.</p> }
+                else if (_coverage < 0.10m)
+                {
+                    <p class="cc-note">Only <b>@((_coverage * 100).ToString("0"))%</b> of the next 8 weeks is assigned (@_alloc.ToString("N0") of @_cap.ToString("N0") hours). @_idleNow of @_people engineers have nothing planned this week. Assign engineers to tasks and load will show here.</p>
+                }
                 else
                 {
-                    const int h = 170, left = 40, colW = 52, top = 10;
-                    var max = (double)Math.Max(1, _weekTotals.Max(t => Math.Max(t.Cap, t.Alloc)));
-                    var cw = left + _weekTotals.Count * colW;
-                    double Y(decimal v) => top + h - (double)v / max * h;
-                    <svg viewBox="0 0 @cw @(h + top + 22)" role="img" aria-label="Allocated hours against capacity per week">
-                        <line class="axis" x1="@left" x2="@cw" y1="@(top + h)" y2="@(top + h)" />
-                        <text x="@(left - 6)" y="@(top + 8)" text-anchor="end">@max.ToString("N0")</text>
-                        <text x="@(left - 6)" y="@(top + h)" text-anchor="end">0</text>
-                        @for (var i = 0; i < _weekTotals.Count; i++)
+                    <div class="cc-weeks">
+                        @foreach (var t in _weekTotals)
                         {
-                            var t = _weekTotals[i];
-                            var x = left + i * colW + 10;
-                            var fit = Math.Min(t.Alloc, t.Cap);
-                            <g>
-                                <title>Week of @t.Week.ToString("dd MMM"): @t.Alloc.ToString("N0") h allocated of @t.Cap.ToString("N0") h capacity (@(t.Cap == 0 ? "–" : (t.Alloc / t.Cap * 100).ToString("0") + "%")); @t.Over over-allocated, @t.Idle with nothing planned</title>
-                                <rect class="alloc" x="@x" y="@F(Y(fit))" width="@(colW - 20)" height="@F(top + h - Y(fit))" rx="2" />
-                                @if (t.Alloc > t.Cap) { <rect class="over" x="@x" y="@F(Y(t.Alloc))" width="@(colW - 20)" height="@F(Y(t.Cap) - Y(t.Alloc))" rx="2" /> }
-                                <rect class="cap" x="@(x - 3)" y="@F(Y(t.Cap))" width="@(colW - 14)" height="@F(top + h - Y(t.Cap))" />
-                                <text x="@(x + (colW - 20) / 2)" y="@(top + h + 15)" text-anchor="middle">@t.Week.ToString("dd MMM")</text>
-                            </g>
+                            var u = t.Cap == 0 ? 0 : t.Alloc / t.Cap;
+                            <div class="cc-week" title="@t.Alloc.ToString("N0") h of @t.Cap.ToString("N0") h; @t.Over over capacity, @t.Idle with nothing planned">
+                                <b>@((u * 100).ToString("0"))%</b>
+                                <div class="col"><i class="@(u > 1 ? "over" : "")" style="height:@Pct(Math.Min(u, 1))"></i></div>
+                                <span>@t.Week.ToString("dd MMM")</span>
+                            </div>
                         }
-                    </svg>
-                    <div class="cc-legend"><span><i style="background:var(--accent)"></i>allocated</span><span><i style="border:1.5px dashed var(--ink)"></i>capacity</span><span><i style="background:var(--red)"></i>over capacity</span><span>@_idleNow of @_people engineers have nothing planned this week</span></div>
-                    @if (_hot.Count > 0)
-                    {
-                        <div class="cc-people">@foreach (var p in _hot) { <a class="@(p.Over ? "" : "st")" href="/people/@p.Id" title="@p.Peak.ToString("0")% at peak">@p.Name · @p.Peak.ToString("0")%</a> }</div>
-                    }
+                    </div>
                 }
-            </div>
+                @if (_hot.Count > 0)
+                {
+                    <div class="cc-chips">@foreach (var p in _hot) { <a class="@(p.Over ? "over" : "")" href="/people/@p.Id">@p.Name @p.Peak.ToString("0")%</a> }</div>
+                }
+            </section>
         </div>
 
         @if (_gapBySkill.Count > 0 || _cc.Milestones.Count > 0)
         {
-            <div class="grid-2">
+            <div class="cc-cols" style="margin-top:16px">
                 @if (_gapBySkill.Count > 0)
                 {
-                    var gmax = (double)Math.Max(1, _gapBySkill.Max(g => Math.Abs(g.Gap)));
-                    const int gl = 160, gw = 320, gh = 24;
-                    var mid = gl + gw / 2;
-                    <div class="plate cc-chart">
-                        <h2>Skills: demand vs supply, next months</h2>
-                        <svg viewBox="0 0 @(gl + gw) @(_gapBySkill.Count * gh + 6)" role="img" aria-label="Skill gap hours">
-                            <line class="axis" x1="@mid" x2="@mid" y1="0" y2="@(_gapBySkill.Count * gh)" />
-                            @for (var i = 0; i < _gapBySkill.Count; i++)
+                    var gmax = _gapBySkill.Max(g => Math.Abs(g.Gap));
+                    <section class="cc-sec" aria-labelledby="cc-skill">
+                        <header><h2 id="cc-skill">Skills short of demand</h2><a href="/demand">Demand</a></header>
+                        <div class="cc-gap">
+                            @foreach (var g in _gapBySkill)
                             {
-                                var g = _gapBySkill[i];
-                                var len = Math.Abs((double)g.Gap) / gmax * (gw / 2 - 40);
-                                var y = i * gh + 4;
-                                <g><title>@g.Skill: @(g.Gap > 0 ? $"short by {g.Gap:N0} h" : $"{-g.Gap:N0} h spare")</title>
-                                <text class="lbl" x="0" y="@(y + 12)">@Trim(g.Skill, 24)</text>
-                                <rect class="@(g.Gap > 0 ? "gpos" : "gneg")" x="@F(g.Gap > 0 ? mid : mid - len)" y="@y" width="@F(len)" height="14" rx="3" />
-                                <text x="@F(g.Gap > 0 ? mid + len + 4 : mid - len - 4)" y="@(y + 11)" text-anchor="@(g.Gap > 0 ? "start" : "end")">@g.Gap.ToString("+#,0;-#,0;0") h</text></g>
+                                <span>@g.Skill</span>
+                                <span class="bar"><i class="@(g.Gap > 0 ? "" : "spare")" style="width:@Pct(gmax == 0 ? 0 : Math.Abs(g.Gap) / gmax)"></i></span>
+                                <span class="num @(g.Gap > 0 ? "bad" : "")">@(g.Gap > 0 ? $"{g.Gap:N0} h short" : $"{-g.Gap:N0} h spare")</span>
                             }
-                        </svg>
-                        <div class="cc-legend"><span><i style="background:var(--red)"></i>short (need people)</span><span><i style="background:var(--green)"></i>spare capacity</span></div>
-                    </div>
+                        </div>
+                    </section>
                 }
                 @if (_cc.Milestones.Count > 0)
                 {
-                    <div class="plate">
-                        <h2>Milestones, next 30 days</h2>
-                        <div class="cc-ms">@foreach (var m in _cc.Milestones) { <div><span class="muted" style="display:inline-block;width:56px">@m.Date?.ToString("dd MMM")</span><b>@m.ProjectNo</b> @m.Name</div> }</div>
-                    </div>
+                    <section class="cc-sec" aria-labelledby="cc-ms">
+                        <header><h2 id="cc-ms">Milestones, next 30 days</h2><a href="/calendar">Calendar</a></header>
+                        <div class="cc-ms">@foreach (var m in _cc.Milestones) { <span>@m.Date?.ToString("dd MMM")</span><div><b>@m.ProjectNo</b> @m.Name</div> }</div>
+                    </section>
                 }
             </div>
         }
@@ -190,24 +184,34 @@
 </div>
 
 @code {
-    private sealed record Item(string Subject, string Message);
-    private sealed record Card(string Title, string Href, string Tone, int Count, string Summary, List<Item> Items);
+    private sealed record Need(string Area, string Href, bool High, string Subject, string Message);
     private sealed record WeekTotal(DateOnly Week, decimal Alloc, decimal Cap, int Over, int Idle);
     private sealed record Hot(int Id, string Name, decimal Peak, bool Over);
     private sealed record SkillGap(string Skill, decimal Gap);
 
     private CommandCenter? _cc;
-    private List<Card> _cards = [];
+    private List<Need> _needs = [];
     private List<ProjectHealthView> _projects = [];
     private List<WeekTotal> _weekTotals = [];
     private List<Hot> _hot = [];
     private List<SkillGap> _gapBySkill = [];
-    private int _people, _idleNow;
+    private int _people, _idleNow, _minor;
+    private decimal _alloc, _cap, _coverage;
     private string? _headline, _subline;
 
-    private static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-    private static string HClass(string h) => h switch { "At Risk" => "Red", "Moderate Risk" => "Amber", "On Track" => "Green", _ => "Grey" };
-    private static string Trim(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+    private static string Pct(decimal v) => (Math.Clamp(v, 0, 1) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    private static string Slip(int? d) => d switch { null => "–", > 0 => $"+{d} d", 0 => "on time", _ => $"{d} d" };
+    private static string HClass(string h) => h switch { "At Risk" => "r", "Moderate Risk" => "a", "On Track" => "g", _ => "" };
+
+    private static (string Area, string Href) Route(string kind) => kind switch
+    {
+        "project" or "task" => ("Delivery", "/projects"),
+        "person" or "demand" or "skill" => ("People", "/capacity"),
+        "host" => ("Servers", "/infrastructure"),
+        "scenario" or "movement" => ("Decision", "/whatif"),
+        "doubt" => ("Training", "/training"),
+        _ => ("Data", "/alerts"),
+    };
 
     protected override async Task LoadAsync()
     {
@@ -217,54 +221,45 @@
 
         _projects = _cc.Projects
             .OrderByDescending(p => p.Health == "At Risk").ThenByDescending(p => p.Health == "Moderate Risk")
-            .ThenByDescending(p => p.ScheduleVarianceDays ?? int.MinValue).ToList();
+            .ThenByDescending(p => p.ProgressGapPoints).ToList();
 
-        // Attention cards: alerts grouped per subject, routed by subject kind, serious first.
-        List<Item> Pick(params string[] kinds) => _cc.Alerts.Where(a => kinds.Contains(a.SubjectKind))
-            .GroupBy(a => a.Subject)
-            .Select(g => (Sev: g.Max(a => a.Severity), Item: new Item(g.Key, g.OrderByDescending(a => a.Severity).First().Message + (g.Count() > 1 ? $" (+{g.Count() - 1} more)" : ""))))
-            .OrderByDescending(x => x.Sev).Select(x => x.Item).ToList();
-        string Tone(List<Item> items, bool bad) => items.Count == 0 ? "ok" : bad ? "bad" : "warn";
-
-        var delivery = Pick("project", "task");
-        var people = Pick("person", "demand", "skill");
-        var infra = Pick("host");
-        var decisions = Pick("scenario", "movement", "doubt");
-        _cards =
-        [
-            new("Delivery", "/projects", Tone(delivery, k.AtRiskProjects > 0), delivery.Count, $"{k.AtRiskProjects} at risk · {k.DelayedTasks} delayed tasks", delivery),
-            new("People", "/capacity", Tone(people, k.OverAllocatedEngineers > 0), people.Count, $"{k.OverAllocatedEngineers} over-allocated · {k.OpenGaps} skill gaps", people),
-            new("Infrastructure", "/infrastructure", Tone(infra, k.HostsLowOnDisk > 0), infra.Count, $"{k.HostsLowOnDisk} hosts low on disk · {k.VmsRunning} VMs up", infra),
-            new("Decisions", "/whatif", Tone(decisions, false), decisions.Count, $"{k.PendingApprovals} approvals · {k.OpenDoubts} open doubts", decisions),
-        ];
-        _cards = _cards.OrderByDescending(c => c.Tone == "bad").ThenByDescending(c => c.Tone == "warn").ToList();
+        var groups = _cc.Alerts.GroupBy(a => (a.SubjectKind, a.Subject))
+            .Select(g => (Sev: g.Max(a => a.Severity), Kind: g.Key.SubjectKind, Subject: g.Key.Subject, Msg: g.OrderByDescending(a => a.Severity).First().Message))
+            .ToList();
+        var shown = groups.Where(g => g.Sev >= AlertSeverity.Serious).ToList();
+        if (shown.Count < 4) shown = shown.Concat(groups.Where(g => g.Sev == AlertSeverity.Warning && g.Kind is "scenario" or "movement" or "project")).ToList();
+        _needs = shown.OrderByDescending(g => g.Sev).ThenBy(g => Route(g.Kind).Area).Take(10)
+            .Select(g => { var r = Route(g.Kind); return new Need(r.Area, r.Href, g.Sev >= AlertSeverity.Serious, Names.Short(g.Subject), g.Msg); }).ToList();
+        _minor = groups.Count - _needs.Count;
 
         var load = _cc.LoadNext8Weeks;
         _people = load.Select(r => r.PersonId).Distinct().Count();
         _weekTotals = load.GroupBy(r => r.WeekStart).OrderBy(g => g.Key)
             .Select(g => new WeekTotal(g.Key, g.Sum(r => r.AllocatedHours), g.Sum(r => r.CapacityHours),
                 g.Count(r => r.Band == LoadBand.OverAllocated), g.Count(r => r.AllocatedHours == 0))).ToList();
+        _alloc = _weekTotals.Sum(t => t.Alloc);
+        _cap = _weekTotals.Sum(t => t.Cap);
+        _coverage = _cap == 0 ? 0 : _alloc / _cap;
         _idleNow = _weekTotals.FirstOrDefault()?.Idle ?? 0;
         _hot = load.Where(r => r.CapacityHours > 0 && (r.Band == LoadBand.Stretched || r.Band == LoadBand.OverAllocated))
             .GroupBy(r => r.PersonId)
             .Select(g => new Hot(g.Key, g.First().PersonName, g.Max(r => r.AllocatedHours / r.CapacityHours * 100), g.Any(r => r.Band == LoadBand.OverAllocated)))
             .OrderByDescending(h => h.Peak).ToList();
 
-        // Headline: state the single most important finding as a sentence.
         var worst = _projects.FirstOrDefault(p => p.Health == "At Risk");
         var overNow = _weekTotals.FirstOrDefault()?.Over ?? 0;
         _headline = worst is not null
-            ? $"{k.AtRiskProjects} project{(k.AtRiskProjects == 1 ? " is" : "s are")} at risk; {worst.ProjectNo} is the furthest behind"
-            : overNow > 0 ? $"{overNow} engineer{(overNow == 1 ? " is" : "s are")} over capacity this week"
-            : "Nothing is at risk right now";
+            ? $"{k.AtRiskProjects} project{(k.AtRiskProjects == 1 ? " is" : "s are")} at risk. {worst.ProjectNo} is furthest behind."
+            : overNow > 0 ? $"{overNow} engineer{(overNow == 1 ? " is" : "s are")} over capacity this week."
+            : "Nothing is at risk right now.";
         var bits = new List<string>();
-        if (worst is not null) bits.Add($"{worst.ProjectNo} is {(worst.ProgressGapPoints).ToString("0")} points behind plan" + (worst.ScheduleVarianceDays > 0 ? $", forecast {worst.ScheduleVarianceDays} working days late" : ""));
-        if (_idleNow > 0 && _people > 0) bits.Add($"{_idleNow} of {_people} engineers have nothing planned this week");
-        if (k.HostsLowOnDisk > 0) bits.Add($"{k.HostsLowOnDisk} host{(k.HostsLowOnDisk == 1 ? "" : "s")} low on disk");
-        _subline = bits.Count == 0 ? null : string.Join(". ", bits) + ".";
+        if (worst is not null) bits.Add($"{worst.ProjectNo} is {worst.ProgressGapPoints:0} points behind plan" + (worst.ScheduleVarianceDays > 0 ? $" and forecast {worst.ScheduleVarianceDays} working days late" : ""));
+        if (k.DelayedTasks > 0) bits.Add($"{k.DelayedTasks} tasks are late");
+        if (k.HostsLowOnDisk > 0) bits.Add($"{k.HostsLowOnDisk} server{(k.HostsLowOnDisk == 1 ? " is" : "s are")} nearly out of disk");
+        _subline = bits.Count == 0 ? null : string.Join("; ", bits) + ".";
 
         _gapBySkill = _cc.SupplyDemand.Where(r => r.ProjectDemandHours + r.PipelineHours > 0)
             .GroupBy(r => r.SkillName).Select(g => new SkillGap(g.Key, g.Sum(r => r.GapHours)))
-            .OrderByDescending(g => g.Gap).ToList();
+            .Where(g => g.Gap != 0).OrderByDescending(g => g.Gap).ToList();
     }
 }
