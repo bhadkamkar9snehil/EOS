@@ -3,6 +3,22 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $failed = @()
 
+function Ensure-Node {
+    if (Get-Command node -ErrorAction SilentlyContinue) { return }
+    $version = "v22.11.0"
+    $dir = Join-Path $root ".tools\node-$version-win-x64"
+    if (-not (Test-Path (Join-Path $dir "node.exe"))) {
+        Write-Host "Node is not installed; fetching a portable copy ($version)" -ForegroundColor Yellow
+        New-Item -ItemType Directory -Force (Join-Path $root ".tools") | Out-Null
+        $zip = Join-Path $root ".tools\node.zip"
+        Invoke-WebRequest "https://nodejs.org/dist/$version/node-$version-win-x64.zip" -OutFile $zip -UseBasicParsing
+        Expand-Archive $zip -DestinationPath (Join-Path $root ".tools") -Force
+        Remove-Item $zip
+    }
+    $env:PATH = "$dir;$env:PATH"
+}
+Ensure-Node
+
 function Step($name, [scriptblock]$body) {
     Write-Host "`n== $name" -ForegroundColor Cyan
     & $body
