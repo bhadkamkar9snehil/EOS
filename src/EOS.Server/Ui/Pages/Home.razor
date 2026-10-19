@@ -39,15 +39,16 @@
     .hm-grid > span { display: grid; place-items: center; height: 24px; border-radius: 4px; color: var(--ink); }
     .hm-grid > span.e0 { color: var(--ink-2); }
 
-    .trend { display: flex; align-items: flex-end; gap: 6px; flex: 1; min-height: 200px; }
+    .trend { display: flex; align-items: flex-end; gap: 10px; flex: 1; min-height: 180px; max-height: 320px; }
+    .trend > div { max-width: 72px; margin: 0 auto; }
     .trend > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; position: relative; }
     .trend .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
     .trend .st i { display: block; }
     .trend .u { position: absolute; left: 50%; width: 10px; height: 10px; margin: 0 0 -5px -5px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); z-index: 2; }
     .trend-x { display: flex; gap: 6px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 
-    .pm { display: grid; gap: 2px; font-size: 10.5px; color: var(--ink-2); }
-    .pm i { aspect-ratio: 1; border-radius: 3px; display: block; }
+    .pm { display: grid; gap: 2px; font-size: 10px; color: var(--ink-2); justify-content: start; }
+    .pm i { width: 11px; height: 11px; border-radius: 3px; display: block; }
     .pm span { display: grid; place-items: center; overflow: hidden; white-space: nowrap; }
 
     .tl { position: relative; flex: 1; }
@@ -114,7 +115,7 @@
                 }
             </section>
 
-            <section class="pn w8">
+            <section class="pn w6">
                 <header><h2>Team hours</h2><span>@(_trend.Count > 0 ? $"{_trend[0].Month:MMM yyyy} – {_trend[^1].Month:MMM yyyy}" : "")</span></header>
                 @if (_trend.Count == 0) { <p class="none">No monthly data.</p> }
                 else
@@ -130,21 +131,20 @@
                                     @if (t.N > 0) { <i class="c-n" style="height:@P(t.N / tot)"></i> }
                                     @if (t.T > 0) { <i class="c-t" style="height:@P(t.T / tot)"></i> }
                                 </span>
-                                <span class="u" style="bottom:@P(t.Util / 100m)"></span>
                             </div>
                         }
                     </div>
                     <div class="trend-x">@foreach (var t in _trend) { <span>@t.Month.ToString(t.Month.Month == 1 ? "MMM yy" : "MMM", Inv)</span> }</div>
-                    <div class="key"><span><i class="c-b"></i>Billable</span><span><i class="c-n"></i>Non-billable</span><span><i class="c-t"></i>Training</span><span><i style="background:var(--ink);border-radius:50%"></i>Utilisation %</span></div>
+                    <div class="key"><span><i class="c-b"></i>Billable</span><span><i class="c-n"></i>Non-billable</span><span><i class="c-t"></i>Training</span></div>
                 }
             </section>
 
-            <section class="pn w4">
+            <section class="pn">
                 <header><h2>Peer reviews</h2><span>@_peerLabel</span></header>
                 @if (_pmPeople.Count == 0) { <p class="none">No peer reviews.</p> }
                 else
                 {
-                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, minmax(0, 1fr))">
+                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, 11px)">
                         <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials[0]</span> }
                         @foreach (var rv in _pmPeople)
                         {
@@ -160,7 +160,23 @@
                 }
             </section>
 
-            <section class="pn w6 r2">
+            <section class="pn">
+                <header><h2>Alerts</h2><a href="/alerts">All</a></header>
+                <div class="mx">
+                    <span></span><span>Crit</span><span>Serious</span><span>Warn</span><span>Info</span>
+                    @foreach (var area in _areas)
+                    {
+                        <span class="l">@area.Name</span>
+                        @for (var sev = 3; sev >= 0; sev--)
+                        {
+                            var n = _matrix.GetValueOrDefault((area.Name, sev));
+                            <a class="@(n == 0 ? "e0" : sev >= 2 ? "tr" : sev == 1 ? "ty" : "a2")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
+                        }
+                    }
+                </div>
+            </section>
+
+            <section class="pn w6">
                 <header><h2>Projects</h2><a href="/gantt">Gantt</a></header>
                 @if (_tl.Count == 0) { <p class="none">No planned projects.</p> }
                 else
@@ -185,22 +201,6 @@
             </section>
 
             <section class="pn">
-                <header><h2>Alerts</h2><a href="/alerts">All</a></header>
-                <div class="mx">
-                    <span></span><span>Crit</span><span>Serious</span><span>Warn</span><span>Info</span>
-                    @foreach (var area in _areas)
-                    {
-                        <span class="l">@area.Name</span>
-                        @for (var sev = 3; sev >= 0; sev--)
-                        {
-                            var n = _matrix.GetValueOrDefault((area.Name, sev));
-                            <a class="@(n == 0 ? "e0" : sev >= 2 ? "tr" : sev == 1 ? "ty" : "a2")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
-                        }
-                    }
-                </div>
-            </section>
-
-            <section class="pn">
                 <header><h2>Drives</h2><a href="/infrastructure">Servers</a></header>
                 @if (_drives.Count == 0) { <p class="none">No readings.</p> }
                 else
@@ -214,12 +214,6 @@
                         }
                     </div>
                 }
-            </section>
-
-            <section class="pn">
-                <header><h2>Module cover</h2><a href="/training">Training</a></header>
-                @{ var cmax = _cover.Count == 0 ? 0 : _cover.Max(c => c.N); }
-                <div class="hb">@foreach (var c in _cover) { <span class="n">@c.Label</span><span class="bar"><i class="@c.Cls" style="width:@P(cmax == 0 ? 0 : (decimal)c.N / cmax)"></i></span><span class="v">@c.N</span> }</div>
             </section>
 
             <section class="pn">
@@ -275,7 +269,6 @@
         new("Timesheet", e => Rag(e.Timesheet, 85, 60, "0")),
         new("Attendance", e => Rag(e.Attendance, 85, 60, "0")),
         new("Late days", e => Bad(e.Late, 2, 5)),
-        new("Projects", e => Ramp(e.Projects, 6, "0")),
         new("Peer rating", e => Rag(e.Peer, 4, 3, "0.0")),
         new("Knowledge %", e => Rag(e.Know, 70, 40, "0")),
         new("Load, 4 wks %", e => e.Load is not { } l ? None : l <= 0 ? new("e0", "0", "nothing planned") : new(l > 100 ? "tr" : l > 85 ? "ty" : "a" + Math.Clamp((int)Math.Ceiling(l / 20), 1, 5), l.ToString("0", Inv), l.ToString("0", Inv) + "%")),
