@@ -1,5 +1,6 @@
 param([switch]$SkipE2E, [switch]$SkipDotnet)
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
+$env:NODE_NO_WARNINGS = "1"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $failed = @()
 
@@ -30,14 +31,17 @@ if (-not $SkipDotnet) {
     Step "Infrastructure tests" { dotnet test (Join-Path $root "tests\EOS.Infrastructure.Tests") --nologo -v q }
 }
 Step "Grid unit and DOM tests" {
-    if (-not (Test-Path (Join-Path $root "tests\js\node_modules"))) { npm --prefix (Join-Path $root "tests\js") install --no-audit --no-fund }
-    Push-Location (Join-Path $root "tests\js"); try { node --test eos-grid-model.test.js eos-grid-dom.test.js } finally { Pop-Location }
+    Push-Location (Join-Path $root "tests\js")
+    try {
+        if (-not (Test-Path "node_modules")) { npm install --no-audit --no-fund; if ($LASTEXITCODE -ne 0) { throw "npm install failed" } }
+        node --test eos-grid-model.test.js eos-grid-dom.test.js
+    } finally { Pop-Location }
 }
 if (-not $SkipE2E) {
     Step "End-to-end (Playwright)" {
-        if (-not (Test-Path (Join-Path $root "tests\e2e\node_modules"))) { npm --prefix (Join-Path $root "tests\e2e") install --no-audit --no-fund }
         Push-Location (Join-Path $root "tests\e2e")
         try {
+            if (-not (Test-Path "node_modules")) { npm install --no-audit --no-fund; if ($LASTEXITCODE -ne 0) { throw "npm install failed" } }
             $browsers = Join-Path $env:LOCALAPPDATA "ms-playwright"
             if (-not (Get-ChildItem $browsers -Filter "chromium-*" -ErrorAction SilentlyContinue)) { npx playwright install chromium }
             npx playwright test
