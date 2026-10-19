@@ -57,6 +57,10 @@ window.eosDownload = (name, mime, base64) => {
   document.body.appendChild(a); a.click(); a.remove();
 };
 
+window.eosGanttWidth = (id) => {
+  const el = document.getElementById(id);
+  return el ? el.clientWidth : 0;
+};
 window.eosGanttScroll = (id, x) => {
   const el = document.getElementById(id);
   if (el) el.scrollLeft = x;

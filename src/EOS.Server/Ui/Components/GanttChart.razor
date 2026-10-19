@@ -185,6 +185,7 @@ else
     private string _find = "";
     private bool _scrolled;
     private int DayWidth = 6;
+    private int _avail = 1000;
     private DateOnly MinDate, MaxDate;
     private int Width;
     private List<(int X, string Label)> TopTicks = [], SubTicks = [];
@@ -205,6 +206,19 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (Rows.Count > 0)
+        {
+            var box = await JS.InvokeAsync<int>("eosGanttWidth", _id);
+            var avail = box - LabelWidth - 18;
+            if (box > 0 && avail >= 300 && Math.Abs(avail - _avail) > 8)
+            {
+                _avail = avail;
+                ComputeScale();
+                BuildVisible();
+                StateHasChanged();
+                return;
+            }
+        }
         if (!_scrolled && Rows.Count > 0 && Today is { } t)
         {
             _scrolled = true;
@@ -238,7 +252,13 @@ else
         MinDate = dates.Min().AddDays(-4);
         MaxDate = dates.Max().AddDays(12);
         var span = MaxDate.DayNumber - MinDate.DayNumber + 1;
-        DayWidth = Zooms[_zoom] > 0 ? Zooms[_zoom] : Math.Clamp(1000 / Math.Max(span, 1), 2, 22);
+        var fit = Zooms[_zoom] == 0;
+        DayWidth = fit ? Math.Clamp(_avail / Math.Max(span, 1), 2, 22) : Zooms[_zoom];
+        if (fit)
+        {
+            span = Math.Max(span, (_avail + DayWidth - 1) / DayWidth);
+            MaxDate = MinDate.AddDays(span - 1);
+        }
         Width = span * DayWidth;
 
         TopTicks = []; SubTicks = []; Weekends = [];

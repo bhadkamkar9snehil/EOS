@@ -167,7 +167,7 @@
                 <button class="secondary" @onclick="ApplyRequirement">Apply to @_sel.Count selected</button>
             </div>
         }
-        <div class="gx plgx">
+        <div class="gx plgx" id="plgx">
             <div class="gx-labels" style="width:@(LabelW)px">
                 <div class="gx-corner" style="height:@(HeaderH)px">Task</div>
                 @foreach (var row in _rows)
@@ -352,6 +352,17 @@
             await JS.InvokeVoidAsync("eosPlannerInit", _ref);
             _coachHidden = await JS.InvokeAsync<string?>("eosStoreGet", "eos.planner.coach") == "1";
         }
+        if (_result is not null)
+        {
+            var box = await JS.InvokeAsync<int>("eosGanttWidth", "plgx");
+            var avail = box - LabelW - 18;
+            if (box > 0 && avail >= 300 && Math.Abs(avail - _avail) > 8)
+            {
+                _avail = avail;
+                Layout();
+                StateHasChanged();
+            }
+        }
         if (_session is not null && !_restored)
         {
             _restored = true;
@@ -510,7 +521,12 @@
         _min = all.Min(s => s.Start).AddDays(-4);
         _max = all.Max(s => s.Finish).AddDays(14);
         var span = _max.DayNumber - _min.DayNumber + 1;
-        _dw = _zoomDw > 0 ? _zoomDw : Math.Clamp(760 / Math.Max(span, 1), 2, 26);
+        _dw = _zoomDw > 0 ? _zoomDw : Math.Clamp(_avail / Math.Max(span, 1), 2, 26);
+        if (_zoomDw == 0)
+        {
+            span = Math.Max(span, (_avail + _dw - 1) / _dw);
+            _max = _min.AddDays(span - 1);
+        }
         _width = span * _dw;
         _months = [];
         for (var m = new DateOnly(_min.Year, _min.Month, 1); m <= _max; m = m.AddMonths(1)) _months.Add((Math.Max(0, X(m)), m.ToString("MMM yyyy", CultureInfo.InvariantCulture)));
@@ -524,6 +540,7 @@
     }
 
     private int _zoomDw;
+    private int _avail = 760;
     private void Zoom(int dw) { _zoomDw = dw; if (_result is not null) Layout(); }
 
     private int X(DateOnly d) => (d.DayNumber - _min.DayNumber) * _dw;
