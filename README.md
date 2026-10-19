@@ -34,8 +34,7 @@ docs/SPEC.md
 ```powershell
 dotnet build EOS.slnx
 dotnet test EOS.slnx
-npm --prefix tests\js install
-npm --prefix tests\js test
+.\run-tests.ps1
 dotnet run --project src\EOS.Server
 dotnet run --project src\EOS.Cli -- version
 ```

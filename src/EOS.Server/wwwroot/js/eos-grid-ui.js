@@ -172,7 +172,13 @@
         if (e.button === 2) { this.onContextDown(e); return; }
         if (e.button !== 0) return;
         const tw = e.target.closest('[data-tw]');
-        if (tw) { e.preventDefault(); this.toggleCollapse(tw.dataset.tw); return; }
+        if (tw) {
+          e.preventDefault();
+          const rowEl = tw.closest('.eg-row');
+          if (rowEl) { sc.focus({ preventScroll: true }); this.select(+rowEl.dataset.r, this.active ? this.active.c : 0); }
+          this.toggleCollapse(tw.dataset.tw);
+          return;
+        }
         if (e.target.closest('.eg-editor, .eg-pop, a')) return;
         const g = e.target.closest('.eg-gutter[data-g]');
         if (g) {

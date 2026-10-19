@@ -32,3 +32,5 @@ node_modules/
 
 ## Node test tooling
 node_modules/
+test-results/
+playwright-report/
