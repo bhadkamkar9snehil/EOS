@@ -42,6 +42,9 @@ public sealed class LegacyEosImporter(EosDbContext db)
                 while (await rd.ReadAsync(ct)) files.Add(rd.GetString(0));
             }
             await ImportTimesheetsAsync(files, people, byName, codes, report, ct);
+            await db.SaveChangesAsync(ct);
+            await ImportPerformanceAsync(con, matcher, byName, report, ct);
+            await ImportPeerReviewsAsync(con, matcher, byName, report, ct);
         }
         finally { try { File.Delete(temp); } catch (IOException) { } }
     }
@@ -147,6 +150,72 @@ public sealed class LegacyEosImporter(EosDbContext db)
         foreach (var g in pending.Where(x => x.Entry.Band is not null).GroupBy(x => x.Person.Id))
             people.First(p => p.Id == g.Key).Band = g.OrderByDescending(x => x.Entry.Date).First().Entry.Band;
         if (missing > 0) report.Warnings.Add($"{missing} rows skipped.");
+    }
+
+    private static Person? Find(PersonMatcher matcher, Dictionary<string, Person> byName, string name) =>
+        byName.TryGetValue(PersonMatcher.Normalise(name), out var p) ? p : matcher.Resolve(name);
+
+    private async Task ImportPerformanceAsync(SqliteConnection con, PersonMatcher matcher, Dictionary<string, Person> byName, ImportReport report, CancellationToken ct)
+    {
+        var existing = await db.MonthlyPerformance.ToDictionaryAsync(x => (x.PersonId, x.Year, x.Month), ct);
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = """
+            select EmployeeName, Year, Month, ComplianceHours, EnteredHours, ApprovedHours, BillableHours, NonBillableHours, TrainingHours, OfficeHours,
+                   Utilization, UniqueProjects, AttendanceDays, LeaveDays, PunchHours, TimesheetFilledDays, ExpectedTimesheetDays, MissingPunchDays,
+                   LateDays, EarlyDays, LessDurationDays, TimesheetCompletionScore, ApprovalScore, AttendanceDisciplineScore, OperationalScore
+            from employee_monthly_performance
+            """;
+        await using var rd = await cmd.ExecuteReaderAsync(ct);
+        var unmatched = 0;
+        while (await rd.ReadAsync(ct))
+        {
+            var person = Find(matcher, byName, rd.GetString(0));
+            if (person is null || person.Id == 0) { unmatched++; continue; }
+            var key = (person.Id, rd.GetInt32(1), rd.GetInt32(2));
+            if (!existing.TryGetValue(key, out var m))
+            {
+                m = new MonthlyPerformance { PersonId = person.Id, Year = key.Item2, Month = key.Item3 };
+                db.MonthlyPerformance.Add(m); existing[key] = m;
+                report.Added("Monthly performance");
+            }
+            else report.Updated("Monthly performance");
+            decimal D(int i) => rd.IsDBNull(i) ? 0 : rd.GetDecimal(i);
+            int I(int i) => rd.IsDBNull(i) ? 0 : rd.GetInt32(i);
+            m.ComplianceHours = D(3); m.EnteredHours = D(4); m.ApprovedHours = D(5); m.BillableHours = D(6); m.NonBillableHours = D(7);
+            m.TrainingHours = D(8); m.OfficeHours = D(9); m.Utilization = D(10); m.UniqueProjects = I(11); m.AttendanceDays = D(12);
+            m.LeaveDays = D(13); m.PunchHours = D(14); m.TimesheetFilledDays = D(15); m.ExpectedTimesheetDays = D(16); m.MissingPunchDays = I(17);
+            m.LateDays = I(18); m.EarlyDays = I(19); m.LessDurationDays = I(20); m.TimesheetCompletionScore = D(21); m.ApprovalScore = D(22);
+            m.AttendanceDisciplineScore = D(23); m.OperationalScore = D(24);
+        }
+        if (unmatched > 0) report.Warnings.Add($"{unmatched} monthly performance rows had no matching person.");
+    }
+
+    private async Task ImportPeerReviewsAsync(SqliteConnection con, PersonMatcher matcher, Dictionary<string, Person> byName, ImportReport report, CancellationToken ct)
+    {
+        var rows = new List<PeerReview>();
+        var unmatched = 0;
+        await using (var cmd = con.CreateCommand())
+        {
+            cmd.CommandText = "select Year, Month, ReviewerName, SubjectName, Collaboration, Communication, Reliability, TechnicalHelp, Comment from peer_review";
+            await using var rd = await cmd.ExecuteReaderAsync(ct);
+            while (await rd.ReadAsync(ct))
+            {
+                var subject = Find(matcher, byName, rd.GetString(3));
+                if (subject is null || subject.Id == 0) { unmatched++; continue; }
+                var reviewer = Find(matcher, byName, rd.GetString(2));
+                rows.Add(new PeerReview
+                {
+                    Year = rd.GetInt32(0), Month = rd.GetInt32(1), ReviewerName = rd.GetString(2), ReviewerPersonId = reviewer?.Id is > 0 ? reviewer.Id : null,
+                    SubjectPersonId = subject.Id, Collaboration = rd.GetDecimal(4), Communication = rd.GetDecimal(5), Reliability = rd.GetDecimal(6),
+                    TechnicalHelp = rd.GetDecimal(7), Comment = rd.IsDBNull(8) ? null : rd.GetString(8),
+                });
+            }
+        }
+        var months = rows.Select(r => r.Year * 100 + r.Month).ToHashSet();
+        db.PeerReviews.RemoveRange(await db.PeerReviews.Where(r => months.Contains(r.Year * 100 + r.Month)).ToListAsync(ct));
+        db.PeerReviews.AddRange(rows);
+        foreach (var _ in rows) report.Added("Peer review");
+        if (unmatched > 0) report.Warnings.Add($"{unmatched} peer reviews had no matching person.");
     }
 
     private static string? NullIfEmpty(string s) => s.Length == 0 ? null : s;

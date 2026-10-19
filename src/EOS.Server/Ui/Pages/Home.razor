@@ -11,75 +11,90 @@
 
 <style>
     .ov { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
-    .ov-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 18px; }
-    .ov-head h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
-    .ov-head p { color: var(--ink-2); margin-top: 6px; max-width: 90ch; }
-    .pn { grid-column: span 4; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; }
+    .pn { grid-column: span 4; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; }
     .pn.w8 { grid-column: span 8; } .pn.w12 { grid-column: span 12; }
-    .pn > a.pt { color: var(--ink); display: block; margin-bottom: 2px; }
-    .pn > a.pt:hover h2 { color: var(--accent-ink); }
-    .pn h2 { font-size: 15px; font-weight: 650; text-wrap: balance; }
-    .pn .ps { font-size: 12.5px; color: var(--ink-2); margin-bottom: 14px; }
-    .pn .body { flex: 1; min-height: 0; }
+    .pn > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    .pn h2 { font-size: 15px; font-weight: 650; }
+    .pn header a, .pn header span { font-size: 12px; color: var(--ink-3); }
+    .none { color: var(--ink-3); font-size: 13px; }
+    .q0 { background: var(--chip-bg); } .q1 { background: var(--r1); } .q2 { background: var(--r2); } .q3 { background: var(--r3); } .q4 { background: var(--r4); } .q5 { background: var(--r5); }
+    .ok { background: var(--green); } .mid { background: var(--amber); } .low { background: var(--red); }
+    .c-b { background: var(--accent); } .c-n { background: var(--p2); } .c-t { background: var(--p3); }
     .key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
-    .key i { display: inline-block; width: 10px; height: 10px; border-radius: 6px; margin-right: 5px; vertical-align: -1px; }
-    .none { color: var(--ink-2); font-size: 13px; }
-    .hatch-r { background: repeating-linear-gradient(-45deg, var(--red) 0 2px, transparent 2px 5px); }
+    .key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    .key i + i { margin-left: -3px; }
 
+    .ros { overflow-x: auto; }
+    .ros table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1060px; font-size: 12.5px; }
+    .ros th { font-size: 11.5px; font-weight: 500; color: var(--ink-3); text-align: left; padding: 0 10px 8px 0; white-space: nowrap; }
+    .ros td { padding: 5px 10px 5px 0; border-top: 1px solid var(--line-soft); vertical-align: middle; }
+    .ros tr:hover td { background: var(--hover); }
+    .ros th:first-child, .ros td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; padding-left: 2px; }
+    .ros tr:hover td:first-child { background: var(--hover); }
+    .ros .nm { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; white-space: nowrap; }
+    .ros .nm i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-style: normal; font-weight: 700; color: var(--ink); flex: none; }
+    .cells { display: flex; gap: 2px; }
+    .cells i { width: 14px; height: 18px; border-radius: 3px; display: block; }
+    .cells.m i { width: 12px; }
+    .cells i.na { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+    .mhead { display: flex; gap: 2px; } .mhead span { width: 14px; text-align: center; font-size: 10.5px; }
+    .lhead { display: flex; gap: 2px; } .lhead span { width: 12px; text-align: center; font-size: 10.5px; }
+    .mix { position: relative; width: 120px; height: 12px; border-radius: 6px; background: var(--track); overflow: hidden; display: flex; }
+    .mix i { display: block; height: 100%; }
+    .mix b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); left: 83.33%; }
+    .sc { display: flex; align-items: center; gap: 6px; }
+    .sc span { width: 60px; height: 8px; border-radius: 6px; background: var(--track); overflow: hidden; display: block; }
+    .sc span i { display: block; height: 100%; border-radius: 6px; }
+    .sc em { font-style: normal; color: var(--ink-2); font-size: 11.5px; width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+    .dots { display: flex; gap: 2px; flex-wrap: wrap; width: 64px; }
+    .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--red); display: block; }
+    .dots.p i { background: var(--ink-2); width: 7px; height: 7px; }
+    .peer { display: flex; gap: 2px; align-items: flex-end; height: 22px; }
+    .peer i { width: 7px; border-radius: 2px 2px 0 0; display: block; }
+    .peer i:nth-child(1) { background: var(--p1); } .peer i:nth-child(2) { background: var(--p2); } .peer i:nth-child(3) { background: var(--p5); } .peer i:nth-child(4) { background: var(--p3); }
+
+    .trend { display: flex; align-items: flex-end; gap: 4px; height: 180px; position: relative; }
+    .trend > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; position: relative; }
+    .trend .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
+    .trend .st i { display: block; }
+    .trend .u { position: absolute; left: 50%; width: 8px; height: 8px; margin: 0 0 -4px -4px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); z-index: 2; }
+    .trend-x { display: flex; gap: 4px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; }
+
+    .pm { display: grid; gap: 2px; font-size: 10px; color: var(--ink-3); }
+    .pm i { aspect-ratio: 1; border-radius: 3px; display: block; }
+    .pm span { display: grid; place-items: center; overflow: hidden; white-space: nowrap; }
+
+    .tl-axis { position: relative; height: 18px; margin-left: 150px; font-size: 11.5px; color: var(--ink-3); }
+    .tl-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
     .tl { position: relative; }
-    .tl-axis { position: relative; height: 18px; margin-left: var(--lw); font-size: 11.5px; color: var(--ink-3); }
-    .tl-axis span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
-    .tl-grid { position: absolute; top: 18px; bottom: 0; left: var(--lw); right: 0; pointer-events: none; }
+    .tl-grid { position: absolute; top: 18px; bottom: 0; left: 150px; right: 0; pointer-events: none; }
     .tl-grid i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-soft); }
     .tl-grid b { position: absolute; top: -4px; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent); }
-    .tl-row { display: grid; grid-template-columns: var(--lw) minmax(0, 1fr); align-items: center; min-height: 34px; color: var(--ink); position: relative; }
+    .tl-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; height: 30px; color: var(--ink); }
     .tl-row:hover { background: var(--hover); }
-    .tl-name { padding-right: 12px; min-width: 0; line-height: 1.2; }
-    .tl-name b { font-size: 13px; font-weight: 600; display: block; }
-    .tl-name small { font-size: 11.5px; color: var(--ink-2); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tl-lane { position: relative; height: 14px; }
+    .tl-row > b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+    .tl-lane { position: relative; height: 12px; }
     .tl-lane .plan { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: var(--track); overflow: hidden; }
     .tl-lane .plan i { position: absolute; inset: 0 auto 0 0; }
-    .tl-lane .late { position: absolute; top: 2px; bottom: 2px; border-radius: 0 6px 6px 0; }
-    .tl-lane .more { position: absolute; right: -2px; top: -3px; font-size: 11px; color: var(--red); font-weight: 600; background: var(--panel); padding: 0 4px; border-radius: 6px; }
-    .c-r { background: var(--red); } .c-a { background: var(--amber); } .c-g { background: var(--green); } .c-n { background: var(--task-prog); }
+    .tl-lane .late { position: absolute; top: 2px; bottom: 2px; border-radius: 0 6px 6px 0; background: repeating-linear-gradient(-45deg, var(--red) 0 2px, transparent 2px 5px); }
+    .h-r { background: var(--red); } .h-a { background: var(--amber); } .h-g { background: var(--green); } .h-n { background: var(--task-prog); }
 
-    .mx { display: grid; grid-template-columns: minmax(70px, auto) repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 12px; }
-    .mx > span { color: var(--ink-3); text-align: center; align-self: end; padding-bottom: 2px; }
-    .mx > span.l { text-align: left; color: var(--ink-2); align-self: center; font-size: 12.5px; }
-    .mx a { display: grid; place-items: center; height: 34px; border-radius: 8px; background: var(--chip-bg); color: var(--ink-3); font-weight: 600; font-size: 13px; }
-    .mx a.on.s3 { background: var(--red); color: var(--on-ink); } .mx a.on.s2 { background: color-mix(in srgb, var(--red) 55%, var(--panel)); color: var(--ink); }
-    .mx a.on.s1 { background: var(--amber-soft); color: var(--amber); } .mx a.on.s0 { background: var(--accent-soft); color: var(--accent-ink); }
-    .mx a:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 12px; }
+    .mx > span { color: var(--ink-3); text-align: center; align-self: end; }
+    .mx > span.l { text-align: left; color: var(--ink-2); align-self: center; }
+    .mx a { display: grid; place-items: center; height: 30px; border-radius: 6px; background: var(--chip-bg); color: var(--ink); font-weight: 600; }
+    .mx a.s3 { background: var(--red); color: var(--on-ink); } .mx a.s2 { background: color-mix(in srgb, var(--red) 45%, var(--panel)); }
+    .mx a.s1 { background: var(--amber-soft); color: var(--amber); } .mx a.s0 { background: var(--accent-soft); color: var(--accent-ink); }
+    .mx a.e { background: var(--chip-bg); color: transparent; }
 
-    .waf { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; }
-    .waf a { aspect-ratio: 1; border-radius: 8px; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; color: var(--ink-2); background: var(--chip-bg); }
-    .waf a.b1 { background: var(--r2); color: var(--accent-ink); } .waf a.b2 { background: var(--green-soft); color: var(--green); }
-    .waf a.b3 { background: var(--amber-soft); color: var(--amber); } .waf a.b4 { background: var(--red); color: var(--on-ink); }
-    .waf a:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-    .cols { display: flex; align-items: flex-end; gap: 6px; height: 150px; }
-    .cols > div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; }
-    .cols .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
-    .cols .st i { display: block; }
-    .cols .x { font-size: 11px; color: var(--ink-3); text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; }
-    .cols .v { font-size: 11px; color: var(--ink-2); text-align: center; margin-bottom: 3px; }
-    .s1 { background: var(--accent); } .s2 { background: var(--p2); } .s3 { background: var(--p3); } .s4 { background: var(--p4); } .s5 { background: var(--task); }
-
-    .hb { display: grid; grid-template-columns: minmax(80px, 38%) minmax(0, 1fr) 52px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
-    .hb .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 40px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
+    .hb .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
     .hb .tr { height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
     .hb .tr i { display: block; height: 100%; border-radius: 6px; }
     .hb .v { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-    .hb .v.bad { color: var(--red); font-weight: 600; }
-
-    .stack { display: flex; height: 26px; border-radius: 8px; overflow: hidden; gap: 2px; }
-    .stack i { display: grid; place-items: center; font-size: 11.5px; font-style: normal; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; }
-    .stack-l { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin: 14px 0 6px; }
-    .sub2 { margin-top: 16px; }
 
     @@media (max-width: 1280px) { .pn { grid-column: span 6; } .pn.w8, .pn.w12 { grid-column: span 12; } }
-    @@media (max-width: 760px) { .pn, .pn.w8 { grid-column: span 12; } .ov-head { flex-direction: column; } .tl { --lw: 120px !important; } .cols { height: 120px; } .cols .x { font-size: 11px; } }
+    @@media (max-width: 760px) { .pn, .pn.w8 { grid-column: span 12; } .tl-axis { margin-left: 96px; } .tl-grid { left: 96px; } .tl-row { grid-template-columns: 96px minmax(0, 1fr); } .trend { height: 140px; } }
 </style>
 
 <div class="page">
@@ -87,44 +102,141 @@
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
     else if (_cc is not null)
     {
-        var k = _cc.Kpis;
-        <div class="ov-head">
-            <div><h1>@_headline</h1>@if (_subline is not null) { <p>@_subline</p> }</div>
-            <div class="actions"><a class="btn secondary" href="/whatif">What-if</a><a class="btn secondary" href="/planner">Planner</a><a class="btn secondary" href="/gantt">Gantt</a></div>
-        </div>
-
         <div class="ov">
-            @* Portfolio: plan, progress and forecast overrun for every project on one time axis *@
-            <section class="pn w8">
-                <a class="pt" href="/gantt"><h2>@_late of @_tl.Count planned projects are forecast to finish late</h2></a>
-                <div class="ps">Bar is the planned window, filled to progress. Hatching runs to the forecast finish. Blue line is today.</div>
-                @if (_tl.Count == 0) { <p class="none">No project has a plan yet.</p> }
+            <section class="pn w12">
+                <header><h2>Team</h2><span>@_month0.ToString("MMMM yyyy", Inv)</span></header>
+                @if (_roster.Count == 0) { <p class="none">No engineers.</p> }
                 else
                 {
-                    <div class="tl" style="--lw:200px">
+                    <div class="ros">
+                        <table>
+                            <thead><tr>
+                                <th>Engineer</th>
+                                <th><div class="mhead">@foreach (var m in _months) { <span title="@m.ToString("MMMM yyyy", Inv)">@m.ToString("MMM", Inv)[0]</span> }</div></th>
+                                <th>Hours mix</th>
+                                <th>Timesheet</th>
+                                <th>Attendance</th>
+                                <th>Late days</th>
+                                <th>Projects</th>
+                                <th>Peers</th>
+                                <th>Knowledge</th>
+                                <th><div class="lhead">@foreach (var w in _weeks) { <span title="@w.ToString("dd MMM", Inv)">@w.Day</span> }</div></th>
+                            </tr></thead>
+                            <tbody>
+                                @foreach (var r in _roster)
+                                {
+                                    var cur = r.Latest;
+                                    <tr>
+                                        <td><a class="nm" href="/people/@r.Id"><i style="background:var(--p@(r.Id % 8 + 1))">@r.Initials</i>@r.Name</a></td>
+                                        <td><div class="cells">@foreach (var m in _months) { var u = r.Util.GetValueOrDefault(m, -1); <i class="@(u < 0 ? "na" : UtilQ(u))" title="@m.ToString("MMM yyyy", Inv): @(u < 0 ? "no data" : u.ToString("0", Inv) + "%")"></i> }</div></td>
+                                        <td>
+                                            @if (cur is null || cur.ComplianceHours <= 0) { <span class="mix"></span> }
+                                            else
+                                            {
+                                                var scale = cur.ComplianceHours * 1.2m;
+                                                <span class="mix" title="Billable @cur.BillableHours.ToString("0", Inv) h, non-billable @cur.NonBillableHours.ToString("0", Inv) h, training @cur.TrainingHours.ToString("0", Inv) h of @cur.ComplianceHours.ToString("0", Inv) h expected">
+                                                    <i class="c-b" style="width:@P(cur.BillableHours / scale)"></i><i class="c-n" style="width:@P(cur.NonBillableHours / scale)"></i><i class="c-t" style="width:@P(cur.TrainingHours / scale)"></i><b></b>
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>@Score(cur?.TimesheetCompletionScore)</td>
+                                        <td>@Score(cur?.AttendanceDisciplineScore)</td>
+                                        <td><span class="dots" title="@(cur?.LateDays ?? 0) late, @(cur?.MissingPunchDays ?? 0) missing punch">@for (var i = 0; i < Math.Min(cur?.LateDays ?? 0, 24); i++) { <i></i> }</span></td>
+                                        <td><span class="dots p" title="@(cur?.UniqueProjects ?? 0) projects">@for (var i = 0; i < Math.Min(cur?.UniqueProjects ?? 0, 12); i++) { <i></i> }</span></td>
+                                        <td>
+                                            @if (r.Peer is { } pr)
+                                            {
+                                                <span class="peer" title="Collaboration @pr[0].ToString("0.0", Inv), communication @pr[1].ToString("0.0", Inv), reliability @pr[2].ToString("0.0", Inv), technical help @pr[3].ToString("0.0", Inv) (@r.PeerCount reviews)">@foreach (var v in pr) { <i style="height:@P(v / 5m)"></i> }</span>
+                                            }
+                                        </td>
+                                        <td>@Score(r.Know)</td>
+                                        <td><div class="cells m">@foreach (var w in _weeks) { var b = r.Load.GetValueOrDefault(w, 0); <i class="@LoadQ(b)" title="@w.ToString("dd MMM", Inv): @r.LoadTip.GetValueOrDefault(w, "nothing planned")"></i> }</div></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="key">
+                        <span><i class="q1"></i><i class="q2"></i><i class="q3"></i><i class="q4"></i><i class="q5"></i>Utilisation 0&ndash;100%</span>
+                        <span><i class="c-b"></i>Billable</span><span><i class="c-n"></i>Non-billable</span><span><i class="c-t"></i>Training</span>
+                        <span><i style="background:var(--p1)"></i>Collaboration</span><span><i style="background:var(--p2)"></i>Communication</span><span><i style="background:var(--p5)"></i>Reliability</span><span><i style="background:var(--p3)"></i>Technical help</span>
+                        <span><i class="q2"></i>Light</span><span><i class="ok"></i>Healthy</span><span><i class="mid"></i>Stretched</span><span><i class="low"></i>Over</span>
+                    </div>
+                }
+            </section>
+
+            <section class="pn w8">
+                <header><h2>Team hours</h2><span>@_trend.Count months</span></header>
+                @if (_trend.Count == 0) { <p class="none">No monthly data.</p> }
+                else
+                {
+                    var tmax = _trend.Max(t => Math.Max(t.Comp, t.B + t.N + t.T));
+                    <div class="trend">
+                        @foreach (var t in _trend)
+                        {
+                            var tot = t.B + t.N + t.T;
+                            <div title="@t.Month.ToString("MMM yyyy", Inv): billable @t.B.ToString("N0", Inv) h, non-billable @t.N.ToString("N0", Inv) h, training @t.T.ToString("N0", Inv) h, expected @t.Comp.ToString("N0", Inv) h, utilisation @t.Util.ToString("0", Inv)%">
+                                <span class="st" style="height:@P(tmax == 0 ? 0 : tot / tmax)">
+                                    @if (t.B > 0) { <i class="c-b" style="height:@P(t.B / tot)"></i> }
+                                    @if (t.N > 0) { <i class="c-n" style="height:@P(t.N / tot)"></i> }
+                                    @if (t.T > 0) { <i class="c-t" style="height:@P(t.T / tot)"></i> }
+                                </span>
+                                <span class="u" style="bottom:@P(t.Util / 100m)"></span>
+                            </div>
+                        }
+                    </div>
+                    <div class="trend-x">@foreach (var t in _trend) { <span>@t.Month.ToString(t.Month.Month == 1 ? "MMM yy" : "MMM", Inv)</span> }</div>
+                    <div class="key"><span><i class="c-b"></i>Billable</span><span><i class="c-n"></i>Non-billable</span><span><i class="c-t"></i>Training</span><span><i style="background:var(--ink);border-radius:50%"></i>Utilisation %</span></div>
+                }
+            </section>
+
+            <section class="pn">
+                <header><h2>Peer reviews</h2><span>@_peerLabel</span></header>
+                @if (_pmPeople.Count == 0) { <p class="none">No peer reviews.</p> }
+                else
+                {
+                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, minmax(0, 1fr))">
+                        <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials</span> }
+                        @foreach (var rv in _pmPeople)
+                        {
+                            <span title="@rv.Name">@rv.Initials</span>
+                            @foreach (var s in _pmPeople)
+                            {
+                                var v = _pm.GetValueOrDefault((rv.Id, s.Id), -1m);
+                                <i class="@(v < 0 ? "q0" : PeerQ(v))" title="@(v < 0 ? "" : $"{rv.Name} → {s.Name}: {v:0.0}")"></i>
+                            }
+                        }
+                    </div>
+                    <div class="key"><span>Reviewer &darr; &middot; reviewed &rarr;</span><span><i class="q1"></i><i class="q3"></i><i class="q5"></i>1&ndash;5</span></div>
+                }
+            </section>
+
+            <section class="pn w8">
+                <header><h2>Projects</h2><a href="/gantt">Gantt</a></header>
+                @if (_tl.Count == 0) { <p class="none">No planned projects.</p> }
+                else
+                {
+                    <div class="tl">
                         <div class="tl-axis">@foreach (var m in _ticks) { <span style="left:@P(m.X)">@m.Label</span> }</div>
                         <div class="tl-grid">@foreach (var m in _ticks) { <i style="left:@P(m.X)"></i> }<b style="left:@P(Pos(AsOf))"></b></div>
                         @foreach (var r in _tl)
                         {
                             var s = Pos(r.Start); var e = Pos(r.End); var f = r.Forecast is { } fd ? Pos(fd) : e;
                             <a class="tl-row" href="/projects/@r.Id" title="@r.Tip">
-                                <span class="tl-name"><b>@r.No</b><small>@r.Name</small></span>
+                                <b>@r.No</b>
                                 <span class="tl-lane">
-                                    <span class="plan" style="left:@P(s);width:@P(Math.Max(0.004, e - s))"><i class="@r.Cls" style="width:@P(r.Progress)"></i></span>
-                                    @if (f > e) { <span class="late hatch-r" style="left:@P(e);width:@P(Math.Min(1, f) - e)"></span> }
-                                    @if (r.Forecast is { } ff && Pos(ff) > 1) { <span class="more">@ff.ToString("MMM yy", Inv) &rarr;</span> }
+                                    <span class="plan" style="left:@P(s);width:@P(Math.Max(0.004m, e - s))"><i class="@r.Cls" style="width:@P(r.Progress)"></i></span>
+                                    @if (f > e) { <span class="late" style="left:@P(e);width:@P(Math.Min(1, f) - e)"></span> }
                                 </span>
                             </a>
                         }
                     </div>
-                    <div class="key"><span><i class="c-r"></i>At risk</span><span><i class="c-a"></i>Moderate risk</span><span><i class="c-g"></i>On track</span><span><i class="hatch-r"></i>Forecast overrun</span></div>
+                    <div class="key"><span><i class="h-r"></i>At risk</span><span><i class="h-a"></i>Moderate</span><span><i class="h-g"></i>On track</span><span><i style="background:repeating-linear-gradient(-45deg,var(--red) 0 2px,transparent 2px 5px)"></i>Forecast overrun</span><span><i style="background:var(--accent);width:2px"></i>Today</span></div>
                 }
             </section>
 
-            @* Alerts as an area x severity matrix *@
             <section class="pn">
-                <a class="pt" href="/alerts"><h2>@(_serious == 0 ? "Nothing serious is open" : $"{_serious} serious alert{(_serious == 1 ? "" : "s")} across {_seriousAreas} area{(_seriousAreas == 1 ? "" : "s")}")</h2></a>
-                <div class="ps">Distinct subjects per area and severity. Click a cell to open it.</div>
+                <header><h2>Alerts</h2><a href="/alerts">All</a></header>
                 <div class="mx">
                     <span></span><span>Critical</span><span>Serious</span><span>Warning</span><span>Info</span>
                     @foreach (var area in _areas)
@@ -133,129 +245,42 @@
                         @for (var sev = 3; sev >= 0; sev--)
                         {
                             var n = _matrix.GetValueOrDefault((area.Name, sev));
-                            <a class="@(n > 0 ? "on" : "") s@(sev)" href="@area.Href" aria-label="@area.Name, @SevName(sev): @n">@(n > 0 ? n : "")</a>
+                            <a class="@(n > 0 ? "s" + sev : "e")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
                         }
                     }
                 </div>
             </section>
 
-            @* Team this week: one square per engineer *@
             <section class="pn">
-                <a class="pt" href="/capacity"><h2>@_bandCount[0] of @_team.Count engineers have nothing planned this week</h2></a>
-                <div class="ps">Each square is one engineer, coloured by planned load for the week of @_week0.ToString("dd MMM", Inv).</div>
-                <div class="waf">@foreach (var p in _team) { <a class="b@(p.Band)" href="/people/@p.Id" title="@p.Name: @p.Tip">@p.Initials</a> }</div>
-                <div class="key"><span><i style="background:var(--chip-bg)"></i>Nothing (@_bandCount[0])</span><span><i style="background:var(--r2)"></i>Light (@_bandCount[1])</span><span><i style="background:var(--green-soft)"></i>Healthy (@_bandCount[2])</span><span><i style="background:var(--amber-soft)"></i>Stretched (@_bandCount[3])</span><span><i style="background:var(--red)"></i>Over (@_bandCount[4])</span></div>
-            </section>
-
-            @* Logged hours, last 12 weeks *@
-            <section class="pn">
-                <a class="pt" href="/reports"><h2>@_tsTotal.ToString("N0", Inv) hours logged in 12 weeks@(_tsTop is null ? "" : $"; {_tsTop} took {_tsTopShare:0}%")</h2></a>
-                <div class="ps">Timesheet hours per week, top projects stacked.</div>
-                @if (_tsTotal == 0) { <p class="none">No timesheets in the last 12 weeks.</p> }
-                else
-                {
-                    var tmax = _tsWeeks.Max(w => w.Total);
-                    <div class="cols">
-                        @foreach (var w in _tsWeeks)
-                        {
-                            <div title="Week of @w.Week.ToString("dd MMM", Inv): @w.Total.ToString("N0", Inv) h">
-                                <span class="st" style="height:@P(tmax == 0 ? 0 : (double)(w.Total / tmax))">@for (var i = 0; i < w.Parts.Length; i++) { if (w.Parts[i] > 0) { <i class="s@(i + 1)" style="height:@P((double)(w.Parts[i] / w.Total))"></i> } }</span>
-                                <span class="x">@w.Week.ToString("dd/MM", Inv)</span>
-                            </div>
-                        }
-                    </div>
-                    <div class="key">@for (var i = 0; i < _tsNames.Count; i++) { <span><i class="s@(i + 1)"></i>@_tsNames[i]</span> }</div>
-                }
-            </section>
-
-            @* Knowledge cover: how many people know each module *@
-            <section class="pn">
-                <a class="pt" href="/training"><h2>@(_thin == 0 ? $"All {_modules} modules are known by at least two people" : $"{_thin} of {_modules} modules are known by one person or nobody")</h2></a>
-                <div class="ps">Modules by how many engineers know them.</div>
-                @if (_modules == 0) { <p class="none">No training modules recorded.</p> }
-                else
-                {
-                    <div class="stack">
-                        @foreach (var b in _cover.Where(b => b.N > 0)) { <i class="@b.Cls" style="flex:@b.N" title="@b.Label: @b.N modules">@b.N</i> }
-                    </div>
-                    <div class="key">@foreach (var b in _cover) { <span><i class="@b.Cls"></i>@b.Label</span> }</div>
-                    @if (_levels.Count > 0)
-                    {
-                        <div class="stack-l"><span>Engineers by knowledge level</span><span>@_knowledge people</span></div>
-                        <div class="hb">
-                            @foreach (var l in _levels)
-                            {
-                                <span class="n">@l.Name</span><span class="tr"><i class="s1" style="width:@P((double)l.N / _levels.Max(x => x.N))"></i></span><span class="v">@l.N</span>
-                            }
-                        </div>
-                    }
-                }
-            </section>
-
-            @* Servers: worst drives and VM states *@
-            <section class="pn">
-                <a class="pt" href="/infrastructure"><h2>@(_lowDrives == 0 ? "Every drive has room" : $"{_lowDrives} drive{(_lowDrives == 1 ? " is" : "s are")} under 10% free")</h2></a>
-                <div class="ps">Fullest drives, by space used.</div>
-                @if (_drives.Count == 0) { <p class="none">No disk readings yet.</p> }
+                <header><h2>Drives</h2><a href="/infrastructure">Servers</a></header>
+                @if (_drives.Count == 0) { <p class="none">No readings.</p> }
                 else
                 {
                     <div class="hb">
                         @foreach (var d in _drives)
                         {
-                            <span class="n" title="@d.Host">@d.Host @d.Drive</span>
-                            <span class="tr"><i class="@(d.Free < 0.1m ? "c-r" : d.Free < 0.2m ? "c-a" : "s1")" style="width:@P(1 - (double)d.Free)"></i></span>
-                            <span class="v @(d.Free < 0.1m ? "bad" : "")">@((d.Free * 100).ToString("0", Inv))% free</span>
+                            <span class="n" title="@d.Host @d.Drive">@d.Host @d.Drive</span>
+                            <span class="tr"><i class="@(d.Free < 0.1m ? "low" : d.Free < 0.2m ? "mid" : "q4")" style="width:@P(1 - d.Free)"></i></span>
+                            <span class="v">@((d.Free * 100).ToString("0", Inv))%</span>
                         }
                     </div>
                 }
-                @if (_vms.Sum(v => v.N) > 0)
-                {
-                    <div class="stack-l"><span>Virtual machines</span><span>@k.VmsRunning running of @(_vms.Sum(v => v.N))</span></div>
-                    <div class="stack">@foreach (var v in _vms) { <i class="@v.Cls" style="flex:@v.N" title="@v.Label: @v.N">@v.N</i> }</div>
-                    <div class="key">@foreach (var v in _vms) { <span><i class="@v.Cls"></i>@v.Label</span> }</div>
-                }
             </section>
 
-            @* Pipeline: weighted hours by likely booking month *@
             <section class="pn">
-                <a class="pt" href="/demand"><h2>@(_pipeCount == 0 ? "The pipeline is empty" : $"{_pipeTotal.ToString("N0", Inv)} weighted hours in {_pipeCount} open opportunit{(_pipeCount == 1 ? "y" : "ies")}")</h2></a>
-                <div class="ps">Expected hours times win chance, by likely booking month.</div>
-                @if (_pipe.Count == 0) { <p class="none">No open opportunities.</p> }
+                <header><h2>Module cover</h2><a href="/training">Training</a></header>
+                @if (_cover.Sum(c => c.N) == 0) { <p class="none">No modules.</p> }
                 else
                 {
-                    var pmax = _pipe.Max(p => p.Hours);
-                    <div class="cols">
-                        @foreach (var p in _pipe)
-                        {
-                            <div title="@p.Label: @p.Hours.ToString("N0", Inv) weighted h">
-                                <span class="v">@p.Hours.ToString("N0", Inv)</span>
-                                <span class="st" style="height:@P(pmax == 0 ? 0 : (double)(p.Hours / pmax))"><i class="s2" style="height:100%"></i></span>
-                                <span class="x">@p.Label</span>
-                            </div>
-                        }
-                    </div>
-                }
-                @if (_gaps.Count > 0)
-                {
-                    <div class="stack-l"><span>Skills short of demand</span><span>hours</span></div>
-                    <div class="hb">@foreach (var g in _gaps) { <span class="n">@g.Skill</span><span class="tr"><i class="c-r" style="width:@P((double)(g.Gap / _gaps.Max(x => x.Gap)))"></i></span><span class="v bad">@g.Gap.ToString("N0", Inv)</span> }</div>
+                    var cmax = _cover.Max(c => c.N);
+                    <div class="hb">@foreach (var c in _cover) { <span class="n">@c.Label</span><span class="tr"><i class="@c.Cls" style="width:@P(cmax == 0 ? 0 : (decimal)c.N / cmax)"></i></span><span class="v">@c.N</span> }</div>
                 }
             </section>
 
-            @* Risks, support tickets and decisions *@
             <section class="pn">
-                <a class="pt" href="/register"><h2>@_risks open risk@(_risks == 1 ? "" : "s"), @_tickets open support ticket@(_tickets == 1 ? "" : "s")</h2></a>
-                <div class="ps">Risks by severity, tickets by age, decisions waiting.</div>
-                <div class="stack-l" style="margin-top:0"><span>Risks and issues</span><span>@_risks</span></div>
-                @if (_risks == 0) { <p class="none">None open.</p> }
-                else { <div class="stack">@foreach (var r in _riskSev) { <i class="@r.Cls" style="flex:@r.N" title="@r.Label: @r.N">@r.N</i> }</div><div class="key">@foreach (var r in _riskSev) { <span><i class="@r.Cls"></i>@r.Label</span> }</div> }
-                <div class="stack-l"><span>Support tickets by age</span><span>@_tickets</span></div>
-                @if (_tickets == 0) { <p class="none">None open.</p> }
-                else { <div class="stack">@foreach (var t in _ticketAge.Where(t => t.N > 0)) { <i class="@t.Cls" style="flex:@t.N" title="@t.Label: @t.N">@t.N</i> }</div><div class="key">@foreach (var t in _ticketAge) { <span><i class="@t.Cls"></i>@t.Label</span> }</div> }
-                <div class="stack-l"><span>Decisions waiting</span><span></span></div>
+                <header><h2>Risks and tickets</h2><a href="/register">Register</a></header>
                 <div class="hb">
-                    <span class="n">What-if approvals</span><span class="tr"><i class="c-a" style="width:@P(Math.Min(1, k.PendingApprovals / 10.0))"></i></span><span class="v">@k.PendingApprovals</span>
-                    <span class="n">Training doubts</span><span class="tr"><i class="s1" style="width:@P(Math.Min(1, k.OpenDoubts / 10.0))"></i></span><span class="v">@k.OpenDoubts</span>
+                    @foreach (var r in _register) { <span class="n">@r.Label</span><span class="tr"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }
                 </div>
             </section>
         </div>
@@ -264,181 +289,157 @@
 
 @code {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
-    private sealed record TlRow(int Id, string No, string Name, DateOnly Start, DateOnly End, DateOnly? Forecast, double Progress, string Cls, string Tip);
+    private sealed record Perf(decimal ComplianceHours, decimal BillableHours, decimal NonBillableHours, decimal TrainingHours, decimal TimesheetCompletionScore,
+        decimal AttendanceDisciplineScore, int LateDays, int MissingPunchDays, int UniqueProjects);
+    private sealed record Row(int Id, string Name, string Initials, Dictionary<DateOnly, decimal> Util, Perf? Latest, decimal[]? Peer, int PeerCount, decimal? Know,
+        Dictionary<DateOnly, int> Load, Dictionary<DateOnly, string> LoadTip);
+    private sealed record TrendM(DateOnly Month, decimal B, decimal N, decimal T, decimal Comp, decimal Util);
+    private sealed record Who(int Id, string Name, string Initials);
+    private sealed record TlRow(int Id, string No, DateOnly Start, DateOnly End, DateOnly? Forecast, decimal Progress, string Cls, string Tip);
     private sealed record Area(string Name, string Href);
-    private sealed record Sq(int Id, string Name, string Initials, int Band, string Tip);
-    private sealed record TsWeek(DateOnly Week, decimal Total, decimal[] Parts);
-    private sealed record Part(string Label, int N, string Cls);
     private sealed record DriveRow(string Host, string Drive, decimal Free);
-    private sealed record Month(string Label, decimal Hours);
-    private sealed record GapRow(string Skill, decimal Gap);
-    private sealed record Lvl(string Name, int N);
+    private sealed record Part(string Label, int N, string Cls);
 
     private CommandCenter? _cc;
-    private string? _headline, _subline;
+    private DateOnly _month0, _t0, _t1;
+    private List<DateOnly> _months = [], _weeks = [];
+    private List<Row> _roster = [];
+    private List<TrendM> _trend = [];
+    private List<Who> _pmPeople = [];
+    private Dictionary<(int, int), decimal> _pm = [];
+    private string _peerLabel = "";
     private List<TlRow> _tl = [];
-    private List<(double X, string Label)> _ticks = [];
-    private DateOnly _t0, _t1, _week0;
-    private int _late, _serious, _seriousAreas, _thin, _modules, _knowledge, _lowDrives, _pipeCount, _risks, _tickets;
+    private List<(decimal X, string Label)> _ticks = [];
     private readonly List<Area> _areas = [new("Delivery", "/projects"), new("People", "/capacity"), new("Servers", "/infrastructure"), new("Decisions", "/whatif"), new("Training", "/training")];
     private Dictionary<(string, int), int> _matrix = [];
-    private List<Sq> _team = [];
-    private int[] _bandCount = new int[5];
-    private List<TsWeek> _tsWeeks = [];
-    private List<string> _tsNames = [];
-    private decimal _tsTotal, _tsTopShare, _pipeTotal;
-    private string? _tsTop;
-    private List<Part> _cover = [], _vms = [], _riskSev = [], _ticketAge = [];
-    private List<Lvl> _levels = [];
     private List<DriveRow> _drives = [];
-    private List<Month> _pipe = [];
-    private List<GapRow> _gaps = [];
+    private List<Part> _cover = [], _register = [];
+    private int _registerMax;
 
-    private static string P(double v) => (Math.Clamp(v, 0, 1) * 100).ToString("0.##", Inv) + "%";
-    private double Pos(DateOnly d) => (double)(d.DayNumber - _t0.DayNumber) / Math.Max(1, _t1.DayNumber - _t0.DayNumber);
-    private static string SevName(int s) => s switch { 3 => "critical", 2 => "serious", 1 => "warning", _ => "info" };
+    private static string P(decimal v) => (Math.Clamp(v, 0m, 1m) * 100).ToString("0.##", Inv) + "%";
+    private decimal Pos(DateOnly d) => (decimal)(d.DayNumber - _t0.DayNumber) / Math.Max(1, _t1.DayNumber - _t0.DayNumber);
+    private static string UtilQ(decimal u) => u <= 0 ? "q0" : u < 20 ? "q1" : u < 40 ? "q2" : u < 60 ? "q3" : u < 80 ? "q4" : "q5";
+    private static string PeerQ(decimal v) => v < 2 ? "q1" : v < 3 ? "q2" : v < 3.75m ? "q3" : v < 4.5m ? "q4" : "q5";
+    private static string LoadQ(int band) => band switch { 1 => "q2", 2 => "ok", 3 => "mid", 4 => "low", _ => "q0" };
+    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
     private static string AreaOf(string kind) => kind switch
     {
         "project" or "task" => "Delivery", "person" or "demand" or "skill" => "People", "host" => "Servers",
         "scenario" or "movement" => "Decisions", "doubt" => "Training", _ => "Delivery",
     };
-    private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
+
+    private static RenderFragment Score(decimal? v) => b =>
+    {
+        if (v is null) return;
+        var s = v.Value;
+        b.OpenElement(0, "span"); b.AddAttribute(1, "class", "sc");
+        b.OpenElement(2, "span"); b.OpenElement(3, "i");
+        b.AddAttribute(4, "class", s >= 85 ? "ok" : s >= 60 ? "mid" : "low");
+        b.AddAttribute(5, "style", $"width:{P(s / 100m)}");
+        b.CloseElement(); b.CloseElement();
+        b.OpenElement(6, "em"); b.AddContent(7, s.ToString("0", Inv)); b.CloseElement();
+        b.CloseElement();
+    };
 
     protected override async Task LoadAsync()
     {
         var asOf = AsOf;
         _cc = await Q(sp => sp.GetRequiredService<DashboardService>().GetAsync(asOf));
-        var k = _cc.Kpis;
-        var starts = await Q(sp => sp.GetRequiredService<EosDbContext>().Tasks.AsNoTracking().Where(t => t.PlannedStart != null)
-            .GroupBy(t => t.ProjectId).Select(g => new { g.Key, S = g.Min(t => t.PlannedStart), E = g.Max(t => t.PlannedFinish) }).ToDictionaryAsync(x => x.Key, x => (S: x.S!.Value, E: x.E)));
-        var since = asOf.AddDays(-7 * 12 - (((int)asOf.DayOfWeek + 6) % 7));
-        var ts = await Q(sp => sp.GetRequiredService<EosDbContext>().Timesheets.AsNoTracking().Where(t => t.Date >= since && t.Date <= asOf)
-            .Select(t => new { t.Date, t.ProjectNo, t.Hours }).ToListAsync());
-        var hosts = await Q(sp => sp.GetRequiredService<HostService>().ListAsync());
-        var people = await Q(sp => sp.GetRequiredService<PeopleService>().ListAsync());
+        var people = (await Q(sp => sp.GetRequiredService<PeopleService>().ListAsync())).Where(p => p.IsActive && !p.IsConsultant).OrderBy(p => p.FullName).ToList();
+        var ym = asOf.Year * 100 + asOf.Month;
+        var perf = await Q(sp => sp.GetRequiredService<EosDbContext>().MonthlyPerformance.AsNoTracking().Where(m => m.Year * 100 + m.Month <= ym).ToListAsync());
+        var reviews = await Q(sp => sp.GetRequiredService<EosDbContext>().PeerReviews.AsNoTracking().Where(r => r.Year * 100 + r.Month <= ym).ToListAsync());
         var knowledge = await Q(sp => sp.GetRequiredService<TrainingService>().SummaryAsync(asOf));
         var coverage = await Q(sp => sp.GetRequiredService<TrainingService>().CoverageAsync(10000));
-        var opps = await Q(sp => sp.GetRequiredService<PipelineService>().ListAsync());
+        var hosts = await Q(sp => sp.GetRequiredService<HostService>().ListAsync());
         var risks = await Q(sp => sp.GetRequiredService<RegisterService>().RisksAsync(openOnly: true));
         var tickets = await Q(sp => sp.GetRequiredService<RegisterService>().TicketsAsync(openOnly: true));
+        var starts = await Q(sp => sp.GetRequiredService<EosDbContext>().Tasks.AsNoTracking().Where(t => t.PlannedStart != null)
+            .GroupBy(t => t.ProjectId).Select(g => new { g.Key, S = g.Min(t => t.PlannedStart), E = g.Max(t => t.PlannedFinish) }).ToDictionaryAsync(x => x.Key, x => (S: x.S!.Value, E: x.E)));
 
-        // Portfolio timeline
-        _tl = _cc.Projects.Where(p => p.PlannedEnd is not null || p.ForecastEnd is not null || starts.ContainsKey(p.ProjectId))
-            .Select(p =>
+        static DateOnly M(int y, int m) => new(y, m, 1);
+        var latest = perf.Count == 0 ? M(asOf.Year, asOf.Month) : perf.Select(p => M(p.Year, p.Month)).Max();
+        _month0 = latest;
+        _months = Enumerable.Range(0, 12).Select(i => latest.AddMonths(i - 11)).ToList();
+        var byPerson = perf.GroupBy(p => p.PersonId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var peerBy = reviews.Where(r => r.Collaboration + r.Communication + r.Reliability + r.TechnicalHelp > 0)
+            .GroupBy(r => r.SubjectPersonId).ToDictionary(g => g.Key, g => { var last = g.Max(r => r.Year * 100 + r.Month); return g.Where(r => r.Year * 100 + r.Month == last).ToList(); });
+
+        var know = knowledge.ToDictionary(k => k.PersonId, k => k.KnowFraction * 100);
+        var load = _cc.LoadNext8Weeks;
+        _weeks = load.Select(r => r.WeekStart).Distinct().OrderBy(d => d).ToList();
+        var loadBy = load.GroupBy(r => r.PersonId).ToDictionary(g => g.Key, g => g.ToList());
+
+        _roster = people.Select(p =>
+        {
+            var rows = byPerson.GetValueOrDefault(p.Id) ?? [];
+            var util = rows.ToDictionary(r => M(r.Year, r.Month), r => r.Utilization);
+            var cur = rows.FirstOrDefault(r => r.Year == latest.Year && r.Month == latest.Month);
+            Perf? perfNow = cur is null ? null : new Perf(cur.ComplianceHours, cur.BillableHours, cur.NonBillableHours, cur.TrainingHours, cur.TimesheetCompletionScore,
+                cur.AttendanceDisciplineScore, cur.LateDays, cur.MissingPunchDays, cur.UniqueProjects);
+            decimal[]? peer = null; var pc = 0;
+            if (peerBy.TryGetValue(p.Id, out var pr) && pr.Count > 0)
             {
-                var end = p.PlannedEnd ?? (starts.TryGetValue(p.ProjectId, out var se) ? se.E : null) ?? p.ForecastEnd!.Value;
-                var start = starts.TryGetValue(p.ProjectId, out var s) && s.S < end ? s.S : end.AddDays(-30);
-                var cls = p.Health switch { "At Risk" => "c-r", "Moderate Risk" => "c-a", "On Track" => "c-g", _ => "c-n" };
-                var tip = $"{p.ProjectNo} {p.Name}: {p.ProgressActual * 100:0}% done (plan {p.ProgressExpected * 100:0}%), planned end {end:dd MMM yyyy}"
-                    + (p.ForecastEnd is { } f ? $", forecast {f:dd MMM yyyy}" : "") + (p.Reasons.Count > 0 ? ". " + string.Join("; ", p.Reasons) : "");
-                return new TlRow(p.ProjectId, p.ProjectNo, Names.Short(p.Name), start, end, p.ForecastEnd, (double)Math.Clamp(p.ProgressActual, 0, 1), cls, tip);
-            })
-            .OrderByDescending(r => r.Cls == "c-r").ThenByDescending(r => r.Cls == "c-a").ThenBy(r => r.End).ToList();
-        _late = _tl.Count(r => r.Forecast > r.End);
+                pc = pr.Count;
+                peer = [pr.Average(x => x.Collaboration), pr.Average(x => x.Communication), pr.Average(x => x.Reliability), pr.Average(x => x.TechnicalHelp)];
+            }
+            var lr = loadBy.GetValueOrDefault(p.Id) ?? [];
+            var bands = lr.ToDictionary(r => r.WeekStart, r => r.AllocatedHours == 0 ? 0 : r.Band switch { LoadBand.UnderUsed => 1, LoadBand.Healthy => 2, LoadBand.Stretched => 3, _ => 4 });
+            var tips = lr.Where(r => r.AllocatedHours > 0).ToDictionary(r => r.WeekStart, r => $"{r.AllocatedHours:0} h of {r.CapacityHours:0} h");
+            return new Row(p.Id, p.FullName, Initials(p.FullName), util, perfNow, peer, pc, know.TryGetValue(p.Id, out var kf) ? kf : null, bands, tips);
+        }).ToList();
+
+        var active = people.Select(p => p.Id).ToHashSet();
+        _trend = perf.Where(p => active.Contains(p.PersonId)).GroupBy(p => M(p.Year, p.Month)).OrderBy(g => g.Key).TakeLast(18)
+            .Select(g => new TrendM(g.Key, g.Sum(x => x.BillableHours), g.Sum(x => x.NonBillableHours), g.Sum(x => x.TrainingHours), g.Sum(x => x.ComplianceHours),
+                g.Where(x => x.ComplianceHours > 0).Select(x => x.Utilization).DefaultIfEmpty(0).Average())).ToList();
+
+        var recent = reviews.Select(r => r.Year * 100 + r.Month).Distinct().OrderByDescending(x => x).Take(3).ToHashSet();
+        var rs = reviews.Where(r => recent.Contains(r.Year * 100 + r.Month) && r.ReviewerPersonId is not null && active.Contains(r.SubjectPersonId) && active.Contains(r.ReviewerPersonId.Value)
+            && r.Collaboration + r.Communication + r.Reliability + r.TechnicalHelp > 0).ToList();
+        _pm = rs.GroupBy(r => (r.ReviewerPersonId!.Value, r.SubjectPersonId)).ToDictionary(g => g.Key, g => g.Average(r => (r.Collaboration + r.Communication + r.Reliability + r.TechnicalHelp) / 4));
+        var inPm = rs.SelectMany(r => new[] { r.ReviewerPersonId!.Value, r.SubjectPersonId }).ToHashSet();
+        _pmPeople = people.Where(p => inPm.Contains(p.Id)).Select(p => new Who(p.Id, p.FullName, Initials(p.FullName))).ToList();
+        if (recent.Count > 0) { var lo = recent.Min(); var hi = recent.Max(); _peerLabel = $"{M(lo / 100, lo % 100):MMM} – {M(hi / 100, hi % 100):MMM yyyy}"; }
+
+        _tl = _cc.Projects.Where(p => p.PlannedEnd is not null || p.ForecastEnd is not null || starts.ContainsKey(p.ProjectId)).Select(p =>
+        {
+            var end = p.PlannedEnd ?? (starts.TryGetValue(p.ProjectId, out var se) ? se.E : null) ?? p.ForecastEnd!.Value;
+            var start = starts.TryGetValue(p.ProjectId, out var s) && s.S < end ? s.S : end.AddDays(-30);
+            var cls = p.Health switch { "At Risk" => "h-r", "Moderate Risk" => "h-a", "On Track" => "h-g", _ => "h-n" };
+            var tip = $"{p.ProjectNo} {p.Name}: {p.ProgressActual * 100:0}% done, plan {p.ProgressExpected * 100:0}%, end {end:dd MMM yyyy}" + (p.ForecastEnd is { } f ? $", forecast {f:dd MMM yyyy}" : "");
+            return new TlRow(p.ProjectId, p.ProjectNo, start, end, p.ForecastEnd, Math.Clamp(p.ProgressActual, 0, 1), cls, tip);
+        }).OrderByDescending(r => r.Cls == "h-r").ThenByDescending(r => r.Cls == "h-a").ThenBy(r => r.End).ToList();
         if (_tl.Count > 0)
         {
-            var first = _tl.Min(r => r.Start);
-            var d0 = first < asOf.AddDays(-30) ? first : asOf.AddDays(-30);
+            var first = _tl.Min(r => r.Start); var d0 = first < asOf.AddDays(-30) ? first : asOf.AddDays(-30);
             _t0 = new DateOnly(d0.Year, d0.Month, 1);
-            var lastPlan = _tl.Max(r => r.End);
-            var lastFc = _tl.Max(r => r.Forecast ?? r.End);
-            var cap = asOf.AddDays(180);
+            var lastPlan = _tl.Max(r => r.End); var lastFc = _tl.Max(r => r.Forecast ?? r.End); var cap = asOf.AddDays(180);
             _t1 = (lastFc > cap ? (lastPlan > cap ? lastPlan : cap) : lastFc).AddDays(10);
+            var span = (_t1.Year - _t0.Year) * 12 + _t1.Month - _t0.Month;
+            var step = span > 14 ? 3 : span > 7 ? 2 : 1;
             _ticks = [];
-            var monthsSpan = (_t1.Year - _t0.Year) * 12 + _t1.Month - _t0.Month;
-            var step = monthsSpan > 14 ? 3 : monthsSpan > 7 ? 2 : 1;
-            for (var m = _t0.AddMonths(1); m < _t1; m = m.AddMonths(step))
-                _ticks.Add((Pos(m), m.ToString(m.Month == 1 || _ticks.Count == 0 ? "MMM yy" : "MMM", Inv)));
+            for (var m = _t0.AddMonths(1); m < _t1; m = m.AddMonths(step)) _ticks.Add((Pos(m), m.ToString(m.Month == 1 || _ticks.Count == 0 ? "MMM yy" : "MMM", Inv)));
         }
 
-        // Alert matrix
-        var subjects = _cc.Alerts.GroupBy(a => (a.SubjectKind, a.Subject)).Select(g => (Area: AreaOf(g.Key.SubjectKind), Sev: (int)g.Max(a => a.Severity))).ToList();
-        _matrix = subjects.GroupBy(s => (s.Area, Math.Clamp(s.Sev, 0, 3))).ToDictionary(g => g.Key, g => g.Count());
-        _serious = subjects.Count(s => s.Sev >= 2);
-        _seriousAreas = subjects.Where(s => s.Sev >= 2).Select(s => s.Area).Distinct().Count();
+        var subjects = _cc.Alerts.GroupBy(a => (a.SubjectKind, a.Subject)).Select(g => (Area: AreaOf(g.Key.SubjectKind), Sev: Math.Clamp((int)g.Max(a => a.Severity), 0, 3))).ToList();
+        _matrix = subjects.GroupBy(s => (s.Area, s.Sev)).ToDictionary(g => g.Key, g => g.Count());
 
-        // Team this week
-        var load = _cc.LoadNext8Weeks;
-        _week0 = load.Count > 0 ? load.Min(r => r.WeekStart) : asOf;
-        var thisWeek = load.Where(r => r.WeekStart == _week0).ToDictionary(r => r.PersonId);
-        _team = people.Where(p => p.IsActive && !p.IsConsultant).OrderBy(p => p.FullName).Select(p =>
-        {
-            thisWeek.TryGetValue(p.Id, out var w);
-            var band = w is null || w.AllocatedHours == 0 ? 0 : w.Band switch { LoadBand.UnderUsed => 1, LoadBand.Healthy => 2, LoadBand.Stretched => 3, _ => 4 };
-            var tip = w is null || w.AllocatedHours == 0 ? "nothing planned" : $"{w.AllocatedHours:0} h of {w.CapacityHours:0} h";
-            return new Sq(p.Id, p.FullName, Initials(p.FullName), band, tip);
-        }).ToList();
-        _bandCount = new int[5];
-        foreach (var p in _team) _bandCount[p.Band]++;
+        _drives = hosts.SelectMany(h => h.Disks.Where(d => d.TotalGb > 0).Select(d => new DriveRow(h.Ip ?? h.Name, d.Drive, d.FreeFraction))).OrderBy(d => d.Free).Take(6).ToList();
 
-        // Timesheets
-        DateOnly Monday(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7));
-        var top = ts.Where(t => !string.IsNullOrEmpty(t.ProjectNo)).GroupBy(t => t.ProjectNo!).Select(g => (No: g.Key, H: g.Sum(x => x.Hours)))
-            .OrderByDescending(x => x.H).Take(4).Select(x => x.No).ToList();
-        _tsNames = top.Concat(["Other"]).ToList();
-        _tsTotal = ts.Sum(t => t.Hours);
-        _tsWeeks = Enumerable.Range(0, 12).Select(i => Monday(asOf).AddDays(-7 * (11 - i))).Select(w =>
-        {
-            var parts = new decimal[5];
-            foreach (var t in ts.Where(t => Monday(t.Date) == w)) { var ix = top.IndexOf(t.ProjectNo ?? ""); parts[ix < 0 ? 4 : ix] += t.Hours; }
-            return new TsWeek(w, parts.Sum(), parts);
-        }).ToList();
-        if (top.Count > 0 && _tsTotal > 0) { _tsTop = top[0]; _tsTopShare = ts.Where(t => t.ProjectNo == top[0]).Sum(t => t.Hours) / _tsTotal * 100; }
-
-        // Knowledge
-        _modules = coverage.Count;
-        _thin = coverage.Count(c => c.KnownBy <= 1);
         _cover =
         [
-            new("Nobody", coverage.Count(c => c.KnownBy == 0), "c-r"), new("One person", coverage.Count(c => c.KnownBy == 1), "c-a"),
-            new("Two", coverage.Count(c => c.KnownBy == 2), "s2"), new("Three or more", coverage.Count(c => c.KnownBy >= 3), "c-g"),
+            new("Nobody", coverage.Count(c => c.KnownBy == 0), "low"), new("1 person", coverage.Count(c => c.KnownBy == 1), "mid"),
+            new("2 people", coverage.Count(c => c.KnownBy == 2), "q3"), new("3–5", coverage.Count(c => c.KnownBy is >= 3 and <= 5), "q4"), new("6+", coverage.Count(c => c.KnownBy >= 6), "ok"),
         ];
-        _knowledge = knowledge.Count;
-        _levels = knowledge.GroupBy(r => r.Level).Select(g => new Lvl(g.Key, g.Count())).OrderByDescending(l => l.N).ToList();
 
-        // Servers
-        var drives = hosts.SelectMany(h => h.Disks.Where(d => d.TotalGb > 0).Select(d => new DriveRow(h.Ip ?? h.Name, d.Drive, d.FreeFraction))).ToList();
-        _lowDrives = drives.Count(d => d.Free < 0.1m);
-        _drives = drives.OrderBy(d => d.Free).Take(6).ToList();
-        var vms = hosts.Where(h => !string.Equals(h.Kind, "Host", StringComparison.OrdinalIgnoreCase) && !string.Equals(h.Kind, "Physical", StringComparison.OrdinalIgnoreCase)).ToList();
-        _vms = vms.GroupBy(h => h.State).Select(g => new Part(g.Key, g.Count(), g.Key == "Running" ? "c-g" : g.Key == "Off" ? "s5" : "c-a")).OrderByDescending(p => p.N).ToList();
-
-        // Pipeline and skill gaps
-        var open = opps.Where(o => o.ConvertedProjectId is null && !o.Status.Contains("Lost", StringComparison.OrdinalIgnoreCase) && !o.Status.Contains("Won", StringComparison.OrdinalIgnoreCase)).ToList();
-        _pipeCount = open.Count;
-        _pipeTotal = open.Sum(o => o.WeightedHours);
-        var m0 = new DateOnly(asOf.Year, asOf.Month, 1);
-        _pipe = Enumerable.Range(0, 6).Select(i => m0.AddMonths(i)).Select(m => new Month(m.ToString("MMM", Inv),
-            open.Where(o => o.LikelyBookingMonth is { } b && (i0(m) ? b < m.AddMonths(1) : b.Year == m.Year && b.Month == m.Month)).Sum(o => o.WeightedHours))).ToList();
-        bool i0(DateOnly m) => m == m0;
-        if (_pipe.All(p => p.Hours == 0)) _pipe = [];
-        _gaps = _cc.SupplyDemand.GroupBy(r => r.SkillName).Select(g => new GapRow(g.Key, g.Sum(r => r.GapHours))).Where(g => g.Gap > 0).OrderByDescending(g => g.Gap).Take(4).ToList();
-
-        // Risks and tickets
-        _risks = risks.Count;
-        string[] order = ["Critical", "High", "Medium", "Low"];
-        _riskSev = risks.GroupBy(r => string.IsNullOrWhiteSpace(r.Severity) ? "Unrated" : r.Severity!.Trim())
-            .Select(g => new Part(g.Key, g.Count(), g.Key switch { "Critical" or "High" => "c-r", "Medium" => "c-a", "Low" => "c-g", _ => "s5" }))
-            .OrderBy(p => Array.IndexOf(order, p.Label) is var i && i < 0 ? 9 : i).ToList();
-        _tickets = tickets.Count;
         int Age(DateOnly? d) => d is null ? 999 : asOf.DayNumber - d.Value.DayNumber;
-        _ticketAge =
+        _register =
         [
-            new("Under a week", tickets.Count(t => Age(t.RaisedOn) <= 7), "c-g"), new("1–4 weeks", tickets.Count(t => Age(t.RaisedOn) is > 7 and <= 30), "s2"),
-            new("1–3 months", tickets.Count(t => Age(t.RaisedOn) is > 30 and <= 90), "c-a"), new("Older", tickets.Count(t => Age(t.RaisedOn) > 90), "c-r"),
+            new("Risks high", risks.Count(r => r.Severity is "High" or "Critical"), "low"), new("Risks other", risks.Count(r => r.Severity is not ("High" or "Critical")), "mid"),
+            new("Tickets < 30 d", tickets.Count(t => Age(t.RaisedOn) <= 30), "q4"), new("Tickets 30–90 d", tickets.Count(t => Age(t.RaisedOn) is > 30 and <= 90), "mid"), new("Tickets > 90 d", tickets.Count(t => Age(t.RaisedOn) > 90), "low"),
         ];
-
-        // Headline: the single most important finding
-        var worst = _cc.Projects.Where(p => p.Health == "At Risk").OrderByDescending(p => p.ProgressGapPoints).FirstOrDefault();
-        _headline = worst is not null
-            ? $"{k.AtRiskProjects} project{(k.AtRiskProjects == 1 ? " is" : "s are")} at risk. {worst.ProjectNo} is furthest behind."
-            : _bandCount[4] > 0 ? $"{_bandCount[4]} engineer{(_bandCount[4] == 1 ? " is" : "s are")} over capacity this week."
-            : "Nothing is at risk right now.";
-        var bits = new List<string>();
-        if (worst is not null) bits.Add($"{worst.ProjectNo} is {worst.ProgressGapPoints:0} points behind plan");
-        if (_bandCount[0] > 0) bits.Add($"{_bandCount[0]} of {_team.Count} engineers have nothing planned this week");
-        if (_lowDrives > 0) bits.Add($"{_lowDrives} drive{(_lowDrives == 1 ? " is" : "s are")} nearly full");
-        if (_thin > 0) bits.Add($"{_thin} modules depend on one person or nobody");
-        _subline = bits.Count == 0 ? null : string.Join("; ", bits) + ".";
+        _registerMax = _register.Max(r => r.N);
     }
 }

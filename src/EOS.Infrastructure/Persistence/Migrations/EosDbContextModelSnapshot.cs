@@ -626,6 +626,139 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.ToTable("ProjectHosts");
                 });
 
+            modelBuilder.Entity("EOS.Domain.People.MonthlyPerformance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("ApprovalScore")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("ApprovedHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("AttendanceDays")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("AttendanceDisciplineScore")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("BillableHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("ComplianceHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EarlyDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("EnteredHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("ExpectedTimesheetDays")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LateDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("LeaveDays")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LessDurationDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MissingPunchDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("NonBillableHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("OfficeHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("OperationalScore")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("PunchHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TimesheetCompletionScore")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TimesheetFilledDays")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TrainingHours")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UniqueProjects")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Utilization")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("MonthlyPerformance");
+                });
+
+            modelBuilder.Entity("EOS.Domain.People.PeerReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Collaboration")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Communication")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Reliability")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewerName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ReviewerPersonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SubjectPersonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("TechnicalHelp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectPersonId", "Year", "Month");
+
+                    b.ToTable("PeerReviews");
+                });
+
             modelBuilder.Entity("EOS.Domain.People.Person", b =>
                 {
                     b.Property<int>("Id")
@@ -1586,6 +1719,24 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.HasOne("EOS.Domain.Configuration.WorkCalendarDef", null)
                         .WithMany()
                         .HasForeignKey("CalendarId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EOS.Domain.People.MonthlyPerformance", b =>
+                {
+                    b.HasOne("EOS.Domain.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EOS.Domain.People.PeerReview", b =>
+                {
+                    b.HasOne("EOS.Domain.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectPersonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -30,6 +30,8 @@ public sealed partial class EosDbContext(DbContextOptions<EosDbContext> options)
     public DbSet<Person> People => Set<Person>();
     public DbSet<PersonAlias> PersonAliases => Set<PersonAlias>();
     public DbSet<TimesheetEntry> Timesheets => Set<TimesheetEntry>();
+    public DbSet<MonthlyPerformance> MonthlyPerformance => Set<MonthlyPerformance>();
+    public DbSet<PeerReview> PeerReviews => Set<PeerReview>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<PersonSkill> PersonSkills => Set<PersonSkill>();
     public DbSet<SkillTransaction> SkillTransactions => Set<SkillTransaction>();
@@ -95,6 +97,18 @@ public sealed partial class EosDbContext(DbContextOptions<EosDbContext> options)
             e.HasIndex(x => x.ProjectNo);
             e.Property(x => x.Hours).HasPrecision(7, 2);
             e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MonthlyPerformance>(e =>
+        {
+            e.HasIndex(x => new { x.PersonId, x.Year, x.Month }).IsUnique();
+            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PeerReview>(e =>
+        {
+            e.HasIndex(x => new { x.SubjectPersonId, x.Year, x.Month });
+            e.HasOne<Person>().WithMany().HasForeignKey(x => x.SubjectPersonId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<PersonAlias>(e =>

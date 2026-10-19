@@ -49,6 +49,51 @@ public sealed class TimesheetEntry
     public decimal Hours { get; set; }
 }
 
+public sealed class MonthlyPerformance
+{
+    public int Id { get; set; }
+    public int PersonId { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public decimal ComplianceHours { get; set; }
+    public decimal EnteredHours { get; set; }
+    public decimal ApprovedHours { get; set; }
+    public decimal BillableHours { get; set; }
+    public decimal NonBillableHours { get; set; }
+    public decimal TrainingHours { get; set; }
+    public decimal OfficeHours { get; set; }
+    public decimal Utilization { get; set; }
+    public int UniqueProjects { get; set; }
+    public decimal AttendanceDays { get; set; }
+    public decimal LeaveDays { get; set; }
+    public decimal PunchHours { get; set; }
+    public decimal TimesheetFilledDays { get; set; }
+    public decimal ExpectedTimesheetDays { get; set; }
+    public int MissingPunchDays { get; set; }
+    public int LateDays { get; set; }
+    public int EarlyDays { get; set; }
+    public int LessDurationDays { get; set; }
+    public decimal TimesheetCompletionScore { get; set; }
+    public decimal ApprovalScore { get; set; }
+    public decimal AttendanceDisciplineScore { get; set; }
+    public decimal OperationalScore { get; set; }
+}
+
+public sealed class PeerReview
+{
+    public int Id { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public int? ReviewerPersonId { get; set; }
+    public string ReviewerName { get; set; } = "";
+    public int SubjectPersonId { get; set; }
+    public decimal Collaboration { get; set; }
+    public decimal Communication { get; set; }
+    public decimal Reliability { get; set; }
+    public decimal TechnicalHelp { get; set; }
+    public string? Comment { get; set; }
+}
+
 public enum AliasKind
 {
     Initials = 0,
