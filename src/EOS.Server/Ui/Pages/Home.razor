@@ -15,16 +15,20 @@
         --a4: color-mix(in srgb, var(--accent) 45%, var(--panel)); --a5: color-mix(in srgb, var(--accent) 58%, var(--panel));
         --tg: color-mix(in srgb, var(--green) 32%, var(--panel)); --ty: color-mix(in srgb, var(--amber) 34%, var(--panel)); --tr: color-mix(in srgb, var(--red) 34%, var(--panel));
         --empty: color-mix(in srgb, var(--ink) 7%, var(--panel));
-        display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px;
+        display: grid; gap: 16px; align-items: start;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr);
+        grid-template-areas: "team team team" "hours peer drives" "alerts peer risks" "proj proj proj";
     }
-    .pn { grid-column: span 3; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; }
-    .pn.w4 { grid-column: span 4; } .pn.w6 { grid-column: span 6; } .pn.w8 { grid-column: span 8; } .pn.w12 { grid-column: span 12; } .pn.r2 { grid-row: span 2; }
+    .ov > .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .ga-team { grid-area: team; } .ga-peer { grid-area: peer; } .ga-proj { grid-area: proj; }
+    .ga-left { grid-row: 2 / span 2; grid-column: 1; } .ga-right { grid-row: 2 / span 2; grid-column: 3; }
+    .pn { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; }
     .pn > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
     .pn h2 { font-size: 15px; font-weight: 650; }
     .pn header a, .pn header span { font-size: 12.5px; color: var(--ink-2); }
     .none { color: var(--ink-2); font-size: 13px; }
-    .a1 { background: var(--a1); } .a2 { background: var(--a2); } .a3 { background: var(--a3); } .a4 { background: var(--a4); } .a5 { background: var(--a5); }
-    .tg { background: var(--tg); } .ty { background: var(--ty); } .tr { background: var(--tr); } .e0 { background: var(--empty); }
+    .a1 { background: var(--a1); } .a2 { background: var(--a2); } .a3 { background: var(--a3); } .a4 { background: var(--a4); } .a5 { background: var(--a5); } .e0 { background: var(--empty); }
+    .tg { background: var(--tg); } .ty { background: var(--ty); } .tr { background: var(--tr); }
     .ok { background: var(--green); } .mid { background: var(--amber); } .low { background: var(--red); }
     .c-b { background: var(--accent); } .c-n { background: var(--p2); } .c-t { background: var(--p3); }
     .key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
@@ -32,24 +36,22 @@
     .key i + i { margin-left: -3px; }
 
     .hm { overflow-x: auto; }
-    .hm-grid { display: grid; gap: 2px; min-width: max-content; font-size: 11.5px; font-variant-numeric: tabular-nums; }
-    .hm-grid > b { font-weight: 600; color: var(--ink-2); font-size: 12px; display: flex; align-items: center; padding-right: 10px; white-space: nowrap; position: sticky; left: 0; background: var(--panel); z-index: 1; }
-    .hm-grid > a { display: grid; place-items: end center; height: 28px; padding-bottom: 4px; color: var(--ink); font-weight: 650; font-size: 11.5px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hm-grid { display: grid; gap: 3px; min-width: max-content; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .hm-grid > b { font-weight: 600; color: var(--ink-2); font-size: 13px; display: flex; align-items: center; padding-right: 10px; white-space: nowrap; position: sticky; left: 0; background: var(--panel); z-index: 1; }
+    .hm-grid > a { display: grid; place-items: end center; height: 30px; padding-bottom: 6px; color: var(--ink); font-weight: 650; font-size: 12.5px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hm-grid > a:hover { background: var(--hover); color: var(--accent-ink); }
-    .hm-grid > span { display: grid; place-items: center; height: 24px; border-radius: 4px; color: var(--ink); }
+    .hm-grid > span { display: grid; place-items: center; height: 34px; border-radius: 6px; color: var(--ink); font-weight: 600; }
     .hm-grid > span.e0 { color: var(--ink-2); }
 
-    .trend { display: flex; align-items: flex-end; gap: 16px; flex: 1; min-height: 200px; padding: 0 4%; }
-    .trend > div { max-width: 120px; }
-    .trend-x { padding: 0 4%; gap: 16px !important; } .trend-x span { max-width: 120px; }
+    .trend { display: flex; align-items: flex-end; gap: 12px; height: 220px; }
     .trend > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; position: relative; }
     .trend .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
     .trend .st i { display: block; }
     .trend .u { position: absolute; left: 50%; width: 10px; height: 10px; margin: 0 0 -5px -5px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); z-index: 2; }
-    .trend-x { display: flex; gap: 6px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+    .trend-x { display: flex; gap: 12px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 
-    .pm { display: grid; gap: 2px; font-size: 10px; color: var(--ink-2); justify-content: start; }
-    .pm i { aspect-ratio: 1; border-radius: 3px; display: block; }
+    .pm { display: grid; gap: 2px; font-size: 10.5px; color: var(--ink-2); justify-content: start; overflow-x: auto; }
+    .pm i { width: 15px; height: 15px; border-radius: 3px; display: block; }
     .pm span { display: grid; place-items: center; overflow: hidden; white-space: nowrap; }
 
     .tl { position: relative; flex: 1; }
@@ -67,20 +69,20 @@
     .tl-lane .late { position: absolute; top: 2px; bottom: 2px; border-radius: 0 6px 6px 0; background: repeating-linear-gradient(-45deg, var(--red) 0 2px, transparent 2px 5px); }
     .h-r { background: var(--red); } .h-a { background: var(--amber); } .h-g { background: var(--green); } .h-n { background: var(--task-prog); }
 
-    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); grid-template-rows: auto; grid-auto-rows: minmax(30px, 1fr); gap: 4px; font-size: 12px; flex: 1; }
+    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 12px; }
     .mx > span { color: var(--ink-2); text-align: center; align-self: end; font-size: 11.5px; }
     .mx > span.l { text-align: left; align-self: center; }
-    .mx a { display: grid; place-items: center; border-radius: 6px; color: var(--ink); font-weight: 650; }
+    .mx a { display: grid; place-items: center; height: 30px; border-radius: 6px; color: var(--ink); font-weight: 650; }
     .mx a.e0 { color: transparent; }
 
-    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 36px; gap: 7px 10px; align-items: center; align-content: space-around; flex: 1; font-size: 12.5px; }
+    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 36px; gap: 7px 10px; align-items: center; font-size: 12.5px; }
     .hb .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
     .hb .bar { height: 10px; border-radius: 6px; background: var(--empty); overflow: hidden; }
     .hb .bar i { display: block; height: 100%; border-radius: 6px; }
     .hb .v { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-    @@media (max-width: 1400px) { .pn { grid-column: span 6; } .pn.w4 { grid-column: span 6; } .pn.w8 { grid-column: span 12; } .pn.w6 { grid-column: span 12; } .pn.r2 { grid-row: auto; } }
-    @@media (max-width: 760px) { .pn, .pn.w4 { grid-column: span 12; } .tl-axis { margin-left: 90px; } .tl-grid { left: 90px; } .tl-row { grid-template-columns: 90px minmax(0, 1fr); } .trend { min-height: 150px; } }
+    @@media (max-width: 1400px) { .ov { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "team team" "proj proj"; } .ga-left { grid-row: auto; grid-column: 1; } .ga-peer { grid-area: auto; grid-column: 2; } .ga-right { grid-row: auto; grid-column: 1 / -1; } }
+    @@media (max-width: 760px) { .ov { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; } .ov > * { grid-area: auto !important; grid-column: 1 !important; grid-row: auto !important; } .tl-axis { margin-left: 90px; } .tl-grid { left: 90px; } .tl-row { grid-template-columns: 90px minmax(0, 1fr); } .trend { min-height: 150px; } }
 </style>
 
 <div class="page">
@@ -89,7 +91,7 @@
     else if (_cc is not null)
     {
         <div class="ov">
-            <section class="pn w12">
+            <section class="pn ga-team">
                 <header><h2>Team</h2><span>@_month0.ToString("MMMM yyyy", Inv)</span></header>
                 @if (_team.Count == 0) { <p class="none">No engineers.</p> }
                 else
@@ -109,14 +111,11 @@
                             }
                         </div>
                     </div>
-                    <div class="key">
-                        <span><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><i class="a5"></i>Low &rarr; high</span>
-                        <span><i class="tg"></i>Good</span><span><i class="ty"></i>Watch</span><span><i class="tr"></i>Poor</span><span><i class="e0"></i>None</span>
-                    </div>
+                    <div class="key"><span><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><i class="a5"></i>Weaker &rarr; stronger</span><span><i class="e0"></i>No data</span></div>
                 }
             </section>
-
-            <section class="pn w6">
+            <div class="col ga-left">
+            <section class="pn">
                 <header><h2>Team hours</h2><span>@(_trend.Count > 0 ? $"{_trend[0].Month:MMM yyyy} – {_trend[^1].Month:MMM yyyy}" : "")</span></header>
                 @if (_trend.Count == 0) { <p class="none">No monthly data.</p> }
                 else
@@ -139,28 +138,6 @@
                     <div class="key"><span><i class="c-b"></i>Billable</span><span><i class="c-n"></i>Non-billable</span><span><i class="c-t"></i>Training</span></div>
                 }
             </section>
-
-            <section class="pn">
-                <header><h2>Peer reviews</h2><span>@_peerLabel</span></header>
-                @if (_pmPeople.Count == 0) { <p class="none">No peer reviews.</p> }
-                else
-                {
-                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, minmax(0, 1fr)); max-width: @(22 + _pmPeople.Count * 18)px">
-                        <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials[0]</span> }
-                        @foreach (var rv in _pmPeople)
-                        {
-                            <span title="@rv.Name">@rv.Initials</span>
-                            @foreach (var s in _pmPeople)
-                            {
-                                var v = _pm.GetValueOrDefault((rv.Id, s.Id), -1m);
-                                <i class="@(v < 0 ? "e0" : v < 3 ? "tr" : v < 4 ? "ty" : v < 4.5m ? "a3" : "a5")" title="@(v < 0 ? "" : $"{rv.Name} → {s.Name}: {v:0.0}")"></i>
-                            }
-                        }
-                    </div>
-                    <div class="key"><span>Reviewer &darr; reviewed &rarr;</span><span><i class="tr"></i>&lt;3</span><span><i class="ty"></i>3&ndash;4</span><span><i class="a3"></i><i class="a5"></i>4&ndash;5</span></div>
-                }
-            </section>
-
             <section class="pn">
                 <header><h2>Alerts</h2><a href="/alerts">All</a></header>
                 <div class="mx">
@@ -176,8 +153,49 @@
                     }
                 </div>
             </section>
-
-            <section class="pn w6">
+            </div>
+            <section class="pn ga-peer">
+                <header><h2>Peer reviews</h2><span>@_peerLabel</span></header>
+                @if (_pmPeople.Count == 0) { <p class="none">No peer reviews.</p> }
+                else
+                {
+                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, 15px)">
+                        <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials[0]</span> }
+                        @foreach (var rv in _pmPeople)
+                        {
+                            <span title="@rv.Name">@rv.Initials</span>
+                            @foreach (var s in _pmPeople)
+                            {
+                                var v = _pm.GetValueOrDefault((rv.Id, s.Id), -1m);
+                                <i class="@(v < 0 ? "e0" : "a" + Math.Clamp((int)Math.Ceiling(v), 1, 5))" title="@(v < 0 ? "" : $"{rv.Name} → {s.Name}: {v:0.0}")"></i>
+                            }
+                        }
+                    </div>
+                    <div class="key"><span>Reviewer &darr; reviewed &rarr;</span><span><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><i class="a5"></i>1&ndash;5</span></div>
+                }
+            </section>
+            <div class="col ga-right">
+            <section class="pn">
+                <header><h2>Drives</h2><a href="/infrastructure">Servers</a></header>
+                @if (_drives.Count == 0) { <p class="none">No readings.</p> }
+                else
+                {
+                    <div class="hb">
+                        @foreach (var d in _drives)
+                        {
+                            <span class="n" title="@d.Host @d.Drive">@d.Host @d.Drive</span>
+                            <span class="bar"><i class="@(d.Free < 0.1m ? "low" : d.Free < 0.2m ? "mid" : "c-b")" style="width:@P(1 - d.Free)"></i></span>
+                            <span class="v">@((d.Free * 100).ToString("0", Inv))%</span>
+                        }
+                    </div>
+                }
+            </section>
+            <section class="pn">
+                <header><h2>Risks and tickets</h2><a href="/register">Register</a></header>
+                <div class="hb">@foreach (var r in _register) { <span class="n">@r.Label</span><span class="bar"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }</div>
+            </section>
+            </div>
+            <section class="pn ga-proj">
                 <header><h2>Projects</h2><a href="/gantt">Gantt</a></header>
                 @if (_tl.Count == 0) { <p class="none">No planned projects.</p> }
                 else
@@ -201,26 +219,11 @@
                 }
             </section>
 
-            <section class="pn">
-                <header><h2>Drives</h2><a href="/infrastructure">Servers</a></header>
-                @if (_drives.Count == 0) { <p class="none">No readings.</p> }
-                else
-                {
-                    <div class="hb">
-                        @foreach (var d in _drives)
-                        {
-                            <span class="n" title="@d.Host @d.Drive">@d.Host @d.Drive</span>
-                            <span class="bar"><i class="@(d.Free < 0.1m ? "low" : d.Free < 0.2m ? "mid" : "c-b")" style="width:@P(1 - d.Free)"></i></span>
-                            <span class="v">@((d.Free * 100).ToString("0", Inv))%</span>
-                        }
-                    </div>
-                }
-            </section>
 
-            <section class="pn">
-                <header><h2>Risks and tickets</h2><a href="/register">Register</a></header>
-                <div class="hb">@foreach (var r in _register) { <span class="n">@r.Label</span><span class="bar"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }</div>
-            </section>
+
+
+
+
         </div>
     }
 </div>
@@ -254,25 +257,24 @@
     private int _registerMax;
 
     private static readonly HCell None = new("e0", "", "no data");
-    private static HCell Ramp(decimal? v, decimal max, string fmt, string unit = "") =>
-        v is not { } x ? None : x <= 0 ? new("e0", "0", "0" + unit)
-        : new("a" + Math.Clamp((int)Math.Ceiling(x / max * 5), 1, 5), x.ToString(fmt, Inv), x.ToString(fmt, Inv) + unit);
-    private static HCell Rag(decimal? v, decimal good, decimal watch, string fmt) =>
-        v is not { } x ? None : new(x >= good ? "tg" : x >= watch ? "ty" : "tr", x.ToString(fmt, Inv), x.ToString(fmt, Inv));
-    private static HCell Bad(int? v, int watch, int poor) =>
-        v is not { } x ? None : x == 0 ? new("e0", "0", "0") : new(x >= poor ? "tr" : x >= watch ? "ty" : "a1", x.ToString(Inv), x.ToString(Inv));
+    private static HCell Scale(decimal? v, decimal worst, decimal best, string fmt, string unit = "")
+    {
+        if (v is not { } x) return None;
+        var g = best == worst ? 1 : Math.Clamp((x - worst) / (best - worst), 0, 1);
+        return new("a" + Math.Clamp((int)Math.Ceiling(g * 5), 1, 5), x.ToString(fmt, Inv), x.ToString(fmt, Inv) + unit);
+    }
 
     private readonly List<Metric> _metrics =
     [
-        new("Utilisation %", e => Ramp(e.Util, 100, "0", "%")),
-        new("Billable %", e => Ramp(e.Billable, 100, "0", "%")),
-        new("Training h", e => Ramp(e.Training, 40, "0", " h")),
-        new("Timesheet", e => Rag(e.Timesheet, 85, 60, "0")),
-        new("Attendance", e => Rag(e.Attendance, 85, 60, "0")),
-        new("Late days", e => Bad(e.Late, 2, 5)),
-        new("Peer rating", e => Rag(e.Peer, 4, 3, "0.0")),
-        new("Knowledge %", e => Rag(e.Know, 70, 40, "0")),
-        new("Load, 4 wks %", e => e.Load is not { } l ? None : l <= 0 ? new("e0", "0", "nothing planned") : new(l > 100 ? "tr" : l > 85 ? "ty" : "a" + Math.Clamp((int)Math.Ceiling(l / 20), 1, 5), l.ToString("0", Inv), l.ToString("0", Inv) + "%")),
+        new("Utilisation %", e => Scale(e.Util, 0, 90, "0", "%")),
+        new("Billable %", e => Scale(e.Billable, 0, 90, "0", "%")),
+        new("Training h", e => Scale(e.Training, 0, 40, "0", " h")),
+        new("Timesheet", e => Scale(e.Timesheet, 40, 95, "0")),
+        new("Attendance", e => Scale(e.Attendance, 40, 95, "0")),
+        new("Late days", e => Scale(e.Late, 8, 0, "0", " late")),
+        new("Peer rating", e => Scale(e.Peer, 2.5m, 4.6m, "0.0")),
+        new("Knowledge %", e => Scale(e.Know, 20, 90, "0", "%")),
+        new("Load, 4 wks %", e => Scale(e.Load, 0, 85, "0", "%")),
     ];
 
     private static string P(decimal v) => (Math.Clamp(v, 0m, 1m) * 100).ToString("0.##", Inv) + "%";

@@ -31,7 +31,12 @@ public sealed class LegacyEosImporter(EosDbContext db)
             foreach (var p in people) byName[PersonMatcher.Normalise(p.FullName)] = p;
             var codes = people.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            await ReadEmployeesAsync(con, people, matcher, byName, codes, report, ct);
+            var roster = await ReadEmployeesAsync(con, people, matcher, byName, codes, report, ct);
+            foreach (var p in people.Where(p => p.IsActive && !roster.Contains(p)))
+            {
+                p.IsActive = false;
+                report.Updated("Person not on V1 roster, made inactive");
+            }
             await db.SaveChangesAsync(ct);
 
             var files = new List<string>();
@@ -49,9 +54,10 @@ public sealed class LegacyEosImporter(EosDbContext db)
         finally { try { File.Delete(temp); } catch (IOException) { } }
     }
 
-    private async Task ReadEmployeesAsync(
+    private async Task<HashSet<Person>> ReadEmployeesAsync(
         SqliteConnection con, List<Person> people, PersonMatcher matcher, Dictionary<string, Person> byName, HashSet<string> codes, ImportReport report, CancellationToken ct)
     {
+        var roster = new HashSet<Person>();
         await using var cmd = con.CreateCommand();
         cmd.CommandText = "select EmployeeCode, Name, SeniorityLevel, IsActive, Email, IsConsultant, IsOnProbation, IsNonBillable from employee";
         await using var rd = await cmd.ExecuteReaderAsync(ct);
@@ -80,9 +86,11 @@ public sealed class LegacyEosImporter(EosDbContext db)
             person.Email ??= email;
             person.Seniority = seniority;
             person.IsConsultant = rd.GetInt32(5) != 0; person.IsOnProbation = rd.GetInt32(6) != 0; person.IsNonBillable = rd.GetInt32(7) != 0;
-            if (!active) person.IsActive = false;
+            person.IsActive = active;
             byName[PersonMatcher.Normalise(name)] = person;
+            roster.Add(person);
         }
+        return roster;
     }
 
     private async Task ImportTimesheetsAsync(
