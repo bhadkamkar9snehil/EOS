@@ -476,3 +476,12 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .projlink .muted { font-size: 12.5px; }
 .captab { max-width: 880px; }
 .captab th.num, .captab td.num { width: 110px; }
+/* Project plan: one plate, inline add bar, numbers on one baseline. */
+.addtask { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft); }
+.addtask input:first-child { width: 320px; }
+.addtask input[type=number] { width: 72px; text-align: right; }
+.planplate .rowtools { padding-top: 8px; }
+.planplate td { vertical-align: middle; }
+.planplate td.num input.cell { margin: -4px -7px -4px 0; font: inherit; color: inherit; }
+.planplate .origin { margin-left: 6px; font-size: 11px; color: var(--ink-3); font-weight: 400; cursor: help; }
+.planplate .badge { line-height: 20px; font-weight: 550; }

@@ -38,17 +38,17 @@
 
         @if (_tab == "plan")
         {
-            <div class="plate">
-                <div class="form-row">
-                    <div class="field"><label>Add task</label><input @bind="_newTask" placeholder="Task name" style="width:320px" /></div>
-                    <div class="field"><label>Work (h)</label><input type="number" @bind="_newWork" style="width:90px" /></div>
-                    <button @onclick="AddTask">Add</button>
+            <div class="plate planplate">
+                <div class="addtask">
+                    <input @bind="_newTask" placeholder="New task name" aria-label="New task name" />
+                    <input type="number" @bind="_newWork" aria-label="Work hours" title="Work hours" />
+                    <span class="muted small">h</span>
+                    <button @onclick="AddTask">Add task</button>
+                    @if (_plan.Tasks.Any(t => t.Origin != "eos")) { <span class="spacer"></span><span class="muted small">Tasks imported from the @(_plan.Tasks.First(t => t.Origin != "eos").Origin) are marked ⟵</span> }
                 </div>
-            </div>
             @if (_plan.Tasks.Count == 0) { <div class="empty">No tasks. Add one above, or import this project's plan from the ERP/tracker under Imports.</div> }
             else
             {
-                <div class="plate">
                     <div class="rowtools" role="toolbar" aria-label="Selected task actions">
                         @if (Sel() is { } cur)
                         {
@@ -77,22 +77,24 @@
                                         <button class="secondary" @onclick="() => SaveName(t.Id)">OK</button>
                                     }
                                     else { <span @ondblclick="() => StartEdit(t)">@t.Name</span> }
-                                    @if (t.Origin != "eos") { <span class="muted" title="Imported from @t.Origin"> ⟵ @t.Origin</span> }
+                                    @if (t.Origin != "eos") { <span class="origin" title="Imported from @t.Origin" aria-label="Imported from @t.Origin">⟵</span> }
                                 </td>
                                 <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" aria-label="Work hours, @t.Wbs" value="@t.WorkHours" @onchange="e => SetWork(t.Id, e.Value)" /> } else { @t.WorkHours.ToString("0.#") }</td>
                                 <td class="num">@if (!t.IsSummary) { <input type="number" class="cell" aria-label="Percent complete, @t.Wbs" min="0" max="100" value="@((t.PercentComplete * 100).ToString("0"))" @onchange="e => SetPct(t.Id, e.Value)" /> } else { @((t.PercentComplete * 100).ToString("0")) }</td>
                                 <td>@t.Start?.ToString("dd MMM yy")</td>
                                 <td>@t.Finish?.ToString("dd MMM yy")</td>
                                 <td class="num">@t.TotalFloatDays</td>
-                                <td>@t.Status</td>
+                                <td><span class="badge @StatusCls(t.Status)">@t.Status</span></td>
                                 <td>@string.Join(", ", t.Assignments.Select(a => (a.PersonName ?? "◌ " + a.PlaceholderSkill) + (a.Units == 1 ? "" : $" {a.Units * 100:0}%")))</td>
                             </tr>
                         }
                         </tbody>
                     </table>
-                </div></div>
+                </div>
+            }
+            </div>
 
-                @if (Sel() is { } s)
+                @if (_plan.Tasks.Count > 0 && Sel() is { } s)
                 {
                     <div class="grid-2">
                         <div class="plate">
@@ -124,7 +126,6 @@
                         </div>
                     </div>
                 }
-            }
         }
         else if (_tab == "gantt")
         {
@@ -267,6 +268,13 @@
     }
 
     private PlanTaskView? Sel() => _selected is { } id ? _plan?.Tasks.FirstOrDefault(t => t.Id == id) : null;
+    private static string StatusCls(object? status) => status?.ToString()?.Replace(" ", "").ToLowerInvariant() switch
+    {
+        "completed" or "done" => "good",
+        "inprogress" => "info",
+        "onhold" or "blocked" => "warn",
+        _ => "",
+    };
     private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
     private string LinkText(LinkView l, int self)
     {
