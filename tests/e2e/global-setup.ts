@@ -9,6 +9,7 @@ export default async function globalSetup(config: FullConfig) {
   if (skills.ok() && (await skills.json()).length > 0) { await api.dispose(); return; }
   const file = path.join(__dirname, 'fixtures', 'agility.xlsx');
   const res = await api.post('/api/v1/imports/agility?commit=true', {
+    timeout: 240_000,
     multipart: {
       file: { name: 'agility.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: fs.readFileSync(file) },
     },

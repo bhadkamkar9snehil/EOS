@@ -50,6 +50,9 @@ export default defineConfig({
       EOS_DB: path.join(os.tmpdir(), 'eos-e2e.db'),
       ASPNETCORE_URLS: `http://127.0.0.1:${port}`,
       ASPNETCORE_ENVIRONMENT: 'Development',
+      Logging__LogLevel__Default: 'Warning',
+      Logging__LogLevel__Microsoft: 'Warning',
+      Logging__LogLevel__Microsoft_EntityFrameworkCore: 'Warning',
     },
   },
 });

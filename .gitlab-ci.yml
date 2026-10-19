@@ -36,6 +36,7 @@ test-windows:
   needs: []
   variables:
     EOS_E2E_EMPTY: "1"
+    GIT_CLEAN_FLAGS: "-ffdx -e .tools/ -e node_modules/ -e bin/ -e obj/"
   script:
     - .\run-tests.ps1 -SkipDotnet
   artifacts:
