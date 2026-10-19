@@ -104,7 +104,7 @@
                                 <text class="lbl" x="0" y="@(y + 13)">@p.ProjectNo</text>
                                 <text x="0" y="@(y + 25)" style="font-size:10.5px">@Trim(Names.Short(p.Name), 30)</text>
                                 <rect class="track" x="@labelW" y="@(y + 6)" width="@barW" height="12" rx="3" />
-                                <rect class="@p.Health" x="@labelW" y="@(y + 6)" width="@F(act)" height="12" rx="3" />
+                                <rect class="@HClass(p.Health)" x="@labelW" y="@(y + 6)" width="@F(act)" height="12" rx="3" />
                                 <line class="exp" x1="@F(labelW + exp)" x2="@F(labelW + exp)" y1="@(y + 2)" y2="@(y + 22)" />
                                 <text x="@(w - 4)" y="@(y + 16)" text-anchor="end" style="@(p.ScheduleVarianceDays > 0 ? "fill:var(--red);font-weight:600" : "")">@(p.ScheduleVarianceDays is { } s ? (s > 0 ? $"+{s} d" : s == 0 ? "on time" : $"{s} d") : "–")</text>
                             </a>
@@ -206,6 +206,7 @@
     private string? _headline, _subline;
 
     private static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    private static string HClass(string h) => h switch { "At Risk" => "Red", "Moderate Risk" => "Amber", "On Track" => "Green", _ => "Grey" };
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
 
     protected override async Task LoadAsync()
@@ -215,7 +216,7 @@
         var k = _cc.Kpis;
 
         _projects = _cc.Projects
-            .OrderByDescending(p => p.Health == "Red").ThenByDescending(p => p.Health == "Amber")
+            .OrderByDescending(p => p.Health == "At Risk").ThenByDescending(p => p.Health == "Moderate Risk")
             .ThenByDescending(p => p.ScheduleVarianceDays ?? int.MinValue).ToList();
 
         // Attention cards: alerts grouped per subject, routed by subject kind, serious first.
@@ -250,7 +251,7 @@
             .OrderByDescending(h => h.Peak).ToList();
 
         // Headline: state the single most important finding as a sentence.
-        var worst = _projects.FirstOrDefault(p => p.Health == "Red");
+        var worst = _projects.FirstOrDefault(p => p.Health == "At Risk");
         var overNow = _weekTotals.FirstOrDefault()?.Over ?? 0;
         _headline = worst is not null
             ? $"{k.AtRiskProjects} project{(k.AtRiskProjects == 1 ? " is" : "s are")} at risk; {worst.ProjectNo} is the furthest behind"
