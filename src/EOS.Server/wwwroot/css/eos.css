@@ -351,7 +351,7 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .pcard .add { width: 28px; height: 28px; background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; }
 .pcard .add:hover { background: var(--accent-soft); }
 .strip { display: flex; gap: 2px; margin: 7px 0 6px; }
-.strip i { flex: 1; height: 8px; border-radius: 2px; background: var(--chip-bg); }
+.strip i { flex: 1; height: 6px; border-radius: 2px; background: var(--control-line); }
 .strip i.low { background: var(--r2); } .strip i.mid { background: #9d9de8; } .strip i.warn { background: #ffc45c; } .strip i.over { background: var(--red); }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--chip-bg); color: var(--ink-2); white-space: nowrap; }
@@ -459,3 +459,6 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 }
 @media print { .rail, .bottombar, .sidebar, .rightbar, .tabsbar, .no-print { display: none !important; } body { overflow: visible; background: #fff; } .app { display: block; height: auto; } main { overflow: visible; } }
 @media (prefers-reduced-motion: no-preference) { button, .rail-link, a.kpi { transition: background-color .12s ease-out, border-color .12s ease-out, color .12s ease-out; } }
+/* Planner: summary brackets recede behind real task bars; project name has room. */
+.plgx .bar-sum { fill: var(--ink-2); }
+.planner .tools select[aria-label=Project] { max-width: 340px; }
