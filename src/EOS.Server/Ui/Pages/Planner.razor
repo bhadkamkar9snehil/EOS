@@ -10,7 +10,7 @@
     {
         <div class="bench">
             <div class="bench-head">
-                <div class="label">Engineers@(_selSpan is not null ? " · best fit first" : "")</div>
+                <h2 class="phead">Engineers<small>@(_selSpan is not null ? "best fit first" : "drag onto a task")</small></h2>
                 <input type="search" placeholder="Search" aria-label="Search engineers" @bind="_benchSearch" @bind:event="oninput" />
                 <select aria-label="Skill filter" @bind="_skillFilter"><option value="">Any skill</option>@foreach (var s in _skillNames) { <option>@s</option> }</select>
             </div>
@@ -61,7 +61,7 @@
     @if (_result is not null && _session is not null && _impactOpen)
     {
         <div class="impact">
-            <div class="label">Impact</div>
+            <h2 class="phead">Impact of your changes</h2>
             <div class="slip @(_result.SlipDays > 0 ? "bad" : _result.SlipDays < 0 ? "good" : "")">
                 <span class="slip-v">@(_result.SlipDays == 0 ? "No change" : _result.SlipDays.ToString("+0;-0") + " d")</span>
                 <span class="slip-l">project finish</span>
@@ -76,26 +76,32 @@
             @if (_changes == 0 && !_coachHidden)
             {
                 <div class="coach">
-                    <div class="label">How it works</div>
-                    <ol><li>Click a task</li><li>Drop an engineer on it, or click + on a card</li><li>Watch the finish date and load</li></ol>
-                    <button class="secondary" @onclick="HideCoach">Got it</button>
+                    <p>Click a task, then drop an engineer on it or press + on their card. The finish date above updates as you go.</p>
+                    <button class="link" @onclick="HideCoach">Got it</button>
                 </div>
             }
 
-            @if (_result.Warnings.Count > 0)
+            @{ var fresh = _result.Warnings.Where(w => !w.Contains("already was")).ToList(); var old = _result.Warnings.Count - fresh.Count; }
+            @if (fresh.Count > 0)
             {
-                <div class="label sect">Warnings</div>
-                @foreach (var w in _result.Warnings) { <div class="warnrow">@w</div> }
+                <h2 class="phead sect">@(_changes == 0 ? "Issues in this plan" : "Warnings after your changes")</h2>
+                @foreach (var w in fresh) { <div class="warnrow">@w</div> }
+            }
+            @if (old > 0)
+            {
+                <details class="oldwarn"><summary>@old existing issue@(old == 1 ? "" : "s") in this plan</summary>
+                    @foreach (var w in _result.Warnings.Where(w => w.Contains("already was"))) { <div>@w.Replace(" (already was)", "")</div> }
+                </details>
             }
 
-            <div class="label sect">Tasks that move</div>
+            <h2 class="phead sect">Tasks that move</h2>
             @if (_result.Moved.Count == 0) { <div class="muted">Nothing moves.</div> }
             @foreach (var m in _result.Moved.Where(m => Task(m.TaskId) is { IsSummary: false }).Take(8))
             {
                 <button class="movrow" @onclick="() => Focus(m.TaskId)"><span class="movname">@Short(Task(m.TaskId)!.Name, 34)</span><span class="@(m.SlipDays > 0 ? "slip-pos" : "slip-neg")">@m.SlipDays.ToString("+0;-0")</span></button>
             }
 
-            <div class="label sect">Engineers</div>
+            <h2 class="phead sect">Engineer load</h2>
             @foreach (var p in _result.People.OrderByDescending(p => p.PeakAfter))
             {
                 var pct = Math.Min(160m, p.PeakAfter * 100);
@@ -109,7 +115,7 @@
 
             @if (_suggestions.Count > 0)
             {
-                <div class="label sect">Ways to relieve overload</div>
+                <h2 class="phead sect">Ways to relieve overload</h2>
                 @foreach (var s in _suggestions)
                 {
                     <button class="movrow sugg" title="Hand this task to someone with room" @onclick="() => ApplySuggestion(s)">
@@ -310,7 +316,7 @@
     private int _width;
     private List<(int X, string Label)> _months = [];
     private List<int> _weekLines = [], _weekends = [];
-    private const int RowH = 32, HeaderH = 40, LabelW = 300;
+    private const int RowH = 32, HeaderH = 40, LabelW = 380;
 
     protected override async Task LoadAsync()
     {
@@ -529,7 +535,12 @@
         }
         _width = span * _dw;
         _months = [];
-        for (var m = new DateOnly(_min.Year, _min.Month, 1); m <= _max; m = m.AddMonths(1)) _months.Add((Math.Max(0, X(m)), m.ToString("MMM yyyy", CultureInfo.InvariantCulture)));
+        for (var m = new DateOnly(_min.Year, _min.Month, 1); m <= _max; m = m.AddMonths(1))
+        {
+            var mx = Math.Max(0, X(m));
+            if (_months.Count > 0 && mx - _months[^1].X < 70) _months.RemoveAt(_months.Count - 1);
+            _months.Add((mx, m.ToString(_dw >= 5 ? "MMMM yyyy" : "MMM yy", CultureInfo.InvariantCulture)));
+        }
         _weekLines = []; _weekends = [];
         for (var d = _min; d <= _max; d = d.AddDays(1))
         {
@@ -539,7 +550,7 @@
         BuildRows();
     }
 
-    private int _zoomDw;
+    private int _zoomDw = 9;
     private int _avail = 760;
     private void Zoom(int dw) { _zoomDw = dw; if (_result is not null) Layout(); }
 

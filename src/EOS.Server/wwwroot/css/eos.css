@@ -310,9 +310,14 @@ label.inline { display: inline-flex; align-items: center; gap: 5px; margin: 0; c
 .twoway button span { font-size: 12px; color: var(--ink-2); }
 .twoway button b { font-size: 17px; letter-spacing: -0.01em; }
 .twoway button small { font-size: 12px; color: var(--ink-2); }
-.coach { margin-top: 16px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
-.coach ol { margin: 8px 0 12px; padding-left: 20px; }
-.coach li { margin: 3px 0; }
+.coach { margin-top: 14px; padding: 10px 12px; background: var(--accent-soft); color: var(--ink); border-radius: 8px; font-size: 12.5px; display: flex; gap: 10px; align-items: flex-start; }
+.coach p { flex: 1; }
+.phead { font-size: 13px; font-weight: 650; color: var(--ink); margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; }
+.phead small { font-size: 12px; font-weight: 400; color: var(--ink-2); }
+.phead.sect { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.oldwarn { margin-top: 12px; font-size: 12.5px; color: var(--ink-2); }
+.oldwarn summary { cursor: pointer; color: var(--ink-2); }
+.oldwarn div { padding: 4px 0 4px 14px; }
 .reqbar { padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .tabsbar .spacer { flex: 1; }
 .tabsbar button.toggle { height: 32px; padding: 0 12px; font-weight: 550; }
@@ -332,11 +337,15 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .avatar.xs { width: 20px; height: 20px; font-size: 9px; margin-left: -4px; border: 2px solid var(--panel); }
 .bench { padding: 14px 12px; }
 .bench-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding: 0 4px; }
-.bench-list { display: flex; flex-direction: column; gap: 8px; }
-.pcard { display: flex; gap: 10px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; cursor: grab; box-shadow: 0 1px 2px rgba(20, 23, 26, .04); }
-.pcard:hover { border-color: var(--accent-line); box-shadow: 0 2px 8px rgba(91, 91, 214, .12); }
+.bench-list { display: flex; flex-direction: column; }
+.pcard { display: flex; gap: 10px; align-items: center; background: transparent; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 8px 4px; cursor: grab; }
+.pcard:hover { background: var(--hover); }
+.pcard .avatar { width: 28px; height: 28px; font-size: 11px; }
+.pcard .strip { margin: 4px 0 3px; }
+.pcard .add { opacity: .55; }
+.pcard:hover .add, .pcard .add:focus-visible { opacity: 1; }
 .pcard:active { cursor: grabbing; }
-.pcard.used { border-color: var(--accent-line); background: var(--side); }
+.pcard.used { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .pcard-main { flex: 1; min-width: 0; }
 .pcard-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pcard-meta { font-size: 12px; color: var(--ink-2); }
@@ -349,7 +358,7 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--chip-bg); color: var(--ink-2); white-space: nowrap; }
 .impact { padding: 16px 18px; }
 .slip { margin: 8px 0 4px; display: flex; flex-direction: column; }
-.slip-v { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.slip-v { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
 .slip-l { color: var(--ink-2); font-size: 12.5px; }
 .slip.bad .slip-v { color: var(--red); } .slip.good .slip-v { color: var(--green); }
 .finish { font-size: 13.5px; margin-bottom: 14px; }
