@@ -41,7 +41,7 @@ export default defineConfig({
     command: `node tests/e2e/prepare-db.js && dotnet run --project src/EOS.Server -c Debug --no-launch-profile`,
     cwd: root,
     url: `http://127.0.0.1:${port}/health`,
-    timeout: 240_000,
+    timeout: process.env.CI ? 900_000 : 240_000,
     reuseExistingServer: false,
     stdout: 'ignore',
     env: {

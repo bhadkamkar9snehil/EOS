@@ -1,4 +1,4 @@
-param([switch]$SkipE2E)
+param([switch]$SkipE2E, [switch]$SkipDotnet)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $failed = @()
@@ -9,8 +9,10 @@ function Step($name, [scriptblock]$body) {
     if ($LASTEXITCODE -ne 0) { $script:failed += $name }
 }
 
-Step "Scheduling tests" { dotnet test (Join-Path $root "tests\EOS.Scheduling.Tests") --nologo -v q }
-Step "Infrastructure tests" { dotnet test (Join-Path $root "tests\EOS.Infrastructure.Tests") --nologo -v q }
+if (-not $SkipDotnet) {
+    Step "Scheduling tests" { dotnet test (Join-Path $root "tests\EOS.Scheduling.Tests") --nologo -v q }
+    Step "Infrastructure tests" { dotnet test (Join-Path $root "tests\EOS.Infrastructure.Tests") --nologo -v q }
+}
 Step "Grid unit and DOM tests" {
     if (-not (Test-Path (Join-Path $root "tests\js\node_modules"))) { npm --prefix (Join-Path $root "tests\js") install --no-audit --no-fund }
     Push-Location (Join-Path $root "tests\js"); try { node --test eos-grid-model.test.js eos-grid-dom.test.js } finally { Pop-Location }

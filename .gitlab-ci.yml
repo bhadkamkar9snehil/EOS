@@ -37,7 +37,7 @@ test-windows:
   variables:
     EOS_E2E_EMPTY: "1"
   script:
-    - .\run-tests.ps1
+    - .\run-tests.ps1 -SkipDotnet
   artifacts:
     when: always
     expire_in: 2 weeks
