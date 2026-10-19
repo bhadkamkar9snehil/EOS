@@ -34,13 +34,14 @@
     .hm { overflow-x: auto; }
     .hm-grid { display: grid; gap: 2px; min-width: max-content; font-size: 11.5px; font-variant-numeric: tabular-nums; }
     .hm-grid > b { font-weight: 600; color: var(--ink-2); font-size: 12px; display: flex; align-items: center; padding-right: 10px; white-space: nowrap; position: sticky; left: 0; background: var(--panel); z-index: 1; }
-    .hm-grid > a { display: grid; place-items: center; height: 26px; color: var(--ink); font-weight: 650; font-size: 11px; border-radius: 6px; }
+    .hm-grid > a { display: grid; place-items: end center; height: 28px; padding-bottom: 4px; color: var(--ink); font-weight: 650; font-size: 11.5px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hm-grid > a:hover { background: var(--hover); color: var(--accent-ink); }
     .hm-grid > span { display: grid; place-items: center; height: 24px; border-radius: 4px; color: var(--ink); }
     .hm-grid > span.e0 { color: var(--ink-2); }
 
-    .trend { display: flex; align-items: flex-end; gap: 10px; flex: 1; min-height: 180px; max-height: 320px; }
-    .trend > div { max-width: 72px; margin: 0 auto; }
+    .trend { display: flex; align-items: flex-end; gap: 16px; flex: 1; min-height: 200px; padding: 0 4%; }
+    .trend > div { max-width: 120px; }
+    .trend-x { padding: 0 4%; gap: 16px !important; } .trend-x span { max-width: 120px; }
     .trend > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; position: relative; }
     .trend .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
     .trend .st i { display: block; }
@@ -48,7 +49,7 @@
     .trend-x { display: flex; gap: 6px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 
     .pm { display: grid; gap: 2px; font-size: 10px; color: var(--ink-2); justify-content: start; }
-    .pm i { width: 11px; height: 11px; border-radius: 3px; display: block; }
+    .pm i { aspect-ratio: 1; border-radius: 3px; display: block; }
     .pm span { display: grid; place-items: center; overflow: hidden; white-space: nowrap; }
 
     .tl { position: relative; flex: 1; }
@@ -66,13 +67,13 @@
     .tl-lane .late { position: absolute; top: 2px; bottom: 2px; border-radius: 0 6px 6px 0; background: repeating-linear-gradient(-45deg, var(--red) 0 2px, transparent 2px 5px); }
     .h-r { background: var(--red); } .h-a { background: var(--amber); } .h-g { background: var(--green); } .h-n { background: var(--task-prog); }
 
-    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); gap: 3px; font-size: 12px; }
+    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); grid-template-rows: auto; grid-auto-rows: minmax(30px, 1fr); gap: 4px; font-size: 12px; flex: 1; }
     .mx > span { color: var(--ink-2); text-align: center; align-self: end; font-size: 11.5px; }
     .mx > span.l { text-align: left; align-self: center; }
-    .mx a { display: grid; place-items: center; height: 28px; border-radius: 6px; color: var(--ink); font-weight: 650; }
+    .mx a { display: grid; place-items: center; border-radius: 6px; color: var(--ink); font-weight: 650; }
     .mx a.e0 { color: transparent; }
 
-    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 36px; gap: 7px 10px; align-items: center; font-size: 12.5px; }
+    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 36px; gap: 7px 10px; align-items: center; align-content: space-around; flex: 1; font-size: 12.5px; }
     .hb .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
     .hb .bar { height: 10px; border-radius: 6px; background: var(--empty); overflow: hidden; }
     .hb .bar i { display: block; height: 100%; border-radius: 6px; }
@@ -94,9 +95,9 @@
                 else
                 {
                     <div class="hm">
-                        <div class="hm-grid" style="grid-template-columns: max-content repeat(@_team.Count, minmax(32px, 1fr))">
+                        <div class="hm-grid" style="grid-template-columns: max-content repeat(@_team.Count, minmax(52px, 1fr))">
                             <b></b>
-                            @foreach (var p in _team) { <a href="/people/@p.Id" title="@p.Name">@p.Initials</a> }
+                            @foreach (var p in _team) { <a href="/people/@p.Id" title="@p.Name">@p.Short</a> }
                             @foreach (var m in _metrics)
                             {
                                 <b>@m.Label</b>
@@ -144,7 +145,7 @@
                 @if (_pmPeople.Count == 0) { <p class="none">No peer reviews.</p> }
                 else
                 {
-                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, 11px)">
+                    <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, minmax(0, 1fr)); max-width: @(22 + _pmPeople.Count * 18)px">
                         <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials[0]</span> }
                         @foreach (var rv in _pmPeople)
                         {
@@ -226,7 +227,7 @@
 
 @code {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
-    private sealed record Eng(int Id, string Name, string Initials, decimal? Util, decimal? Billable, decimal? Training, decimal? Timesheet, decimal? Attendance,
+    private sealed record Eng(int Id, string Name, string Short, decimal? Util, decimal? Billable, decimal? Training, decimal? Timesheet, decimal? Attendance,
         int? Late, int? Projects, decimal? Peer, decimal? Know, decimal? Load);
     private sealed record HCell(string Cls, string Text, string Tip);
     private sealed record Metric(string Label, Func<Eng, HCell> Cell);
@@ -277,6 +278,14 @@
     private static string P(decimal v) => (Math.Clamp(v, 0m, 1m) * 100).ToString("0.##", Inv) + "%";
     private decimal Pos(DateOnly d) => (decimal)(d.DayNumber - _t0.DayNumber) / Math.Max(1, _t1.DayNumber - _t0.DayNumber);
     private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
+    private static string ShortName(string full, IEnumerable<string> all)
+    {
+        static string Cap(string w) => w.Length == 0 ? w : char.ToUpperInvariant(w[0]) + w[1..].ToLowerInvariant();
+        var parts = full.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var first = Cap(parts[0]);
+        var clash = all.Count(n => string.Equals(n.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0], parts[0], StringComparison.OrdinalIgnoreCase)) > 1;
+        return clash && parts.Length > 1 ? $"{first[0]}. {Cap(parts[^1])}" : first;
+    }
     private static string AreaOf(string kind) => kind switch
     {
         "project" or "task" => "Delivery", "person" or "demand" or "skill" => "People", "host" => "Servers",
@@ -315,7 +324,7 @@
         _team = people.Select(p =>
         {
             cur.TryGetValue(p.Id, out var m);
-            return new Eng(p.Id, p.FullName, Initials(p.FullName), m?.Utilization,
+            return new Eng(p.Id, p.FullName, ShortName(p.FullName, people.Select(x => x.FullName)), m?.Utilization,
                 m is null || m.ComplianceHours <= 0 ? null : m.BillableHours / m.ComplianceHours * 100, m?.TrainingHours,
                 m?.TimesheetCompletionScore, m?.AttendanceDisciplineScore, m?.LateDays, m?.UniqueProjects,
                 peerBy.TryGetValue(p.Id, out var pr) ? pr : null, know.TryGetValue(p.Id, out var k) ? k : null, load.TryGetValue(p.Id, out var l) ? l : null);
