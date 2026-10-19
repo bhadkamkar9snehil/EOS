@@ -38,12 +38,13 @@ export default defineConfig({
     launchOptions: browser ? { executablePath: browser } : {},
   },
   webServer: {
-    command: `node tests/e2e/prepare-db.js && dotnet run --project src/EOS.Server -c Debug --no-launch-profile`,
+    command: `node tests/e2e/prepare-db.js && dotnet run --project src/EOS.Server -c Debug --no-launch-profile${process.env.EOS_E2E_PREBUILT ? ' --no-build' : ''}`,
     cwd: root,
     url: `http://127.0.0.1:${port}/health`,
     timeout: process.env.CI ? 900_000 : 240_000,
     reuseExistingServer: false,
-    stdout: 'ignore',
+    stdout: process.env.CI ? 'pipe' : 'ignore',
+    stderr: 'pipe',
     env: {
       EOS_DEV_NOAUTH: '1',
       EOS_DB: path.join(os.tmpdir(), 'eos-e2e.db'),

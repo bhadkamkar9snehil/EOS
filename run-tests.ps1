@@ -42,6 +42,10 @@ if (-not $SkipE2E) {
         Push-Location (Join-Path $root "tests\e2e")
         try {
             if (-not (Test-Path "node_modules")) { npm install --no-audit --no-fund; if ($LASTEXITCODE -ne 0) { throw "npm install failed" } }
+            Write-Host "Building the server for the browser tests"
+            dotnet build (Join-Path $root "src\EOS.Server") -c Debug --nologo -v q
+            if ($LASTEXITCODE -ne 0) { throw "server build failed" }
+            $env:EOS_E2E_PREBUILT = "1"
             $browsers = Join-Path $env:LOCALAPPDATA "ms-playwright"
             if (-not (Get-ChildItem $browsers -Filter "chromium-*" -ErrorAction SilentlyContinue)) { npx playwright install chromium }
             npx playwright test

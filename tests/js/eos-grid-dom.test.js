@@ -32,6 +32,7 @@ function make(o = {}) {
   const w = dom.window;
   Object.defineProperty(w.HTMLElement.prototype, 'clientWidth', { get() { return this.classList && this.classList.contains('eg-scroller') ? (o.width || 1400) : 0; } });
   Object.defineProperty(w.HTMLElement.prototype, 'clientHeight', { get() { return this.classList && this.classList.contains('eg-scroller') ? 600 : 0; } });
+  w.HTMLCanvasElement.prototype.getContext = () => null;
   for (const f of files) w.eval(f);
   const calls = [];
   const state = { reject: null };
