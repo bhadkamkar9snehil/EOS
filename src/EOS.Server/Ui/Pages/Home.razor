@@ -16,7 +16,7 @@
         --tg: color-mix(in srgb, var(--green) 32%, var(--panel)); --ty: color-mix(in srgb, var(--amber) 34%, var(--panel)); --tr: color-mix(in srgb, var(--red) 34%, var(--panel));
         --empty: color-mix(in srgb, var(--ink) 7%, var(--panel));
         display: grid; gap: 16px; align-items: start;
-        grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr);
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         grid-template-areas: "team team team" "hours peer drives" "alerts peer risks" "proj proj proj";
     }
     .ov > .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -36,9 +36,11 @@
     .key i + i { margin-left: -3px; }
 
     .hm { overflow-x: auto; }
-    .hm-grid { display: grid; gap: 3px; min-width: max-content; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .hm-grid { display: grid; gap: 3px; padding-right: 64px; font-size: 13px; font-variant-numeric: tabular-nums; }
     .hm-grid > b { font-weight: 600; color: var(--ink-2); font-size: 13px; display: flex; align-items: center; padding-right: 10px; white-space: nowrap; position: sticky; left: 0; background: var(--panel); z-index: 1; }
-    .hm-grid > a { display: grid; place-items: end center; height: 30px; padding-bottom: 6px; color: var(--ink); font-weight: 650; font-size: 12.5px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hm-grid > a { height: 78px; position: relative; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+    .hm-grid > a span { position: absolute; left: 50%; bottom: 6px; transform-origin: 0 50%; transform: rotate(-50deg); white-space: nowrap; }
+    .hm-grid > a:hover span { color: var(--accent-ink); }
     .hm-grid > a:hover { background: var(--hover); color: var(--accent-ink); }
     .hm-grid > span { display: grid; place-items: center; height: 34px; border-radius: 6px; color: var(--ink); font-weight: 600; }
     .hm-grid > span.e0 { color: var(--ink-2); }
@@ -82,7 +84,7 @@
     .hb .v { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
 
     @@media (max-width: 1400px) { .ov { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "team team" "proj proj"; } .ga-left { grid-row: auto; grid-column: 1; } .ga-peer { grid-area: auto; grid-column: 2; } .ga-right { grid-row: auto; grid-column: 1 / -1; } }
-    @@media (max-width: 760px) { .ov { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; } .ov > * { grid-area: auto !important; grid-column: 1 !important; grid-row: auto !important; } .tl-axis { margin-left: 90px; } .tl-grid { left: 90px; } .tl-row { grid-template-columns: 90px minmax(0, 1fr); } .trend { min-height: 150px; } }
+    @@media (max-width: 760px) { .tl-axis span:nth-child(even) { display: none; } .ov { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; } .ov > * { grid-area: auto !important; grid-column: 1 !important; grid-row: auto !important; } .tl-axis { margin-left: 90px; } .tl-grid { left: 90px; } .tl-row { grid-template-columns: 90px minmax(0, 1fr); } .trend { min-height: 150px; } }
 </style>
 
 <div class="page">
@@ -97,9 +99,9 @@
                 else
                 {
                     <div class="hm">
-                        <div class="hm-grid" style="grid-template-columns: max-content repeat(@_team.Count, minmax(52px, 1fr))">
+                        <div class="hm-grid" style="grid-template-columns: max-content repeat(@_team.Count, minmax(38px, 1fr))">
                             <b></b>
-                            @foreach (var p in _team) { <a href="/people/@p.Id" title="@p.Name">@p.Short</a> }
+                            @foreach (var p in _team) { <a href="/people/@p.Id" title="@p.Name"><span>@p.Short</span></a> }
                             @foreach (var m in _metrics)
                             {
                                 <b>@m.Label</b>
@@ -139,19 +141,8 @@
                 }
             </section>
             <section class="pn">
-                <header><h2>Alerts</h2><a href="/alerts">All</a></header>
-                <div class="mx">
-                    <span></span><span>Crit</span><span>Serious</span><span>Warn</span><span>Info</span>
-                    @foreach (var area in _areas)
-                    {
-                        <span class="l">@area.Name</span>
-                        @for (var sev = 3; sev >= 0; sev--)
-                        {
-                            var n = _matrix.GetValueOrDefault((area.Name, sev));
-                            <a class="@(n == 0 ? "e0" : sev >= 2 ? "tr" : sev == 1 ? "ty" : "a2")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
-                        }
-                    }
-                </div>
+                <header><h2>Risks and tickets</h2><a href="/register">Register</a></header>
+                <div class="hb">@foreach (var r in _register) { <span class="n">@r.Label</span><span class="bar"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }</div>
             </section>
             </div>
             <section class="pn ga-peer">
@@ -176,6 +167,21 @@
             </section>
             <div class="col ga-right">
             <section class="pn">
+                <header><h2>Alerts</h2><a href="/alerts">All</a></header>
+                <div class="mx">
+                    <span></span><span>Crit</span><span>Serious</span><span>Warn</span><span>Info</span>
+                    @foreach (var area in _areas)
+                    {
+                        <span class="l">@area.Name</span>
+                        @for (var sev = 3; sev >= 0; sev--)
+                        {
+                            var n = _matrix.GetValueOrDefault((area.Name, sev));
+                            <a class="@(n == 0 ? "e0" : sev >= 2 ? "tr" : sev == 1 ? "ty" : "a2")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
+                        }
+                    }
+                </div>
+            </section>
+            <section class="pn">
                 <header><h2>Drives</h2><a href="/infrastructure">Servers</a></header>
                 @if (_drives.Count == 0) { <p class="none">No readings.</p> }
                 else
@@ -189,10 +195,6 @@
                         }
                     </div>
                 }
-            </section>
-            <section class="pn">
-                <header><h2>Risks and tickets</h2><a href="/register">Register</a></header>
-                <div class="hb">@foreach (var r in _register) { <span class="n">@r.Label</span><span class="bar"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }</div>
             </section>
             </div>
             <section class="pn ga-proj">
@@ -368,7 +370,7 @@
         var subjects = _cc.Alerts.GroupBy(a => (a.SubjectKind, a.Subject)).Select(g => (Area: AreaOf(g.Key.SubjectKind), Sev: Math.Clamp((int)g.Max(a => a.Severity), 0, 3))).ToList();
         _matrix = subjects.GroupBy(s => (s.Area, s.Sev)).ToDictionary(g => g.Key, g => g.Count());
 
-        _drives = hosts.SelectMany(h => h.Disks.Where(d => d.TotalGb > 0).Select(d => new DriveRow(h.Ip ?? h.Name, d.Drive, d.FreeFraction))).OrderBy(d => d.Free).Take(6).ToList();
+        _drives = hosts.SelectMany(h => h.Disks.Where(d => d.TotalGb > 0).Select(d => new DriveRow(h.Ip ?? h.Name, d.Drive, d.FreeFraction))).OrderBy(d => d.Free).Take(8).ToList();
 
         _cover =
         [
