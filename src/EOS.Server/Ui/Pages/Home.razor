@@ -15,9 +15,11 @@
     .pn.w8 { grid-column: span 8; } .pn.w12 { grid-column: span 12; }
     .pn > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
     .pn h2 { font-size: 15px; font-weight: 650; }
-    .pn header a, .pn header span { font-size: 12px; color: var(--ink-3); }
-    .none { color: var(--ink-3); font-size: 13px; }
-    .q0 { background: var(--chip-bg); } .q1 { background: var(--r1); } .q2 { background: var(--r2); } .q3 { background: var(--r3); } .q4 { background: var(--r4); } .q5 { background: var(--r5); }
+    .pn header a, .pn header span { font-size: 12.5px; color: var(--ink-2); }
+    .none { color: var(--ink-2); font-size: 13px; }
+    .ov { --u1: color-mix(in srgb, var(--accent) 28%, var(--panel)); --u2: color-mix(in srgb, var(--accent) 46%, var(--panel)); --u3: color-mix(in srgb, var(--accent) 64%, var(--panel));
+          --u4: color-mix(in srgb, var(--accent) 82%, var(--panel)); --u5: color-mix(in srgb, var(--accent) 100%, var(--ink) 25%); --empty: color-mix(in srgb, var(--ink) 9%, var(--panel)); }
+    .q0 { background: var(--empty); } .q1 { background: var(--u1); } .q2 { background: var(--u2); } .q3 { background: var(--u3); } .q4 { background: var(--u4); } .q5 { background: var(--u5); }
     .ok { background: var(--green); } .mid { background: var(--amber); } .low { background: var(--red); }
     .c-b { background: var(--accent); } .c-n { background: var(--p2); } .c-t { background: var(--p3); }
     .key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
@@ -26,29 +28,29 @@
 
     .ros { overflow-x: auto; }
     .ros table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1060px; font-size: 12.5px; }
-    .ros th { font-size: 11.5px; font-weight: 500; color: var(--ink-3); text-align: left; padding: 0 10px 8px 0; white-space: nowrap; }
+    .ros th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-align: left; padding: 0 10px 8px 0; white-space: nowrap; }
     .ros td { padding: 5px 10px 5px 0; border-top: 1px solid var(--line-soft); vertical-align: middle; }
     .ros tr:hover td { background: var(--hover); }
     .ros th:first-child, .ros td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; padding-left: 2px; }
     .ros tr:hover td:first-child { background: var(--hover); }
     .ros .nm { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; white-space: nowrap; }
-    .ros .nm i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-style: normal; font-weight: 700; color: var(--ink); flex: none; }
+    .ros .nm i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-style: normal; font-weight: 700; color: #14171a; flex: none; }
     .cells { display: flex; gap: 2px; }
     .cells i { width: 14px; height: 18px; border-radius: 3px; display: block; }
     .cells.m i { width: 12px; }
-    .cells i.na { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
-    .mhead { display: flex; gap: 2px; } .mhead span { width: 14px; text-align: center; font-size: 10.5px; }
-    .lhead { display: flex; gap: 2px; } .lhead span { width: 12px; text-align: center; font-size: 10.5px; }
-    .mix { position: relative; width: 120px; height: 12px; border-radius: 6px; background: var(--track); overflow: hidden; display: flex; }
+    .cells i.na { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 22%, var(--panel)); }
+    .mhead { display: flex; gap: 2px; } .mhead span { width: 14px; text-align: center; font-size: 11px; color: var(--ink-2); }
+    .lhead { display: flex; gap: 2px; } .lhead span { width: 12px; text-align: center; font-size: 11px; color: var(--ink-2); }
+    .mix { position: relative; width: 120px; height: 12px; border-radius: 6px; background: var(--empty); overflow: hidden; display: flex; }
     .mix i { display: block; height: 100%; }
     .mix b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); left: 83.33%; }
     .sc { display: flex; align-items: center; gap: 6px; }
-    .sc span { width: 60px; height: 8px; border-radius: 6px; background: var(--track); overflow: hidden; display: block; }
+    .sc span { width: 60px; height: 8px; border-radius: 6px; background: var(--empty); overflow: hidden; display: block; }
     .sc span i { display: block; height: 100%; border-radius: 6px; }
     .sc em { font-style: normal; color: var(--ink-2); font-size: 11.5px; width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
     .dots { display: flex; gap: 2px; flex-wrap: wrap; width: 64px; }
     .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--red); display: block; }
-    .dots.p i { background: var(--ink-2); width: 7px; height: 7px; }
+    .dots.p i { background: var(--ink); width: 7px; height: 7px; }
     .peer { display: flex; gap: 2px; align-items: flex-end; height: 22px; }
     .peer i { width: 7px; border-radius: 2px 2px 0 0; display: block; }
     .peer i:nth-child(1) { background: var(--p1); } .peer i:nth-child(2) { background: var(--p2); } .peer i:nth-child(3) { background: var(--p5); } .peer i:nth-child(4) { background: var(--p3); }
@@ -58,13 +60,13 @@
     .trend .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
     .trend .st i { display: block; }
     .trend .u { position: absolute; left: 50%; width: 8px; height: 8px; margin: 0 0 -4px -4px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); z-index: 2; }
-    .trend-x { display: flex; gap: 4px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; }
+    .trend-x { display: flex; gap: 4px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 
-    .pm { display: grid; gap: 2px; font-size: 10px; color: var(--ink-3); }
+    .pm { display: grid; gap: 2px; font-size: 11px; color: var(--ink-2); }
     .pm i { aspect-ratio: 1; border-radius: 3px; display: block; }
     .pm span { display: grid; place-items: center; overflow: hidden; white-space: nowrap; }
 
-    .tl-axis { position: relative; height: 18px; margin-left: 150px; font-size: 11.5px; color: var(--ink-3); }
+    .tl-axis { position: relative; height: 18px; margin-left: 150px; font-size: 12px; color: var(--ink-2); }
     .tl-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
     .tl { position: relative; }
     .tl-grid { position: absolute; top: 18px; bottom: 0; left: 150px; right: 0; pointer-events: none; }
@@ -74,22 +76,22 @@
     .tl-row:hover { background: var(--hover); }
     .tl-row > b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
     .tl-lane { position: relative; height: 12px; }
-    .tl-lane .plan { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: var(--track); overflow: hidden; }
+    .tl-lane .plan { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: var(--empty); overflow: hidden; }
     .tl-lane .plan i { position: absolute; inset: 0 auto 0 0; }
     .tl-lane .late { position: absolute; top: 2px; bottom: 2px; border-radius: 0 6px 6px 0; background: repeating-linear-gradient(-45deg, var(--red) 0 2px, transparent 2px 5px); }
     .h-r { background: var(--red); } .h-a { background: var(--amber); } .h-g { background: var(--green); } .h-n { background: var(--task-prog); }
 
     .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 12px; }
-    .mx > span { color: var(--ink-3); text-align: center; align-self: end; }
+    .mx > span { color: var(--ink-2); text-align: center; align-self: end; }
     .mx > span.l { text-align: left; color: var(--ink-2); align-self: center; }
     .mx a { display: grid; place-items: center; height: 30px; border-radius: 6px; background: var(--chip-bg); color: var(--ink); font-weight: 600; }
     .mx a.s3 { background: var(--red); color: var(--on-ink); } .mx a.s2 { background: color-mix(in srgb, var(--red) 45%, var(--panel)); }
     .mx a.s1 { background: var(--amber-soft); color: var(--amber); } .mx a.s0 { background: var(--accent-soft); color: var(--accent-ink); }
-    .mx a.e { background: var(--chip-bg); color: transparent; }
+    .mx a.e { background: var(--empty); color: transparent; }
 
     .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 40px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
     .hb .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
-    .hb .tr { height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
+    .hb .tr { height: 10px; border-radius: 6px; background: var(--empty); overflow: hidden; }
     .hb .tr i { display: block; height: 100%; border-radius: 6px; }
     .hb .v { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
