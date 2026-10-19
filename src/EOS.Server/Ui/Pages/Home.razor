@@ -10,69 +10,53 @@
 <PageTitle>Command Center &middot; EOS</PageTitle>
 
 <style>
-    .ov { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
-    .pn { grid-column: span 4; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; }
-    .pn.w8 { grid-column: span 8; } .pn.w12 { grid-column: span 12; }
-    .pn > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    .ov {
+        --a1: color-mix(in srgb, var(--accent) 12%, var(--panel)); --a2: color-mix(in srgb, var(--accent) 22%, var(--panel)); --a3: color-mix(in srgb, var(--accent) 33%, var(--panel));
+        --a4: color-mix(in srgb, var(--accent) 45%, var(--panel)); --a5: color-mix(in srgb, var(--accent) 58%, var(--panel));
+        --tg: color-mix(in srgb, var(--green) 32%, var(--panel)); --ty: color-mix(in srgb, var(--amber) 34%, var(--panel)); --tr: color-mix(in srgb, var(--red) 34%, var(--panel));
+        --empty: color-mix(in srgb, var(--ink) 7%, var(--panel));
+        display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px;
+    }
+    .pn { grid-column: span 3; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; }
+    .pn.w4 { grid-column: span 4; } .pn.w6 { grid-column: span 6; } .pn.w8 { grid-column: span 8; } .pn.w12 { grid-column: span 12; } .pn.r2 { grid-row: span 2; }
+    .pn > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
     .pn h2 { font-size: 15px; font-weight: 650; }
     .pn header a, .pn header span { font-size: 12.5px; color: var(--ink-2); }
     .none { color: var(--ink-2); font-size: 13px; }
-    .ov { --u1: color-mix(in srgb, var(--accent) 28%, var(--panel)); --u2: color-mix(in srgb, var(--accent) 46%, var(--panel)); --u3: color-mix(in srgb, var(--accent) 64%, var(--panel));
-          --u4: color-mix(in srgb, var(--accent) 82%, var(--panel)); --u5: color-mix(in srgb, var(--accent) 100%, var(--ink) 25%); --empty: color-mix(in srgb, var(--ink) 9%, var(--panel)); }
-    .q0 { background: var(--empty); } .q1 { background: var(--u1); } .q2 { background: var(--u2); } .q3 { background: var(--u3); } .q4 { background: var(--u4); } .q5 { background: var(--u5); }
+    .a1 { background: var(--a1); } .a2 { background: var(--a2); } .a3 { background: var(--a3); } .a4 { background: var(--a4); } .a5 { background: var(--a5); }
+    .tg { background: var(--tg); } .ty { background: var(--ty); } .tr { background: var(--tr); } .e0 { background: var(--empty); }
     .ok { background: var(--green); } .mid { background: var(--amber); } .low { background: var(--red); }
     .c-b { background: var(--accent); } .c-n { background: var(--p2); } .c-t { background: var(--p3); }
-    .key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
+    .key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
     .key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
     .key i + i { margin-left: -3px; }
 
-    .ros { overflow-x: auto; }
-    .ros table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1060px; font-size: 12.5px; }
-    .ros th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-align: left; padding: 0 10px 8px 0; white-space: nowrap; }
-    .ros td { padding: 5px 10px 5px 0; border-top: 1px solid var(--line-soft); vertical-align: middle; }
-    .ros tr:hover td { background: var(--hover); }
-    .ros th:first-child, .ros td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; padding-left: 2px; }
-    .ros tr:hover td:first-child { background: var(--hover); }
-    .ros .nm { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; white-space: nowrap; }
-    .ros .nm i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-style: normal; font-weight: 700; color: #14171a; flex: none; }
-    .cells { display: flex; gap: 2px; }
-    .cells i { width: 14px; height: 18px; border-radius: 3px; display: block; }
-    .cells.m i { width: 12px; }
-    .cells i.na { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 22%, var(--panel)); }
-    .mhead { display: flex; gap: 2px; } .mhead span { width: 14px; text-align: center; font-size: 11px; color: var(--ink-2); }
-    .lhead { display: flex; gap: 2px; } .lhead span { width: 12px; text-align: center; font-size: 11px; color: var(--ink-2); }
-    .mix { position: relative; width: 120px; height: 12px; border-radius: 6px; background: var(--empty); overflow: hidden; display: flex; }
-    .mix i { display: block; height: 100%; }
-    .mix b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); left: 83.33%; }
-    .sc { display: flex; align-items: center; gap: 6px; }
-    .sc span { width: 60px; height: 8px; border-radius: 6px; background: var(--empty); overflow: hidden; display: block; }
-    .sc span i { display: block; height: 100%; border-radius: 6px; }
-    .sc em { font-style: normal; color: var(--ink-2); font-size: 11.5px; width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
-    .dots { display: flex; gap: 2px; flex-wrap: wrap; width: 64px; }
-    .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--red); display: block; }
-    .dots.p i { background: var(--ink); width: 7px; height: 7px; }
-    .peer { display: flex; gap: 2px; align-items: flex-end; height: 22px; }
-    .peer i { width: 7px; border-radius: 2px 2px 0 0; display: block; }
-    .peer i:nth-child(1) { background: var(--p1); } .peer i:nth-child(2) { background: var(--p2); } .peer i:nth-child(3) { background: var(--p5); } .peer i:nth-child(4) { background: var(--p3); }
+    .hm { overflow-x: auto; }
+    .hm-grid { display: grid; gap: 2px; min-width: max-content; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+    .hm-grid > b { font-weight: 600; color: var(--ink-2); font-size: 12px; display: flex; align-items: center; padding-right: 10px; white-space: nowrap; position: sticky; left: 0; background: var(--panel); z-index: 1; }
+    .hm-grid > a { display: grid; place-items: center; height: 26px; color: var(--ink); font-weight: 650; font-size: 11px; border-radius: 6px; }
+    .hm-grid > a:hover { background: var(--hover); color: var(--accent-ink); }
+    .hm-grid > span { display: grid; place-items: center; height: 24px; border-radius: 4px; color: var(--ink); }
+    .hm-grid > span.e0 { color: var(--ink-2); }
 
-    .trend { display: flex; align-items: flex-end; gap: 4px; height: 180px; position: relative; }
+    .trend { display: flex; align-items: flex-end; gap: 6px; flex: 1; min-height: 200px; }
     .trend > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; position: relative; }
     .trend .st { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; }
     .trend .st i { display: block; }
-    .trend .u { position: absolute; left: 50%; width: 8px; height: 8px; margin: 0 0 -4px -4px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); z-index: 2; }
-    .trend-x { display: flex; gap: 4px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+    .trend .u { position: absolute; left: 50%; width: 10px; height: 10px; margin: 0 0 -5px -5px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); z-index: 2; }
+    .trend-x { display: flex; gap: 6px; margin-top: 6px; } .trend-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 
-    .pm { display: grid; gap: 2px; font-size: 11px; color: var(--ink-2); }
+    .pm { display: grid; gap: 2px; font-size: 10.5px; color: var(--ink-2); }
     .pm i { aspect-ratio: 1; border-radius: 3px; display: block; }
     .pm span { display: grid; place-items: center; overflow: hidden; white-space: nowrap; }
 
-    .tl-axis { position: relative; height: 18px; margin-left: 150px; font-size: 12px; color: var(--ink-2); }
+    .tl { position: relative; flex: 1; }
+    .tl-axis { position: relative; height: 18px; margin-left: 120px; font-size: 12px; color: var(--ink-2); }
     .tl-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
-    .tl { position: relative; }
-    .tl-grid { position: absolute; top: 18px; bottom: 0; left: 150px; right: 0; pointer-events: none; }
+    .tl-grid { position: absolute; top: 18px; bottom: 0; left: 120px; right: 0; pointer-events: none; }
     .tl-grid i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-soft); }
     .tl-grid b { position: absolute; top: -4px; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent); }
-    .tl-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; height: 30px; color: var(--ink); }
+    .tl-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; height: 34px; color: var(--ink); }
     .tl-row:hover { background: var(--hover); }
     .tl-row > b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
     .tl-lane { position: relative; height: 12px; }
@@ -81,22 +65,20 @@
     .tl-lane .late { position: absolute; top: 2px; bottom: 2px; border-radius: 0 6px 6px 0; background: repeating-linear-gradient(-45deg, var(--red) 0 2px, transparent 2px 5px); }
     .h-r { background: var(--red); } .h-a { background: var(--amber); } .h-g { background: var(--green); } .h-n { background: var(--task-prog); }
 
-    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 12px; }
-    .mx > span { color: var(--ink-2); text-align: center; align-self: end; }
-    .mx > span.l { text-align: left; color: var(--ink-2); align-self: center; }
-    .mx a { display: grid; place-items: center; height: 30px; border-radius: 6px; background: var(--chip-bg); color: var(--ink); font-weight: 600; }
-    .mx a.s3 { background: var(--red); color: var(--on-ink); } .mx a.s2 { background: color-mix(in srgb, var(--red) 45%, var(--panel)); }
-    .mx a.s1 { background: var(--amber-soft); color: var(--amber); } .mx a.s0 { background: var(--accent-soft); color: var(--accent-ink); }
-    .mx a.e { background: var(--empty); color: transparent; }
+    .mx { display: grid; grid-template-columns: minmax(64px, auto) repeat(4, minmax(0, 1fr)); gap: 3px; font-size: 12px; }
+    .mx > span { color: var(--ink-2); text-align: center; align-self: end; font-size: 11.5px; }
+    .mx > span.l { text-align: left; align-self: center; }
+    .mx a { display: grid; place-items: center; height: 28px; border-radius: 6px; color: var(--ink); font-weight: 650; }
+    .mx a.e0 { color: transparent; }
 
-    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 40px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
+    .hb { display: grid; grid-template-columns: minmax(70px, 40%) minmax(0, 1fr) 36px; gap: 7px 10px; align-items: center; font-size: 12.5px; }
     .hb .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
-    .hb .tr { height: 10px; border-radius: 6px; background: var(--empty); overflow: hidden; }
-    .hb .tr i { display: block; height: 100%; border-radius: 6px; }
-    .hb .v { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .hb .bar { height: 10px; border-radius: 6px; background: var(--empty); overflow: hidden; }
+    .hb .bar i { display: block; height: 100%; border-radius: 6px; }
+    .hb .v { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-    @@media (max-width: 1280px) { .pn { grid-column: span 6; } .pn.w8, .pn.w12 { grid-column: span 12; } }
-    @@media (max-width: 760px) { .pn, .pn.w8 { grid-column: span 12; } .tl-axis { margin-left: 96px; } .tl-grid { left: 96px; } .tl-row { grid-template-columns: 96px minmax(0, 1fr); } .trend { height: 140px; } }
+    @@media (max-width: 1400px) { .pn { grid-column: span 6; } .pn.w4 { grid-column: span 6; } .pn.w8 { grid-column: span 12; } .pn.w6 { grid-column: span 12; } .pn.r2 { grid-row: auto; } }
+    @@media (max-width: 760px) { .pn, .pn.w4 { grid-column: span 12; } .tl-axis { margin-left: 90px; } .tl-grid { left: 90px; } .tl-row { grid-template-columns: 90px minmax(0, 1fr); } .trend { min-height: 150px; } }
 </style>
 
 <div class="page">
@@ -107,77 +89,42 @@
         <div class="ov">
             <section class="pn w12">
                 <header><h2>Team</h2><span>@_month0.ToString("MMMM yyyy", Inv)</span></header>
-                @if (_roster.Count == 0) { <p class="none">No engineers.</p> }
+                @if (_team.Count == 0) { <p class="none">No engineers.</p> }
                 else
                 {
-                    <div class="ros">
-                        <table>
-                            <thead><tr>
-                                <th>Engineer</th>
-                                <th><div class="mhead">@foreach (var m in _months) { <span title="@m.ToString("MMMM yyyy", Inv)">@m.ToString("MMM", Inv)[0]</span> }</div></th>
-                                <th>Hours mix</th>
-                                <th>Timesheet</th>
-                                <th>Attendance</th>
-                                <th>Late days</th>
-                                <th>Projects</th>
-                                <th>Peers</th>
-                                <th>Knowledge</th>
-                                <th><div class="lhead">@foreach (var w in _weeks) { <span title="@w.ToString("dd MMM", Inv)">@w.Day</span> }</div></th>
-                            </tr></thead>
-                            <tbody>
-                                @foreach (var r in _roster)
+                    <div class="hm">
+                        <div class="hm-grid" style="grid-template-columns: max-content repeat(@_team.Count, minmax(32px, 1fr))">
+                            <b></b>
+                            @foreach (var p in _team) { <a href="/people/@p.Id" title="@p.Name">@p.Initials</a> }
+                            @foreach (var m in _metrics)
+                            {
+                                <b>@m.Label</b>
+                                @foreach (var p in _team)
                                 {
-                                    var cur = r.Latest;
-                                    <tr>
-                                        <td><a class="nm" href="/people/@r.Id"><i style="background:var(--p@(r.Id % 8 + 1))">@r.Initials</i>@r.Name</a></td>
-                                        <td><div class="cells">@foreach (var m in _months) { var u = r.Util.GetValueOrDefault(m, -1); <i class="@(u < 0 ? "na" : UtilQ(u))" title="@m.ToString("MMM yyyy", Inv): @(u < 0 ? "no data" : u.ToString("0", Inv) + "%")"></i> }</div></td>
-                                        <td>
-                                            @if (cur is null || cur.ComplianceHours <= 0) { <span class="mix"></span> }
-                                            else
-                                            {
-                                                var scale = cur.ComplianceHours * 1.2m;
-                                                <span class="mix" title="Billable @cur.BillableHours.ToString("0", Inv) h, non-billable @cur.NonBillableHours.ToString("0", Inv) h, training @cur.TrainingHours.ToString("0", Inv) h of @cur.ComplianceHours.ToString("0", Inv) h expected">
-                                                    <i class="c-b" style="width:@P(cur.BillableHours / scale)"></i><i class="c-n" style="width:@P(cur.NonBillableHours / scale)"></i><i class="c-t" style="width:@P(cur.TrainingHours / scale)"></i><b></b>
-                                                </span>
-                                            }
-                                        </td>
-                                        <td>@Score(cur?.TimesheetCompletionScore)</td>
-                                        <td>@Score(cur?.AttendanceDisciplineScore)</td>
-                                        <td><span class="dots" title="@(cur?.LateDays ?? 0) late, @(cur?.MissingPunchDays ?? 0) missing punch">@for (var i = 0; i < Math.Min(cur?.LateDays ?? 0, 24); i++) { <i></i> }</span></td>
-                                        <td><span class="dots p" title="@(cur?.UniqueProjects ?? 0) projects">@for (var i = 0; i < Math.Min(cur?.UniqueProjects ?? 0, 12); i++) { <i></i> }</span></td>
-                                        <td>
-                                            @if (r.Peer is { } pr)
-                                            {
-                                                <span class="peer" title="Collaboration @pr[0].ToString("0.0", Inv), communication @pr[1].ToString("0.0", Inv), reliability @pr[2].ToString("0.0", Inv), technical help @pr[3].ToString("0.0", Inv) (@r.PeerCount reviews)">@foreach (var v in pr) { <i style="height:@P(v / 5m)"></i> }</span>
-                                            }
-                                        </td>
-                                        <td>@Score(r.Know)</td>
-                                        <td><div class="cells m">@foreach (var w in _weeks) { var b = r.Load.GetValueOrDefault(w, 0); <i class="@LoadQ(b)" title="@w.ToString("dd MMM", Inv): @r.LoadTip.GetValueOrDefault(w, "nothing planned")"></i> }</div></td>
-                                    </tr>
+                                    var c = m.Cell(p);
+                                    <span class="@c.Cls" title="@p.Name &middot; @m.Label: @c.Tip">@c.Text</span>
                                 }
-                            </tbody>
-                        </table>
+                            }
+                        </div>
                     </div>
                     <div class="key">
-                        <span><i class="q1"></i><i class="q2"></i><i class="q3"></i><i class="q4"></i><i class="q5"></i>Utilisation 0&ndash;100%</span>
-                        <span><i class="c-b"></i>Billable</span><span><i class="c-n"></i>Non-billable</span><span><i class="c-t"></i>Training</span>
-                        <span><i style="background:var(--p1)"></i>Collaboration</span><span><i style="background:var(--p2)"></i>Communication</span><span><i style="background:var(--p5)"></i>Reliability</span><span><i style="background:var(--p3)"></i>Technical help</span>
-                        <span><i class="q2"></i>Light</span><span><i class="ok"></i>Healthy</span><span><i class="mid"></i>Stretched</span><span><i class="low"></i>Over</span>
+                        <span><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><i class="a5"></i>Low &rarr; high</span>
+                        <span><i class="tg"></i>Good</span><span><i class="ty"></i>Watch</span><span><i class="tr"></i>Poor</span><span><i class="e0"></i>None</span>
                     </div>
                 }
             </section>
 
             <section class="pn w8">
-                <header><h2>Team hours</h2><span>@_trend.Count months</span></header>
+                <header><h2>Team hours</h2><span>@(_trend.Count > 0 ? $"{_trend[0].Month:MMM yyyy} – {_trend[^1].Month:MMM yyyy}" : "")</span></header>
                 @if (_trend.Count == 0) { <p class="none">No monthly data.</p> }
                 else
                 {
-                    var tmax = _trend.Max(t => Math.Max(t.Comp, t.B + t.N + t.T));
+                    var tmax = _trend.Max(t => t.B + t.N + t.T);
                     <div class="trend">
                         @foreach (var t in _trend)
                         {
                             var tot = t.B + t.N + t.T;
-                            <div title="@t.Month.ToString("MMM yyyy", Inv): billable @t.B.ToString("N0", Inv) h, non-billable @t.N.ToString("N0", Inv) h, training @t.T.ToString("N0", Inv) h, expected @t.Comp.ToString("N0", Inv) h, utilisation @t.Util.ToString("0", Inv)%">
+                            <div title="@t.Month.ToString("MMM yyyy", Inv): billable @t.B.ToString("N0", Inv) h, non-billable @t.N.ToString("N0", Inv) h, training @t.T.ToString("N0", Inv) h, utilisation @t.Util.ToString("0", Inv)%">
                                 <span class="st" style="height:@P(tmax == 0 ? 0 : tot / tmax)">
                                     @if (t.B > 0) { <i class="c-b" style="height:@P(t.B / tot)"></i> }
                                     @if (t.N > 0) { <i class="c-n" style="height:@P(t.N / tot)"></i> }
@@ -192,28 +139,28 @@
                 }
             </section>
 
-            <section class="pn">
+            <section class="pn w4">
                 <header><h2>Peer reviews</h2><span>@_peerLabel</span></header>
                 @if (_pmPeople.Count == 0) { <p class="none">No peer reviews.</p> }
                 else
                 {
                     <div class="pm" style="grid-template-columns: 22px repeat(@_pmPeople.Count, minmax(0, 1fr))">
-                        <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials</span> }
+                        <span></span>@foreach (var s in _pmPeople) { <span title="@s.Name">@s.Initials[0]</span> }
                         @foreach (var rv in _pmPeople)
                         {
                             <span title="@rv.Name">@rv.Initials</span>
                             @foreach (var s in _pmPeople)
                             {
                                 var v = _pm.GetValueOrDefault((rv.Id, s.Id), -1m);
-                                <i class="@(v < 0 ? "q0" : PeerQ(v))" title="@(v < 0 ? "" : $"{rv.Name} → {s.Name}: {v:0.0}")"></i>
+                                <i class="@(v < 0 ? "e0" : v < 3 ? "tr" : v < 4 ? "ty" : v < 4.5m ? "a3" : "a5")" title="@(v < 0 ? "" : $"{rv.Name} → {s.Name}: {v:0.0}")"></i>
                             }
                         }
                     </div>
-                    <div class="key"><span>Reviewer &darr; &middot; reviewed &rarr;</span><span><i class="q1"></i><i class="q3"></i><i class="q5"></i>1&ndash;5</span></div>
+                    <div class="key"><span>Reviewer &darr; reviewed &rarr;</span><span><i class="tr"></i>&lt;3</span><span><i class="ty"></i>3&ndash;4</span><span><i class="a3"></i><i class="a5"></i>4&ndash;5</span></div>
                 }
             </section>
 
-            <section class="pn w8">
+            <section class="pn w6 r2">
                 <header><h2>Projects</h2><a href="/gantt">Gantt</a></header>
                 @if (_tl.Count == 0) { <p class="none">No planned projects.</p> }
                 else
@@ -233,21 +180,21 @@
                             </a>
                         }
                     </div>
-                    <div class="key"><span><i class="h-r"></i>At risk</span><span><i class="h-a"></i>Moderate</span><span><i class="h-g"></i>On track</span><span><i style="background:repeating-linear-gradient(-45deg,var(--red) 0 2px,transparent 2px 5px)"></i>Forecast overrun</span><span><i style="background:var(--accent);width:2px"></i>Today</span></div>
+                    <div class="key"><span><i class="h-r"></i>At risk</span><span><i class="h-a"></i>Moderate</span><span><i class="h-g"></i>On track</span><span><i style="background:repeating-linear-gradient(-45deg,var(--red) 0 2px,transparent 2px 5px)"></i>Overrun</span><span><i style="background:var(--accent);width:2px"></i>Today</span></div>
                 }
             </section>
 
             <section class="pn">
                 <header><h2>Alerts</h2><a href="/alerts">All</a></header>
                 <div class="mx">
-                    <span></span><span>Critical</span><span>Serious</span><span>Warning</span><span>Info</span>
+                    <span></span><span>Crit</span><span>Serious</span><span>Warn</span><span>Info</span>
                     @foreach (var area in _areas)
                     {
                         <span class="l">@area.Name</span>
                         @for (var sev = 3; sev >= 0; sev--)
                         {
                             var n = _matrix.GetValueOrDefault((area.Name, sev));
-                            <a class="@(n > 0 ? "s" + sev : "e")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
+                            <a class="@(n == 0 ? "e0" : sev >= 2 ? "tr" : sev == 1 ? "ty" : "a2")" href="@area.Href" aria-label="@area.Name @n">@(n > 0 ? n : "")</a>
                         }
                     }
                 </div>
@@ -262,7 +209,7 @@
                         @foreach (var d in _drives)
                         {
                             <span class="n" title="@d.Host @d.Drive">@d.Host @d.Drive</span>
-                            <span class="tr"><i class="@(d.Free < 0.1m ? "low" : d.Free < 0.2m ? "mid" : "q4")" style="width:@P(1 - d.Free)"></i></span>
+                            <span class="bar"><i class="@(d.Free < 0.1m ? "low" : d.Free < 0.2m ? "mid" : "c-b")" style="width:@P(1 - d.Free)"></i></span>
                             <span class="v">@((d.Free * 100).ToString("0", Inv))%</span>
                         }
                     </div>
@@ -271,19 +218,13 @@
 
             <section class="pn">
                 <header><h2>Module cover</h2><a href="/training">Training</a></header>
-                @if (_cover.Sum(c => c.N) == 0) { <p class="none">No modules.</p> }
-                else
-                {
-                    var cmax = _cover.Max(c => c.N);
-                    <div class="hb">@foreach (var c in _cover) { <span class="n">@c.Label</span><span class="tr"><i class="@c.Cls" style="width:@P(cmax == 0 ? 0 : (decimal)c.N / cmax)"></i></span><span class="v">@c.N</span> }</div>
-                }
+                @{ var cmax = _cover.Count == 0 ? 0 : _cover.Max(c => c.N); }
+                <div class="hb">@foreach (var c in _cover) { <span class="n">@c.Label</span><span class="bar"><i class="@c.Cls" style="width:@P(cmax == 0 ? 0 : (decimal)c.N / cmax)"></i></span><span class="v">@c.N</span> }</div>
             </section>
 
             <section class="pn">
                 <header><h2>Risks and tickets</h2><a href="/register">Register</a></header>
-                <div class="hb">
-                    @foreach (var r in _register) { <span class="n">@r.Label</span><span class="tr"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }
-                </div>
+                <div class="hb">@foreach (var r in _register) { <span class="n">@r.Label</span><span class="bar"><i class="@r.Cls" style="width:@P(_registerMax == 0 ? 0 : (decimal)r.N / _registerMax)"></i></span><span class="v">@r.N</span> }</div>
             </section>
         </div>
     }
@@ -291,11 +232,11 @@
 
 @code {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
-    private sealed record Perf(decimal ComplianceHours, decimal BillableHours, decimal NonBillableHours, decimal TrainingHours, decimal TimesheetCompletionScore,
-        decimal AttendanceDisciplineScore, int LateDays, int MissingPunchDays, int UniqueProjects);
-    private sealed record Row(int Id, string Name, string Initials, Dictionary<DateOnly, decimal> Util, Perf? Latest, decimal[]? Peer, int PeerCount, decimal? Know,
-        Dictionary<DateOnly, int> Load, Dictionary<DateOnly, string> LoadTip);
-    private sealed record TrendM(DateOnly Month, decimal B, decimal N, decimal T, decimal Comp, decimal Util);
+    private sealed record Eng(int Id, string Name, string Initials, decimal? Util, decimal? Billable, decimal? Training, decimal? Timesheet, decimal? Attendance,
+        int? Late, int? Projects, decimal? Peer, decimal? Know, decimal? Load);
+    private sealed record HCell(string Cls, string Text, string Tip);
+    private sealed record Metric(string Label, Func<Eng, HCell> Cell);
+    private sealed record TrendM(DateOnly Month, decimal B, decimal N, decimal T, decimal Util);
     private sealed record Who(int Id, string Name, string Initials);
     private sealed record TlRow(int Id, string No, DateOnly Start, DateOnly End, DateOnly? Forecast, decimal Progress, string Cls, string Tip);
     private sealed record Area(string Name, string Href);
@@ -304,8 +245,7 @@
 
     private CommandCenter? _cc;
     private DateOnly _month0, _t0, _t1;
-    private List<DateOnly> _months = [], _weeks = [];
-    private List<Row> _roster = [];
+    private List<Eng> _team = [];
     private List<TrendM> _trend = [];
     private List<Who> _pmPeople = [];
     private Dictionary<(int, int), decimal> _pm = [];
@@ -318,29 +258,36 @@
     private List<Part> _cover = [], _register = [];
     private int _registerMax;
 
+    private static readonly HCell None = new("e0", "", "no data");
+    private static HCell Ramp(decimal? v, decimal max, string fmt, string unit = "") =>
+        v is not { } x ? None : x <= 0 ? new("e0", "0", "0" + unit)
+        : new("a" + Math.Clamp((int)Math.Ceiling(x / max * 5), 1, 5), x.ToString(fmt, Inv), x.ToString(fmt, Inv) + unit);
+    private static HCell Rag(decimal? v, decimal good, decimal watch, string fmt) =>
+        v is not { } x ? None : new(x >= good ? "tg" : x >= watch ? "ty" : "tr", x.ToString(fmt, Inv), x.ToString(fmt, Inv));
+    private static HCell Bad(int? v, int watch, int poor) =>
+        v is not { } x ? None : x == 0 ? new("e0", "0", "0") : new(x >= poor ? "tr" : x >= watch ? "ty" : "a1", x.ToString(Inv), x.ToString(Inv));
+
+    private readonly List<Metric> _metrics =
+    [
+        new("Utilisation %", e => Ramp(e.Util, 100, "0", "%")),
+        new("Billable %", e => Ramp(e.Billable, 100, "0", "%")),
+        new("Training h", e => Ramp(e.Training, 40, "0", " h")),
+        new("Timesheet", e => Rag(e.Timesheet, 85, 60, "0")),
+        new("Attendance", e => Rag(e.Attendance, 85, 60, "0")),
+        new("Late days", e => Bad(e.Late, 2, 5)),
+        new("Projects", e => Ramp(e.Projects, 6, "0")),
+        new("Peer rating", e => Rag(e.Peer, 4, 3, "0.0")),
+        new("Knowledge %", e => Rag(e.Know, 70, 40, "0")),
+        new("Load, 4 wks %", e => e.Load is not { } l ? None : l <= 0 ? new("e0", "0", "nothing planned") : new(l > 100 ? "tr" : l > 85 ? "ty" : "a" + Math.Clamp((int)Math.Ceiling(l / 20), 1, 5), l.ToString("0", Inv), l.ToString("0", Inv) + "%")),
+    ];
+
     private static string P(decimal v) => (Math.Clamp(v, 0m, 1m) * 100).ToString("0.##", Inv) + "%";
     private decimal Pos(DateOnly d) => (decimal)(d.DayNumber - _t0.DayNumber) / Math.Max(1, _t1.DayNumber - _t0.DayNumber);
-    private static string UtilQ(decimal u) => u <= 0 ? "q0" : u < 20 ? "q1" : u < 40 ? "q2" : u < 60 ? "q3" : u < 80 ? "q4" : "q5";
-    private static string PeerQ(decimal v) => v < 2 ? "q1" : v < 3 ? "q2" : v < 3.75m ? "q3" : v < 4.5m ? "q4" : "q5";
-    private static string LoadQ(int band) => band switch { 1 => "q2", 2 => "ok", 3 => "mid", 4 => "low", _ => "q0" };
     private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
     private static string AreaOf(string kind) => kind switch
     {
         "project" or "task" => "Delivery", "person" or "demand" or "skill" => "People", "host" => "Servers",
         "scenario" or "movement" => "Decisions", "doubt" => "Training", _ => "Delivery",
-    };
-
-    private static RenderFragment Score(decimal? v) => b =>
-    {
-        if (v is null) return;
-        var s = v.Value;
-        b.OpenElement(0, "span"); b.AddAttribute(1, "class", "sc");
-        b.OpenElement(2, "span"); b.OpenElement(3, "i");
-        b.AddAttribute(4, "class", s >= 85 ? "ok" : s >= 60 ? "mid" : "low");
-        b.AddAttribute(5, "style", $"width:{P(s / 100m)}");
-        b.CloseElement(); b.CloseElement();
-        b.OpenElement(6, "em"); b.AddContent(7, s.ToString("0", Inv)); b.CloseElement();
-        b.CloseElement();
     };
 
     protected override async Task LoadAsync()
@@ -360,41 +307,30 @@
             .GroupBy(t => t.ProjectId).Select(g => new { g.Key, S = g.Min(t => t.PlannedStart), E = g.Max(t => t.PlannedFinish) }).ToDictionaryAsync(x => x.Key, x => (S: x.S!.Value, E: x.E)));
 
         static DateOnly M(int y, int m) => new(y, m, 1);
-        var latest = perf.Count == 0 ? M(asOf.Year, asOf.Month) : perf.Select(p => M(p.Year, p.Month)).Max();
-        _month0 = latest;
-        _months = Enumerable.Range(0, 12).Select(i => latest.AddMonths(i - 11)).ToList();
-        var byPerson = perf.GroupBy(p => p.PersonId).ToDictionary(g => g.Key, g => g.ToList());
-
-        var peerBy = reviews.Where(r => r.Collaboration + r.Communication + r.Reliability + r.TechnicalHelp > 0)
-            .GroupBy(r => r.SubjectPersonId).ToDictionary(g => g.Key, g => { var last = g.Max(r => r.Year * 100 + r.Month); return g.Where(r => r.Year * 100 + r.Month == last).ToList(); });
-
-        var know = knowledge.ToDictionary(k => k.PersonId, k => k.KnowFraction * 100);
-        var load = _cc.LoadNext8Weeks;
-        _weeks = load.Select(r => r.WeekStart).Distinct().OrderBy(d => d).ToList();
-        var loadBy = load.GroupBy(r => r.PersonId).ToDictionary(g => g.Key, g => g.ToList());
-
-        _roster = people.Select(p =>
-        {
-            var rows = byPerson.GetValueOrDefault(p.Id) ?? [];
-            var util = rows.ToDictionary(r => M(r.Year, r.Month), r => r.Utilization);
-            var cur = rows.FirstOrDefault(r => r.Year == latest.Year && r.Month == latest.Month);
-            Perf? perfNow = cur is null ? null : new Perf(cur.ComplianceHours, cur.BillableHours, cur.NonBillableHours, cur.TrainingHours, cur.TimesheetCompletionScore,
-                cur.AttendanceDisciplineScore, cur.LateDays, cur.MissingPunchDays, cur.UniqueProjects);
-            decimal[]? peer = null; var pc = 0;
-            if (peerBy.TryGetValue(p.Id, out var pr) && pr.Count > 0)
-            {
-                pc = pr.Count;
-                peer = [pr.Average(x => x.Collaboration), pr.Average(x => x.Communication), pr.Average(x => x.Reliability), pr.Average(x => x.TechnicalHelp)];
-            }
-            var lr = loadBy.GetValueOrDefault(p.Id) ?? [];
-            var bands = lr.ToDictionary(r => r.WeekStart, r => r.AllocatedHours == 0 ? 0 : r.Band switch { LoadBand.UnderUsed => 1, LoadBand.Healthy => 2, LoadBand.Stretched => 3, _ => 4 });
-            var tips = lr.Where(r => r.AllocatedHours > 0).ToDictionary(r => r.WeekStart, r => $"{r.AllocatedHours:0} h of {r.CapacityHours:0} h");
-            return new Row(p.Id, p.FullName, Initials(p.FullName), util, perfNow, peer, pc, know.TryGetValue(p.Id, out var kf) ? kf : null, bands, tips);
-        }).ToList();
-
         var active = people.Select(p => p.Id).ToHashSet();
-        _trend = perf.Where(p => active.Contains(p.PersonId)).GroupBy(p => M(p.Year, p.Month)).OrderBy(g => g.Key).TakeLast(18)
-            .Select(g => new TrendM(g.Key, g.Sum(x => x.BillableHours), g.Sum(x => x.NonBillableHours), g.Sum(x => x.TrainingHours), g.Sum(x => x.ComplianceHours),
+        var latest = perf.Count == 0 ? M(asOf.Year, asOf.Month) : perf.Where(p => active.Contains(p.PersonId)).Select(p => M(p.Year, p.Month)).DefaultIfEmpty(M(asOf.Year, asOf.Month)).Max();
+        _month0 = latest;
+        var cur = perf.Where(p => p.Year == latest.Year && p.Month == latest.Month).GroupBy(p => p.PersonId).ToDictionary(g => g.Key, g => g.First());
+
+        var peerBy = reviews.Where(r => r.Collaboration + r.Communication + r.Reliability + r.TechnicalHelp > 0).GroupBy(r => r.SubjectPersonId)
+            .ToDictionary(g => g.Key, g => { var last = g.Max(r => r.Year * 100 + r.Month); return g.Where(r => r.Year * 100 + r.Month == last).Average(r => (r.Collaboration + r.Communication + r.Reliability + r.TechnicalHelp) / 4); });
+        var know = knowledge.ToDictionary(k => k.PersonId, k => k.KnowFraction * 100);
+        var weeks = _cc.LoadNext8Weeks.Select(r => r.WeekStart).Distinct().OrderBy(d => d).Take(4).ToHashSet();
+        var load = _cc.LoadNext8Weeks.Where(r => weeks.Contains(r.WeekStart)).GroupBy(r => r.PersonId)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.CapacityHours) == 0 ? 0 : g.Sum(r => r.AllocatedHours) / g.Sum(r => r.CapacityHours) * 100);
+
+        _team = people.Select(p =>
+        {
+            cur.TryGetValue(p.Id, out var m);
+            return new Eng(p.Id, p.FullName, Initials(p.FullName), m?.Utilization,
+                m is null || m.ComplianceHours <= 0 ? null : m.BillableHours / m.ComplianceHours * 100, m?.TrainingHours,
+                m?.TimesheetCompletionScore, m?.AttendanceDisciplineScore, m?.LateDays, m?.UniqueProjects,
+                peerBy.TryGetValue(p.Id, out var pr) ? pr : null, know.TryGetValue(p.Id, out var k) ? k : null, load.TryGetValue(p.Id, out var l) ? l : null);
+        }).OrderByDescending(e => e.Util ?? -1).ThenBy(e => e.Name).ToList();
+
+        _trend = perf.Where(p => active.Contains(p.PersonId)).GroupBy(p => M(p.Year, p.Month)).OrderBy(g => g.Key)
+            .Where(g => g.Sum(x => x.BillableHours + x.NonBillableHours + x.TrainingHours) > 0).TakeLast(12)
+            .Select(g => new TrendM(g.Key, g.Sum(x => x.BillableHours), g.Sum(x => x.NonBillableHours), g.Sum(x => x.TrainingHours),
                 g.Where(x => x.ComplianceHours > 0).Select(x => x.Utilization).DefaultIfEmpty(0).Average())).ToList();
 
         var recent = reviews.Select(r => r.Year * 100 + r.Month).Distinct().OrderByDescending(x => x).Take(3).ToHashSet();
@@ -433,14 +369,14 @@
         _cover =
         [
             new("Nobody", coverage.Count(c => c.KnownBy == 0), "low"), new("1 person", coverage.Count(c => c.KnownBy == 1), "mid"),
-            new("2 people", coverage.Count(c => c.KnownBy == 2), "q3"), new("3–5", coverage.Count(c => c.KnownBy is >= 3 and <= 5), "q4"), new("6+", coverage.Count(c => c.KnownBy >= 6), "ok"),
+            new("2 people", coverage.Count(c => c.KnownBy == 2), "c-n"), new("3–5", coverage.Count(c => c.KnownBy is >= 3 and <= 5), "c-b"), new("6+", coverage.Count(c => c.KnownBy >= 6), "ok"),
         ];
 
         int Age(DateOnly? d) => d is null ? 999 : asOf.DayNumber - d.Value.DayNumber;
         _register =
         [
             new("Risks high", risks.Count(r => r.Severity is "High" or "Critical"), "low"), new("Risks other", risks.Count(r => r.Severity is not ("High" or "Critical")), "mid"),
-            new("Tickets < 30 d", tickets.Count(t => Age(t.RaisedOn) <= 30), "q4"), new("Tickets 30–90 d", tickets.Count(t => Age(t.RaisedOn) is > 30 and <= 90), "mid"), new("Tickets > 90 d", tickets.Count(t => Age(t.RaisedOn) > 90), "low"),
+            new("Tickets < 30 d", tickets.Count(t => Age(t.RaisedOn) <= 30), "c-b"), new("Tickets 30–90 d", tickets.Count(t => Age(t.RaisedOn) is > 30 and <= 90), "mid"), new("Tickets > 90 d", tickets.Count(t => Age(t.RaisedOn) > 90), "low"),
         ];
         _registerMax = _register.Max(r => r.N);
     }
