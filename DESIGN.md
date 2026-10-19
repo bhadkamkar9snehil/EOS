@@ -40,9 +40,20 @@ typography:
     fontSize: "11px"
     fontWeight: 500
     letterSpacing: "0.06em"
+  caption:
+    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, sans-serif"
+    fontSize: "12px"
+    fontWeight: 600
+    lineHeight: 1.3
+  dense:
+    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.4
 rounded:
   control: "8px"
   panel: "14px"
+  bar: "6px"
   pill: "999px"
 spacing:
   sm: "8px"
@@ -66,6 +77,10 @@ components:
 ---
 
 # Design System: EOS V2
+
+## Theme and grid
+
+Light is the default; dark is a token swap (`:root[data-theme="dark"]` in eos.css) chosen from the rail or the system setting. Components use tokens only, never hex, so both themes stay in step. The shared data grid (`eos-grid.css`, `EosGrid.razor`) sets table text at the `dense` 13px step and column headers at `caption` 12px, wraps header names in full, and shows editable numbers in the accent ink so inputs read differently from calculated values.
 
 ## Overview
 

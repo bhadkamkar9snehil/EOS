@@ -156,3 +156,9 @@ window.eosFocusRow = (id) => {
   new MutationObserver(() => arm(document)).observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener("DOMContentLoaded", () => arm(document));
 })();
+
+window.eosToggleTheme = () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("eos.theme", next); } catch { }
+};

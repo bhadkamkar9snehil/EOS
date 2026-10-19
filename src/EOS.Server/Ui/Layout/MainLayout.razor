@@ -25,6 +25,7 @@
         <NavLink class="rail-link" href="/reports" data-label="Reports" aria-label="Reports"><Icon Name="file" /></NavLink>
         <NavLink class="rail-link" href="/imports" data-label="Imports" aria-label="Imports"><Icon Name="upload" /></NavLink>
         <span class="rail-spacer"></span>
+        <button type="button" class="rail-link rail-theme" data-label="Light or dark" aria-label="Switch between light and dark theme" onclick="eosToggleTheme()"><span class="i-moon"><Icon Name="moon" /></span><span class="i-sun"><Icon Name="sun" /></span></button>
         <NavLink class="rail-link" href="/settings" data-label="Settings" aria-label="Settings"><Icon Name="settings" /></NavLink>
         <form class="rail-user" method="post" action="/auth/logout" onsubmit="eosSignOut(event)">
             <button type="submit" title="Sign out @_user" aria-label="Sign out"><span>@Initials(_user)</span></button>

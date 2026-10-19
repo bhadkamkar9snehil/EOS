@@ -54,6 +54,27 @@ public sealed class SkillRatingService(EosDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task ClearRatingAsync(int personId, int skillId, string actor, string? reason, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(actor)) throw new SkillRatingException("A rating change needs an actor.");
+        if (string.IsNullOrWhiteSpace(reason)) throw new SkillRatingException("Clearing a rating needs a reason.");
+        var current = await db.PersonSkills.SingleOrDefaultAsync(x => x.PersonId == personId && x.SkillId == skillId, ct);
+        if (current is null) return;
+        var old = current.Rating;
+        db.PersonSkills.Remove(current);
+        db.SkillTransactions.Add(new SkillTransaction
+        {
+            PersonId = personId, SkillId = skillId, Kind = SkillTransactionKind.ManualAdjustment, OldRating = old, NewRating = null,
+            Reason = reason, ChangedBy = actor, AtUtc = DateTime.UtcNow, Source = "manual",
+        });
+        db.AuditEvents.Add(new AuditEvent
+        {
+            AtUtc = DateTime.UtcNow, Actor = actor, Action = "skill.rate", SubjectKind = "person",
+            SubjectId = personId.ToString(), Detail = $"skill {skillId}: {old} -> cleared; {reason}",
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task AddEvidenceNoteAsync(int personId, int skillId, string note, string actor, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(note)) throw new SkillRatingException("An evidence note cannot be empty.");

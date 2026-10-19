@@ -2,71 +2,106 @@
 @inherits EosPage
 @using EOS.Infrastructure.Persistence
 @using EOS.Infrastructure.Skills
+@using EOS.Server.Ui.Components
 <PageTitle>Skills · EOS</PageTitle>
 
 <div class="page">
     <div class="page-head">
-        <div><h1>Skills matrix</h1></div>
-        <div class="actions"><input type="search" placeholder="Filter engineers…" @bind="_search" @bind:event="oninput" style="width:220px" /></div>
+        <div>
+            <h1>Skills matrix</h1>
+            <p class="muted">Click a cell and type a rating, or paste a range from Excel. Ratings change only by hand and every change is recorded.</p>
+        </div>
     </div>
 
-    @if (Loading && _people is null) { <p class="muted">Loading…</p> }
+    @if (Loading && _rows is null) { <p class="muted">Loading…</p> }
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
     else if (_skills.Count == 0) { <div class="empty">No skills yet. Import the agility workbook under Imports.</div> }
     else
     {
-        @if (_edit is { } e)
-        {
-            <div class="plate"><h2>@_people!.First(p => p.Id == e.Person).Name · @_skills.First(s => s.Id == e.Skill).Name</h2>
-                <div class="form-row">
-                    <div class="field"><label>New rating</label><select @bind="_rating">@for (var i = 0; i <= _levels; i++) { <option value="@i">@i</option> }</select></div>
-                    <div class="field"><label>Reason</label><input @bind="_reason" style="width:300px" /></div>
-                    <button @onclick="Save">Save</button><button class="secondary" @onclick="() => _edit = null">Cancel</button>
-                </div></div>
-        }
-        <div class="plate"><div class="tablewrap" style="max-height:72vh;overflow:auto"><table class="grid freeze">
-            <thead><tr><th style="position:sticky;left:0">Engineer</th>@foreach (var s in _skills) { <th class="num" title="@s.Name">@Short(s.Name, 12)</th> }</tr></thead>
-            <tbody>
-            @foreach (var p in _people!.Where(p => _search.Length == 0 || p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))
-            {
-                <tr><td style="position:sticky;left:0;background:var(--ground)"><a href="/people/@p.Id">@p.Name</a></td>
-                @foreach (var s in _skills)
-                {
-                    var r = _ratings.GetValueOrDefault((p.Id, s.Id), -1);
-                    <td class="num clickable" @onclick="() => Start(p.Id, s.Id, r)">@if (r < 0) { <span class="heat none">·</span> } else { <span class="heat r@(r)">@r</span> }</td>
-                }</tr>
-            }
-            </tbody></table></div></div>
+        <EosGrid Id="skills-matrix" Columns="_columns" Rows="_rows!" Commit="CommitAsync" Height="calc(100vh - 190px)"
+                 Options="@(new GridOptions { Density = "cozy", Groupable = true })" />
     }
 </div>
 
 @code {
-    private List<(int Id, string Name)>? _people;
-    private List<(int Id, string Name)> _skills = [];
+    private const string EditReason = "Edited in skills matrix";
+    private List<GridRow>? _rows;
+    private List<GridColumn> _columns = [];
+    private List<(int Id, string Name, string? Category, string? Description)> _skills = [];
     private Dictionary<(int, int), int> _ratings = [];
-    private (int Person, int Skill)? _edit;
-    private int _rating, _levels = 5; private string _reason = "", _search = "";
+    private int _levels = 5;
 
     protected override async Task LoadAsync()
     {
         var asOf = AsOf;
         var people = await Q(sp => sp.GetRequiredService<EosDbContext>().People.AsNoTracking().Where(p => p.IsActive).OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }).ToListAsync());
-        _people = people.Select(p => (p.Id, p.FullName)).ToList();
-        var skills = await Q(sp => sp.GetRequiredService<EosDbContext>().Skills.AsNoTracking().OrderBy(s => s.SortOrder).ThenBy(s => s.Name).Select(s => new { s.Id, s.Name }).ToListAsync());
-        _skills = skills.Select(s => (s.Id, s.Name)).ToList();
+        var skills = await Q(sp => sp.GetRequiredService<EosDbContext>().Skills.AsNoTracking().OrderBy(s => s.SortOrder).ThenBy(s => s.Name).Select(s => new { s.Id, s.Name, s.Category, s.Description }).ToListAsync());
+        _skills = skills.Select(s => (s.Id, s.Name, s.Category, s.Description)).ToList();
         var ratings = await Q(sp => sp.GetRequiredService<EosDbContext>().PersonSkills.AsNoTracking().Select(r => new { r.PersonId, r.SkillId, r.Rating }).ToListAsync());
         _ratings = ratings.ToDictionary(r => (r.PersonId, r.SkillId), r => r.Rating);
         var resolver = await Q(sp => sp.GetRequiredService<SettingsStore>().LoadResolverAsync());
         _levels = resolver.Get<int>(EOS.Domain.Settings.SettingKeys.SkillLevelCount, EOS.Domain.Settings.SettingsResolver.Chain(), asOf);
+
+        _columns =
+        [
+            new GridColumn { Key = "name", Title = "Engineer", Type = "link", Href = "/people/{id}", Pin = "left", Width = 210, Editable = false, RowLabel = true },
+            new GridColumn { Key = "avg", Title = "Average", Type = "number", Decimals = 1, Pin = "left", Width = 78, Editable = false, Hint = "Average of the skills rated for this engineer", Agg = "avg" },
+            new GridColumn { Key = "rated", Title = "Rated", Type = "int", Pin = "left", Width = 66, Editable = false, Hint = "How many skills have a rating", Agg = "sum" },
+            .. _skills.Select(s => new GridColumn
+            {
+                Key = SkillKey(s.Id), Title = s.Name, Type = "rating", Width = 96, Min = 1, Max = _levels, Band = s.Category ?? "Skills",
+                Hint = s.Description, Agg = "avg", Groupable = false,
+            }),
+        ];
+        _rows = people.Select(p => BuildRow(p.Id, p.FullName)).ToList();
     }
 
-    private void Start(int person, int skill, int current) { _edit = (person, skill); _rating = Math.Max(current, 0); _reason = ""; }
-    private async Task Save()
+    private static string SkillKey(int skillId) => "s" + skillId;
+
+    private GridRow BuildRow(int personId, string name)
     {
-        if (_edit is not { } e) return;
-        var rating = _rating; var reason = _reason;
-        await Act((sp, a) => sp.GetRequiredService<SkillRatingService>().SetRatingAsync(e.Person, e.Skill, rating, a, reason), "Rating saved.");
-        _edit = null;
+        var cells = new Dictionary<string, object?> { ["name"] = name };
+        foreach (var s in _skills) cells[SkillKey(s.Id)] = _ratings.TryGetValue((personId, s.Id), out var r) ? r : null;
+        var (avg, count) = Summary(personId);
+        cells["avg"] = avg;
+        cells["rated"] = count;
+        return new GridRow { Id = personId, Cells = cells };
     }
-    private static string Short(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+
+    private (double? Avg, int Count) Summary(int personId)
+    {
+        var mine = _skills.Select(s => _ratings.TryGetValue((personId, s.Id), out var r) ? (int?)r : null).Where(r => r is not null).Select(r => r!.Value).ToList();
+        return (mine.Count == 0 ? null : mine.Average(), mine.Count);
+    }
+
+    private async Task<GridCommitResult> CommitAsync(IReadOnlyList<GridEdit> edits)
+    {
+        var result = new GridCommitResult();
+        var touched = new HashSet<int>();
+        foreach (var e in edits)
+        {
+            var person = e.RowInt;
+            if (!e.Key.StartsWith('s') || !int.TryParse(e.Key.AsSpan(1), out var skill)) { result.Reject(e, "That column cannot be edited."); continue; }
+            try
+            {
+                await using var scope = Scopes.CreateAsyncScope();
+                var svc = scope.ServiceProvider.GetRequiredService<SkillRatingService>();
+                if (e.ValueInt is { } rating) await svc.SetRatingAsync(person, skill, rating, Actor, EditReason);
+                else await svc.ClearRatingAsync(person, skill, Actor, EditReason);
+                if (e.ValueInt is { } kept) _ratings[(person, skill)] = kept; else _ratings.Remove((person, skill));
+                touched.Add(person);
+            }
+            catch (Exception ex) when (IsUserError(ex))
+            {
+                result.Reject(e, ex.Message, e.OldInt);
+            }
+        }
+        foreach (var person in touched)
+        {
+            var (avg, count) = Summary(person);
+            result.Update(person, "avg", avg);
+            result.Update(person, "rated", count);
+        }
+        return result;
+    }
 }

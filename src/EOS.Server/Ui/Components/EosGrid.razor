@@ -1,0 +1,59 @@
+@using System.Text.Json
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="eg-host" style="height:@Height" @ref="_host"></div>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<GridColumn> Columns { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<GridRow> Rows { get; set; } = [];
+    [Parameter] public Func<IReadOnlyList<GridEdit>, Task<GridCommitResult>>? Commit { get; set; }
+    [Parameter] public GridOptions? Options { get; set; }
+    [Parameter] public string Height { get; set; } = "calc(100vh - 168px)";
+
+    private ElementReference _host;
+    private DotNetObjectReference<EosGrid>? _ref;
+    private bool _created;
+    private IReadOnlyList<GridRow>? _lastRows;
+    private IReadOnlyList<GridColumn>? _lastCols;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ref = DotNetObjectReference.Create(this);
+            var config = JsonSerializer.Serialize(new { id = Id, options = Options ?? new GridOptions(), columns = Columns, rows = Rows }, GridJson.Options);
+            await JS.InvokeVoidAsync("eosGridCreate", Id, _host, _ref, config);
+            _created = true;
+            _lastRows = Rows;
+            _lastCols = Columns;
+            return;
+        }
+        if (_created && (!ReferenceEquals(_lastRows, Rows) || !ReferenceEquals(_lastCols, Columns)))
+        {
+            _lastRows = Rows;
+            _lastCols = Columns;
+            await JS.InvokeVoidAsync("eosGridUpdate", Id,
+                JsonSerializer.Serialize(Columns, GridJson.Options), JsonSerializer.Serialize(Rows, GridJson.Options));
+        }
+    }
+
+    [JSInvokable]
+    public async Task<GridCommitResult> OnCommit(GridEdit[] edits)
+    {
+        if (Commit is null)
+        {
+            var none = new GridCommitResult();
+            foreach (var e in edits) none.Reject(e, "This grid is read-only.");
+            return none;
+        }
+        return await Commit(edits);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _ref?.Dispose();
+        try { await JS.InvokeVoidAsync("eosGridDispose", Id); } catch (JSDisconnectedException) { } catch (InvalidOperationException) { }
+    }
+}

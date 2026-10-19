@@ -1,0 +1,12 @@
+{
+  "name": "eos-grid-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Unit and DOM tests for the shared EOS grid (no browser needed)",
+  "scripts": {
+    "test": "node --test eos-grid-model.test.js eos-grid-dom.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

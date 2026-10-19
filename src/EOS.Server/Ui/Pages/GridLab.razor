@@ -1,0 +1,139 @@
+@page "/grid-lab"
+@inherits EosPage
+@using EOS.Server.Ui.Components
+<PageTitle>Grid lab · EOS</PageTitle>
+
+<div class="page">
+    <div class="page-head">
+        <div>
+            <h1>Grid lab</h1>
+            <p class="muted">An in-memory sample that shows every column type and feature of the shared grid. Nothing here is saved to the database.</p>
+        </div>
+        <div class="actions">
+            <span class="seg" role="group" aria-label="Layout">
+                <button class="@(_tree ? "on" : "")" @onclick="() => SetTree(true)">Tree (WBS)</button>
+                <button class="@(_tree ? "" : "on")" @onclick="() => SetTree(false)">Flat, groupable</button>
+            </span>
+            <button class="secondary" @onclick="Reseed">Reset sample data</button>
+        </div>
+    </div>
+
+    <div @key="_tree">
+        <EosGrid Id="@("grid-lab-" + (_tree ? "tree" : "flat"))" Columns="_columns" Rows="_rows" Commit="CommitAsync" Height="calc(100vh - 200px)"
+                 Options="@(new GridOptions { Tree = _tree, Groupable = !_tree, Density = "cozy" })" />
+    </div>
+</div>
+
+@code {
+    private bool _tree = true;
+    private List<GridRow> _rows = [];
+    private static readonly string[] Owners = ["Aayush Patel", "Chirag Dhimmar", "Deepak Upadhyaya", "Sagar Rana", "Mahesh Udar"];
+
+    private readonly List<GridColumn> _columns =
+    [
+        new() { Key = "wbs", Title = "WBS", Width = 70, Pin = "left", Editable = false },
+        new() { Key = "name", Title = "Task name", Width = 280, Pin = "left", TreeColumn = true, RowLabel = true, Band = "Task", Nullable = false },
+        new() { Key = "owner", Title = "Owner", Type = "select", Width = 150, Band = "Task", Options = Owners.Select(o => new GridOption { Value = o, Label = o }).ToList() },
+        new() { Key = "status", Title = "Status", Type = "select", Width = 130, Band = "Task", Options =
+        [
+            new() { Value = "todo", Label = "Not started" }, new() { Value = "doing", Label = "In progress", Tone = "info" },
+            new() { Value = "done", Label = "Completed", Tone = "ok" }, new() { Value = "late", Label = "Delayed", Tone = "bad" },
+        ] },
+        new() { Key = "start", Title = "Start", Type = "date", Width = 120, Band = "Dates" },
+        new() { Key = "finish", Title = "Finish", Type = "date", Width = 120, Band = "Dates" },
+        new() { Key = "hours", Title = "Planned hours", Type = "number", Decimals = 1, Width = 100, Min = 0, Agg = "sum", Band = "Effort" },
+        new() { Key = "actual", Title = "Actual hours", Type = "number", Decimals = 1, Width = 100, Min = 0, Agg = "sum", Band = "Effort" },
+        new() { Key = "variance", Title = "Variance", Type = "number", Decimals = 1, Width = 100, Editable = false, Agg = "sum", Band = "Effort", Hint = "Actual minus planned. Calculated." },
+        new() { Key = "progress", Title = "Progress", Type = "number", Percent = true, Decimals = 0, Width = 100, Min = 0, Max = 1, Band = "Effort" },
+        new() { Key = "priority", Title = "Priority", Type = "rating", Min = 1, Max = 3, Width = 90, Band = "Flags" },
+        new() { Key = "billable", Title = "Billable", Type = "bool", Width = 80, Band = "Flags" },
+        new() { Key = "notes", Title = "Notes", Width = 260, Band = "Flags" },
+    ];
+
+    protected override Task LoadAsync() { Seed(); return Task.CompletedTask; }
+
+    private void SetTree(bool tree) { _tree = tree; }
+    private void Reseed() { Seed(); }
+
+    private void Seed()
+    {
+        var rows = new List<GridRow>();
+        var rnd = new Random(7);
+        var id = 1;
+        string[] phases = ["Design", "Build", "Test", "Deploy"];
+        var baseDate = new DateOnly(2026, 10, 5);
+        for (var p = 0; p < phases.Length; p++)
+        {
+            var pid = id++;
+            rows.Add(new GridRow { Id = pid, Cells = Cells($"{p + 1}", phases[p], null, "doing", null, null, null, null, null, null, null, false, null), Readonly = false, Locked = ["owner", "status", "start", "finish", "hours", "actual", "progress", "priority", "billable", "notes"] });
+            for (var t = 0; t < 8; t++)
+            {
+                var start = baseDate.AddDays(p * 14 + t * 2);
+                var planned = rnd.Next(4, 40);
+                var actual = rnd.Next(0, 3) == 0 ? (double?)null : Math.Round(planned * (0.6 + rnd.NextDouble()), 1);
+                rows.Add(new GridRow
+                {
+                    Id = id++, Parent = pid,
+                    Cells = Cells($"{p + 1}.{t + 1}", $"{phases[p]} task {t + 1}", Owners[rnd.Next(Owners.Length)], new[] { "todo", "doing", "done", "late" }[rnd.Next(4)],
+                        start.ToString("yyyy-MM-dd"), start.AddDays(rnd.Next(1, 6)).ToString("yyyy-MM-dd"), planned, actual, null, Math.Round(rnd.NextDouble(), 2), rnd.Next(1, 4), rnd.Next(0, 2) == 0, null),
+                });
+            }
+        }
+        Recompute(rows);
+        _rows = rows;
+    }
+
+    private static Dictionary<string, object?> Cells(string wbs, string name, string? owner, string status, string? start, string? finish, double? hours, double? actual, double? variance, double? progress, int? priority, bool billable, string? notes) =>
+        new() { ["wbs"] = wbs, ["name"] = name, ["owner"] = owner, ["status"] = status, ["start"] = start, ["finish"] = finish, ["hours"] = hours, ["actual"] = actual, ["variance"] = variance, ["progress"] = progress, ["priority"] = priority, ["billable"] = billable, ["notes"] = notes };
+
+    private static void Recompute(List<GridRow> rows)
+    {
+        foreach (var r in rows)
+        {
+            if (r.Parent is not null) { r.Cells["variance"] = r.Cells["actual"] is double a && r.Cells["hours"] is double h ? Math.Round(a - h, 1) : null; continue; }
+        }
+        foreach (var phase in rows.Where(r => r.Parent is null))
+        {
+            var kids = rows.Where(r => Equals(r.Parent, phase.Id)).ToList();
+            phase.Cells["hours"] = kids.Sum(k => k.Cells["hours"] as double? ?? 0);
+            phase.Cells["actual"] = kids.Sum(k => k.Cells["actual"] as double? ?? 0);
+            phase.Cells["variance"] = Math.Round((double)phase.Cells["actual"]! - (double)phase.Cells["hours"]!, 1);
+            phase.Cells["progress"] = kids.Count == 0 ? 0 : Math.Round(kids.Average(k => k.Cells["progress"] as double? ?? 0), 2);
+        }
+    }
+
+    private Task<GridCommitResult> CommitAsync(IReadOnlyList<GridEdit> edits)
+    {
+        var result = new GridCommitResult();
+        foreach (var e in edits)
+        {
+            var row = _rows.FirstOrDefault(r => Equals(r.Id, e.RowInt));
+            if (row is null) { result.Reject(e, "That row no longer exists."); continue; }
+            object? value = e.Key switch
+            {
+                "hours" or "actual" or "progress" => e.ValueIsNull ? null : e.Value.GetDouble(),
+                "priority" => e.ValueInt,
+                "billable" => e.Value.ValueKind == System.Text.Json.JsonValueKind.True,
+                _ => e.ValueText,
+            };
+            if (e.Key is "start" or "finish")
+            {
+                var other = e.Key == "start" ? "finish" : "start";
+                var o = row.Cells[other] as string;
+                if (value is string v && o is not null && (e.Key == "start" ? string.CompareOrdinal(v, o) > 0 : string.CompareOrdinal(v, o) < 0))
+                {
+                    result.Reject(e, e.Key == "start" ? "Start cannot be after the finish date." : "Finish cannot be before the start date.", row.Cells[e.Key]);
+                    continue;
+                }
+            }
+            row.Cells[e.Key] = value;
+        }
+        Recompute(_rows);
+        foreach (var r in _rows)
+        {
+            result.Update(r.Id, "variance", r.Cells["variance"]);
+            if (r.Parent is null) { result.Update(r.Id, "hours", r.Cells["hours"]); result.Update(r.Id, "actual", r.Cells["actual"]); result.Update(r.Id, "progress", r.Cells["progress"]); }
+        }
+        return Task.FromResult(result);
+    }
+}
