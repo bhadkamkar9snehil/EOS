@@ -22,12 +22,13 @@ const browser = process.env.EOS_E2E_BROWSER ?? installedChromium();
 
 export default defineConfig({
   testDir: './specs',
+  globalSetup: './global-setup.ts',
   timeout: 45_000,
   expect: { timeout: 8_000 },
   fullyParallel: true,
   workers: 4,
   retries: 0,
-  reporter: [['list']],
+  reporter: process.env.CI ? [['list'], ['junit', { outputFile: 'test-results/junit.xml' }]] : [['list']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     headless: true,

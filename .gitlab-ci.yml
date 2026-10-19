@@ -30,6 +30,22 @@ test:
     reports:
       junit: TestResults/*.trx
 
+test-windows:
+  stage: test
+  tags: [windows, powershell]
+  needs: []
+  variables:
+    EOS_E2E_EMPTY: "1"
+  script:
+    - .\run-tests.ps1
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths:
+      - tests/e2e/test-results/
+    reports:
+      junit: tests/e2e/test-results/junit.xml
+
 deploy:
   stage: deploy
   tags: [shell]

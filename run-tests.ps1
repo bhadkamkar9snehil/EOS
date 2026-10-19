@@ -18,7 +18,12 @@ Step "Grid unit and DOM tests" {
 if (-not $SkipE2E) {
     Step "End-to-end (Playwright)" {
         if (-not (Test-Path (Join-Path $root "tests\e2e\node_modules"))) { npm --prefix (Join-Path $root "tests\e2e") install --no-audit --no-fund }
-        Push-Location (Join-Path $root "tests\e2e"); try { npx playwright test } finally { Pop-Location }
+        Push-Location (Join-Path $root "tests\e2e")
+        try {
+            $browsers = Join-Path $env:LOCALAPPDATA "ms-playwright"
+            if (-not (Get-ChildItem $browsers -Filter "chromium-*" -ErrorAction SilentlyContinue)) { npx playwright install chromium }
+            npx playwright test
+        } finally { Pop-Location }
     }
 }
 
