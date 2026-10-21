@@ -35,6 +35,16 @@ else
             </span>
             <span class="spacer"></span>
             <input type="search" placeholder="Find a task" aria-label="Find a task" @bind="_find" @bind:event="oninput" style="width:170px" />
+            <details class="pick menu export-menu">
+                <summary class="pick-btn" aria-label="Export the full Gantt"><span class="pick-label">Export</span><Icon Name="chevron" Size="14" /></summary>
+                <div class="pick-pop export-pop" role="menu" aria-label="Export formats">
+                    <button role="menuitem" data-close @onclick='() => ExportAs("png")'><b>Image (PNG)</b><span>Whole chart, ready for slides and mail</span></button>
+                    <button role="menuitem" data-close @onclick='() => ExportAs("svg")'><b>Image (SVG)</b><span>Vector, sharp at any size</span></button>
+                    <button role="menuitem" data-close @onclick='() => ExportAs("pdf")'><b>PDF</b><span>One page, via the print dialog</span></button>
+                    <button role="menuitem" data-close @onclick='() => ExportAs("xlsx")'><b>Excel</b><span>Task table with a weekly coloured grid</span></button>
+                    <p class="export-note">Exports every row and the full date range, whatever is collapsed or scrolled out of view.</p>
+                </div>
+            </details>
         </div>
     }
     <div class="gx" id="@_id" style="@(Fit ? "" : "max-height:" + MaxHeight)">
@@ -185,6 +195,42 @@ else
     [Parameter] public int ExpandToLevel { get; set; } = int.MaxValue;
     [Parameter] public string MaxHeight { get; set; } = "72vh";
     [Parameter] public EventCallback<string?> OnSelect { get; set; }
+    [Parameter] public string ExportTitle { get; set; } = "Gantt";
+    [Inject] private UiState State { get; set; } = null!;
+
+    private async Task ExportAs(string kind)
+    {
+        try
+        {
+            var title = ExportTitle;
+            if (kind == "xlsx")
+            {
+                var bytes = GanttExport.BuildXlsx(Rows, Links, Today, title);
+                await JS.InvokeVoidAsync("eosDownload", GanttExport.FileName(title, "xlsx"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
+                State.ShowToast("Gantt exported to Excel.");
+                return;
+            }
+            var svg = GanttExport.BuildSvg(Rows, Links, Today, title, _showBaseline, _showLinks, out var w, out var h);
+            switch (kind)
+            {
+                case "svg":
+                    await JS.InvokeVoidAsync("eosDownload", GanttExport.FileName(title, "svg"), "image/svg+xml", Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(svg)));
+                    State.ShowToast("Gantt exported as SVG.");
+                    break;
+                case "png":
+                    var ok = await JS.InvokeAsync<bool>("eosSvgToPng", svg, w, h, GanttExport.FileName(title, "png"));
+                    State.ShowToast(ok ? "Gantt exported as PNG." : "The browser could not render the PNG. Use SVG or PDF instead.", error: !ok);
+                    break;
+                case "pdf":
+                    await JS.InvokeVoidAsync("eosSvgPrint", svg, w, h, title);
+                    break;
+            }
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or JSDisconnectedException)
+        {
+            State.ShowToast("Export failed: " + ex.Message, error: true);
+        }
+    }
 
     private static readonly Dictionary<string, int> Zooms = new() { ["Quarter"] = 2, ["Month"] = 4, ["Week"] = 9, ["Day"] = 22, ["Fit"] = 0 };
 

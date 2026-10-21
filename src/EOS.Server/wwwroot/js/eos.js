@@ -61,6 +61,49 @@ window.eosGanttWidth = (id) => {
   const el = document.getElementById(id);
   return el ? el.clientWidth : 0;
 };
+window.eosSvgToPng = (svg, w, h, name) => new Promise((resolve) => {
+  try {
+    const scale = Math.max(1, Math.min(2, Math.sqrt(120e6 / (w * h))));
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(false); return; }
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        resolve(true);
+      }, "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(false); };
+    img.src = url;
+  } catch { resolve(false); }
+});
+
+window.eosSvgPrint = (svg, w, h, title) => {
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(frame);
+  const doc = frame.contentWindow.document;
+  const landscape = w >= h;
+  doc.open();
+  doc.write("<!doctype html><html><head><meta charset='utf-8'><title>" + title.replace(/</g, "&lt;") + "</title><style>" +
+    "@page{size:" + (landscape ? "A3 landscape" : "A3 portrait") + ";margin:8mm}html,body{margin:0}svg{width:100%;height:auto;display:block}</style></head><body>" + svg + "</body></html>");
+  doc.close();
+  setTimeout(() => {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 60000);
+  }, 250);
+};
+
 window.eosGanttFit = (id) => {
   const el = document.getElementById(id);
   if (!el) return;
@@ -249,7 +292,7 @@ window.eosFocusRow = (id) => {
 
   document.addEventListener("click", (e) => {
     const open = document.querySelectorAll("details.menu[open]");
-    open.forEach((d) => { if (!d.contains(e.target) || e.target.closest("a")) d.removeAttribute("open"); });
+    open.forEach((d) => { if (!d.contains(e.target) || e.target.closest("a") || e.target.closest("[data-close]")) d.removeAttribute("open"); });
   });
 
   document.addEventListener("keydown", (e) => {

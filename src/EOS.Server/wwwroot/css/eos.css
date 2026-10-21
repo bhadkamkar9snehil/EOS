@@ -571,3 +571,10 @@ body.dnd .plgx .gl[data-task]:not(.lane-label), body.dnd .plgx .gx-row[data-task
 .sugg button { height: 28px; padding: 0 12px; flex: none; }
 .impact .more { padding-top: 8px; }
 .impact details.oldwarn { margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
+.export-menu .pick-btn { min-width: 0; padding: 0 12px; height: 36px; }
+.export-pop { left: auto; right: 0; min-width: 300px; padding: 6px; }
+.export-pop button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; height: auto; padding: 9px 10px; background: transparent; color: var(--ink); border: 0; border-radius: 8px; text-align: left; font-weight: 500; }
+.export-pop button:hover, .export-pop button:focus-visible { background: var(--hover); }
+.export-pop button b { font-weight: 650; }
+.export-pop button span { font-size: 12px; color: var(--ink-2); }
+.export-note { margin: 6px 10px 4px; padding-top: 8px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--ink-2); line-height: 1.4; }

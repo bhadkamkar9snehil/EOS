@@ -129,7 +129,7 @@
         }
         else if (_tab == "gantt")
         {
-            <GanttChart Rows="@_ganttRows" Links="@_ganttLinks" Today="@AsOf" ExpandToLevel="3" OnSelect="OnGanttSelect" />
+            <GanttChart Rows="@_ganttRows" Links="@_ganttLinks" Today="@AsOf" ExpandToLevel="3" OnSelect="OnGanttSelect" ExportTitle="@($"{_plan.ProjectNo} {_plan.ProjectName}")" />
         }
         else if (_tab == "team")
         {
