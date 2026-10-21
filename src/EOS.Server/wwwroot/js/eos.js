@@ -84,8 +84,93 @@ window.eosGanttScroll =(id, x) => {
   if (el) el.scrollLeft = x;
 };
 
+window.__bindPlannerInteractions = () => {
+  if (window.__plannerDndBound) return;
+  window.__plannerDndBound = true;
+  let person = null, hot = null;
+  const ref = () => window.__plannerRef;
+  const mark = (task) => {
+    if (hot === task) return;
+    document.querySelectorAll('[data-dnd="over"]').forEach((n) => n.removeAttribute("data-dnd"));
+    hot = task;
+    if (!task) return;
+    const el = document.querySelector('.plgx .gl[data-task="' + task + '"]');
+    const group = el && el.classList.contains("sel") ? document.querySelectorAll(".plgx .sel[data-task]") : document.querySelectorAll('.plgx [data-task="' + task + '"]');
+    group.forEach((n) => n.setAttribute("data-dnd", "over"));
+  };
+  const end = () => {
+    person = null; mark(null);
+    document.body.classList.remove("dnd");
+    document.querySelectorAll(".pcard[data-dragging]").forEach((n) => n.removeAttribute("data-dragging"));
+  };
+  document.addEventListener("dragstart", (e) => {
+    const card = e.target.closest && e.target.closest(".pcard[data-person]");
+    if (!card || !ref()) return;
+    person = card.dataset.person;
+    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData("text/plain", person);
+    const ghost = document.createElement("div");
+    ghost.className = "dnd-ghost";
+    ghost.textContent = card.dataset.name;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 14, 14);
+    setTimeout(() => ghost.remove(), 0);
+    setTimeout(() => { card.setAttribute("data-dragging", ""); document.body.classList.add("dnd"); }, 0);
+  });
+  document.addEventListener("dragover", (e) => {
+    if (person === null) return;
+    const row = e.target.closest && e.target.closest(".plgx [data-task]");
+    if (row) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; mark(row.dataset.task); }
+    else mark(null);
+    const box = document.getElementById("plgx");
+    if (box) {
+      const r = box.getBoundingClientRect();
+      if (e.clientY > r.top && e.clientY < r.bottom && e.clientX > r.left && e.clientX < r.right) {
+        if (e.clientY < r.top + 90) box.scrollTop -= 14;
+        else if (e.clientY > r.bottom - 50) box.scrollTop += 14;
+      }
+    }
+  });
+  document.addEventListener("drop", (e) => {
+    if (person === null) return;
+    const row = e.target.closest && e.target.closest(".plgx [data-task]");
+    const who = person;
+    if (row && ref()) { e.preventDefault(); ref().invokeMethodAsync("DropPerson", parseInt(who, 10), parseInt(row.dataset.task, 10)); }
+    end();
+  });
+  document.addEventListener("dragend", end);
+
+  document.addEventListener("keydown", (e) => {
+    if (!ref()) return;
+    const tag = e.target.tagName;
+    const typing = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || e.target.isContentEditable;
+    const mod = e.ctrlKey || e.metaKey;
+    if (!typing && mod && !e.shiftKey && e.key.toLowerCase() === "z") { e.preventDefault(); ref().invokeMethodAsync("UndoKey"); return; }
+    if (!typing && mod && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) { e.preventDefault(); ref().invokeMethodAsync("RedoKey"); return; }
+    if (e.key === "Escape" && !typing && !document.querySelector("details[open]")) { ref().invokeMethodAsync("ClearSelection"); return; }
+    const row = e.target.closest && e.target.closest(".plgx .gl[data-task]:not(.lane-label)");
+    if (row && !typing && e.target === row) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const rows = [...document.querySelectorAll(".plgx .gl[data-task]:not(.lane-label)")];
+        const next = rows[rows.indexOf(row) + (e.key === "ArrowDown" ? 1 : -1)];
+        if (next) next.focus();
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        row.dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: e.ctrlKey || e.metaKey, shiftKey: e.shiftKey }));
+      }
+    }
+    const card = e.target.closest && e.target.closest(".pcard[data-person]");
+    if (card && !typing && e.target === card && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      ref().invokeMethodAsync("AddPerson", parseInt(card.dataset.person, 10));
+    }
+  });
+};
+
 window.eosPlannerInit = (ref) => {
   window.__plannerRef = ref;
+  window.__bindPlannerInteractions();
   if (window.__plannerBound) return;
   window.__plannerBound = true;
   document.addEventListener("pointerdown", (e) => {

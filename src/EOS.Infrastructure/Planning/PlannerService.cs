@@ -72,7 +72,7 @@ public sealed class PlannerSession
 
     public decimal FreeHours(PlannerResult result, int personId, PlannerSpan span)
     {
-        var load = result.WeekLoad.TryGetValue(personId, out var l) ? l : OtherWeeks.GetValueOrDefault(personId);
+        var load = result.WeekLoad.TryGetValue(personId, out var l) ? l : OtherLoad.GetValueOrDefault(personId);
         var cap = Capacity.GetValueOrDefault(personId);
         if (load is null || cap is null) return 0m;
         var free = 0m;
@@ -86,8 +86,25 @@ public sealed class PlannerSession
         return free;
     }
 
-    public IReadOnlyDictionary<int, decimal[]> OtherLoad => OtherWeeks;
+    internal Dictionary<int, decimal[]> PeerWeeks = [];
+    internal Dictionary<int, decimal[]> EffectiveOther = [];
+
+    public IReadOnlyDictionary<int, decimal[]> OtherLoad => EffectiveOther.Count > 0 ? EffectiveOther : OtherWeeks;
     public IReadOnlyDictionary<int, decimal[]> WeekCapacityOf => Capacity;
+    public IReadOnlyDictionary<int, decimal[]> CommittedWeeks => BaselineLoad;
+
+    public IReadOnlyDictionary<int, decimal[]> DraftWeekly(IReadOnlyList<PlannerAssignment> draft, PlannerResult result) => WeeklyHours(draft, result.Spans, Built.Calendar);
+
+    public void SetPeers(IReadOnlyDictionary<int, decimal[]> adjustment)
+    {
+        PeerWeeks = adjustment.ToDictionary(kv => kv.Key, kv => kv.Value);
+        EffectiveOther = OtherWeeks.ToDictionary(kv => kv.Key, kv =>
+        {
+            var sum = (decimal[])kv.Value.Clone();
+            if (PeerWeeks.TryGetValue(kv.Key, out var adj)) for (var i = 0; i < sum.Length && i < adj.Length; i++) sum[i] = Math.Max(0m, sum[i] + adj[i]);
+            return sum;
+        });
+    }
 
     public IReadOnlyList<PlannerSpan> Split(PlannerSpan span, int parts)
     {
@@ -149,12 +166,13 @@ public sealed class PlannerSession
         foreach (var pid in involved)
         {
             var other = OtherWeeks.GetValueOrDefault(pid) ?? new decimal[Weeks.Count];
+            var otherNow = EffectiveOther.GetValueOrDefault(pid) ?? other;
             var cap = Capacity.GetValueOrDefault(pid) ?? new decimal[Weeks.Count];
             var total = new decimal[Weeks.Count];
             var before = new decimal[Weeks.Count];
             for (var i = 0; i < Weeks.Count; i++)
             {
-                total[i] = other[i] + (draftWeeks.GetValueOrDefault(pid)?[i] ?? 0m);
+                total[i] = otherNow[i] + (draftWeeks.GetValueOrDefault(pid)?[i] ?? 0m);
                 before[i] = other[i] + (baseWeeks.GetValueOrDefault(pid)?[i] ?? 0m);
             }
             load[pid] = total; capacity[pid] = cap;
