@@ -50,6 +50,7 @@ public sealed partial class EosDbContext
             e.HasIndex(x => new { x.ProjectId, x.SortOrder });
             e.HasIndex(x => new { x.ProjectId, x.ExternalKey });
             e.Property(x => x.WorkHours).HasPrecision(12, 2);
+            e.Property(x => x.ActualHours).HasPrecision(12, 2);
             e.Property(x => x.PercentComplete).HasPrecision(5, 4);
             e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<PlanTask>().WithMany().HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
@@ -79,7 +80,7 @@ public sealed partial class EosDbContext
             e.HasOne<Baseline>().WithMany().HasForeignKey(x => x.BaselineId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        b.Entity<Leave>(e => e.HasIndex(x => new { x.PersonId, x.FromDate }));
+        b.Entity<Leave>(e => { e.HasIndex(x => new { x.PersonId, x.FromDate }); e.Property(x => x.Fraction).HasPrecision(3, 2); });
         b.Entity<Demand>(e =>
         {
             e.HasIndex(x => x.ProjectId);

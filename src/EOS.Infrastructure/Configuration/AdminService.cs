@@ -50,6 +50,9 @@ public sealed class AdminService(EosDbContext db)
         var days = cal.WorkDays.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (days.Length == 0 || days.Any(d => !int.TryParse(d, out var n) || n is < 0 or > 6)) throw new AdminException("Work days must be weekday numbers 0 (Sunday) to 6, comma separated.");
         cal.WorkDays = string.Join(',', days.Select(int.Parse).Distinct().OrderBy(x => x));
+        try { ConfigurationService.ParseDayHours(cal.DayHours); }
+        catch (FormatException ex) { throw new AdminException(ex.Message); }
+        if (string.IsNullOrWhiteSpace(cal.DayHours)) cal.DayHours = null;
 
         var current = cal.Id == 0 ? null : await db.Calendars.SingleOrDefaultAsync(c => c.Id == cal.Id, ct) ?? throw new AdminException($"Calendar {cal.Id} not found.");
         if (current is null) db.Calendars.Add(cal); else db.Entry(current).CurrentValues.SetValues(cal);

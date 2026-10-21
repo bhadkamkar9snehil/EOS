@@ -17,7 +17,7 @@
                     <option value="tracker">Project task tracker (WBS)</option>
                     <option value="vms">Server and VM inventory</option>
                     <option value="leave">Leave (Person, From, To, Kind)</option>
-                    <option value="files">ERP reports (roster, utilisation, timesheets, attendance, reviews; .xlsx or .zip)</option>
+                    <option value="files">Any ERP export (project list, roster, timesheets, attendance and leave, utilisation, task list, reviews; .xlsx or .zip)</option>
                     <option value="legacy">Old EOS on this machine (people and timesheets)</option>
                 </select></div>
             @if (_kind == "legacy") { <div class="field grow"><label>Old EOS database</label><input @bind="_legacyPath" /></div> }

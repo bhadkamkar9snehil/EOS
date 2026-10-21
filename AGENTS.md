@@ -19,6 +19,11 @@ Read `docs/SPEC.md` before changing behaviour. If code and spec disagree, fix on
 6. **Same capability through UI, API, CLI and MCP.** Add the CLI mapping when you add a service method.
 7. Every write is audited (who, when, before/after).
 
+10. **The owner alone decides** (spec §4.15). Approvals, moves, ratings, baselines and settings never depend on
+    anyone else's agreement. Before any non-owner token exists, roles (Owner/Engineer) must be enforced on every endpoint.
+11. **ERP data is imported, everything else is entered in EOS** (spec §4.16). Do not add workbook-only data paths.
+12. **Saturday is a half day** (4.5 h on the default calendar). Hours are per weekday, never a single constant.
+
 ## Workflow
 - Build/test: `dotnet build EOS.slnx` then `dotnet test EOS.slnx`. Warnings are errors.
 - One commit per iteration: `<area>: <change>`. Annotated tags `vX.Y.Z` for releases.

@@ -176,6 +176,10 @@ Worked example from the document: *Demand* = Python level 3, 20 h/week, 15 Oct�
 12. **Plans are authored here or imported, then extended.** *[SRC — owner, 14 Oct]* A project's WBS and tasks can be created inside EOS, or imported from the ERP (or other sources), and tasks can always be added, edited and re-organised afterwards (§16.7).
 13. **Skill progression is a human decision.** *[SRC — owner, 14 Oct]* The owner sets and changes skill ratings and levels manually. The system records, evidences and suggests; it **never changes a rating by itself** (§9.5).
 14. **The people who use it build it.** *[SRC — owner, 14 Oct]* "We are the engineers building this." The spec is working material for the owner's own team, so ambiguity is resolved by the owner directly (Q13 closed).
+15. **The owner alone decides.** *[SRC — owner, 21 Oct]* Moving an engineer, approving a scenario, changing a rating, a plan baseline, a setting: only the owner approves or changes these. Nobody else can influence them. No lead agreement is required and none is modelled. (Supersedes "both Project Leads agree", §15.7 / §17.4.)
+16. **ERP data is imported; everything else is entered in EOS.** *[SRC — owner, 21 Oct]* Data that the ERP holds (projects, roster, timesheets, attendance and leave, utilisation, the ERP task list) comes in only by import (§24, I19). Data the ERP does not hold (skills, training, doubts, demand, allocations, plans beyond the ERP tasks, infrastructure, reviews) is created and edited in EOS itself, not in side workbooks. Workbook imports for those remain only as one-time bootstrap.
+17. **Engineers will get access, to their own data only.** *[SRC — owner, 21 Oct]* The owner intends to give engineers access so they can fill in and use their own data. An engineer account can read and write only records about that engineer (self-assessment, peer reviews they give, training knowledge, doubts, leave requests); it can never change plans, allocations, scenarios, ratings, settings or anyone else's data. Roles (Owner, Engineer) must exist before the first engineer token is issued (§23).
+18. **Saturday is a half day.** *[SRC — owner, 21 Oct]* Saturday officially ends at 1:30 pm: 4.5 working hours on the default calendar (9:00 to 13:30). Calendars carry hours per weekday, not only one hours-per-day figure (§8.4, §14).
 
 ---
 
@@ -1035,7 +1039,7 @@ Then build a **push plan** greedily: take engineers by earliest-no-delay date (c
 4. **Calculate** (engine recalculates all affected tasks).
 5. **Read** the impact (§15.6): new finish per task/project, slip vs baseline, critical-path hit, gain.
 6. **Compare** alternatives side by side — move now vs at the engineer's release date; full vs partial; with vs without replacement.
-7. **Agree:** both Project Leads agree; **leadership approves** if a project end date moves.
+7. **Decide:** the owner approves or rejects (principle 15). The source's "both Project Leads agree" step is dropped by the owner's decision of 21 Oct.
 8. **Apply:** update the plan, Resource_Allocation and the Change/Gap log; the result **becomes the new baseline**.
 V2 enforces the sequence with an **approval workflow** (§17.4) — a scenario cannot be applied until required approvals exist, and "required" is computed (any project finish moved ⇒ leadership approval).
 
@@ -1181,10 +1185,9 @@ Full move, partial move (%), temporary loan with return date, replacement/backfi
 "Executed" is automatic on the effective date (the allocation flips), or manual if the move slips.
 
 ### 17.4 Approval and governance [SRC — S3 steps 7–8; S2 Change_Gap_Log]
-- Both Project Leads (source and receiving) must agree.
-- **Leadership approves if any project end date moves** (computed from the scenario result).
+- **The owner is the only approver** of every movement, scenario and decision [SRC — owner, 21 Oct]. Project leads may be consulted outside EOS but their agreement is neither required nor recorded as an approval. (S3 step 7 "both Project Leads agree" is dropped.)
 - Each decision writes a **Change/Gap log** entry: *Log ID, Type, Project, Demand, Raised By, Date Raised, Description, Gap Type, Impact (Hrs), Impact (Days), Option/Decision, Approver, Decision Date, Status*. Types seen: *Capacity Gap*, *Change Request*, *Decision* (S2 sheet title: "WF-06, WF-09, WF-13"). Gap types seen: *Proficiency mismatch*.
-- Single-user mode today (the owner) means the owner is every approver; the structure is there for team leaders later (max 4 people). **No roles are implemented; the approval record still names who.**
+- The approval record names who approved (always the owner). Only an Owner-role token can approve, reject, apply or execute (§23).
 
 ### 17.5 What the system shows
 - **Per engineer:** timeline of projects, hours by month, movement history, current and upcoming allocations, free capacity.
@@ -1483,10 +1486,10 @@ Alert thresholds are settings. Every alert opens the record and shows the rule a
 
 ## 23. Users, teams, access and audit
 
-### 23.1 Users [SRC — user, 14 Oct]
-- **Now:** one user — the owner. **Later:** up to **4 people in total**, all **team leaders** (not engineers). Access: office network or Tailscale.
-- **Teams:** the existing EOS *Teams* concept is retained; each team has a **team leader** (a person). Team leaders are the only non-owner users.
-- **Visibility: everyone sees everything** (all projects, people, skills, performance, infrastructure) because only team leaders will have access. **No roles or permission matrix for now.**
+### 23.1 Users [SRC — user, 14 Oct; superseded 21 Oct]
+- **Now:** one user — the owner. **Later (owner, 21 Oct):** engineers get access so they can fill in and use their own data. Team leaders have no decision rights. Access: office network or Tailscale.
+- **Roles:** exactly two. **Owner** — everything. **Engineer** — read and write only records about themselves (self-assessment, peer reviews they give, their training knowledge states and doubts, leave requests, their own profile fields), and read-only on what the owner chooses to share with them. An engineer cannot approve, plan, allocate, rate, change settings or see another engineer's performance data.
+- **Gate:** no Engineer token is issued until roles are enforced server-side on every endpoint (default deny) and covered by tests. Until then every token is an Owner token and only the owner holds one.
 
 ### 23.2 What is still required
 - **Identity of the actor** on every change (who approved, who edited) — a named login per person, even without roles. [PRO]
@@ -1530,7 +1533,7 @@ EOS holds performance reviews and personal data for about 24–27 engineers. "Sh
 | I15 | S8 per-project sheets | Plan, Task, Assignment (via aliases) | (project, Sr) | §16.6 mapping; work estimated from duration |
 | I16 | S8 `AMC` | AmcTicket | (P. No, raised date, issue hash) | |
 | I17 | S10 `Sheet1` + physical-server sheets + ALL Demos + Update | Host, HostDisk, Environment, ProjectHost, person↔host | IP (+name) | **Skip all credential columns** |
-| I19 | **Every raw file EOS V1 accepted** (`eos import files <xlsx\|zip>`, Imports page, `POST /imports/files`): employee roster (`Employee No`, `Full Name`, `Band Level`), monthly utilisation summary (`Total Month Hours`, `Utilization`), detailed timesheet transactions (`Project No`, `Total work Hours`), attendance/leave/UAA export (`Punch Duration`, `UAA Status`), engineer review workbooks (`Template Metadata` + `Peer Review` sheets) | Person, TimesheetEntry, MonthlyPerformance, PeerReview | Employee code / (person, date, entry) / (person, month) / (reviewer, subject, month) | **V2 reads the raw files, never only the V1 database.** Type is auto-detected with V1's rules; a zip may hold any mix. A summary spanning more than one month is refused (as V1). Detailed timesheets **replace**, per person, every stored entry inside the file's date window, so an entry edited in the ERP is not counted twice. A project code that embeds a known ERP number (`V_PRO2602059_2`) links to that project. The operational score uses the V1 formula with every weight a setting (group "Operational score"). V1's up-down roster flag has no V2 field and is not imported |
+| I19 | **Every ERP export we have** (`eos import files <xlsx\|zip>`, Imports page, `POST /imports/files`), type auto-detected from the contents: project list (`Project No`, `Order Amount`, `Main Status`; also the `ProjectList` sheet of the review workbook), employee roster (`Employee No`, `Full Name`, `Band Level`), monthly utilisation summary (`Total Month Hours`, `Utilization`), detailed timesheets (`Project No`, `Total work Hours`), timesheet approval report (`Filled Date`, `Total Task Hours`, `Hrs`), attendance/leave/UAA export (`Punch Duration`, `UAA Status`), project task list (`Task No`, `Timesheet Filled Hours`, `Project Task Status`), engineer review workbooks (`Template Metadata`) | Project, Person, TimesheetEntry, MonthlyPerformance, Leave, PlanTask (origin erp) + assignment, PeerReview | project no / employee code / (person, date, entry) / (person, month) / ERP task no / (reviewer, subject, month) | **EOS reads the raw files, never only the V1 database.** A zip may hold any mix; files are applied in dependency order (roster, project list, timesheets, task list, summary, attendance, reviews). Detailed timesheets and ERP leave **replace**, per person, what is stored inside the file's date window, so an entry edited in the ERP is not counted twice and leave entered in EOS is never touched. Leave rows are built from approved leave days (half days = 0.5). The task list creates plan tasks (budget hours, hours booked, status, one engineer each) under a module group per milestone; tasks of a project the project list lacks get a stub project that the next project-list import completes; tasks without a project (common support, general) are only counted. A summary spanning more than one month is refused. A code embedding a known ERP number (`V_PRO2602059_2`) links to it. The operational score is V1's formula with every weight a setting. V1's up-down roster flag has no EOS field and is not imported; personal columns (address, birth date, contact) are never read. Other files in Downloads (customer tag lists, RDP logs, project dossiers) are not ERP data. |
 | I18 | Later | Leave (`LV_LeaveSummaryforRP`), timesheets (`RPwiseTimesheetUtilazationReport`), roster (`List_Employee_Generalteam`), customer schedules (JSW Khopoli, RM Scope/Modules) | | See §24.8 |
 The V1 *roster*, *reviews* and *performance* imports carry over unchanged (V1 `import-reviews`, source imports).
 
@@ -1844,7 +1847,7 @@ Sizes: **S** ≈ days, **M** ≈ 1–2 weeks, **L** ≈ 3+ weeks of focused work
 | Q14 | Source of leave and timesheet data | Capacity actuals | Import `LV_LeaveSummaryforRP` and utilisation reports | Owner |
 | Q15 | Meaning of "ASD STE 100" (S4) | Documentation standard | Simplified Technical English (ASD-STE100) | Owner |
 | Q16 | Which team does each of Safwan, Krinav, Priyen, Udaykumar belong to | Team capacity | Unassigned until set | Leads |
-| Q17 | Who approves what once team leaders exist | Approval workflow | Owner approves; leaders propose | Owner |
+| Q17 | ~~Who approves what~~ **Resolved 21 Oct: the owner approves everything; nobody else influences decisions** (principle 15) | — | — | — |
 | Q18 | Retention rules for personal/performance data | Governance | Keep; export on request | Owner |
 | Q19 | Customer-facing documents (contractual schedules) ↔ internal plans | Scope | Out of scope; link only | Owner |
 | Q20 | Do spares/service projects (Service+Spare, Mandays) need engineer allocation? | Capacity | Mandays yes; others optional | Owner |

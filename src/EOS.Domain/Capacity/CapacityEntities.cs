@@ -8,6 +8,15 @@ public sealed class Leave
     public DateOnly ToDate { get; set; }
     public string Kind { get; set; } = "Leave";
     public string? Note { get; set; }
+
+    /// <summary>Share of each working day in the range that is taken: 1 for a full day, 0.5 for a half day.</summary>
+    public decimal Fraction { get; set; } = 1m;
+
+    /// <summary>"eos" when entered here, "erp" when it came from the ERP attendance export (re-imports replace only the "erp" rows).</summary>
+    public string Origin { get; set; } = "eos";
+
+    public static decimal DayFraction(IEnumerable<Leave> leaves, int personId, DateOnly day) =>
+        Math.Min(1m, leaves.Where(l => l.PersonId == personId && day >= l.FromDate && day <= l.ToDate).Sum(l => l.Fraction));
 }
 
 public sealed class Demand

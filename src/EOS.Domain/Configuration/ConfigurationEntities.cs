@@ -65,6 +65,9 @@ public sealed class WorkCalendarDef
 
     public string WorkDays { get; set; } = "1,2,3,4,5,6";
     public bool IsDefault { get; set; }
+
+    /// <summary>Hours for weekdays that differ from <see cref="HoursPerDay"/>, as "weekday=hours" pairs, for example "6=4.5" for a Saturday that ends at 1:30 pm.</summary>
+    public string? DayHours { get; set; }
 }
 
 public sealed class CalendarException

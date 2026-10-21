@@ -1,4 +1,5 @@
 using EOS.Domain.Audit;
+using EOS.Domain.Capacity;
 using EOS.Domain.Planning;
 using EOS.Infrastructure.Persistence;
 using EOS.Scheduling;
@@ -217,7 +218,7 @@ public sealed class PlannerSession
             {
                 if (!cal.IsWorkingDay(d)) continue;
                 var w = (d.DayNumber - start.DayNumber) / 7;
-                if (w >= 0 && w < arr.Length) arr[w] += a.Units * cal.HoursPerDay;
+                if (w >= 0 && w < arr.Length) arr[w] += a.Units * cal.HoursOn(d);
             }
         }
         return result;
@@ -305,8 +306,8 @@ public sealed class PlannerService(EosDbContext db)
             var cap = new decimal[weekCount];
             for (var w = 0; w < weekCount; w++)
             {
-                var days = Enumerable.Range(0, 7).Select(d => session.Weeks[w].AddDays(d)).Count(d => cal.IsWorkingDay(d) && !leaves.Any(l => l.PersonId == p.Id && d >= l.FromDate && d <= l.ToDate));
-                cap[w] = days * cal.HoursPerDay * p.AvailabilityFraction;
+                var hours = Enumerable.Range(0, 7).Select(d => session.Weeks[w].AddDays(d)).Sum(d => cal.HoursOn(d) * (1m - Leave.DayFraction(leaves, p.Id, d)));
+                cap[w] = hours * p.AvailabilityFraction;
             }
             session.Capacity[p.Id] = cap;
             session.OtherWeeks[p.Id] = new decimal[weekCount];
@@ -327,7 +328,7 @@ public sealed class PlannerService(EosDbContext db)
             {
                 if (!cal.IsWorkingDay(d)) continue;
                 var w = (d.DayNumber - winStart.DayNumber) / 7;
-                if (w >= 0 && w < weekCount) arr[w] += a.Units * cal.HoursPerDay;
+                if (w >= 0 && w < weekCount) arr[w] += a.Units * cal.HoursOn(d);
             }
         }
 

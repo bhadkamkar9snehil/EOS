@@ -17,7 +17,7 @@ namespace EOS.Server.Api;
 public sealed record SettingBody(string Key, SettingScopeKind ScopeKind, string? ScopeId, string JsonValue, DateOnly? EffectiveFrom, string Reason);
 public sealed record VocabBody(string Kind, string Value, string? Color);
 public sealed record ActiveBody(bool Active);
-public sealed record CalendarBody(int? Id, string Name, decimal HoursPerDay, string WorkDays, bool IsDefault);
+public sealed record CalendarBody(int? Id, string Name, decimal HoursPerDay, string WorkDays, bool IsDefault, string? DayHours = null);
 public sealed record HolidayBody(DateOnly Date, bool IsWorking, string? Note);
 public sealed record HostLinkBody(int ProjectId, int HostId, string Role);
 public sealed record TokenBody(string Name);
@@ -95,7 +95,7 @@ public static class OpsApi
         api.MapPut("/vocabularies/{id:int}/active", async (HttpContext http, AdminService svc, int id, ActiveBody b) => { await svc.SetActiveAsync(id, b.Active, http.Actor()); return Results.NoContent(); });
         api.MapGet("/calendars", async (AdminService svc) => (await svc.CalendarsAsync()).Select(c => new { calendar = c.Calendar, exceptions = c.Exceptions }));
         api.MapPut("/calendars", async (HttpContext http, AdminService svc, CalendarBody b) =>
-            await svc.SaveCalendarAsync(new WorkCalendarDef { Id = b.Id ?? 0, Name = b.Name, HoursPerDay = b.HoursPerDay, WorkDays = b.WorkDays, IsDefault = b.IsDefault }, http.Actor()));
+            await svc.SaveCalendarAsync(new WorkCalendarDef { Id = b.Id ?? 0, Name = b.Name, HoursPerDay = b.HoursPerDay, WorkDays = b.WorkDays, IsDefault = b.IsDefault, DayHours = b.DayHours }, http.Actor()));
         api.MapPut("/calendars/{id:int}/exceptions", async (HttpContext http, AdminService svc, int id, HolidayBody b) => { await svc.SetHolidayAsync(id, b.Date, b.IsWorking, b.Note, http.Actor()); return Results.NoContent(); });
         api.MapDelete("/calendar-exceptions/{id:int}", async (HttpContext http, AdminService svc, int id) => { await svc.RemoveHolidayAsync(id, http.Actor()); return Results.NoContent(); });
 

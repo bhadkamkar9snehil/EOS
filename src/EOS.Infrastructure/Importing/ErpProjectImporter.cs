@@ -10,11 +10,12 @@ public sealed partial class ErpProjectImporter(EosDbContext db)
     public Task<ImportReport> ImportAsync(string path, bool commit, string actor, CancellationToken ct = default) =>
         ImportRunner.RunAsync(db, "erp project master", path, commit, actor, report => WorkAsync(path, report, ct), ct);
 
-    private async Task WorkAsync(string path, ImportReport report, CancellationToken ct)
+    internal async Task WorkAsync(string path, ImportReport report, CancellationToken ct)
     {
         using var wb = WorkbookReading.Open(path);
-        var ws = wb.Sheet("ProjectList");
-        if (ws is null) { report.Warnings.Add("Sheet 'ProjectList' not found."); return; }
+        // The review workbook keeps the list on a sheet named ProjectList; the plain ERP export has it on its first sheet.
+        var ws = wb.Sheet("ProjectList") ?? wb.Worksheets.FirstOrDefault(s => HeaderMap(s, 1).ContainsKey("project no") && HeaderMap(s, 1).ContainsKey("order amount"));
+        if (ws is null) { report.Warnings.Add("No project list found (a sheet named ProjectList, or a first sheet with Project No and Order Amount columns)."); return; }
         var columns = HeaderMap(ws, 1);
         if (!columns.ContainsKey("project no")) { report.Warnings.Add("ProjectList: column 'Project No' not found."); return; }
 

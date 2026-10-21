@@ -206,7 +206,7 @@ public static class Scheduler
             {
                 var rate = 0m;
                 foreach (var m in task.Crew)
-                    if (m.ActiveOn(day)) rate += _cal.HoursPerDay * m.Units * m.Factor;
+                    if (m.ActiveOn(day)) rate += _cal.HoursOn(day) * m.Units * m.Factor;
 
                 if (rate <= 0m && _options.Pickup == PickupRule.AfterOwnTasks)
                 {
@@ -231,7 +231,7 @@ public static class Scheduler
                 var active = ActiveMemberOn(person, day);
                 if (active is null) continue;
                 if (!freeFrom.TryGetValue(person, out var from)) freeFrom[person] = from = FreeFrom(task, taskIds);
-                if (day >= from) rate += _cal.HoursPerDay * active.Units * active.Factor;
+                if (day >= from) rate += _cal.HoursOn(day) * active.Units * active.Factor;
             }
             return rate;
         }

@@ -7,9 +7,13 @@ public sealed class WorkCalendar
     private readonly HashSet<DateOnly> _holidays;
     private readonly HashSet<DateOnly> _workingOverrides;
 
+    private readonly Dictionary<DayOfWeek, decimal> _hoursByDay;
+
     public WorkCalendar(decimal hoursPerDay, IEnumerable<DayOfWeek> workDays, IEnumerable<DateOnly>? holidays = null,
-        IEnumerable<DateOnly>? workingOverrides = null)
+        IEnumerable<DateOnly>? workingOverrides = null, IReadOnlyDictionary<DayOfWeek, decimal>? hoursByDay = null)
     {
+        _hoursByDay = hoursByDay is null ? [] : new Dictionary<DayOfWeek, decimal>(hoursByDay);
+        if (_hoursByDay.Values.Any(h => h <= 0)) throw new ArgumentOutOfRangeException(nameof(hoursByDay), "Hours for a weekday must be positive.");
         if (hoursPerDay <= 0) throw new ArgumentOutOfRangeException(nameof(hoursPerDay), "Hours per day must be positive.");
         HoursPerDay = hoursPerDay;
         foreach (var d in workDays) _works[(int)d] = true;
@@ -18,7 +22,18 @@ public sealed class WorkCalendar
         _workingOverrides = [.. workingOverrides ?? []];
     }
 
+    /// <summary>The standard working day. A weekday with its own entry (for example a half-day Saturday) uses <see cref="HoursOn"/>.</summary>
     public decimal HoursPerDay { get; }
+
+    public decimal HoursOn(DateOnly date) =>
+        !IsWorkingDay(date) ? 0m : _hoursByDay.TryGetValue(date.DayOfWeek, out var h) ? h : HoursPerDay;
+
+    public decimal HoursBetween(DateOnly from, DateOnly to)
+    {
+        var total = 0m;
+        for (var d = from; d <= to; d = d.AddDays(1)) total += HoursOn(d);
+        return total;
+    }
 
     public static WorkCalendar MondayToSaturday(decimal hoursPerDay = 8m) => new(hoursPerDay,
         [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday]);

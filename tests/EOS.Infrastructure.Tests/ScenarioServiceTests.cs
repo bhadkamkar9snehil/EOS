@@ -24,6 +24,9 @@ public sealed class ScenarioServiceTests : IDisposable
         (_db, _connection) = EosDatabase.InMemory();
         _plans = new PlanService(_db);
         _scenarios = new ScenarioService(_db);
+        // The verified S3 examples assume a full 8 h Saturday; the shipped default calendar now has a 4.5 h Saturday (owner, 21 Oct).
+        foreach (var c in _db.Calendars) c.DayHours = null;
+        _db.SaveChanges();
         BuildGoldenAsync().GetAwaiter().GetResult();
     }
 

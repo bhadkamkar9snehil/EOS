@@ -108,6 +108,7 @@
                 <h2>@c.Calendar.Name @if (c.Calendar.IsDefault) { <Badge Kind="good">default</Badge> }</h2>
                 <div class="form-row">
                     <div class="field"><label>Hours in a day</label><input type="number" step="0.25" @bind="_calHours" style="width:100px" /></div>
+                    <div class="field"><label>Saturday hours (blank = full day)</label><input type="number" step="0.25" @bind="_calSaturday" style="width:140px" /></div>
                     <div class="field"><label>Working days</label>
                         <div class="daypick">@foreach (var d in Days) { var dd = d; <button class="@(_calDays.Contains(dd.Value) ? "on" : "")" aria-pressed="@_calDays.Contains(dd.Value)" @onclick="() => ToggleCalDay(dd.Value)">@dd.Label</button> }</div></div>
                     <button @onclick="() => SaveCalendar(c.Calendar)">Save calendar</button>
@@ -248,7 +249,7 @@
     private List<ProjectSummary> _projects = [];
     private List<(int Id, string Name)> _teams = [];
     private IReadOnlyList<(WorkCalendarDef Calendar, IReadOnlyList<CalendarException> Exceptions)> _calendars = [];
-    private decimal _calHours = 8; private HashSet<int> _calDays = [1, 2, 3, 4, 5, 6]; private DateTime _holiday = DateTime.Today; private string _holidayNote = "";
+    private decimal _calHours = 8; private decimal? _calSaturday; private HashSet<int> _calDays = [1, 2, 3, 4, 5, 6]; private DateTime _holiday = DateTime.Today; private string _holidayNote = "";
     private Dictionary<string, IReadOnlyList<VocabularyItem>>? _vocab; private Dictionary<string, string> _newVocab = [];
     private IReadOnlyList<CustomFieldDefinition> _fields = [];
     private string _fEntity = "person", _fKey = "", _fLabel = "", _fOptions = ""; private CustomFieldType _fType;
@@ -270,6 +271,7 @@
         if (_calendars.Count > 0)
         {
             _calHours = _calendars[0].Calendar.HoursPerDay;
+            _calSaturday = ConfigurationService.ParseDayHours(_calendars[0].Calendar.DayHours).TryGetValue(DayOfWeek.Saturday, out var sat) ? sat : null;
             _calDays = _calendars[0].Calendar.WorkDays.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet();
         }
         var vocab = await Q(sp => sp.GetRequiredService<AdminService>().VocabulariesAsync());
@@ -434,7 +436,7 @@
     private void ToggleCalDay(int day) { if (!_calDays.Remove(day)) _calDays.Add(day); }
 
     private Task SaveCalendar(WorkCalendarDef c) => Act((sp, a) => sp.GetRequiredService<AdminService>().SaveCalendarAsync(
-        new WorkCalendarDef { Id = c.Id, Name = c.Name, HoursPerDay = _calHours, WorkDays = string.Join(',', _calDays.OrderBy(d => d == 0 ? 7 : d)), IsDefault = c.IsDefault }, a), "Calendar saved.");
+        new WorkCalendarDef { Id = c.Id, Name = c.Name, HoursPerDay = _calHours, WorkDays = string.Join(',', _calDays.OrderBy(d => d == 0 ? 7 : d)), IsDefault = c.IsDefault, DayHours = _calSaturday is { } s && s != _calHours ? $"6={s.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : null }, a), "Calendar saved.");
     private Task AddHoliday(int id) => Act((sp, a) => sp.GetRequiredService<AdminService>().SetHolidayAsync(id, DateOnly.FromDateTime(_holiday), false, _holidayNote, a), "Holiday added.");
     private Task RemoveHoliday(int id) => Act((sp, a) => sp.GetRequiredService<AdminService>().RemoveHolidayAsync(id, a));
 

@@ -18,7 +18,7 @@ internal static class ImportRunner
             Detail = string.Join("; ", report.Counts.Select(c => $"{c.Key} +{c.Value.Added}/~{c.Value.Updated}/={c.Value.Unchanged}")),
         });
         await db.SaveChangesAsync(ct);
-        if (commit && kind == "task tracker workbook")
+        if (commit && (kind == "task tracker workbook" || report.Of("Task").Added + report.Of("Task").Updated > 0))
         {
             await new Planning.PlanService(db).RecomputeAllAsync(null, ct);
         }

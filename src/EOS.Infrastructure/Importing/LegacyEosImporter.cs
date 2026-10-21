@@ -100,7 +100,7 @@ public sealed class LegacyEosImporter(EosDbContext db)
         var importer = new PerformanceFilesImporter(db);
         foreach (var file in files.Where(File.Exists))
         {
-            if (PerformanceFilesImporter.Detect(file) != V1FileKind.DetailedTimesheet) { report.Warnings.Add($"{Path.GetFileName(file)}: not a detailed timesheet export; skipped."); continue; }
+            if (PerformanceFilesImporter.Detect(file) != ErpFileKind.DetailedTimesheet) { report.Warnings.Add($"{Path.GetFileName(file)}: not a detailed timesheet export; skipped."); continue; }
             await importer.ImportTimesheetFileAsync(file, idx, report, ct);
         }
         foreach (var p in idx.People.Where(p => !people.Contains(p))) { people.Add(p); byName[PersonMatcher.Normalise(p.FullName)] = p; codes.Add(p.Code); }

@@ -27,6 +27,9 @@ public sealed class PlanTask
     public string Kind { get; set; } = TaskKinds.Task;
     public decimal WorkHours { get; set; }
 
+    /// <summary>Hours booked against this task in the ERP timesheets (from the ERP task list). Null when unknown.</summary>
+    public decimal? ActualHours { get; set; }
+
     public bool WorkIsEstimated { get; set; }
     public int? FixedDurationDays { get; set; }
     public DateOnly? StartNoEarlierThan { get; set; }

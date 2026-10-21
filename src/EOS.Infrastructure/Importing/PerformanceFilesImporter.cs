@@ -2,13 +2,15 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using ClosedXML.Excel;
+using EOS.Domain.Capacity;
 using EOS.Domain.People;
 using EOS.Infrastructure.Persistence;
+using EOS.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
 namespace EOS.Infrastructure.Importing;
 
-public enum V1FileKind { Roster, MonthlySummary, DetailedTimesheet, Attendance, ReviewWorkbook }
+public enum ErpFileKind { Roster, ProjectMaster, MonthlySummary, DetailedTimesheet, TimesheetApproval, Attendance, TaskList, ReviewWorkbook }
 
 /// <summary>People lookup shared by the file importers: exact name, code, then aliases and close spellings.</summary>
 internal sealed class PeopleIndex
@@ -46,9 +48,10 @@ internal sealed class PeopleIndex
 }
 
 /// <summary>
-/// Imports the raw ERP files the old EOS (V1) accepted, with the same detection and the same reading rules:
-/// employee roster, monthly utilisation summary, detailed timesheet transactions, attendance/leave/UAA export
-/// and engineer review workbooks. Accepts a single .xlsx or a .zip holding any mix of them.
+/// Imports every ERP export EOS knows, auto-detected from the file contents, with the reading rules the old EOS (V1) used:
+/// employee roster, project master, monthly utilisation summary, detailed timesheet transactions, timesheet approval report,
+/// attendance/leave/UAA export (also fills leave), project task list, and engineer review workbooks.
+/// Accepts a single .xlsx or a .zip holding any mix of them.
 /// </summary>
 public sealed class PerformanceFilesImporter(EosDbContext db)
 {
@@ -60,24 +63,27 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
     public Task<ImportReport> ImportAsync(string path, bool commit, string actor, int? fallbackYear = null, int? fallbackMonth = null, CancellationToken ct = default) =>
         ImportRunner.RunAsync(db, "ERP report files", path, commit, actor, report => WorkAsync(path, (fallbackYear, fallbackMonth), report, ct), ct);
 
-    public static V1FileKind? Detect(string path)
+    public static ErpFileKind? Detect(string path)
     {
         using var wb = WorkbookReading.Open(path);
         return Detect(wb);
     }
 
-    private static V1FileKind? Detect(XLWorkbook wb)
+    private static ErpFileKind? Detect(XLWorkbook wb)
     {
         var ws = wb.Worksheets.First();
         var lastRow = Math.Min(10, ws.LastRowUsed()?.RowNumber() ?? 1);
         var lastCol = Math.Min(40, ws.LastColumnUsed()?.ColumnNumber() ?? 1);
         var rows = Enumerable.Range(1, lastRow)
             .Select(r => Enumerable.Range(1, lastCol).Select(c => ws.Text(r, c)).ToHashSet(StringComparer.OrdinalIgnoreCase)).ToList();
-        if (rows.Any(x => x.Contains("Punch Duration") && x.Contains("UAA Status"))) return V1FileKind.Attendance;
-        if (rows.Any(x => x.Contains("Total Month Hours") && x.Contains("Utilization"))) return V1FileKind.MonthlySummary;
-        if (rows.Any(x => x.Contains("Project No") && x.Contains("Total work Hours"))) return V1FileKind.DetailedTimesheet;
-        if (wb.Sheet("Template Metadata") is not null) return V1FileKind.ReviewWorkbook;
-        if (rows.Any(x => x.Contains("Employee No") && x.Contains("Full Name") && x.Contains("Band Level"))) return V1FileKind.Roster;
+        if (rows.Any(x => x.Contains("Punch Duration") && x.Contains("UAA Status"))) return ErpFileKind.Attendance;
+        if (rows.Any(x => x.Contains("Total Month Hours") && x.Contains("Utilization"))) return ErpFileKind.MonthlySummary;
+        if (rows.Any(x => x.Contains("Project No") && x.Contains("Total work Hours"))) return ErpFileKind.DetailedTimesheet;
+        if (rows.Any(x => x.Contains("Filled Date") && x.Contains("Total Task Hours") && x.Contains("Hrs") && x.Contains("Project No"))) return ErpFileKind.TimesheetApproval;
+        if (ErpTaskListImporter.Matches(rows)) return ErpFileKind.TaskList;
+        if (wb.Sheet("Template Metadata") is not null) return ErpFileKind.ReviewWorkbook;
+        if (rows.Any(x => x.Contains("Employee No") && x.Contains("Full Name") && x.Contains("Band Level"))) return ErpFileKind.Roster;
+        if (wb.Sheet("ProjectList") is not null || rows.Any(x => x.Contains("Project No") && x.Contains("Project Name") && x.Contains("Order Amount") && x.Contains("Main Status"))) return ErpFileKind.ProjectMaster;
         return null;
     }
 
@@ -99,32 +105,45 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
             var perfRows = await db.MonthlyPerformance.ToListAsync(ct);
             foreach (var m in perfRows) _perf[(m.PersonId, m.Year, m.Month)] = m;
 
-            var typed = new List<(string File, V1FileKind Kind)>();
+            var typed = new List<(string File, ErpFileKind Kind)>();
             foreach (var f in files)
             {
-                V1FileKind? kind;
+                ErpFileKind? kind;
                 try { kind = Detect(f); }
                 catch (Exception ex) when (ex is InvalidDataException or IOException) { report.Warnings.Add($"{Path.GetFileName(f)}: cannot be read ({ex.Message})."); continue; }
-                if (kind is null) report.Warnings.Add($"{Path.GetFileName(f)}: not a recognised ERP report (roster, utilisation summary, detailed timesheets, attendance or review workbook); skipped.");
+                if (kind is null) report.Warnings.Add($"{Path.GetFileName(f)}: not a recognised ERP report (roster, project list, utilisation summary, timesheets, timesheet approval, attendance, task list or review workbook); skipped.");
                 else typed.Add((f, kind.Value));
             }
 
-            foreach (var (f, _) in typed.Where(t => t.Kind == V1FileKind.Roster)) ImportRoster(f, idx, report);
+            var calendar = await Configuration.ConfigurationService.LoadCalendarAsync(db, null, ct);
+            foreach (var (f, _) in typed.Where(t => t.Kind == ErpFileKind.Roster)) ImportRoster(f, idx, report);
             await db.SaveChangesAsync(ct);
+            foreach (var (f, _) in typed.Where(t => t.Kind == ErpFileKind.ProjectMaster)) await new ErpProjectImporter(db).WorkAsync(f, report, ct);
 
             var projectCounts = new List<(Person Person, int Year, int Month, int Projects)>();
-            foreach (var (f, _) in typed.Where(t => t.Kind == V1FileKind.DetailedTimesheet))
+            foreach (var (f, _) in typed.Where(t => t.Kind is ErpFileKind.DetailedTimesheet or ErpFileKind.TimesheetApproval))
                 projectCounts.AddRange(await ImportTimesheetFileAsync(f, idx, report, ct));
             await db.SaveChangesAsync(ct);
+            foreach (var (f, _) in typed.Where(t => t.Kind == ErpFileKind.TaskList)) await new ErpTaskListImporter(db).ImportAsync(f, idx, calendar, report, ct);
             foreach (var (person, y, m, n) in projectCounts) { var row = Perf(person, y, m, report); row.UniqueProjects = n; _weights.Apply(row); }
 
-            foreach (var (f, _) in typed.Where(t => t.Kind == V1FileKind.MonthlySummary)) ImportSummary(f, idx, fallback, report);
-            foreach (var (f, _) in typed.Where(t => t.Kind == V1FileKind.Attendance)) ImportAttendance(f, idx, report);
-            foreach (var (f, _) in typed.Where(t => t.Kind == V1FileKind.ReviewWorkbook)) await ImportReviewAsync(f, idx, report, ct);
+            foreach (var (f, _) in typed.Where(t => t.Kind == ErpFileKind.MonthlySummary)) ImportSummary(f, idx, fallback, report);
+            foreach (var (f, _) in typed.Where(t => t.Kind == ErpFileKind.Attendance)) await ImportAttendanceAsync(f, idx, calendar, report, ct);
+            foreach (var (f, _) in typed.Where(t => t.Kind == ErpFileKind.ReviewWorkbook)) await ImportReviewAsync(f, idx, report, ct);
 
+            await LinkTimesheetsToProjectsAsync(report, ct);
             report.Unresolved.AddRange(_unresolved.Order());
         }
         finally { if (Directory.Exists(temp)) Directory.Delete(temp, true); }
+    }
+
+    /// <summary>Timesheet entries imported before their project existed get linked once it does.</summary>
+    private async Task LinkTimesheetsToProjectsAsync(ImportReport report, CancellationToken ct)
+    {
+        await db.SaveChangesAsync(ct);
+        var ids = await db.Projects.AsNoTracking().ToDictionaryAsync(p => p.ProjectNo, p => p.Id, StringComparer.OrdinalIgnoreCase, ct);
+        foreach (var e in await db.Timesheets.Where(t => t.ProjectId == null && t.ProjectNo != null).ToListAsync(ct))
+            if (ids.TryGetValue(e.ProjectNo!, out var id)) { e.ProjectId = id; report.Updated("Timesheet entry linked to project"); }
     }
 
     private MonthlyPerformance Perf(Person person, int year, int month, ImportReport report)
@@ -202,13 +221,15 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
                 db.People.Add(person); idx.People.Add(person); idx.Register(person);
                 report.Added("Person");
             }
-            var before = (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band);
+            var designation = cols.TryGetValue("Designation", out var dc) ? ws.Text(r, dc) : "";
+            var before = (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band, person.RoleTitle);
+            if (designation.Length > 0 && string.IsNullOrWhiteSpace(person.RoleTitle)) person.RoleTitle = designation;
             person.Seniority = level;
             if (email.Length > 0) person.Email = email;
             person.IsConsultant = consultant; person.IsOnProbation = probation;
             if (band.Length > 0) person.Band = band;
             if (person.Id == 0) continue;
-            if (before == (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band)) report.Unchanged("Person");
+            if (before == (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band, person.RoleTitle)) report.Unchanged("Person");
             else report.Updated("Person");
         }
     }
@@ -224,8 +245,12 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
     {
         using var wb = WorkbookReading.Open(file);
         var ws = wb.Worksheets.First();
-        if (FindHeader(ws, "Employee") is not { } h || Missing(h.Columns, file, report, "Date", "Total work Hours")) return [];
+        if (FindHeader(ws, "Employee") is not { } h) { report.Warnings.Add($"{Path.GetFileName(file)}: no Employee column; skipped."); return []; }
         var (hr, cols) = h;
+        // The timesheet approval report names the same columns "Start Date" and "Hrs".
+        var dateHeader = cols.ContainsKey("Date") ? "Date" : "Start Date";
+        var hoursHeader = cols.ContainsKey("Total work Hours") ? "Total work Hours" : "Hrs";
+        if (Missing(cols, file, report, dateHeader, hoursHeader)) return [];
 
         var projects = await db.Projects.AsNoTracking().Select(p => new { p.Id, p.ProjectNo }).ToListAsync(ct);
         var byNo = projects.ToDictionary(p => p.ProjectNo, p => p.Id, StringComparer.OrdinalIgnoreCase);
@@ -246,8 +271,8 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
         for (var r = hr + 1; r <= last; r++)
         {
             var name = Get(r, "Employee");
-            var date = ws.Date(r, cols["Date"]);
-            var hours = ws.Number(r, cols["Total work Hours"]);
+            var date = ws.Date(r, cols[dateHeader]);
+            var hours = ws.Number(r, cols[hoursHeader]);
             if (name.Length == 0 || date is null || hours is null || hours <= 0) continue;
 
             var norm = PersonMatcher.Normalise(name);
@@ -354,7 +379,7 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
 
     // ---- attendance / leave / UAA ----
 
-    private void ImportAttendance(string file, PeopleIndex idx, ImportReport report)
+    private async Task ImportAttendanceAsync(string file, PeopleIndex idx, WorkCalendar calendar, ImportReport report, CancellationToken ct)
     {
         using var wb = WorkbookReading.Open(file);
         var ws = wb.Worksheets.First();
@@ -364,6 +389,9 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
         var (hr, cols) = h;
 
         var groups = new Dictionary<(Person Person, int Year, int Month), MonthlyPerformance>();
+        var leaveDays = new List<(Person Person, DateOnly Date, string Kind, decimal Fraction, string? Note)>();
+        var people = new HashSet<Person>();
+        DateOnly? first = null, lastDay = null;
         var last = ws.LastRowUsed()?.RowNumber() ?? hr;
         for (var r = hr + 1; r <= last; r++)
         {
@@ -373,6 +401,9 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
             if (person is null || person.Id == 0) { _unresolved.Add(name); continue; }
             var date = ws.Date(r, cols["Date"]);
             if (date is null) continue;
+            people.Add(person);
+            if (first is null || date < first) first = date;
+            if (lastDay is null || date > lastDay) lastDay = date;
             var key = (person, date.Value.Year, date.Value.Month);
             if (!groups.TryGetValue(key, out var item)) groups[key] = item = new MonthlyPerformance();
 
@@ -381,9 +412,16 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
             var approvedLeave = ws.Text(r, cols["Leave status"]).Equals("Approved", StringComparison.OrdinalIgnoreCase);
             // Sunday is always a weekly off whatever the ERP tags it as; Saturday is accountable as a half day.
             var weekOff = date.Value.DayOfWeek == DayOfWeek.Sunday || duty.Equals("woff", StringComparison.OrdinalIgnoreCase);
-            var weight = date.Value.DayOfWeek == DayOfWeek.Saturday ? .5m : 1m;
+            var weight = calendar.HoursOn(date.Value) is var hours && hours > 0 ? hours / calendar.HoursPerDay : 1m;
             // A week-off row never draws down leave, even when the ERP also tags it Position="Leave".
             if (!weekOff && (approvedLeave || position.Equals("Leave", StringComparison.OrdinalIgnoreCase))) item.LeaveDays += attendDay;
+            if (!weekOff && approvedLeave)
+            {
+                var type = cols.TryGetValue("Leave Type", out var lt) ? ws.Text(r, lt) : "";
+                var half = cols.TryGetValue("Leave Day Type", out var ld) && ws.Text(r, ld) is { Length: > 0 } dayType && !dayType.Equals("None", StringComparison.OrdinalIgnoreCase);
+                var note = cols.TryGetValue("Leave Remarks", out var lr) ? ws.Text(r, lr) : "";
+                leaveDays.Add((person, date.Value, type.Length == 0 ? "Leave" : type, half ? .5m : 1m, note.Length == 0 ? null : note));
+            }
             if (!(attendDay > 0 && !weekOff && !position.Equals("Leave", StringComparison.OrdinalIgnoreCase))) continue;
             item.AttendanceDays += attendDay * weight;
             item.ExpectedTimesheetDays += weight;
@@ -403,6 +441,38 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
             row.MissingPunchDays = g.MissingPunchDays; row.LateDays = g.LateDays; row.EarlyDays = g.EarlyDays; row.LessDurationDays = g.LessDurationDays;
             _weights.Apply(row);
         }
+
+        await ReplaceLeaveAsync(leaveDays, people, first, lastDay, calendar, report, ct);
+    }
+
+    /// <summary>Replaces the ERP-origin leave of the people in the file inside the file's date window; leave entered in EOS is never touched.</summary>
+    private async Task ReplaceLeaveAsync(List<(Person Person, DateOnly Date, string Kind, decimal Fraction, string? Note)> days, HashSet<Person> people,
+        DateOnly? first, DateOnly? last, WorkCalendar calendar, ImportReport report, CancellationToken ct)
+    {
+        if (first is null || last is null) return;
+        var ids = people.Select(p => p.Id).ToList();
+        var stored = await db.Leaves.Where(l => l.Origin == "erp" && ids.Contains(l.PersonId) && l.ToDate >= first && l.FromDate <= last).ToListAsync(ct);
+
+        // Consecutive working days of the same kind and share become one leave range.
+        var ranges = new List<Leave>();
+        foreach (var g in days.GroupBy(d => (d.Person.Id, d.Kind, d.Fraction)))
+        {
+            Leave? open = null;
+            foreach (var d in g.OrderBy(x => x.Date))
+            {
+                if (open is not null && calendar.After(open.ToDate) == d.Date) { open.ToDate = d.Date; continue; }
+                open = new Leave { PersonId = g.Key.Id, FromDate = d.Date, ToDate = d.Date, Kind = g.Key.Kind, Fraction = g.Key.Fraction, Origin = "erp", Note = d.Note };
+                ranges.Add(open);
+            }
+        }
+
+        bool Same(Leave a, Leave b) => a.PersonId == b.PersonId && a.FromDate == b.FromDate && a.ToDate == b.ToDate && a.Kind == b.Kind && a.Fraction == b.Fraction;
+        foreach (var old in stored)
+        {
+            if (ranges.Any(n => Same(old, n))) report.Unchanged("Leave");
+            else { db.Leaves.Remove(old); report.Updated("Leave replaced"); }
+        }
+        foreach (var n in ranges.Where(n => !stored.Any(o => Same(o, n)))) { db.Leaves.Add(n); report.Added("Leave"); }
     }
 
     // ---- engineer review workbooks (peer reviews) ----

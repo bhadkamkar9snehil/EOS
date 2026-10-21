@@ -23,7 +23,7 @@ public static class ConfigurationService
         if (!db.Calendars.Any())
         {
             db.Calendars.AddRange(
-                new WorkCalendarDef { Name = DefaultCalendarName, HoursPerDay = 8m, WorkDays = "1,2,3,4,5,6", IsDefault = true },
+                new WorkCalendarDef { Name = DefaultCalendarName, HoursPerDay = 8m, WorkDays = "1,2,3,4,5,6", DayHours = "6=4.5", IsDefault = true },
                 new WorkCalendarDef { Name = "Standard Mon-Fri 8h", HoursPerDay = 8m, WorkDays = "1,2,3,4,5" });
         }
         db.SaveChanges();
@@ -50,7 +50,22 @@ public static class ConfigurationService
             def.HoursPerDay,
             def.WorkDays.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(d => (DayOfWeek)int.Parse(d)),
             exceptions.Where(e => !e.IsWorking).Select(e => e.Date),
-            exceptions.Where(e => e.IsWorking).Select(e => e.Date));
+            exceptions.Where(e => e.IsWorking).Select(e => e.Date),
+            ParseDayHours(def.DayHours));
+    }
+
+    public static Dictionary<DayOfWeek, decimal> ParseDayHours(string? text)
+    {
+        var result = new Dictionary<DayOfWeek, decimal>();
+        foreach (var pair in (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = pair.Split('=', StringSplitOptions.TrimEntries);
+            if (parts.Length != 2 || !int.TryParse(parts[0], out var day) || day is < 0 or > 6
+                || !decimal.TryParse(parts[1], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var hours) || hours <= 0 || hours > 24)
+                throw new FormatException($"Day hours must look like 6=4.5 (weekday 0-6 = hours); got '{pair}'.");
+            result[(DayOfWeek)day] = hours;
+        }
+        return result;
     }
 
     public static async Task<bool> IsValidAsync(EosDbContext db, string kind, string value, CancellationToken ct = default)

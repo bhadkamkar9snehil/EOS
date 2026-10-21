@@ -1,3 +1,4 @@
+using EOS.Domain.Capacity;
 using EOS.Domain.Planning;
 using EOS.Domain.Settings;
 using EOS.Infrastructure.Configuration;
@@ -60,10 +61,10 @@ public sealed class CapacityService(EosDbContext db)
 
                 var baseHours = mode == "fixedMonthly"
                     ? ctx.Resolver.Get<decimal>(SettingKeys.StandardHoursPerMonth, chain, asOf)
-                    : WorkingDays(ctx.Calendar, month, monthEnd) * ctx.Calendar.HoursPerDay;
+                    : ctx.Calendar.HoursBetween(month, monthEnd);
                 baseHours *= person.AvailabilityFraction;
 
-                var leaveHours = LeaveDays(ctx, person.Id, month, monthEnd) * ctx.Calendar.HoursPerDay * person.AvailabilityFraction;
+                var leaveHours = LeaveHours(ctx, person.Id, month, monthEnd) * person.AvailabilityFraction;
                 var available = Math.Max(0m, baseHours - leaveHours);
                 var planned = available * util;
 
@@ -103,7 +104,7 @@ public sealed class CapacityService(EosDbContext db)
             for (var week = start; week <= to; week = week.AddDays(7))
             {
                 var weekEnd = week.AddDays(6);
-                var capacity = Math.Max(0m, (WorkingDays(ctx.Calendar, week, weekEnd) - LeaveDays(ctx, person.Id, week, weekEnd)) * ctx.Calendar.HoursPerDay * person.AvailabilityFraction);
+                var capacity = Math.Max(0m, (ctx.Calendar.HoursBetween(week, weekEnd) - LeaveHours(ctx, person.Id, week, weekEnd)) * person.AvailabilityFraction);
                 var days = ctx.Daily.Where(d => d.PersonId == person.Id && d.Day >= week && d.Day <= weekEnd).ToList();
                 var byProject = days.GroupBy(d => d.ProjectId)
                     .Select(g => new ProjectHours(g.Key, ctx.ProjectNos.GetValueOrDefault(g.Key, "?"), Math.Round(g.Sum(x => x.Hours), 2), g.First().Source))
@@ -164,7 +165,7 @@ public sealed class CapacityService(EosDbContext db)
             if (finish < from || start > to) continue;
             for (var d = Max(start, from); d <= Min(finish, to); d = d.AddDays(1))
                 if (cal.IsWorkingDay(d))
-                    daily.Add(new Daily(a.PersonId!.Value, t.ProjectId, d, cal.HoursPerDay * a.Units, "plan"));
+                    daily.Add(new Daily(a.PersonId!.Value, t.ProjectId, d, cal.HoursOn(d) * a.Units, "plan"));
         }
 
         var manual = await db.Allocations.AsNoTracking().Where(a => a.Month >= new DateOnly(from.Year, from.Month, 1) && a.Month <= to).ToListAsync(ct);
@@ -182,20 +183,13 @@ public sealed class CapacityService(EosDbContext db)
         return new LoadContext { People = people, Calendar = cal, Resolver = resolver, Daily = daily, ProposedManual = proposed, Leaves = leaves, ProjectNos = projectNos };
     }
 
-    private static int WorkingDays(WorkCalendar cal, DateOnly from, DateOnly to)
+    private static decimal LeaveHours(LoadContext ctx, int personId, DateOnly from, DateOnly to)
     {
-        var n = 0;
-        for (var d = from; d <= to; d = d.AddDays(1)) if (cal.IsWorkingDay(d)) n++;
-        return n;
-    }
-
-    private static int LeaveDays(LoadContext ctx, int personId, DateOnly from, DateOnly to)
-    {
-        var days = new HashSet<DateOnly>();
-        foreach (var l in ctx.Leaves.Where(l => l.PersonId == personId))
-            for (var d = Max(l.FromDate, from); d <= Min(l.ToDate, to); d = d.AddDays(1))
-                if (ctx.Calendar.IsWorkingDay(d)) days.Add(d);
-        return days.Count;
+        var mine = ctx.Leaves.Where(l => l.PersonId == personId).ToList();
+        var hours = 0m;
+        for (var d = from; d <= to; d = d.AddDays(1))
+            hours += ctx.Calendar.HoursOn(d) * Leave.DayFraction(mine, personId, d);
+        return hours;
     }
 
     private static LoadBand Band(decimal loadVsPlanned, decimal loadVsAvailable, decimal underBelow, decimal overAbove) =>

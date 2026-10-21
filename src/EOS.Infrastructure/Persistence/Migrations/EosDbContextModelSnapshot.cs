@@ -194,6 +194,10 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal>("Fraction")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateOnly>("FromDate")
                         .HasColumnType("TEXT");
 
@@ -202,6 +206,10 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Note")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("PersonId")
@@ -445,6 +453,9 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("DayHours")
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("HoursPerDay")
                         .HasPrecision(5, 2)
@@ -1006,6 +1017,10 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateOnly?>("ActualFinish")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("ActualHours")
+                        .HasPrecision(12, 2)
                         .HasColumnType("TEXT");
 
                     b.Property<DateOnly?>("ActualStart")

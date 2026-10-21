@@ -52,7 +52,7 @@ public sealed class ErpFilesImportTests : IDisposable
     {
         await Seed();
         var path = Timesheet();
-        Assert.Equal(V1FileKind.DetailedTimesheet, PerformanceFilesImporter.Detect(path));
+        Assert.Equal(ErpFileKind.DetailedTimesheet, PerformanceFilesImporter.Detect(path));
 
         var report = await new PerformanceFilesImporter(_db).ImportAsync(path, true, "t");
 
@@ -151,7 +151,7 @@ public sealed class ErpFilesImportTests : IDisposable
         Row(r, 3, "E1", "Anna Lead", "L3", "Anna@Example.com", false);
         Row(r, 4, "E7", "New Joiner", "L1", "", true);
         var rosterPath = Save(roster);
-        Assert.Equal(V1FileKind.Roster, PerformanceFilesImporter.Detect(rosterPath));
+        Assert.Equal(ErpFileKind.Roster, PerformanceFilesImporter.Detect(rosterPath));
 
         var rev = new XLWorkbook();
         var m = rev.AddWorksheet("Template Metadata");
@@ -161,7 +161,7 @@ public sealed class ErpFilesImportTests : IDisposable
         Row(p, 7, "E2", "Bela Dev", 5, 4, 4, 3, "Helpful");
         Row(p, 8, "E7", "New Joiner", "", "", "", "", "");
         var revPath = Save(rev);
-        Assert.Equal(V1FileKind.ReviewWorkbook, PerformanceFilesImporter.Detect(revPath));
+        Assert.Equal(ErpFileKind.ReviewWorkbook, PerformanceFilesImporter.Detect(revPath));
 
         var zip = TestWorkbooks.TempPath() + ".zip"; _files.Add(zip);
         using (var z = ZipFile.Open(zip, ZipArchiveMode.Create)) { z.CreateEntryFromFile(rosterPath, "roster.xlsx"); z.CreateEntryFromFile(revPath, "review.xlsx"); }
