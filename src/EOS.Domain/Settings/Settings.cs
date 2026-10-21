@@ -81,6 +81,14 @@ public static class SettingKeys
 
     public const string HostDiskFreeWarnFraction = "infra.diskFreeWarnFraction";
     public const string VmStaleDays = "infra.vmStaleDays";
+
+    public const string PerfWeightTimesheet = "performance.weightTimesheet";
+    public const string PerfWeightApproval = "performance.weightApproval";
+    public const string PerfWeightAttendance = "performance.weightAttendance";
+    public const string PerfAttendanceFill = "performance.attendanceFill";
+    public const string PerfAttendancePunch = "performance.attendancePunch";
+    public const string PerfAttendanceDuration = "performance.attendanceDuration";
+    public const string PerfAttendancePunctuality = "performance.attendancePunctuality";
 }
 
 public static class SettingDefaults
@@ -134,6 +142,14 @@ public static class SettingDefaults
 
         [SettingKeys.HostDiskFreeWarnFraction] = "0.1",
         [SettingKeys.VmStaleDays] = "30",
+
+        [SettingKeys.PerfWeightTimesheet] = "0.55",
+        [SettingKeys.PerfWeightApproval] = "0.15",
+        [SettingKeys.PerfWeightAttendance] = "0.30",
+        [SettingKeys.PerfAttendanceFill] = "0.40",
+        [SettingKeys.PerfAttendancePunch] = "0.25",
+        [SettingKeys.PerfAttendanceDuration] = "0.20",
+        [SettingKeys.PerfAttendancePunctuality] = "0.15",
     };
 }
 

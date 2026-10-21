@@ -17,10 +17,12 @@
                     <option value="tracker">Project task tracker (WBS)</option>
                     <option value="vms">Server and VM inventory</option>
                     <option value="leave">Leave (Person, From, To, Kind)</option>
+                    <option value="files">ERP reports (roster, utilisation, timesheets, attendance, reviews; .xlsx or .zip)</option>
                     <option value="legacy">Old EOS on this machine (people and timesheets)</option>
                 </select></div>
             @if (_kind == "legacy") { <div class="field grow"><label>Old EOS database</label><input @bind="_legacyPath" /></div> }
-            else { <div class="field"><label>Workbook (.xlsx)</label><InputFile OnChange="Picked" accept=".xlsx" /></div> }
+            else { <div class="field"><label>@(_kind == "files" ? "Workbook or zip" : "Workbook (.xlsx)")</label><InputFile OnChange="Picked" accept=".xlsx,.zip" /></div> }
+            @if (_kind == "files") { <div class="field"><label>Month, if the file does not state it</label><input @bind="_month" placeholder="2026-10" /></div> }
             <button @onclick="() => Run(false)" disabled="@(_kind != "legacy" && _file is null)">Preview</button>
             <button class="secondary" @onclick="() => Run(true)" disabled="@((_kind != "legacy" && _file is null) || _report is null || _report.Committed)">Commit</button>
         </div>
@@ -46,6 +48,7 @@
 
 @code {
     private string _kind = "agility";
+    private string _month = "";
     private IBrowserFile? _file;
     private ImportReport? _report;
     private List<EOS.Domain.Audit.AuditEvent> _recent = [];
@@ -66,7 +69,7 @@
             return;
         }
         if (_file is null) return;
-        var temp = Path.Combine(Path.GetTempPath(), $"eos-import-{Guid.NewGuid():N}.xlsx");
+        var temp = Path.Combine(Path.GetTempPath(), $"eos-import-{Guid.NewGuid():N}{(_file.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? ".zip" : ".xlsx")}");
         try
         {
             await using (var fs = File.Create(temp)) await _file.OpenReadStream(64 * 1024 * 1024).CopyToAsync(fs);
@@ -81,6 +84,8 @@
                     "erp" => await new ErpProjectImporter(db).ImportAsync(temp, commit, actor),
                     "tracker" => await new TrackerImporter(db).ImportAsync(temp, commit, actor),
                     "leave" => await new LeaveImporter(db).ImportAsync(temp, commit, actor),
+                    "files" => await new PerformanceFilesImporter(db).ImportAsync(temp, commit, actor,
+                        DateTime.TryParseExact(_month, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var ym) ? ym.Year : null, ym.Month == 0 ? null : ym.Month),
                     _ => await new InfrastructureImporter(db).ImportAsync(temp, commit, actor),
                 };
             }, commit ? "Import committed." : "Preview ready. Nothing was saved.");

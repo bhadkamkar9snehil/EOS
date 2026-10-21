@@ -48,7 +48,7 @@ public static class OpsApi
             };
         });
 
-        api.MapPost("/imports/{kind}", async (HttpContext http, EosDbContext db, string kind, IFormFile file, bool? commit) =>
+        api.MapPost("/imports/{kind}", async (HttpContext http, EosDbContext db, string kind, IFormFile file, bool? commit, string? month) =>
         {
             var temp = Path.Combine(Path.GetTempPath(), $"eos-import-{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}");
             try
@@ -64,7 +64,10 @@ public static class OpsApi
                     "tracker" => await new TrackerImporter(db).ImportAsync(temp, doCommit, actor),
                     "leave" => await new LeaveImporter(db).ImportAsync(temp, doCommit, actor),
                     "vms" => await new InfrastructureImporter(db).ImportAsync(temp, doCommit, actor),
-                    _ => throw new ArgumentException($"Unknown import kind '{kind}'. Use agility, training, erp, tracker or vms."),
+                    "files" => await new PerformanceFilesImporter(db).ImportAsync(temp, doCommit, actor,
+                        DateTime.TryParseExact(month, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var ym) ? ym.Year : null,
+                        ym.Month == 0 ? null : ym.Month),
+                    _ => throw new ArgumentException($"Unknown import kind '{kind}'. Use agility, training, erp, tracker, leave, vms or files."),
                 };
                 return Results.Ok(new { report.Kind, File = file.FileName, report.Committed, Counts = report.Counts, report.Warnings, report.Unresolved });
             }

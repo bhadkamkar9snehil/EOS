@@ -294,6 +294,17 @@ try
             return 0;
         }
 
+        case ("import", "files") when argv.Count >= 3:
+        {
+            using var db = EosDatabase.Open(dbPath);
+            int? y = null, m = null;
+            if (TakeOption("--month") is { } ym && DateTime.TryParseExact(ym, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth)) (y, m) = (parsedMonth.Year, parsedMonth.Month);
+            var rep = await new PerformanceFilesImporter(db).ImportAsync(argv[2], commit, actor, y, m);
+            Console.WriteLine(rep.ToText());
+            if (!commit) Console.WriteLine("Preview only. Add --commit to save.");
+            return 0;
+        }
+
         case ("import", "legacy"):
         {
             using var db = EosDatabase.Open(dbPath);
@@ -454,7 +465,8 @@ void PrintHelp()
     Console.WriteLine("  eos alias resolve <alias> <personCode> [--source tracker]   map initials to a person");
     Console.WriteLine("  eos training summary                 Know / don't know / need-to-discuss per person");
     Console.WriteLine("  eos alias list");
-    Console.WriteLine("  eos import legacy [--v1 <engineering-performance.db>] [--commit]   people and timesheets from the old EOS");
+    Console.WriteLine("  eos import files <file.xlsx|.zip> [--month yyyy-MM] [--commit]   ERP reports the old EOS read: roster, utilisation summary, detailed timesheets, attendance, review workbooks (auto-detected)");
+    Console.WriteLine("  eos import legacy[--v1 <engineering-performance.db>] [--commit]   people and timesheets from the old EOS");
     Console.WriteLine("  eos token create <name>|list|revoke <id>       access tokens (the name is the actor on every change)");
     Console.WriteLine("  eos dashboard [--json]                         the Command Center in text");
     Console.WriteLine("  eos alert list [--json]");

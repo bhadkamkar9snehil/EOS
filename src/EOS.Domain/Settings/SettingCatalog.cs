@@ -20,6 +20,7 @@ public static class SettingCatalog
         new("health", "Project health", "When a project is shown as Moderate Risk or At Risk."),
         new("infra", "Infrastructure", "Warnings for servers and virtual machines."),
         new("alerts", "Alert thresholds", "Limits used by the Alerts page."),
+        new("performance", "Operational score", "How timesheet completion, approval and attendance are weighted into a monthly operational score when ERP reports are imported."),
     ];
 
     private static readonly (string, string)[] RuleOptions = [("afterOwnTasks", "Stay on the project and pick up its remaining work"), ("none", "Work stops until someone is assigned")];
@@ -66,6 +67,14 @@ public static class SettingCatalog
 
         new(SettingKeys.HostDiskFreeWarnFraction, "infra", "Warn when disk free is below", "Share of a disk that must stay free.", SettingKind.Percent, "%", 0, 1),
         new(SettingKeys.VmStaleDays, "infra", "A VM is stale after", "Days since a VM was last touched before it is a clean-up candidate.", SettingKind.Integer, "days", 1, 730),
+
+        new(SettingKeys.PerfWeightTimesheet, "performance", "Weight: timesheet completion", "Entered hours against compliance hours.", SettingKind.Percent, "%", 0, 1),
+        new(SettingKeys.PerfWeightApproval, "performance", "Weight: approval", "Approved hours against entered hours.", SettingKind.Percent, "%", 0, 1),
+        new(SettingKeys.PerfWeightAttendance, "performance", "Weight: attendance discipline", "Filled days, punches, duration and punctuality combined.", SettingKind.Percent, "%", 0, 1),
+        new(SettingKeys.PerfAttendanceFill, "performance", "Attendance: timesheet filled", "Share of attendance discipline from days with a filled timesheet.", SettingKind.Percent, "%", 0, 1),
+        new(SettingKeys.PerfAttendancePunch, "performance", "Attendance: punch present", "Share from days with no missing punch.", SettingKind.Percent, "%", 0, 1),
+        new(SettingKeys.PerfAttendanceDuration, "performance", "Attendance: full duration", "Share from days without a short working duration.", SettingKind.Percent, "%", 0, 1),
+        new(SettingKeys.PerfAttendancePunctuality, "performance", "Attendance: punctuality", "Share from days without late arrival or early departure.", SettingKind.Percent, "%", 0, 1),
 
         new(SettingKeys.AlertTrackerStaleDays, "alerts", "Tracker not updated for", "Days without a tracker update before a project is flagged.", SettingKind.Integer, "days", 1, 90),
         new(SettingKeys.AlertDemandStartWarnDays, "alerts", "Warn this far before unfilled demand starts", "Days before the start of demand with nobody assigned.", SettingKind.Integer, "days", 1, 90),

@@ -96,68 +96,14 @@ public sealed class LegacyEosImporter(EosDbContext db)
     private async Task ImportTimesheetsAsync(
         List<string> files, List<Person> people, Dictionary<string, Person> byName, HashSet<string> codes, ImportReport report, CancellationToken ct)
     {
-        var keys = (await db.Timesheets.AsNoTracking().Select(t => t.Key).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
-        var projects = await db.Projects.AsNoTracking().ToDictionaryAsync(p => p.ProjectNo, p => p.Id, StringComparer.OrdinalIgnoreCase, ct);
-        var bands = new Dictionary<int, string>();
-        var created = new Dictionary<string, Person>(StringComparer.Ordinal);
-        var pending = new List<(Person Person, TimesheetEntry Entry)>();
-        var missing = 0;
-
+        var idx = await PeopleIndex.LoadAsync(db, ct);
+        var importer = new PerformanceFilesImporter(db);
         foreach (var file in files.Where(File.Exists))
         {
-            using var wb = WorkbookReading.Open(file);
-            var ws = wb.Worksheets.FirstOrDefault();
-            if (ws is null) continue;
-            var cols = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (var c = 1; c <= 25; c++) { var h = ws.Text(1, c).Trim(); if (h.Length > 0) cols[h] = c; }
-            if (!cols.ContainsKey("Employee") || !cols.ContainsKey("Date") || !cols.ContainsKey("Total work Hours")) { report.Warnings.Add($"{Path.GetFileName(file)}: not a detailed timesheet export; skipped."); continue; }
-
-            string Get(int r, string h) => cols.TryGetValue(h, out var c) ? ws.Text(r, c).Trim() : "";
-            var last = ws.LastRowUsed()?.RowNumber() ?? 1;
-            for (var r = 2; r <= last; r++)
-            {
-                var name = Get(r, "Employee");
-                var date = cols.TryGetValue("Date", out var dc) ? ws.Date(r, dc) : null;
-                var hours = cols.TryGetValue("Total work Hours", out var hc) ? ws.Number(r, hc) : null;
-                if (name.Length == 0 || date is null || hours is null || hours <= 0) continue;
-
-                var norm = PersonMatcher.Normalise(name);
-                if (!byName.TryGetValue(norm, out var person))
-                {
-                    if (!created.TryGetValue(norm, out person))
-                    {
-                        var n = people.Count + 1; string code;
-                        do { code = $"H{n++:000}"; } while (codes.Contains(code));
-                        person = new Person { Code = code, FullName = name, IsActive = false, IsUnverified = true };
-                        db.People.Add(person); people.Add(person); codes.Add(code); created[norm] = person; byName[norm] = person;
-                        report.Added("Former engineer");
-                    }
-                }
-
-                var projectNo = Get(r, "Project No");
-                var task = Get(r, "Task"); var activity = Get(r, "Activity"); var milestone = Get(r, "Milestone");
-                var key = Hash($"{norm}|{date:O}|{Get(r, "Filled Date")}|{projectNo}|{hours}|{task}|{activity}|{milestone}|{Get(r, "Start Time")}");
-                if (!keys.Add(key)) { report.Unchanged("Timesheet entry"); continue; }
-
-                var band = Get(r, "Bandlevel");
-                var entry = new TimesheetEntry
-                {
-                    Key = key, Date = date.Value, Hours = hours.Value,
-                    ProjectNo = projectNo.Length == 0 ? null : projectNo, ProjectName = NullIfEmpty(Get(r, "Project")),
-                    ProjectId = projectNo.Length > 0 && projects.TryGetValue(projectNo, out var pid) ? pid : null,
-                    Activity = NullIfEmpty(activity), Milestone = NullIfEmpty(milestone), Task = NullIfEmpty(task), TaskType = NullIfEmpty(Get(r, "Task Type")),
-                    Band = NullIfEmpty(band),
-                };
-                pending.Add((person, entry));
-                report.Added("Timesheet entry");
-            }
+            if (PerformanceFilesImporter.Detect(file) != V1FileKind.DetailedTimesheet) { report.Warnings.Add($"{Path.GetFileName(file)}: not a detailed timesheet export; skipped."); continue; }
+            await importer.ImportTimesheetFileAsync(file, idx, report, ct);
         }
-
-        await db.SaveChangesAsync(ct);
-        foreach (var (person, entry) in pending) { entry.PersonId = person.Id; db.Timesheets.Add(entry); }
-        foreach (var g in pending.Where(x => x.Entry.Band is not null).GroupBy(x => x.Person.Id))
-            people.First(p => p.Id == g.Key).Band = g.OrderByDescending(x => x.Entry.Date).First().Entry.Band;
-        if (missing > 0) report.Warnings.Add($"{missing} rows skipped.");
+        foreach (var p in idx.People.Where(p => !people.Contains(p))) { people.Add(p); byName[PersonMatcher.Normalise(p.FullName)] = p; codes.Add(p.Code); }
     }
 
     private static Person? Find(PersonMatcher matcher, Dictionary<string, Person> byName, string name) =>
@@ -226,7 +172,4 @@ public sealed class LegacyEosImporter(EosDbContext db)
         if (unmatched > 0) report.Warnings.Add($"{unmatched} peer reviews had no matching person.");
     }
 
-    private static string? NullIfEmpty(string s) => s.Length == 0 ? null : s;
-
-    private static string Hash(string text) => Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(text)));
 }
