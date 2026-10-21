@@ -1634,8 +1634,7 @@ EOS_V2/
   src/
     EOS.Domain/            entities, value objects, enumerations (§7)
     EOS.Scheduling/        the scheduling & what-if engine (pure, no I/O) — C# port of MeridianPlan semantics (§27)
-    EOS.Application/       use-cases, interfaces, DTOs, validation, alert rules, report definitions
-    EOS.Infrastructure/    EF Core SQLite, importers (I1–I18), backup, file/report generators (ClosedXML), diagnostics
+    EOS.Infrastructure/    use-cases, DTOs, validation, alert rules, report definitions, EF Core SQLite, importers (I1–I18), backup, file/report generators (ClosedXML), diagnostics
     EOS.Server/            ASP.NET Core host: REST, Blazor Server, MCP, SignalR, auth, audit
     EOS.UI/                Razor components + design system + Gantt (wraps the MeridianPlan renderer)
     EOS.Cli/               `eos` — thin client of the REST API (+ optional --local direct mode)

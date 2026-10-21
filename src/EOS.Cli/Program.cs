@@ -34,18 +34,22 @@ if (argv.Count == 0 || argv[0] is "-h" or "--help" or "help") { PrintHelp(); ret
 var serverUrl = TakeOption("--server") ?? Environment.GetEnvironmentVariable("EOS_URL");
 var serverToken = TakeOption("--token") ?? Environment.GetEnvironmentVariable("EOS_TOKEN");
 
+async Task<int> SendAsync(string url, string method, string route, string? body = null)
+{
+    using var http = new HttpClient { BaseAddress = new Uri(url.TrimEnd('/') + "/api/v1/") };
+    if (serverToken is not null) http.DefaultRequestHeaders.Authorization = new("Bearer", serverToken);
+    using var request = new HttpRequestMessage(new HttpMethod(method), route.TrimStart('/'));
+    if (body is not null) request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+    using var response = await http.SendAsync(request);
+    Console.WriteLine(await response.Content.ReadAsStringAsync());
+    return response.IsSuccessStatusCode ? 0 : 1;
+}
+
 if (argv[0] == "api" && argv.Count >= 3)
 {
     if (serverUrl is null) { Console.Error.WriteLine("Set EOS_URL (and EOS_TOKEN) or pass --server and --token."); return 1; }
     var body = TakeOption("--body");
-    using var http = new HttpClient { BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/api/v1/") };
-    if (serverToken is not null) http.DefaultRequestHeaders.Authorization = new("Bearer", serverToken);
-    using var request = new HttpRequestMessage(new HttpMethod(argv[1].ToUpperInvariant()), argv[2].TrimStart('/'));
-    if (body is not null) request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-    using var response = await http.SendAsync(request);
-    var text = await response.Content.ReadAsStringAsync();
-    Console.WriteLine(text);
-    return response.IsSuccessStatusCode ? 0 : 1;
+    return await SendAsync(serverUrl, argv[1].ToUpperInvariant(), argv[2], body);
 }
 
 if (serverUrl is not null)
@@ -65,13 +69,7 @@ if (serverUrl is not null)
         _ => null,
     };
     if (route is not null)
-    {
-        using var http = new HttpClient { BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/api/v1/") };
-        if (serverToken is not null) http.DefaultRequestHeaders.Authorization = new("Bearer", serverToken);
-        using var response = await http.GetAsync(route);
-        Console.WriteLine(await response.Content.ReadAsStringAsync());
-        return response.IsSuccessStatusCode ? 0 : 1;
-    }
+        return await SendAsync(serverUrl, "GET", route);
 }
 
 try

@@ -81,7 +81,6 @@ public sealed class ScenarioService(EosDbContext db)
 
         foreach (var plan in outcome.ScenarioPlans)
         {
-            var projectId = int.Parse(plan.Id);
             foreach (var scheduleTask in plan.Tasks)
             {
                 var taskId = int.Parse(scheduleTask.Id);
@@ -90,7 +89,6 @@ public sealed class ScenarioService(EosDbContext db)
                 foreach (var c in scheduleTask.Crew.Where(c => involved.Contains(c.PersonId)))
                     db.TaskAssignments.Add(new TaskAssignment { TaskId = taskId, PersonId = int.Parse(c.PersonId), Units = c.Units, FromDate = c.From, ToDate = c.To });
             }
-            _ = projectId;
         }
         await db.SaveChangesAsync(ct);
 

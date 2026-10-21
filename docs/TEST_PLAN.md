@@ -1,6 +1,7 @@
 # EOS V2 end-to-end functional test plan
 
-Status: proposed, not yet built. Nothing here is guessed through screenshots or computer use: every check is a script that passes or fails.
+Status: partially implemented. Scheduling and infrastructure xUnit tests, grid model/DOM tests,
+and Playwright browser suites exist; the coverage and journeys below remain the target, not a claim of full coverage.
 
 Out of scope by owner decision (19 Oct 2026): direct MS Project import. Plans come from the workbook importers or are authored in the system.
 
@@ -14,9 +15,9 @@ Out of scope by owner decision (19 Oct 2026): direct MS Project import. Plans co
 | # | Layer | Tool | What it proves |
 |---|---|---|---|
 | L1 | Engine and rules (exists) | xUnit, golden tests from spec 15.8 and 28.1 | Scheduler, what-if and capacity maths |
-| L2 | Use-case and persistence | xUnit over EOS.Application and EOS.Infrastructure with a temp SQLite file | Every create, edit, delete, approve, import and backup path writes the right rows |
+| L2 | Use-case and persistence | xUnit over EOS.Infrastructure with SQLite | Every create, edit, delete, approve, import and backup path writes the right rows |
 | L3 | HTTP contract | xUnit with WebApplicationFactory against the real EOS.Server host | Every REST endpoint under /api/v1, auth modes, validation errors, MCP tool list and calls |
-| L4 | UI behaviour | Playwright (.NET) driving headless Chromium against the test host | Every page loads without console errors; every button, form, grid edit, drag and toast does what the page promises; Blazor circuit survives navigation |
+| L4 | UI behaviour | Playwright (TypeScript) driving headless Chromium against the test host | Every page loads without console errors; every button, form, grid edit, drag and toast does what the page promises; Blazor circuit survives navigation |
 | L5 | Cross-feature journeys | Playwright plus L3 for setup and assertions | The real owner workflows, end to end (below) |
 
 L4 selects by role, label and a stable `data-testid` that we add to controls. No pixel coordinates. A failed step saves the page HTML, console log and a screenshot as evidence for a human, never as the assertion.

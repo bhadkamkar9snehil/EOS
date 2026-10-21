@@ -27,8 +27,6 @@ test:
     expire_in: 2 weeks
     paths:
       - TestResults/
-    reports:
-      junit: TestResults/*.trx
 
 test-windows:
   stage: test

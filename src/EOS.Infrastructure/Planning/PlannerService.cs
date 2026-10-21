@@ -316,21 +316,13 @@ public sealed class PlannerService(EosDbContext db)
         var otherTasks = await db.Tasks.AsNoTracking()
             .Where(t => t.ProjectId != projectId && t.ScheduledStart != null && t.ScheduledFinish != null && t.PercentComplete < 1m)
             .Select(t => new { t.Id, Start = t.ScheduledStart!.Value, Finish = t.ScheduledFinish!.Value }).ToListAsync(ct);
-        var otherById = otherTasks.ToDictionary(t => t.Id);
+        var otherSpans = otherTasks.ToDictionary(t => t.Id, t => new PlannerSpan(t.Start, t.Finish));
         var otherAssignments = await db.TaskAssignments.AsNoTracking().Where(a => a.PersonId != null).ToListAsync(ct);
-        foreach (var a in otherAssignments.Where(a => otherById.ContainsKey(a.TaskId)))
-        {
-            var t = otherById[a.TaskId];
-            if (!session.OtherWeeks.TryGetValue(a.PersonId!.Value, out var arr)) continue;
-            var from = a.FromDate is { } f && f > t.Start ? f : t.Start;
-            var to = a.ToDate is { } e && e < t.Finish ? e : t.Finish;
-            for (var d = from; d <= to; d = d.AddDays(1))
-            {
-                if (!cal.IsWorkingDay(d)) continue;
-                var w = (d.DayNumber - winStart.DayNumber) / 7;
-                if (w >= 0 && w < weekCount) arr[w] += a.Units * cal.HoursOn(d);
-            }
-        }
+        var otherHours = session.WeeklyHours(otherAssignments
+            .Where(a => session.OtherWeeks.ContainsKey(a.PersonId!.Value))
+            .Select(a => new PlannerAssignment(a.TaskId, a.PersonId!.Value, a.Units, a.FromDate, a.ToDate)).ToList(), otherSpans, cal);
+        foreach (var personId in session.OtherWeeks.Keys.ToList())
+            if (otherHours.TryGetValue(personId, out var hours)) session.OtherWeeks[personId] = hours;
 
         var baseSpans = new Dictionary<int, PlannerSpan>();
         foreach (var (key, s) in baseSchedule.Tasks) baseSpans[int.Parse(key)] = new PlannerSpan(s.Start, s.Finish);

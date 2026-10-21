@@ -21,9 +21,8 @@ UI, API, CLI and MCP. No secrets are ever stored.
 src/
   EOS.Domain/          entities, enumerations, settings model (pure)
   EOS.Scheduling/      scheduling + what-if engine (pure, no I/O)
-  EOS.Application/     use-cases and interfaces
-  EOS.Infrastructure/  persistence (SQLite), importers, backup
-  EOS.Server/          ASP.NET Core host (REST, later Blazor UI, MCP)
+  EOS.Infrastructure/  use-cases, persistence (SQLite), importers, backup
+  EOS.Server/          ASP.NET Core host (REST, Blazor UI, MCP)
   EOS.Cli/             `eos` command line
 tests/                 xUnit (golden scheduling tests from spec §15.8 / §28.1)
 third_party/meridianplan/   MIT-licensed Gantt/scheduler reference (see NOTICE.eos)
@@ -43,7 +42,8 @@ dotnet run --project src\EOS.Cli -- version
 - Web UI (Blazor Server): Command Center, Projects (editable WBS, assignments, dependencies, baseline), Combined Gantt, Capacity & Load, What-if workbench, Demand & Pipeline, People, Skills matrix (manual ratings only), Training, Infrastructure, Alerts, Reports (CSV/Excel), Imports (preview then commit), Settings (settings, calendars, vocabularies, custom fields, aliases, tokens, backups, audit).
 - REST API at `/api/v1` (catalogue at `/openapi/v1.json`), MCP at `/mcp`, CLI `eos` (local mode: `eos help`).
 - Importers for the agility workbook, training tracker, ERP master, task tracker and VM inventory; no credentials are ever read.
-- Not yet: CLI as API client, V1 data migration, MS Project import, MeridianPlan UI embedding, report extras.
+- CLI supports local commands and API requests (`eos api <method> <route>`); legacy V1 data can be migrated with `eos import legacy`.
+- Not yet: MeridianPlan UI embedding and report extras. Direct MS Project import is out of scope.
 
 ## Hosting
 Target: Ubuntu VM `ubuntusb`, systemd unit `eos`, port 8095, LAN + Tailscale only (spec §25). Files and steps: `deploy/README.md`.

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\EOS.Application\EOS.Application.csproj" />
+    <ProjectReference Include="..\EOS.Scheduling\EOS.Scheduling.csproj" />
     <ProjectReference Include="..\EOS.Domain\EOS.Domain.csproj" />
   </ItemGroup>
 
