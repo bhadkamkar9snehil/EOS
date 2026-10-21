@@ -324,8 +324,6 @@ public sealed class PlannerService(EosDbContext db)
         foreach (var personId in session.OtherWeeks.Keys.ToList())
             if (otherHours.TryGetValue(personId, out var hours)) session.OtherWeeks[personId] = hours;
 
-        var baseSpans = new Dictionary<int, PlannerSpan>();
-        foreach (var (key, s) in baseSchedule.Tasks) baseSpans[int.Parse(key)] = new PlannerSpan(s.Start, s.Finish);
         var probe = session.Simulate(session.Baseline, false);
         session.BaselineResult = probe with { BaseSpans = probe.Spans, BaseFinish = probe.Finish, SlipDays = 0, Moved = [] };
         session.BaselineLoad = session.WeeklyHours(session.Baseline, session.BaselineResult.Spans, cal);
