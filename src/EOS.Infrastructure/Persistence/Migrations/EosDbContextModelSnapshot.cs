@@ -812,6 +812,9 @@ namespace EOS.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsUnverified")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsUpdownFromErp")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("RoleTitle")
                         .HasColumnType("TEXT");
 
@@ -819,6 +822,9 @@ namespace EOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("TeamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("UpdownOverride")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

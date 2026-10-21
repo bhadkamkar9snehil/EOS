@@ -42,7 +42,7 @@ public sealed class ErpFilesImportTests : IDisposable
         var wb = new XLWorkbook(); var ws = wb.AddWorksheet("Sheet1");
         Row(ws, 1, "Employee", "Project No", "Project", "Filled Date", "Date", "Start Time", "EndTime", "Total work Hours", "Bandlevel", "Milestone", "Activity", "Task", "Task Type");
         Row(ws, 2, "Anna Lead", "V_PRO2602059_2", "E-Logbook", filled, "2026-10-19", "09:00", "11:00", hoursOnEdited, "L1", "1. Design", "DOW", "Report", "Off Site");
-        Row(ws, 3, "Bela Dev", "", "", "2026-10-20 10:00", "2026-10-19", "09:00", "12:00", 3, "L2", "", "", "Training", "Technical");
+        Row(ws, 3, "Bela Dev", "0", "", "2026-10-20 10:00", "2026-10-19", "09:00", "12:00", 3, "L2", "", "", "Training", "Technical");
         Row(ws, 4, "Ghost Person", "PRO9999999", "Other", "2026-10-20 10:00", "2026-10-20", "09:00", "10:00", 1, "L2", "", "", "Work", "Technical");
         return Save(wb);
     }
@@ -59,6 +59,7 @@ public sealed class ErpFilesImportTests : IDisposable
         Assert.Equal(3, report.Of("Timesheet entry").Added);
         var anna = await _db.Timesheets.SingleAsync(t => t.ProjectNo == "V_PRO2602059_2");
         Assert.Equal(await _db.Projects.Select(p => (int?)p.Id).FirstAsync(), anna.ProjectId);
+        Assert.Null((await _db.Timesheets.SingleAsync(t => t.Task == "Training")).ProjectNo);   // ERP project 0 means no project
         var ghost = await _db.People.SingleAsync(p => p.FullName == "Ghost Person");
         Assert.False(ghost.IsActive);
         Assert.Equal(1, (await _db.MonthlyPerformance.SingleAsync(m => m.PersonId == anna.PersonId)).UniqueProjects);
@@ -146,10 +147,10 @@ public sealed class ErpFilesImportTests : IDisposable
     {
         await Seed();
         var roster = new XLWorkbook(); var r = roster.AddWorksheet("Sheet1");
-        Row(r, 1, "Employee No", "Full Name", "Band Level", "Official Email", "IsConsultant");
-        Row(r, 2, "Admin Reporting: Boss", "", "", "", "");
-        Row(r, 3, "E1", "Anna Lead", "L3", "Anna@Example.com", false);
-        Row(r, 4, "E7", "New Joiner", "L1", "", true);
+        Row(r, 1, "Employee No", "Full Name", "Band Level", "Official Email", "IsConsultant", "IsUpdown");
+        Row(r, 2, "Admin Reporting: Boss", "", "", "", "", "");
+        Row(r, 3, "E1", "Anna Lead", "L3", "Anna@Example.com", false, true);
+        Row(r, 4, "E7", "New Joiner", "L1", "", true, false);
         var rosterPath = Save(roster);
         Assert.Equal(ErpFileKind.Roster, PerformanceFilesImporter.Detect(rosterPath));
 
@@ -170,6 +171,14 @@ public sealed class ErpFilesImportTests : IDisposable
         var anna = await _db.People.SingleAsync(x => x.Code == "E1");
         Assert.Equal((3, "anna@example.com"), (anna.Seniority, anna.Email));
         Assert.True((await _db.People.SingleAsync(x => x.Code == "E7")).IsConsultant);
+        Assert.True(anna.IsUpdown);                                  // commuter flag comes from the ERP roster
+        await new EOS.Infrastructure.People.PeopleService(_db).UpdateAsync(anna.Id, new EOS.Infrastructure.People.PersonPatch { Updown = false }, "owner");
+        await new PerformanceFilesImporter(_db).ImportAsync(rosterPath, true, "t");
+        anna = await _db.People.SingleAsync(x => x.Code == "E1");
+        Assert.False(anna.IsUpdown);                                 // the owner's correction survives a roster re-import
+        Assert.True(anna.IsUpdownFromErp);
+        await new EOS.Infrastructure.People.PeopleService(_db).UpdateAsync(anna.Id, new EOS.Infrastructure.People.PersonPatch { ClearUpdown = true }, "owner");
+        Assert.True((await _db.People.SingleAsync(x => x.Code == "E1")).IsUpdown);
         var review = await _db.PeerReviews.SingleAsync();
         Assert.Equal((10, 5m, "Helpful"), (review.Month, review.Collaboration, review.Comment));
 

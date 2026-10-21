@@ -59,7 +59,7 @@ public sealed class LegacyEosImporter(EosDbContext db)
     {
         var roster = new HashSet<Person>();
         await using var cmd = con.CreateCommand();
-        cmd.CommandText = "select EmployeeCode, Name, SeniorityLevel, IsActive, Email, IsConsultant, IsOnProbation, IsNonBillable from employee";
+        cmd.CommandText = "select EmployeeCode, Name, SeniorityLevel, IsActive, Email, IsConsultant, IsOnProbation, IsNonBillable, IsUpdownFromRoster, UpdownOverride from employee";
         await using var rd = await cmd.ExecuteReaderAsync(ct);
         while (await rd.ReadAsync(ct))
         {
@@ -86,6 +86,7 @@ public sealed class LegacyEosImporter(EosDbContext db)
             person.Email ??= email;
             person.Seniority = seniority;
             person.IsConsultant = rd.GetInt32(5) != 0; person.IsOnProbation = rd.GetInt32(6) != 0; person.IsNonBillable = rd.GetInt32(7) != 0;
+            person.IsUpdownFromErp = !rd.IsDBNull(8) && rd.GetInt32(8) != 0; person.UpdownOverride = rd.IsDBNull(9) ? null : rd.GetInt32(9) != 0;
             person.IsActive = active;
             byName[PersonMatcher.Normalise(name)] = person;
             roster.Add(person);

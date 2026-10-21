@@ -15,7 +15,15 @@
         <div class="page-head">
             <div><h1>@person.FullName <span class="muted" style="font-weight:400">@person.Code</span></h1>
                 <p class="muted">@person.RoleTitle · @(person.Team ?? "no team") · @person.BaseLocation · availability @((person.AvailabilityFraction * 100).ToString("0"))% · @_p.ModulesKnown / @_p.ModulesTotal modules known · @_p.OpenDoubts open doubts</p></div>
-            <div class="actions"><a class="btn secondary" href="/people">All people</a></div>
+            <div class="actions">
+                <label class="muted small" for="commute">Commute</label>
+                <select id="commute" value="@CommuteValue(person)" @onchange="e => SetCommute(e.Value?.ToString())">
+                    <option value="erp">Follow ERP</option>
+                    <option value="yes">Up-down (commutes)</option>
+                    <option value="no">Local</option>
+                </select>
+                <a class="btn secondary" href="/people">All people</a>
+            </div>
         </div>
 
         <div class="person-top">
@@ -111,6 +119,11 @@
     [Parameter] public int Id { get; set; }
     private PersonProfile? _p;
     private PersonTimesheetStats? _ts;
+
+    private static string CommuteValue(PersonRow p) => p.UpdownOverride switch { true => "yes", false => "no", null => "erp" };
+
+    private Task SetCommute(string? value) => Act((sp, a) => sp.GetRequiredService<PeopleService>().UpdateAsync(Id,
+        value == "erp" ? new PersonPatch { ClearUpdown = true } : new PersonPatch { Updown = value == "yes" }, a), "Commute updated.");
 
     private Task ApplyAvailability() => Act((sp, a) => sp.GetRequiredService<PeopleService>().UpdateAsync(Id, new PersonPatch { AvailabilityFraction = _ts!.SuggestedAvailability ?? _p!.Person.AvailabilityFraction }, a), "Availability updated.");
     private List<(DateTime AtUtc, string Skill, int? OldRating, int? NewRating, string ChangedBy, string? Reason)> _history = [];

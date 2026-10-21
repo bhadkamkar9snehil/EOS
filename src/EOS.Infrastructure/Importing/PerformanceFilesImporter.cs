@@ -222,14 +222,16 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
                 report.Added("Person");
             }
             var designation = cols.TryGetValue("Designation", out var dc) ? ws.Text(r, dc) : "";
-            var before = (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band, person.RoleTitle);
+            // Older roster exports predate the column; its absence means "not up-down" rather than an unreadable file.
+            var updown = cols.TryGetValue("IsUpdown", out var uc) && Flag(ws, r, uc);
+            var before = (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band, person.RoleTitle, person.IsUpdownFromErp);
             if (designation.Length > 0 && string.IsNullOrWhiteSpace(person.RoleTitle)) person.RoleTitle = designation;
             person.Seniority = level;
             if (email.Length > 0) person.Email = email;
-            person.IsConsultant = consultant; person.IsOnProbation = probation;
+            person.IsConsultant = consultant; person.IsOnProbation = probation; person.IsUpdownFromErp = updown;
             if (band.Length > 0) person.Band = band;
             if (person.Id == 0) continue;
-            if (before == (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band, person.RoleTitle)) report.Unchanged("Person");
+            if (before == (person.Seniority, person.Email, person.IsConsultant, person.IsOnProbation, person.Band, person.RoleTitle, person.IsUpdownFromErp)) report.Unchanged("Person");
             else report.Updated("Person");
         }
     }
@@ -286,7 +288,9 @@ public sealed class PerformanceFilesImporter(EosDbContext db)
                 report.Added("Former engineer");
             }
 
-            var projectNo = Get(r, "Project No"); var task = Get(r, "Task"); var activity = Get(r, "Activity"); var milestone = Get(r, "Milestone");
+            var projectNo = Get(r, "Project No"); var task = Get(r, "Task");
+            if (projectNo == "0") projectNo = "";          // the ERP writes 0 for work that belongs to no project (common support, training)
+            var activity = Get(r, "Activity"); var milestone = Get(r, "Milestone");
             var key = Hash($"{norm}|{date:O}|{Get(r, "Filled Date")}|{projectNo}|{hours}|{task}|{activity}|{milestone}|{Get(r, "Start Time")}");
             if (!seen.Add(key)) { report.Unchanged("Timesheet entry"); continue; }
             incoming.Add((person, new TimesheetEntry

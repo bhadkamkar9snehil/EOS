@@ -24,6 +24,23 @@ Read `docs/SPEC.md` before changing behaviour. If code and spec disagree, fix on
 11. **ERP data is imported, everything else is entered in EOS** (spec §4.16). Do not add workbook-only data paths.
 12. **Saturday is a half day** (4.5 h on the default calendar). Hours are per weekday, never a single constant.
 
+13. **Up-down (commuter) is tracked per engineer.** It comes from the ERP roster (`IsUpdown`) and the owner may override
+    it per person; never drop it from an import or a person view (spec §7, I19).
+
+## Knowledge and memory: gbrain
+Knowledge and memory for this project live in **gbrain** (shared by Claude and Codex), not in per-agent memory files.
+- **Read from it:** before asking or guessing about anything settled before (owner decisions, ERP file formats and traps,
+  how something was done), search gbrain (`query` or `recall`). Start with the pages `eos-v2/decisions`,
+  `eos-v2/erp-imports`, `eos-v2/spec-index` and `eos-v2/working-agreements`.
+- **Write to it:** when you learn something durable or the owner decides something, save it in the same turn:
+  `put_page` on `eos-v2/<topic>`, then `remember` single facts on it. Check that the result says `write_through.written: true`.
+- **Spec vs gbrain:** the behaviour spec stays in the repo (`docs/SPEC.md`, versioned with the code and the golden tests);
+  gbrain holds the decision log, the learnings and an index of the spec. A decision that changes behaviour goes into the
+  spec in the same commit **and** into `eos-v2/decisions`. Never paste the whole spec into gbrain.
+- Rules every session must follow go in this file (one line), not in gbrain. Never save secrets. Do not call `synthesize` (paid).
+- gbrain tools are `mcp__gbrain__*` in Claude Code (load them with ToolSearch if deferred); the server is http://127.0.0.1:3141.
+  If it is unreachable, say so once and carry on. Never touch Chitragupta's gbrain (port 3131).
+
 ## Workflow
 - Build/test: `dotnet build EOS.slnx` then `dotnet test EOS.slnx`. Warnings are errors.
 - One commit per iteration: `<area>: <change>`. Annotated tags `vX.Y.Z` for releases.

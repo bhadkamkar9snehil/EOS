@@ -10,7 +10,7 @@ namespace EOS.Infrastructure.People;
 public sealed class PeopleException(string message) : Exception(message);
 
 public sealed record PersonRow(int Id, string Code, string FullName, string? Team, int? TeamId, string? RoleTitle, string? BaseLocation,
-    decimal AvailabilityFraction, bool IsActive, bool IsUnverified, string? Email, string? Band = null, int? Seniority = null, bool IsConsultant = false, bool IsOnProbation = false);
+    decimal AvailabilityFraction, bool IsActive, bool IsUnverified, string? Email, string? Band = null, int? Seniority = null, bool IsConsultant = false, bool IsOnProbation = false, bool IsUpdown = false, bool? UpdownOverride = null);
 
 public sealed record PersonSkillView(int SkillId, string Skill, int Rating, DateOnly? AssessedOn, string? AssessedBy, decimal? ModuleKnowFraction);
 
@@ -30,6 +30,10 @@ public sealed record PersonPatch
     public decimal? AvailabilityFraction { get; init; }
     public bool? IsActive { get; init; }
     public bool? IsUnverified { get; init; }
+
+    /// <summary>Owner's correction of the ERP up-down (commuter) flag; <see cref="ClearUpdown"/> goes back to following the ERP.</summary>
+    public bool? Updown { get; init; }
+    public bool ClearUpdown { get; init; }
 }
 
 public sealed class PeopleService(EosDbContext db)
@@ -41,7 +45,8 @@ public sealed class PeopleService(EosDbContext db)
                from t in teams.DefaultIfEmpty()
                orderby p.FullName
                select new PersonRow(p.Id, p.Code, p.FullName, t == null ? null : t.Name, p.TeamId, p.RoleTitle, p.BaseLocation,
-                   p.AvailabilityFraction, p.IsActive, p.IsUnverified, p.Email, p.Band, p.Seniority, p.IsConsultant, p.IsOnProbation)).ToListAsync(ct);
+                   p.AvailabilityFraction, p.IsActive, p.IsUnverified, p.Email, p.Band, p.Seniority, p.IsConsultant, p.IsOnProbation,
+                   p.UpdownOverride ?? p.IsUpdownFromErp, p.UpdownOverride)).ToListAsync(ct);
 
     public async Task<Person> CreateAsync(Person person, string actor, CancellationToken ct = default)
     {
@@ -74,6 +79,8 @@ public sealed class PeopleService(EosDbContext db)
         }
         if (patch.IsActive is { } active) p.IsActive = active;
         if (patch.IsUnverified is { } u) p.IsUnverified = u;
+        if (patch.ClearUpdown) p.UpdownOverride = null;
+        else if (patch.Updown is { } ud) p.UpdownOverride = ud;
         Audit("person.update", actor, p.Code, System.Text.Json.JsonSerializer.Serialize(patch));
         await db.SaveChangesAsync(ct);
     }

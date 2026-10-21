@@ -30,6 +30,14 @@ public sealed class Person
     public bool IsConsultant { get; set; }
     public bool IsOnProbation { get; set; }
     public bool IsNonBillable { get; set; }
+
+    /// <summary>The ERP roster says this engineer commutes from another nearby city ("up-down"). Replaced on every roster import.</summary>
+    public bool IsUpdownFromErp { get; set; }
+
+    /// <summary>The owner's correction of the ERP value; null follows the ERP.</summary>
+    public bool? UpdownOverride { get; set; }
+
+    public bool IsUpdown => UpdownOverride ?? IsUpdownFromErp;
 }
 
 public sealed class TimesheetEntry
