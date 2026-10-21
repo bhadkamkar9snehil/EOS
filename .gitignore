@@ -34,4 +34,5 @@ node_modules/
 node_modules/
 test-results/
 playwright-report/
+tests/e2e/shots/audit/
 .tools/
