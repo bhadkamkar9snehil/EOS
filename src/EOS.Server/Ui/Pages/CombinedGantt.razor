@@ -34,7 +34,8 @@
     private List<GanttChart.Row> _rows = [];
     private List<GanttChart.Link> _links = [];
     private string _view = "project";
-    private bool _hideDone;
+    // Imported ERP history is mostly finished projects from years ago; they would bury the live ones, so they start hidden.
+    private bool _hideDone = true;
 
     protected override async Task LoadAsync()
     {
@@ -59,10 +60,10 @@
     {
         _rows = []; _links = [];
         if (_view == "engineer") { BuildByEngineer(); return; }
-        var shown = 0; var atRisk = 0; DateOnly? last = null;
+        var shown = 0; var atRisk = 0; var hidden = 0; DateOnly? last = null;
         foreach (var p in (_plans ?? []).Where(p => p.Start is not null).OrderBy(p => p.Start))
         {
-            if (_hideDone && p.Progress >= 1m) continue;
+            if (_hideDone && p.Progress >= 1m) { hidden++; continue; }
             var hv = _health.GetValueOrDefault(p.ProjectId);
             var h = hv?.Health ?? "";
             shown++;
@@ -85,7 +86,7 @@
             }
             foreach (var l in p.Links) _links.Add(new GanttChart.Link("t" + l.PredecessorId, "t" + l.SuccessorId, l.Type));
         }
-        _summary = shown == 0 ? null : $"{shown} projects · {atRisk} at risk" + (last is { } lf ? $" · last finish {lf:dd MMM yyyy}" : "");
+        _summary = shown == 0 && hidden == 0 ? null : $"{shown} projects · {atRisk} at risk" + (last is { } lf ? $" · last finish {lf:dd MMM yyyy}" : "") + (hidden > 0 ? $" · {hidden} completed hidden" : "");
     }
 
     private void BuildByEngineer()
