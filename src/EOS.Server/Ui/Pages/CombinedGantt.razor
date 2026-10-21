@@ -5,7 +5,10 @@
 
 <div class="page">
     <div class="page-head">
-        <h1>Gantt</h1>
+        <div>
+            <h1>Gantt</h1>
+            @if (_summary is not null) { <p class="muted gx-sub">@_summary</p> }
+        </div>
         <div class="actions">
             <span class="seg" role="group" aria-label="Group by">
                 <button class="@(_view == "project" ? "on" : "")" @onclick='() => SetView("project")'>By project</button>
@@ -19,13 +22,15 @@
     else if (LoadError is not null) { <div class="plate error">@LoadError</div> }
     else
     {
-        <GanttChart Rows="@_rows" Links="@_links" Today="@AsOf" ExpandToLevel="1" LabelWidth="360" MaxHeight="74vh" />
+        <GanttChart Rows="@_rows" Links="@_links" Today="@AsOf" ExpandToLevel="1" LabelWidth="400" MaxHeight="fit" />
     }
 </div>
 
 @code {
     private List<PlanView>? _plans;
-    private Dictionary<int, string> _health = [];
+    private Dictionary<int, ProjectHealthView> _health = [];
+    private Dictionary<int, BaselineVariance> _base = [];
+    private string? _summary;
     private List<GanttChart.Row> _rows = [];
     private List<GanttChart.Link> _links = [];
     private string _view = "project";
@@ -38,7 +43,13 @@
         _plans = [];
         foreach (var p in projects.Where(p => p.HasPlan))
             _plans.Add(await Q(sp => sp.GetRequiredService<PlanService>().GetPlanAsync(p.Id)));
-        _health = (await Q(sp => sp.GetRequiredService<HealthService>().GetAllAsync(asOf))).ToDictionary(h => h.ProjectId, h => h.Health);
+        _health = (await Q(sp => sp.GetRequiredService<HealthService>().GetAllAsync(asOf))).ToDictionary(h => h.ProjectId);
+        _base = [];
+        foreach (var p in _plans)
+        {
+            try { _base[p.ProjectId] = await Q(sp => sp.GetRequiredService<PlanService>().GetBaselineVarianceAsync(p.ProjectId)); }
+            catch (PlanException) { }
+        }
         Build();
     }
 
@@ -48,17 +59,33 @@
     {
         _rows = []; _links = [];
         if (_view == "engineer") { BuildByEngineer(); return; }
+        var shown = 0; var atRisk = 0; DateOnly? last = null;
         foreach (var p in (_plans ?? []).Where(p => p.Start is not null).OrderBy(p => p.Start))
         {
             if (_hideDone && p.Progress >= 1m) continue;
-            var h = _health.GetValueOrDefault(p.ProjectId);
+            var hv = _health.GetValueOrDefault(p.ProjectId);
+            var h = hv?.Health ?? "";
+            shown++;
+            if (h == "At Risk") atRisk++;
+            if (p.Finish is { } pf && (last is null || pf > last)) last = pf;
+            var bv = _base.GetValueOrDefault(p.ProjectId);
+            var bRows = bv?.Rows.ToDictionary(r => r.TaskId);
+            var bs = bv?.Rows.Where(r => r.BaselineStart is not null).Select(r => r.BaselineStart).DefaultIfEmpty().Min();
+            var slip = hv?.ScheduleVarianceDays;
+            var pMeta = $"{(p.Progress * 100):0}% · finish {p.Finish:dd MMM}" + (slip is > 0 ? $" · +{slip} d late" : slip is < 0 ? $" · {-slip} d early" : "");
             _rows.Add(new GanttChart.Row($"{p.ProjectNo}  {Names.Short(p.ProjectName)}", 0, p.Start, p.Finish, p.Progress, h == "At Risk", true,
-                Tooltip: $"{p.ProjectNo} {p.ProjectName} · {h}", Href: "/projects/" + p.ProjectId, Key: "p" + p.ProjectId));
+                Tooltip: $"{p.ProjectNo} {p.ProjectName} · {h}", Href: "/projects/" + p.ProjectId, Key: "p" + p.ProjectId,
+                BaseStart: bs, BaseFinish: bv?.BaselineFinish, Health: h.Length > 0 ? h : "No health", Meta: pMeta));
             foreach (var t in p.Tasks.Where(t => t.Start is not null))
+            {
+                var b = bRows is not null && bRows.TryGetValue(t.Id, out var br) ? br : null;
+                var meta = $"{t.Start:dd MMM} – {t.Finish:dd MMM}" + (t.PercentComplete > 0 ? $" · {t.PercentComplete * 100:0}%" : "");
                 _rows.Add(new GanttChart.Row(t.Name, t.Level + 1, t.Start, t.Finish, t.PercentComplete, t.IsCritical, t.IsSummary, t.Kind == "milestone",
-                    t.Wbs + " " + t.Name, null, t.Status, Key: "t" + t.Id));
+                    t.Wbs + " " + t.Name, null, t.Status, b?.BaselineStart, b?.BaselineFinish, "t" + t.Id, Meta: meta));
+            }
             foreach (var l in p.Links) _links.Add(new GanttChart.Link("t" + l.PredecessorId, "t" + l.SuccessorId, l.Type));
         }
+        _summary = shown == 0 ? null : $"{shown} projects · {atRisk} at risk" + (last is { } lf ? $" · last finish {lf:dd MMM yyyy}" : "");
     }
 
     private void BuildByEngineer()

@@ -10,14 +10,13 @@ else
     @if (Toolbar)
     {
         <div class="tools" role="toolbar" aria-label="Gantt controls">
-            <button class="secondary" @onclick="ExpandAll">Expand all</button>
-            <button class="secondary" @onclick="CollapseAll">Collapse all</button>
             <span class="seg" role="group" aria-label="Depth">
                 @foreach (var l in new[] { 0, 1, 2 })
                 {
                     var lv = l;
                     <button class="@(_depth == lv ? "on" : "")" @onclick="() => ShowDepth(lv)">@("Level " + (lv + 1))</button>
                 }
+                <button class="@(_depth == -1 ? "on" : "")" @onclick="ExpandAll">All</button>
             </span>
             <span class="sep"></span>
             <span class="seg" role="group" aria-label="Zoom">
@@ -29,20 +28,23 @@ else
             </span>
             <button class="secondary" @onclick="ScrollToToday">Today</button>
             <span class="sep"></span>
-            <label class="inline"><input type="checkbox" @bind="_criticalOnly" /> Critical path</label>
-            <label class="inline"><input type="checkbox" @bind="_showBaseline" /> Baseline</label>
-            <label class="inline"><input type="checkbox" @bind="_showLinks" /> Links</label>
+            <span class="layers" role="group" aria-label="Layers">
+                <label class="inline"><input type="checkbox" @bind="_criticalOnly" /> Critical path</label>
+                <label class="inline"><input type="checkbox" @bind="_showBaseline" /> Baseline</label>
+                <label class="inline"><input type="checkbox" @bind="_showLinks" /> Links</label>
+            </span>
+            <span class="spacer"></span>
             <input type="search" placeholder="Find a task" aria-label="Find a task" @bind="_find" @bind:event="oninput" style="width:170px" />
         </div>
     }
-    <div class="gx" id="@_id" style="max-height:@MaxHeight">
+    <div class="gx" id="@_id" style="@(Fit ? "" : "max-height:" + MaxHeight)">
         <div class="gx-labels" style="width:@(LabelWidth)px">
             <div class="gx-corner" style="height:@(HeaderHeight)px">@_visible.Count of @Rows.Count rows</div>
             @foreach (var v in _visible)
             {
                 var r = v.Row;
                 var isSel = _selected == v.Id;
-                <div class="gl @(r.IsSummary ? "sum" : "") @(isSel ? "sel" : "") @(Dim(r) ? "dim" : "")" style="height:@(RowHeight)px;padding-left:@(6 + r.Level * 16)px" tabindex="0" title="@r.Tooltip"
+                <div class="gl @(r.IsSummary ? "sum" : "") @(r.Health is not null ? "proj " + HealthCls(r.Health) : "") @(isSel ? "sel" : "") @(Dim(r) ? "dim" : "")" style="height:@(RowHeight)px;padding-left:@(6 + r.Level * 16)px" tabindex="0" title="@(r.Tooltip ?? r.Label)"
                      @onclick="() => Select(v.Id)" @onkeydown="e => LabelKey(v, e)">
                     @if (v.HasChildren)
                     {
@@ -50,6 +52,7 @@ else
                     }
                     else { <span class="twisty-gap"></span> }
                     @if (r.Href is not null) { <a href="@r.Href" @onclick:stopPropagation>@r.Label</a> } else { <span class="gl-text">@r.Label</span> }
+                    @if (r.Health is not null) { <span class="hl">@r.Health</span> }
                 </div>
             }
         </div>
@@ -95,12 +98,13 @@ else
                     var r = v.Row;
                     var y = i * RowHeight;
                     var dim = Dim(r);
+                    var late = Today is { } td && r.Finish is { } lf && lf < td && r.Progress < 1m && !r.IsMilestone;
                     <g class="gx-row @(_selected == v.Id ? "sel" : "") @(dim ? "dim" : "")" @onclick="() => Select(v.Id)">
-                        <rect class="rowband" x="0" y="@y" width="@Width" height="@RowHeight" />
+                        <rect class="rowband @(r.Health is not null ? "proj" : "")" x="0" y="@y" width="@Width" height="@RowHeight" />
                         <line class="gridline soft" x1="0" x2="@Width" y1="@(y + RowHeight)" y2="@(y + RowHeight)" />
                         @if (_showBaseline && r.BaseStart is { } bs && r.BaseFinish is { } bf)
                         {
-                            <rect class="baseline" x="@X(bs)" y="@(y + RowHeight - 7)" width="@Math.Max(2, X(bf) - X(bs) + DayWidth)" height="3"><title>Baseline @bs.ToString("dd MMM") – @bf.ToString("dd MMM yyyy")</title></rect>
+                            <rect class="baseline" x="@X(bs)" y="@(y + RowHeight - 5)" width="@Math.Max(2, X(bf) - X(bs) + DayWidth)" height="3"><title>Baseline @bs.ToString("dd MMM") – @bf.ToString("dd MMM yyyy")</title></rect>
                         }
                         @if (r.Start is { } s && r.Finish is { } f)
                         {
@@ -110,15 +114,23 @@ else
                             {
                                 <polygon points="@Diamond(x + DayWidth / 2.0, y + RowHeight / 2.0, 7)" class="bar-sum"><title>@r.Label — @s.ToString("dd MMM yyyy")</title></polygon>
                             }
+                            else if (r.Health is not null)
+                            {
+                                <rect class="proj-track @HealthCls(r.Health)" x="@x" y="@(y + 6)" width="@w" height="14" rx="3"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%)</title></rect>
+                                @if (r.Progress > 0)
+                                {
+                                    <rect class="proj-fill @HealthCls(r.Health)" x="@x" y="@(y + 6)" width="@(Math.Max(3, w * (double)Math.Min(1m, r.Progress)))" height="14" rx="3" />
+                                }
+                            }
                             else if (r.IsSummary)
                             {
-                                <rect class="bar-sum" x="@x" y="@(y + 7)" width="@w" height="6" rx="1"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%)</title></rect>
-                                <polygon points="@($"{x},{y + 13} {x + 6},{y + 13} {x},{y + 19}")" class="bar-sum" />
-                                <polygon points="@($"{x + w},{y + 13} {x + w - 6},{y + 13} {x + w},{y + 19}")" class="bar-sum" />
+                                <rect class="bar-sum @(late ? "late" : "")" x="@x" y="@(y + 7)" width="@w" height="6" rx="1"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%@(late ? ", overdue" : ""))</title></rect>
+                                <polygon points="@($"{x},{y + 13} {x + 6},{y + 13} {x},{y + 19}")" class="bar-sum @(late ? "late" : "")" />
+                                <polygon points="@($"{x + w},{y + 13} {x + w - 6},{y + 13} {x + w},{y + 19}")" class="bar-sum @(late ? "late" : "")" />
                             }
                             else
                             {
-                                <rect class="@(r.Critical ? "bar-crit" : r.Progress >= 1 ? "bar-done" : "bar-task")" x="@x" y="@(y + 5)" width="@w" height="@(RowHeight - 13)" rx="2"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%@(r.Status is null ? "" : ", " + r.Status))</title></rect>
+                                <rect class="@(r.Critical ? "bar-crit" : r.Progress >= 1 ? "bar-done" : late ? "bar-late" : "bar-task")" x="@x" y="@(y + 5)" width="@w" height="@(RowHeight - 13)" rx="2"><title>@r.Label — @s.ToString("dd MMM") to @f.ToString("dd MMM yyyy") (@((r.Progress * 100).ToString("0"))%@(r.Status is null ? "" : ", " + r.Status))</title></rect>
                                 @if (r.Progress > 0 && r.Progress < 1)
                                 {
                                     <rect class="bar-progress" x="@x" y="@(y + 5)" width="@(w * (double)r.Progress)" height="@(RowHeight - 13)" rx="2" />
@@ -126,7 +138,9 @@ else
                             }
                             @if (DayWidth >= 5 && !r.IsMilestone)
                             {
-                                @Txt(x + w + 5, y + RowHeight / 2 + 4, "dim small", Clip(r.Label, 38))
+                                var text = r.Meta ?? Clip(r.Label, 38);
+                                var onLeft = x + w + 5 + text.Length * 5.6 > Width && x - 5 - text.Length * 5.6 > 0;
+                                @Txt(onLeft ? x - 5 : x + w + 5, y + RowHeight / 2 + 4, onLeft ? "dim small halo end" : "dim small halo", text)
                             }
                         }
                     </g>
@@ -147,7 +161,7 @@ else
     </div>
     <div class="legend">
         <span><i style="background:#3a4550"></i>task</span><span><i style="background:var(--signal)"></i>critical</span>
-        <span><i style="background:var(--done)"></i>complete</span><span><i style="background:var(--ink)"></i>summary and milestone</span>
+        <span><i style="background:var(--done)"></i>complete</span><span><i style="background:var(--amber)"></i>overdue</span><span><i style="background:var(--ink-2)"></i>summary and milestone</span>
         <span><i style="background:var(--ink-2);height:3px"></i>baseline</span>
     </div>
 }
@@ -155,7 +169,8 @@ else
 @code {
     public sealed record Row(
         string Label, int Level, DateOnly? Start, DateOnly? Finish, decimal Progress, bool Critical, bool IsSummary, bool IsMilestone = false,
-        string? Tooltip = null, string? Href = null, string? Status = null, DateOnly? BaseStart = null, DateOnly? BaseFinish = null, string? Key = null);
+        string? Tooltip = null, string? Href = null, string? Status = null, DateOnly? BaseStart = null, DateOnly? BaseFinish = null, string? Key = null,
+        string? Health = null, string? Meta = null);
 
     public sealed record Link(string From, string To, int Type = 0);
 
@@ -184,6 +199,8 @@ else
     private bool _criticalOnly, _showBaseline = true, _showLinks = true;
     private string _find = "";
     private bool _scrolled;
+    private bool Fit => MaxHeight == "fit";
+    private static string HealthCls(string? h) => h switch { "At Risk" => "hc-bad", "Moderate Risk" => "hc-warn", "On Track" => "hc-good", _ => "hc-none" };
     private int DayWidth = 6;
     private int _avail = 1000;
     private DateOnly MinDate, MaxDate;
@@ -197,6 +214,7 @@ else
         {
             _lastRows = Rows;
             _collapsed = [];
+            _depth = ExpandToLevel == int.MaxValue ? -1 : ExpandToLevel;
             for (var i = 0; i < Rows.Count; i++)
                 if (HasChildren(i) && Rows[i].Level >= ExpandToLevel) _collapsed.Add(IdOf(i));
         }
@@ -208,6 +226,7 @@ else
     {
         if (Rows.Count > 0)
         {
+            if (Fit) await JS.InvokeVoidAsync("eosGanttFit", _id);
             var box = await JS.InvokeAsync<int>("eosGanttWidth", _id);
             var avail = box - LabelWidth - 18;
             if (box > 0 && avail >= 300 && Math.Abs(avail - _avail) > 8)

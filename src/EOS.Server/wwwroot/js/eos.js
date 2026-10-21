@@ -61,7 +61,25 @@ window.eosGanttWidth = (id) => {
   const el = document.getElementById(id);
   return el ? el.clientWidth : 0;
 };
-window.eosGanttScroll = (id, x) => {
+window.eosGanttFit = (id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const main = el.closest("main");
+  const run = () => {
+    if (!el.isConnected) return;
+    const bottom = Math.min(main ? main.getBoundingClientRect().bottom : innerHeight, innerHeight);
+    const pad = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
+    const legend = el.nextElementSibling;
+    const reserve = (legend ? legend.offsetHeight + 10 : 0) + Math.min(pad, 24);
+    el.style.maxHeight = Math.max(260, bottom - el.getBoundingClientRect().top - reserve) + "px";
+  };
+  run();
+  if (el.__fit) return;
+  el.__fit = true;
+  addEventListener("resize", run);
+  if (main && window.ResizeObserver) new ResizeObserver(run).observe(main);
+};
+window.eosGanttScroll =(id, x) => {
   const el = document.getElementById(id);
   if (el) el.scrollLeft = x;
 };

@@ -214,7 +214,20 @@ label.inline { display: inline-flex; align-items: center; gap: 5px; margin: 0; c
 .gx .bar-task { fill: var(--task); }
 .gx .bar-crit { fill: var(--crit); }
 .gx .bar-done { fill: var(--done); }
-.gx .bar-sum { fill: var(--ink); }
+.gx .bar-sum { fill: var(--ink-2); }
+.gx .bar-sum.late { fill: var(--amber); }
+.gx .bar-late { fill: color-mix(in srgb, var(--amber) 55%, var(--panel)); }
+.gx .hc-bad { --hc: var(--red); } .gx .hc-warn { --hc: var(--amber); } .gx .hc-good { --hc: var(--green); } .gx .hc-none { --hc: var(--ink-2); }
+.gx .proj-track { fill: color-mix(in srgb, var(--hc) 24%, transparent); stroke: var(--hc); stroke-width: 1; }
+.gx .proj-fill { fill: var(--hc); }
+.gx .rowband.proj { fill: color-mix(in srgb, var(--ink) 4%, transparent); }
+.gx text.halo { paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.gx text.end { text-anchor: end; }
+.gx .gl.proj { background: color-mix(in srgb, var(--ink) 4%, var(--panel)); }
+.gx .gl .hl { flex: none; margin-left: auto; padding-right: 10px; font-size: 11.5px; font-weight: 650; color: var(--hc); }
+.gx .gl a { flex: 0 1 auto; min-width: 0; }
+.tools .layers { display: inline-flex; gap: 12px; align-items: center; padding: 0 4px; }
+.gx-sub { margin: 4px 0 0; font-size: 13px; }
 .gx .bar-progress { fill: color-mix(in srgb, var(--ink) 22%, transparent); pointer-events: none; }
 .gx .baseline { fill: var(--ink-3); opacity: .55; }
 .gx .today { stroke: var(--red); stroke-width: 1.5; }
@@ -487,7 +500,8 @@ button.toggle[aria-pressed=true] { background: var(--accent-soft); color: var(--
 .planplate .badge { line-height: 20px; font-weight: 550; }
 /* Audit fixes: hidden headings, programmatic focus, phone overflow, touch targets. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-h1:focus:not(:focus-visible), [tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+h1[tabindex="-1"]:focus, h1:focus:not(:focus-visible), [tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+.heat.none { opacity: .4; }
 .pips { white-space: nowrap; }
 @media (max-width: 640px) {
   .skilltab th:nth-child(3), .skilltab td:nth-child(3) { display: none; }
