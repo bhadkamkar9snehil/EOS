@@ -7,6 +7,80 @@ web UI, REST API, CLI (`eos`) and MCP.
 
 EOS V1 (performance reviews) lives in the separate repository `ssm/EOS` and stays untouched.
 
+## Screenshots
+
+Light on the left, dark on the right.
+
+### Command Center
+Team heat-map, hours, peer reviews, alerts and drives in one view.
+
+| Light | Dark |
+|---|---|
+| ![Command Center light](docs/img/command-center-light.png) | ![Command Center dark](docs/img/command-center-dark.png) |
+
+### Projects
+Portfolio list with status, dates and risk.
+
+| Light | Dark |
+|---|---|
+| ![Projects light](docs/img/projects-light.png) | ![Projects dark](docs/img/projects-dark.png) |
+
+### Gantt
+Combined Gantt by project or engineer, critical path, baseline and links.
+
+| Light | Dark |
+|---|---|
+| ![Gantt light](docs/img/gantt-light.png) | ![Gantt dark](docs/img/gantt-dark.png) |
+
+### People
+Engineers, roles, load and skills.
+
+| Light | Dark |
+|---|---|
+| ![People light](docs/img/people-light.png) | ![People dark](docs/img/people-dark.png) |
+
+### Capacity
+Supply versus demand per engineer and month.
+
+| Light | Dark |
+|---|---|
+| ![Capacity light](docs/img/capacity-light.png) | ![Capacity dark](docs/img/capacity-dark.png) |
+
+### Skills
+Skills matrix; progression is recorded manually.
+
+| Light | Dark |
+|---|---|
+| ![Skills light](docs/img/skills-light.png) | ![Skills dark](docs/img/skills-dark.png) |
+
+### What-if
+Move engineers or skills between projects and see the effect.
+
+| Light | Dark |
+|---|---|
+| ![What-if light](docs/img/whatif-light.png) | ![What-if dark](docs/img/whatif-dark.png) |
+
+### Infrastructure
+Servers and VMs per project.
+
+| Light | Dark |
+|---|---|
+| ![Infrastructure light](docs/img/infrastructure-light.png) | ![Infrastructure dark](docs/img/infrastructure-dark.png) |
+
+### Reports
+Status packs and exports.
+
+| Light | Dark |
+|---|---|
+| ![Reports light](docs/img/reports-light.png) | ![Reports dark](docs/img/reports-dark.png) |
+
+### Settings
+Hours, calendars, thresholds and vocabularies, all configurable.
+
+| Light | Dark |
+|---|---|
+| ![Settings light](docs/img/settings-light.png) | ![Settings dark](docs/img/settings-dark.png) |
+
 ## Read first
 - [`docs/SPEC.md`](docs/SPEC.md) — the master specification (what, why, formulas, data, reports, roadmap). **It is the source of truth.**
 - [`AGENTS.md`](AGENTS.md) — working agreements for humans and agents.
